@@ -8,8 +8,8 @@ The repo has many dependencies on Restspace Core. Restspace Core contains all th
 
 ## Site and documentation
 
-The main site for Restspace is at (http://restspace.io)[http://restspace.io].
-The technical overview in the documentation for Restspace is at (https://restspace.io/docs/overview/Technical%20Overview)[https://restspace.io/docs/overview/Technical%20Overview].
+The main site for Restspace is at [http://restspace.io](http://restspace.io).
+The technical overview in the documentation for Restspace is at [https://restspace.io/docs/overview/Technical%20Overview](https://restspace.io/docs/overview/Technical%20Overview).
 
 ## Code Architecture
 
