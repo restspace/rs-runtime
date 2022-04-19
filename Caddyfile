@@ -1,0 +1,7 @@
+{
+	auto_https disable_redirects
+}
+
+https://restspace.local:3131 {
+	reverse_proxy http://localhost:3100
+}

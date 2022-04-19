@@ -1,0 +1,6 @@
+{
+    "name": "Hello World",
+    "description": "Simplest service module",
+    "moduleUrl": "./services/hello.ts",
+    "apis": [ "misc.helloworld" ]
+}

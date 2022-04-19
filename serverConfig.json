@@ -1,0 +1,32 @@
+{
+    "tenancy": "multi",
+    "mainDomain": "restspace.local:3100",
+    "domainMap": {
+        "shamiyaana.com": "shamiyaana",
+        "www.shamiyaana.com": "shamiyaana",
+        "schoolofgnostickabbalah.com": "sgk",
+        "www.schoolofgnostickabbalah.com": "sgk",
+        "schoolofgnostickabbalah.org": "sgk",
+        "www.schoolofgnostickabbalah.org": "sgk",
+        "test.restspace.io": "test",
+        "kaballah.restspace.io": "kaballah",
+        "localhost:3100": "main",
+        "restspace.local:3131": "main"
+    },
+    "infra": {
+        "localStore": {
+            "adapterSource": "./adapter/LocalFileAdapter.ram.json",
+            "rootPath": "C:\\Dev\\test\\data\\${tenant}"
+        },
+        "s3Store": {
+            "bucketName": "rs-test-142",
+            "region": "eu-west-2",
+            "tenantDirectories": true
+        },
+        "pdfGeneratorProxy": {
+            "adapterSource": "./adapter/SimpleProxyAdapter.ram.json",
+            "urlPattern": "https://7f0t4i3esl.execute-api.eu-west-2.amazonaws.com/dev/pdf-gen"
+        }
+    },
+    "configStore": "localStore"
+}

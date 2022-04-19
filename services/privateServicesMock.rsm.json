@@ -1,0 +1,19 @@
+{
+    "name": "Private Services Mock Service",
+    "description": "Routes under control of test construction",
+    "moduleUrl": "./services/mock.ts",
+    "apis": [ ],
+    "prePipeline": [ "GET serv1/$*", "POST serv2/bypass" ],
+    "privateServices": {
+        "serv1": {
+            "name": "'Serv 1'",
+            "source": "./services/mock.rsm.json",
+            "access": { "readRoles": "'all'", "writeRoles": "'all'" }
+        },
+        "serv2": {
+            "name": "'Serv 2'",
+            "source": "./services/lib.rsm.json",
+            "access": { "readRoles": "'all'", "writeRoles": "'all'" }
+        }
+    }
+}

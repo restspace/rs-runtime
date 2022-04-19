@@ -1,0 +1,38 @@
+For node reverse proxy:
+
+<Directory />
+Options -Indexes +FollowSymLinks
+AllowOverride None
+Require all granted
+</Directory>
+
+ProxyPreserveHost On
+ProxyVia Full
+<Proxy *>
+  Require all granted
+</Proxy>
+
+ProxyPass / http://127.0.0.1:3100/
+ProxyPassReverse / http://127.0.0.1:3100/
+
+Use pm2 for node process service management.
+sudo pm2 restart server
+sudo pm2 status
+
+rs-engine on localhost:3200
+use /var/www/rs-engine/ecosystem.config.js
+pm2 start ecosystem.config.js
+
+for apache changes
+sudo systemctl restart apache2
+sudo systemctl status apache2
+
+cd /etc/apache2/sites-available
+sudo nano mysite
+sudo a2ensite mysite
+sudo a2dissite 000-default.conf
+sudo apache2ctl configtest
+sudo systemctl restart apache2
+
+
+

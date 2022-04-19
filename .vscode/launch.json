@@ -1,0 +1,61 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Deno: Run",
+            "request": "launch",
+            "type": "pwa-node",
+            "program": "server.ts",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "deno",
+            "runtimeArgs": [
+                "run",
+                "--unstable",
+                "--inspect-brk",
+                "--allow-all",
+                "--import-map=importMap.json"
+            ],
+            "env": { "DENO_DIR": "C:\\Users\\james\\AppData\\Local\\deno" },
+            "args": [ "./serverConfig.json"],
+            "attachSimplePort": 9229,
+            "console":"integratedTerminal"
+        },
+        {
+            "name": "Deno: Test",
+            "request": "launch",
+            "type": "pwa-node",
+            "runtimeExecutable": "deno",
+            "runtimeArgs": [
+                "test",
+                "--unstable",
+                "--inspect-brk",
+                "--allow-all",
+                "--import-map=importMap.json",
+                "test/"
+            ],
+            "attachSimplePort": 9229,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Deno: Test this file",
+            "request": "launch",
+            "type": "pwa-node",
+            "runtimeExecutable": "deno",
+            "runtimeArgs": [
+                "test",
+                "--unstable",
+                "--no-check",
+                "--inspect-brk",
+                "--allow-all",
+                "--import-map=importMap.json",
+                "${file}"
+            ],
+            "env": { "DENO_DIR": "C:\\Users\\james\\AppData\\Local\\deno" },
+            "attachSimplePort": 9229,
+            "console": "integratedTerminal"
+        }
+    ]
+}

@@ -1,0 +1,21 @@
+{
+    "tenancy": "multi",
+    "mainDomain": "restspace.local:3100",
+    "domainMap": {
+        "shamiyaana.com": "shamiyaana",
+        "www.shamiyaana.com": "shamiyaana",
+        "schoolofgnostickabbalah.com": "sgk",
+        "www.schoolofgnostickabbalah.com": "sgk",
+        "schoolofgnostickabbalah.org": "sgk",
+        "www.schoolofgnostickabbalah.org": "sgk",
+        "test.restspace.io": "test",
+        "kaballah.restspace.io": "kaballah"
+    },
+    "infra": {
+        "localStore": {
+            "adapterSource": "./adapter/LocalFileAdapter.ram.json",
+            "rootPath": "/var/www/rs-data/${tenant}"
+        }
+    },
+    "configStore": "localStore"
+}
