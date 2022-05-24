@@ -32,7 +32,7 @@ const onIncoming = async (ev: MessageEvent<any>, context: SimpleServiceContext) 
 
 const service = new Service();
 
-service.get((msg: Message, context: SimpleServiceContext, config: IServiceConfig) => {
+service.get((msg, context, config) => {
 	if (msg.websocket) {
 		const websocket = msg.websocket;
 		websocket.onopen = () => service.state(State, context, config).addSocket(msg.url.servicePath, websocket);
@@ -40,6 +40,15 @@ service.get((msg: Message, context: SimpleServiceContext, config: IServiceConfig
 		websocket.onmessage = (ev) => onIncoming(ev, context);
 	}
 	return Promise.resolve(msg);
+});
+
+service.post(async (msg, context, config) => {
+	const sockets = service.state(State, context, config).pathSockets[msg.url.servicePath];
+	if (!sockets) return msg.setStatus(404, "No sockets found");
+	const msgData = await msg.data?.asArrayBuffer();
+	if (!msgData) return msg.setStatus(400, "No data to send to sockets");
+	sockets.forEach(s => s.send(msgData));
+	return msg;
 });
 
 export default service;
