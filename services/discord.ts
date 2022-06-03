@@ -6,6 +6,8 @@ import { sign_detached_verify } from "https://cdn.jsdelivr.net/gh/intob/tweetnac
 import { hex2array, pathCombine, upTo } from "rs-core/utility/utility.ts";
 import { DirDescriptor, PathInfo, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
+import { buildStore } from "../../rs-core/WrapperBuilder.ts";
+import { Url } from "../../rs-core/Url.ts";
 
 interface IDiscordConfig extends IServiceConfig {
 	applicationId: string;
@@ -15,8 +17,6 @@ interface IDiscordConfig extends IServiceConfig {
 }
 
 const service = new Service<IDataAdapter, IDiscordConfig>();
-
-const discordBaseUrl = "https://discord.com/api/v8";
 
 const commandSchema = {
 	type: "object",
@@ -95,12 +95,13 @@ const verify = async (msg: Message, config: IDiscordConfig) => {
 	return isVerified;
 }
 
-const getRequest = (path: string, method: MessageMethod, tenant: string, config: IDiscordConfig) => {
-	const msg = new Message(pathCombine(discordBaseUrl, `applications/${config.applicationId}`, path), tenant, method);
-	msg.setHeader("Authorization", "Bot " + config.botToken);
-	msg.setHeader("User-Agent", "DiscordBot (https://restspace.io, 0.1)");
-	return msg;
-}
+
+// const getRequest = (path: string, method: MessageMethod, tenant: string, config: IDiscordConfig) => {
+// 	const msg = new Message(pathCombine(discordBaseUrl, `applications/${config.applicationId}`, path), tenant, method);
+// 	msg.setHeader("Authorization", "Bot " + config.botToken);
+// 	msg.setHeader("User-Agent", "DiscordBot (https://restspace.io, 0.1)");
+// 	return msg;
+// }
 
 const snowflakeToTimestamp = (snf: string) => {
 	const snfi = Number(BigInt(snf) >> 22n);
@@ -142,23 +143,87 @@ const processArgs = (msg: Message): [ string, string ] | string => {
 	if (!/^(global|[0-9]{18})$/.test(scope)) return 'scope not 18 digit snowflake id or "global"';
 	if (!nameId) return 'missing command name-id';
 	const [ _, id ] = decodeURIComponent(nameId).split('|');
-	if (id && !/^[0-9]{18}$/.test(id)) return 'id part of resource is present but not 18 digit snowflake id';
+	if (id && !/^[0-9]{18}$/.test(id)) return 'id part of resource is present but is not 18 digit snowflake id';
 	return [ scope, id?.trim() ];
 }
 
-service.getPath("command", async (msg, context, config) => {
+// buildStore(
+// 	"/command",
+// 	service,
+// 	{
+// 		pathPattern: "",
+// 		transform: {
+// 			"": [ [ "'command/'" ], [ "'permission/'" ] ],
+// 			"command": {
+// 					"paths": [ "concat(", [ "'global/'" ], "config.guildIds" ],
+// 					"spec": [ "concat(", [
+// 						{
+// 							"pattern": "store",
+// 							"storeMimeTypes": "'application/json; schema=\"' + pathCombine(msg.url.basePath()) + '\"'"
+// 						}
+// 					] ]
+// 			}
+// 		}
+// 	},
+// 	"",
+// 	{},
+// 	"",
+// 	"",
+// 	""
+// );
+
+const extractId = (msg: Message) => {
+	const id = decodeURIComponent(msg.url.servicePathElements[1]?.replace(/.json$/, '')).split('|')?.[1];
+	return id;
+}
+const transformDirectory = (json: any) => {
+	const entries: any[] = json;
+	return {
+		paths: entries.map(ent => [
+			commandSchema.pathPattern.replace("${name}", ent.name).replace("${id}", ent.id),
+			snowflakeToTimestamp(ent.version)
+		])
+	};
+};
+
+buildStore({
+	basePath: "/command/global",
+	service,
+	schema: commandSchema,
+	mapUrlRead: "commands/$>0",
+	mapUrlWrite: msg => [ new Url(`commands/${extractId(msg)}`), "PATCH" ],
+	mapUrlDelete: "commands/$>0",
+	createTest: msg => !extractId(msg),
+	mapUrlCreate: "commands",
+	transformDirectory
+});
+
+buildStore({
+	basePath: "/command",
+	service,
+	schema: commandSchema,
+	mapUrlRead: "guilds/$>0/commands/$>1",
+	mapUrlWrite: msg => [ new Url(`guilds/$>0/commands/${extractId(msg)}`), "PATCH" ],
+	mapUrlDelete: "guilds/$>0/commmands/$>1",
+	createTest: msg => !extractId(msg),
+	mapUrlCreate: "guilds/$>0/commands",
+	transformDirectory
+});
+
+/*
+service.getPath("command", async (msg, context) => {
 	const processed = processArgs(msg);
 	if (!Array.isArray(processed)) return msg.setStatus(400, processed);
 	const [ scope, id ] = processed;
 
 	let req: Message;
 	if (scope === 'global') {
-		req = getRequest(`commands/${id}`, "GET", context.tenant, config);
+		req = new Message(`commands/${id}`, context.tenant, "GET");
 	} else {
-		req = getRequest(`guilds/${scope}/commands/${id}`, "GET", context.tenant, config);
+		req = new Message(`guilds/${scope}/commands/${id}`, context.tenant, "GET");
 	}
 
-	const resp = await context.makeRequest(req);
+	const resp = await context.makeProxyRequest!(req);
 	if (!resp.ok) {
 		const _err = await resp.data?.asString();
 		return resp;
@@ -167,7 +232,7 @@ service.getPath("command", async (msg, context, config) => {
 	return resp;
 });
 
-service.putPath("command", async (msg, context, config) => {
+service.putPath("command", async (msg, context) => {
 	const processed = processArgs(msg);
 	if (!Array.isArray(processed)) return msg.setStatus(400, processed);
 	const [ scope, id ] = processed;
@@ -175,19 +240,19 @@ service.putPath("command", async (msg, context, config) => {
 	let req: Message;
 	if (scope === 'global') {
 		if (!id?.trim()) {
-			req = getRequest(`commands`, "POST", context.tenant, config);
+			req = new Message(`commands`, context.tenant, "POST");
 		} else {
-			req = getRequest(`commands/${id}`, "PATCH", context.tenant, config);
+			req = new Message(`commands/${id}`, context.tenant, "PATCH");
 		}
 	} else {
 		if (!id?.trim()) {
-			req = getRequest(`guilds/${scope}/commands`, "POST", context.tenant, config);
+			req = new Message(`guilds/${scope}/commands`, context.tenant, "POST");
 		} else {
-			req = getRequest(`guilds/${scope}/commands/${id}`, "PATCH", context.tenant, config);
+			req = new Message(`guilds/${scope}/commands/${id}`, context.tenant, "PATCH");
 		}
 	}
 	req.data = msg.data;
-	const resp = await context.makeRequest(req);
+	const resp = await context.makeProxyRequest!(req);
 	if (!resp.ok) {
 		const _err = await resp.data?.asString();
 		return resp;
@@ -196,18 +261,18 @@ service.putPath("command", async (msg, context, config) => {
 	return resp;
 }, commandSchema);
 
-service.deletePath("command", async (msg, context, config) => {
+service.deletePath("command", async (msg, context) => {
 	const processed = processArgs(msg);
 	if (!Array.isArray(processed)) return msg.setStatus(400, processed);
 	const [ scope, id ] = processed;
 
 	let req: Message;
 	if (scope === 'global') {
-		req = getRequest(`commands/${id}`, "DELETE", context.tenant, config);
+		req = new Message(`commands/${id}`, context.tenant, "DELETE");
 	} else {
-		req = getRequest(`guilds/${scope}/commands/${id}`, "DELETE", context.tenant, config);
+		req = new Message(`guilds/${scope}/commands/${id}`, context.tenant, "DELETE");
 	}
-	const resp = await context.makeRequest(req);
+	const resp = await context.makeProxyRequest!(req);
 	if (!resp.ok) {
 		const _err = await resp.data?.asString();
 		return resp;
@@ -263,8 +328,8 @@ service.getDirectory(async (msg, context, config) => {
 		case "global":
 		case "guild": {
 			const reqPath = reqType === "global" ? "commands" : `guilds/${scopeEl}/commands`;
-			const pathsReq = getRequest(reqPath, "GET", context.tenant, config);
-			const pathsResp = await context.makeRequest(pathsReq);
+			const pathsReq = new Message(reqPath, context.tenant, "GET");
+			const pathsResp = await context.makeProxyRequest!(pathsReq);
 			let pathsData: { id: string, name: string, version: string }[] = [];
 			if (!pathsResp.ok) {
 				console.log(`Discord API error: ${pathsResp.status} ${await pathsResp.data?.asString() || 'API error'}`);
@@ -280,5 +345,7 @@ service.getDirectory(async (msg, context, config) => {
 	msg.data = MessageBody.fromObject(dirDesc).setIsDirectory();
     return msg;
 });
+
+*/
 
 export default service;

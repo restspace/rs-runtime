@@ -1,7 +1,7 @@
 import { Service } from "rs-core/Service.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
-import { SmtpClient, SendConfig } from "https://deno.land/x/denomailer/mod.ts";
+import { SMTPClient, SendConfig } from "https://deno.land/x/denomailer/mod.ts";
 import { getExtension, isJson, isText } from "../../rs-core/mimeType.ts";
 
 interface EmailServiceConfig extends IServiceConfig {
@@ -19,7 +19,16 @@ service.post(async (msg, _context, config) => {
     const to = await msg.getParam("to", 0);
     if (!to) return msg.setStatus(400, 'No email address to send to');
 
-    const client = new SmtpClient();
+    const client = new SMTPClient({
+        connection: {
+            hostname: config.host,
+            port: config.port,
+            auth: {
+                username: config.user,
+                password: config.password
+            }
+        }
+    });
 
     const sendConfig = {
         to,
@@ -56,17 +65,6 @@ service.post(async (msg, _context, config) => {
                 }
             }
         }
-    }
-
-    try {
-        await client.connect({
-            hostname: config.host,
-            port: config.port,
-            username: config.user,
-            password: config.password
-        });
-    } catch {
-        return msg.setStatus(500, 'There was a problem connecting to the remote email server');
     }
 
     try {

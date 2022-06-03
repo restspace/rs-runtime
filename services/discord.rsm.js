@@ -12,5 +12,6 @@ export default {
 	        "guildIds": { "type": "array", "items": { "type": "string" } }
         },
         "required": [ "applicationId", "botToken", "publicKey" ]
-    }
+    },
+    "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts" 
 }
