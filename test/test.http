@@ -78,7 +78,7 @@ GET http://restspace.local:3100/discord/command/950463239186165760/.schema.json
 
 ###
 GET https://discord.com/api/v8/applications/950706166017695754/guilds/950463239186165760/commands
-Authorization: Bot OTUwNzA2MTY2MDE3Njk1NzU0.GwsLMu.QHgaPx0Disc5J4tfvlJ7VsQwa04rGgfkgXKTEw
+Authorization: Bot <token>
 User-Agent: DiscordBot (https://restspace.io, 0.1)
 
 ###
