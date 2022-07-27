@@ -1,9 +1,8 @@
-import { AuthService } from "rs-core/Service.ts";
+import { Service } from "rs-core/Service.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { pipeline } from "../pipeline/pipeline.ts";
-import { Source } from "rs-core/Source.ts";
 
 interface ManualMimeTypes {
 	requestMimeType: string;
@@ -17,7 +16,7 @@ interface PipelineConfig extends IServiceConfig {
 	manualMimeTypes: ManualMimeTypes;
 }
 
-const service = new AuthService<IAdapter, PipelineConfig>();
+const service = new Service<IAdapter, PipelineConfig>();
 
 service.all((msg, context, config) => {
 	return pipeline(msg, config.pipeline, msg.url, false, msg => context.makeRequest(msg));

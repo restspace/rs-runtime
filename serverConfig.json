@@ -11,7 +11,8 @@
         "test.restspace.io": "test",
         "kaballah.restspace.io": "kaballah",
         "localhost:3100": "main",
-        "restspace.local:3131": "main"
+        "restspace.local:3131": "main",
+        "c5ec-81-174-162-73.eu.ngrok.io": "main"
     },
     "infra": {
         "localStore": {

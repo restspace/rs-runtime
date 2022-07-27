@@ -2,7 +2,6 @@ import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
 import { ITemplateAdapter } from "rs-core/adapter/ITemplateAdapter.ts";
 import { IServiceConfig } from "../../rs-core/IServiceConfig.ts";
-import { Source } from "../../rs-core/Source.ts";
 import { ServiceContext } from "../../rs-core/ServiceContext.ts";
 
 interface ITemplateConfig extends IServiceConfig {

@@ -97,6 +97,11 @@ const rebuildConfig = async (rawServicesConfig: IRawServicesConfig, tenant: stri
     } catch (err) {
         return [ 400, `Bad config for tenant ${tenant}: ${err}` ];
     }
+    try {
+        await config.tenants[tenant].unload();
+    } catch (err) {
+        config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, err);
+    }
     config.tenants[tenant] = newTenant;
 
     // return before this promise completes: we want to write back in the background

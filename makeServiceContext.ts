@@ -8,7 +8,7 @@ import { config } from "./config.ts";
 import { handleOutgoingRequest } from "./handleRequest.ts";
 import { pipeline } from "./pipeline/pipeline.ts";
 
-export function makeServiceContext(tenantName: string, prePost?: PrePost): ServiceContext<IAdapter> {
+export function makeServiceContext(tenantName: string, state: <T>(cons: new() => T) => T, prePost?: PrePost): ServiceContext<IAdapter> {
 	const context = {
 		tenant: tenantName,
 		makeRequest: handleOutgoingRequest,
@@ -19,7 +19,8 @@ export function makeServiceContext(tenantName: string, prePost?: PrePost): Servi
 		logger: config.logger,
 		getAdapter: <T extends IAdapter>(url: string, adapterConfig: unknown) => {
 			return config.modules.getAdapter<T>(url, context, adapterConfig)
-		}
+		},
+		state
 	} as ServiceContext<IAdapter>;
 	return context;
 }

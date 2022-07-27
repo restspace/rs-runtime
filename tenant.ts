@@ -21,6 +21,8 @@ export interface IRawServicesConfig extends IServicesConfig {
     defaults?: Record<string, unknown>;
 }
 
+export type StateSelector = <T>(cons: new() => T) => T;
+
 const baseChord: IChord = {
     id: 'sys.base',
     newServices: [
@@ -39,6 +41,12 @@ export class Tenant {
     authServiceConfig?: IServiceConfig;
     servicesConfig = null as IServicesConfig | null;
     chordMap: Record<string, Record<string, string>> = {};
+    _state: Record<string, any> = {};
+    state = (basePath: string) => <T>(cons: new () => T) => {
+        if (this._state[basePath] === undefined) this._state[basePath] = new cons();
+        if (!(this._state[basePath] instanceof cons)) throw new Error('Changed type of state attached to service');
+        return this._state[basePath] as T;
+    }
 
     get primaryDomain() {
         const name = this.name === "main" ? '' : this.name;
@@ -130,6 +138,15 @@ export class Tenant {
         this.servicesConfig = await this.buildServicesConfig(this.rawServicesConfig);
         this.serviceFactory.serviceConfigs = this.servicesConfig.services;
         await this.serviceFactory.loadAdapterManifests();
+
+        // init state for tenant here
+        Promise.all(Object.values(this.serviceFactory.serviceConfigs).map(config => {
+            const context = makeServiceContext(this.name, this.state(config.basePath));
+            return this.serviceFactory.initService(config, context);
+        })).catch(() => {
+            throw new Error("Failed to init all services");
+        });
+
         const res = await this.serviceFactory.getServiceAndConfigByApi("auth");
         if (res) {
             const [ authService, authServiceConfig ] = res;
@@ -138,17 +155,27 @@ export class Tenant {
         }
     }
 
+    async unload() {
+        await Promise.allSettled(Object.values(this._state).map(cls =>
+            typeof cls.unload === "function" ? cls.unload() as Promise<void> : Promise.resolve())
+        ); 
+    }
+
     getMessageFunctionByUrl(url: Url, source: Source) {
-        return this.serviceFactory.getMessageFunctionByUrl(url, makeServiceContext(this.name), source);
+        // we assign the state in serviceFactory as we don't know the basePath yet
+        const dummyState = <T>(_cons: new() => T) => {
+            throw new Error('State not set');
+        }
+        return this.serviceFactory.getMessageFunctionByUrl(url, makeServiceContext(this.name, dummyState), this.state, source);
     }
 
     getMessageFunctionForService(serviceConfig: IServiceConfig, source: Source, prePost?: PrePost) {
-        return this.serviceFactory.getMessageFunctionForService(serviceConfig, makeServiceContext(this.name, prePost), source);
+        return this.serviceFactory.getMessageFunctionForService(serviceConfig, makeServiceContext(this.name, this.state(serviceConfig.basePath), prePost), source);
     }
 
     async attachUser(msg: Message) {
         if (this.authService) {
-            msg = await this.authService.setUserFunc(msg, makeServiceContext(this.name), this.authServiceConfig as IServiceConfig);
+            msg = await this.authService.setUserFunc(msg, makeServiceContext(this.name, this.state(this.authServiceConfig!.basePath)), this.authServiceConfig as IServiceConfig);
         }
         if (!msg.user) {
             msg.user = AuthUser.anon;

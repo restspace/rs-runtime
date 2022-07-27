@@ -31,6 +31,9 @@ Content-Type: application/json
 GET http://localhost:3100/.well-known/restspace/services
 
 ###
+GET http://localhost:3100/.well-known/restspace/catalogue
+
+###
 OPTIONS https://restspace.local:3131/?$list=details
 Origin: https://restspace.local:3003
 
@@ -66,3 +69,22 @@ Content-Type: application/zip
 
 ###
 GET https://restspace.local:3131/aws/rs-common/?list-type=2
+
+###
+GET http://restspace.local:3100/discord/command/950463239186165760/?$list=details
+
+###
+GET http://restspace.local:3100/discord/command/950463239186165760/.schema.json
+
+###
+GET https://discord.com/api/v8/applications/950706166017695754/guilds/950463239186165760/commands
+Authorization: Bot OTUwNzA2MTY2MDE3Njk1NzU0.GwsLMu.QHgaPx0Disc5J4tfvlJ7VsQwa04rGgfkgXKTEw
+User-Agent: DiscordBot (https://restspace.io, 0.1)
+
+###
+GET https://discord.com/api/v8/guilds/950463239186165760/channels
+Authorization: Bot
+User-Agent: DiscordBot (https://restspace.io, 0.1)
+
+###
+GET http://restspace.local:3100/discord/command/950463239186165760/do-stuff%7C953576078503452692

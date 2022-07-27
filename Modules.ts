@@ -34,6 +34,8 @@ import Lib from "./services/lib.ts";
 import LibManifest from "./services/lib.rsm.js";
 import Pipeline from "./services/pipeline.ts";
 import PipelineManifest from "./services/pipeline.rsm.js";
+import PipelineStore from "./services/pipeline-store.ts";
+import PipelineStoreManifest from "./services/pipeline-store.rsm.js";
 import StaticSiteFilter from "./services/static-site-filter.ts";
 import StaticSiteFilterManifest from "./services/static-site-filter.rsm.js";
 import StaticSiteManifest from "./services/static-site.rsm.js";
@@ -151,6 +153,7 @@ export class Modules {
             "./services/file.ts": File as unknown as Service<IAdapter, IServiceConfig>,
             "./services/lib.ts": Lib,
             "./services/pipeline.ts": Pipeline as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/pipeline-store.ts": PipelineStore as unknown as Service<IAdapter, IServiceConfig>,
             "./services/static-site-filter.ts": StaticSiteFilter as unknown as Service<IAdapter, IServiceConfig>,
             "./services/user-filter.ts": UserFilter,
             "./services/template.ts": Template as unknown as Service<IAdapter, IServiceConfig>,
@@ -167,6 +170,7 @@ export class Modules {
             "./services/file.rsm.json": FileManifest,
             "./services/lib.rsm.json": LibManifest,
             "./services/pipeline.rsm.json": PipelineManifest,
+            "./services/pipeline-store.rsm.json": PipelineStoreManifest as unknown as IServiceManifest,
             "./services/static-site-filter.rsm.json": StaticSiteFilterManifest,
             "./services/static-site.rsm.json": StaticSiteManifest as unknown as IServiceManifest,
             "./services/user-data.rsm.json": UserDataManifest as unknown as IServiceManifest,

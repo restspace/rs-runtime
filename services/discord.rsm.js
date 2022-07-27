@@ -6,12 +6,19 @@ export default {
     "configSchema": {
         "type": "object",
         "properties": {
-            "applicationId": { "type": "string" },
-	        "botToken": { "type": "string" },
+            "proxyAdapterConfig": {
+                "type": "object",
+                "properties": {
+                    "applicationId": { "type": "string" },
+	                "botToken": { "type": "string" }
+                },
+                "required": [ "applicationId", "botToken" ]
+            },
 	        "publicKey": { "type": "string" },
-	        "guildIds": { "type": "array", "items": { "type": "string" } }
+	        "guildIds": { "type": "array", "items": { "type": "string" } },
+            "triggerUrl": { "type": "string", "description": "Url pattern called when Discord calls the service with an interaction" }
         },
-        "required": [ "applicationId", "botToken", "publicKey" ]
+        "required": [ "publicKey", "proxyAdapterConfig" ]
     },
     "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts" 
 }

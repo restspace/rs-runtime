@@ -21,15 +21,18 @@ export class PipelineCondition {
         const mime = msg.data?.mimeType;
         const isJson = mimeType.isJson(mime);
         const isText = mimeType.isText(mime);
+        const isManage = msg.getHeader('X-Restspace-Request-Mode') === 'manage';
         const msgValues = {
             name: msg.name,
             mime,
             isJson,
             isText,
             isBinary: !(isJson || isText),
+            isManage,
             status,
             ok: status === 200 || status === 0,
-            method: context.callerMethod?.toUpperCase()
+            method: context.callerMethod?.toUpperCase(),
+            header: (hdr: string) => msg.getHeader(hdr),
         }
         return !!evaluate(this.exp, msgValues);
     }

@@ -146,6 +146,11 @@ export class ServiceFactory {
         return infraName;
     }
 
+    async initService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>): Promise<void> {
+        const service = await config.modules.getService(serviceConfig.source);
+        await service.initFunc(serviceContext, serviceConfig);
+    }
+
     async getMessageFunctionForService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>, source: Source): Promise<MessageFunction> {
         const service = await config.modules.getService(serviceConfig.source);
 
@@ -189,7 +194,7 @@ export class ServiceFactory {
     }
 
     /** select service with longest path match */
-    getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, source: Source): Promise<MessageFunction> {
+    getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => <T>(cons: new() => T) => T, source: Source): Promise<MessageFunction> {
         const pathParts = [ ...url.pathElements ];
 
         let exactPath = '/' + pathParts.join('/') + '.';
@@ -200,6 +205,7 @@ export class ServiceFactory {
             exactPath = '/' + pathParts.join('/');
             serviceConfig = this.serviceConfigs![exactPath];
             if (serviceConfig) {
+                serviceContext.state = stateByBasePath(exactPath);
                 return this.getMessageFunctionForService(serviceConfig, serviceContext, source);
             } else {
                 if (pathParts.length === 0) break;
