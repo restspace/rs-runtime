@@ -1,7 +1,7 @@
 import { Message } from "../../rs-core/Message.ts";
 import { write, WriteEntry } from "https://deno.land/x/streaming_zip@v1.0.1/write.ts";
 import { crc32 } from "https://deno.land/x/crc32@v0.2.2/mod.ts";
-import { addExtension } from "rs-core/mimeType.ts";
+import { addExtension, getType } from "rs-core/mimeType.ts";
 import { last } from "rs-core/utility/utility.ts";
 
 async function* messageProcessor(firstMsg: IteratorResult<Message | null, Message | null>, msgs: AsyncIterator<Message, Message, Message>) {
@@ -13,7 +13,11 @@ async function* messageProcessor(firstMsg: IteratorResult<Message | null, Messag
 			const buf = await msg.data.asArrayBuffer();
 			const stream = msg.data.asReadable();
 			if (buf && stream) {
-				const name = addExtension(msg.name || msg.url.resourceName, msg.data.mimeType);
+				let name = msg.name || msg.url.resourceName;
+				const nameMime = getType(name);
+				if (nameMime === null) {
+					name = addExtension(name, msg.data.mimeType);
+				}
 				const entry: WriteEntry = {
 					type: "file",
 					name,

@@ -2,17 +2,19 @@ import { IAdapter } from "../rs-core/adapter/IAdapter.ts";
 import { PrePost } from "../rs-core/IServiceConfig.ts";
 import { Message } from "../rs-core/Message.ts";
 import { PipelineSpec } from "../rs-core/PipelineSpec.ts";
-import { IStateClass, ServiceContext, SimpleServiceContext, StateClass } from "../rs-core/ServiceContext.ts";
+import { ServiceContext } from "../rs-core/ServiceContext.ts";
 import { Url } from "../rs-core/Url.ts";
 import { config } from "./config.ts";
-import { handleOutgoingRequest } from "./handleRequest.ts";
+import { handleIncomingRequest, handleOutgoingRequest } from "./handleRequest.ts";
 import { pipeline } from "./pipeline/pipeline.ts";
+import { Externality } from "./pipeline/pipelineStep.ts";
 import { StateFunction } from "./tenant.ts";
 
-export function makeServiceContext(tenantName: string, state?: StateFunction, prePost?: PrePost): ServiceContext<IAdapter> {
+export function makeServiceContext(tenantName: string, state: StateFunction, prePost?: PrePost): ServiceContext<IAdapter> {
 	const context = {
 		tenant: tenantName,
-		makeRequest: handleOutgoingRequest,
+		makeRequest: (msg: Message, externality?: Externality) =>
+			externality === Externality.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg),
 		runPipeline: (msg: Message, pipelineSpec: PipelineSpec, contextUrl?: Url) => {
 			pipeline(msg, pipelineSpec, contextUrl);
 		},

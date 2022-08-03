@@ -22715,7 +22715,11 @@ async function* messageProcessor(firstMsg, msgs) {
             const buf = await msg.data.asArrayBuffer();
             const stream = msg.data.asReadable();
             if (buf && stream) {
-                const name = addExtension(msg.name || msg.url.resourceName, msg.data.mimeType);
+                let name = msg.name || msg.url.resourceName;
+                const nameMime = getType(name);
+                if (nameMime === null) {
+                    name = addExtension(name, msg.data.mimeType);
+                }
                 const entry = {
                     type: "file",
                     name,
@@ -25352,7 +25356,6 @@ class S3FileAdapterBase {
         s3Msg.data = data;
         await s3Msg.data.ensureDataIsArrayBuffer();
         const msgSend = await this.processForAws(s3Msg);
-        this.context.logger.info('headers::' + JSON.stringify(msgSend.headers));
         try {
             const msgOut = await this.context.makeRequest(msgSend);
             if (!msgOut.ok) {
@@ -32405,7 +32408,6 @@ class AWS4ProxyAdapter {
         }
     }
     async buildMessage(msg) {
-        this.context.logger.info('build msg headers: ' + JSON.stringify(msg.headers));
         msg.setUrl(resolvePathPatternWithUrl(this.props.urlPattern, msg.url, msg.data));
         if (!(this.props.accessKeyId && this.props.secretAccessKey) || this.expiration && new Date() > this.expiration) {
             await this.getEc2TempKeys();
@@ -32667,9 +32669,17 @@ const __default18 = {
         "data.base"
     ],
     "adapterInterface": "IDataAdapter",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "uploadBaseUrl": {
+                "type": "string",
+                "description": "The url to a file store for uploading associated files"
+            }
+        }
+    },
     "defaults": {
-        "basePath": "/data",
-        "xyz": "abc"
+        "basePath": "/data"
     }
 };
 const service1 = new Service();
@@ -32849,6 +32859,10 @@ const __default19 = {
             "schema": {
                 "type": "object",
                 "description": "The schema for all data items in the dataset"
+            },
+            "uploadBaseUrl": {
+                "type": "string",
+                "description": "The url to a file store for uploading associated files"
             }
         },
         "required": [
@@ -32913,19 +32927,22 @@ const writeAction = (returnData)=>async (msg, context, config)=>{
             if (isZip(msg.getHeader('Content-Type'))) {
                 let failCount = 0;
                 let failStatus = undefined;
-                for await (const resMsg of unzip(msg).flatMap((msg)=>writeAction(returnData)(msg, context, config))){
-                    if (!resMsg.ok) {
-                        failCount++;
-                        if (failStatus === undefined) failStatus = resMsg.status;
-                        else if (failStatus !== resMsg.status) failStatus = -1;
+                try {
+                    for await (const resMsg of unzip(msg).flatMap((msg)=>writeAction(returnData)(msg, context, config))){
+                        if (!resMsg.ok) {
+                            failCount++;
+                            if (failStatus === undefined) failStatus = resMsg.status;
+                            else if (failStatus !== resMsg.status) failStatus = -1;
+                        }
                     }
+                } catch (err) {
+                    return msg.setStatus(500, `Error unzipping: ${err}`);
                 }
                 if (failCount) return msg.setStatus(failStatus || 400);
             } else {
                 return msg.setStatus(403, "Forbidden: can't overwrite directory");
             }
         } else {
-            context.logger.info("write action headers: " + JSON.stringify(msg.headers));
             const resCode = await adapter.write(msg.url.servicePath, msg.data.copy(), config.extensions);
             if (!returnData) msg.data = undefined;
             if (resCode !== 200) return msg.setStatus(resCode);

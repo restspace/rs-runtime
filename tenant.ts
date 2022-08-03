@@ -10,7 +10,7 @@ import { IChord } from "./IChord.ts";
 import { deepEqualIfPresent, mergeDeep } from "rs-core/utility/utility.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
-import { IStateClass, SimpleServiceContext, StateClass } from "../rs-core/ServiceContext.ts";
+import { SimpleServiceContext, StateClass, nullState, BaseStateClass } from "../rs-core/ServiceContext.ts";
 
 export interface IServicesConfig {
     services: Record<string, IServiceConfig>;
@@ -22,7 +22,7 @@ export interface IRawServicesConfig extends IServicesConfig {
     defaults?: Record<string, unknown>;
 }
 
-export type StateFunction = <T extends IStateClass<T>>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => Promise<T>;
+export type StateFunction = <T extends BaseStateClass>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => Promise<T>;
 
 const baseChord: IChord = {
     id: 'sys.base',
@@ -42,12 +42,13 @@ export class Tenant {
     authServiceConfig?: IServiceConfig;
     servicesConfig = null as IServicesConfig | null;
     chordMap: Record<string, Record<string, string>> = {};
-    _state: Record<string, IStateClass<any>> = {};
+    _state: Record<string, BaseStateClass> = {};
 
-    state = (basePath: string) => async <T extends IStateClass<T>>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => {
+    state = (basePath: string) => async <T extends BaseStateClass>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => {
         if (this._state[basePath] === undefined) {
-            this._state[basePath] = new cons();
-            await this._state[basePath].load(context, config);
+            const newState = new cons();
+            this._state[basePath] = newState;
+            await newState.load(context, config);
         }
         if (!(this._state[basePath] instanceof cons)) throw new Error('Changed type of state attached to service');
         return this._state[basePath] as T;
@@ -161,17 +162,13 @@ export class Tenant {
     }
 
     async unload() {
-        await Promise.allSettled(Object.values(this._state).map(cls =>
-            typeof cls.unload === "function" ? cls.unload() as Promise<void> : Promise.resolve())
-        ); 
+        await Promise.allSettled(Object.values(this._state).map(cls => cls.unload()));
     }
 
     getMessageFunctionByUrl(url: Url, source: Source) {
         // we assign the state in serviceFactory as we don't know the basePath yet
-        const dummyState = <T>(_cons: new() => T) => {
-            throw new Error('State not set');
-        }
-        return this.serviceFactory.getMessageFunctionByUrl(url, makeServiceContext(this.name, dummyState), this.state, source);
+
+        return this.serviceFactory.getMessageFunctionByUrl(url, makeServiceContext(this.name, nullState), this.state, source);
     }
 
     getMessageFunctionForService(serviceConfig: IServiceConfig, source: Source, prePost?: PrePost) {

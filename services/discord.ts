@@ -8,7 +8,7 @@ import { buildDefaultDirectory, buildStore } from "rs-core/WrapperBuilder.ts";
 import { DirDescriptor, PathInfo } from "rs-core/DirDescriptor.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { contextOrFrameLookup } from "https://deno.land/x/nunjucks@3.2.3/src/runtime.js";
-import { IStateClass, SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
+import { BaseStateClass, SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
 
 type Intent = "GUILDS" | "GUILD_MEMBERS" | "GUILD_BANS" | "GUILD_EMOJIS_AND_STICKERS" |
 			   "GUILD_INTEGRATIONS" | "GUILD_WEBHOOKS" | "GUILD_INVITES" |
@@ -25,7 +25,7 @@ interface IDiscordConfig extends ITriggerServiceConfig {
 
 const service = new Service<IDataAdapter, IDiscordConfig>();
 
-class DiscordState implements IStateClass<DiscordState> {
+class DiscordState extends BaseStateClass {
 	//const ws: WebSocket;
 
 	async load(context: SimpleServiceContext) {
@@ -33,9 +33,6 @@ class DiscordState implements IStateClass<DiscordState> {
 			Message.fromSpec("GET /gateway/bot", context.tenant) as Message
 		);
 		//if (!gatewayLocationMsg.ok) throw 
-	}
-
-	async unload() {
 	}
 }
 

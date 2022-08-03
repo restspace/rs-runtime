@@ -91,3 +91,13 @@ GET http://restspace.local:3100/discord/command/950463239186165760/do-stuff%7C95
 
 ###
 GET https://apis.restspace.io/templates/home
+
+###
+GET http://restspace.local:3100/tempac/733273a6-8c31-45c0-8d98-4037ba475dac/files/telephone.svg
+
+###
+GET http://restspace.local:3100/files/telephone.svg
+
+
+###
+GET http://restspace.local:3100/files/telephone.svg

@@ -52,8 +52,10 @@ import Account from "./services/account.ts";
 import AccountManifest from "./services/account.rsm.js";
 import Discord from "./services/discord.ts";
 import DiscordManifest from "./services/discord.rsm.js";
+import TemporaryAccess from "./services/temporary-access.ts";
+import TemporaryAccessManifest from "./services/temporary-access.rsm.js";
 
-import { AdapterContext } from "../rs-core/ServiceContext.ts";
+import { AdapterContext, nullState } from "../rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
 import { transformation } from "rs-core/transformation/transformation.ts";
 
@@ -160,7 +162,8 @@ export class Modules {
             "./services/proxy.ts": Proxy as unknown as Service<IAdapter, IServiceConfig>,
             "./services/email.ts": Email as unknown as Service<IAdapter, IServiceConfig>,
             "./services/account.ts": Account as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/discord.ts": Discord as unknown as Service<IAdapter, IServiceConfig>
+            "./services/discord.ts": Discord as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/temporary-access.ts": TemporaryAccess as unknown as Service<IAdapter, IServiceConfig>
         };
         this.serviceManifests = {
             "./services/services.rsm.json": ServicesManifest,
@@ -179,7 +182,8 @@ export class Modules {
             "./services/proxy.rsm.json": ProxyManifest,
             "./services/email.rsm.json": EmailManifest,
             "./services/account.rsm.json": AccountManifest,
-            "./services/discord.rsm.json": DiscordManifest
+            "./services/discord.rsm.json": DiscordManifest,
+            "./services/temporary-access.rsm.json": TemporaryAccessManifest
         };
         Object.entries(this.serviceManifests).forEach(([url, v]) => {
             (v as any).source = url;
@@ -190,7 +194,7 @@ export class Modules {
     async getConfigAdapter(tenant: string) {
         const configStoreAdapterSpec = { ...config.server.infra[config.server.configStore] };
         (configStoreAdapterSpec as Infra & { basePath: '/' }).basePath = "/";
-        const context = makeServiceContext(tenant);
+        const context = makeServiceContext(tenant, nullState);
         const configAdapter = await config.modules.getAdapter<IFileAdapter>(configStoreAdapterSpec.adapterSource, context, configStoreAdapterSpec);
         return configAdapter;
     }

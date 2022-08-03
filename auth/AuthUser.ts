@@ -13,6 +13,10 @@ export class AuthUser implements IAuthUser {
     password = '';
     exp?: number;
 
+    get rolesArray() {
+        return this.roles.split(' ').filter(r => !!r).map(r => r.trim());
+    }
+
     constructor(userObj: Partial<IAuthUser>) {
         userObj && Object.assign(this, userObj);
     }
@@ -22,14 +26,21 @@ export class AuthUser implements IAuthUser {
     }
 
     hasRole(role: string) {
-        return this.roles && this.roles.split(' ').indexOf(role) >= 0;
+        return this.rolesArray.indexOf(role) >= 0;
+    }
+
+    addRole(role: string) {
+        if (!this.rolesArray.includes(role)) {
+            this.roles += (this.roles ? " " : "") + role;
+        }
+        return this;
     }
 
     private authorizedForInner(reqRoles: string[], path?: string) {
-        if (reqRoles.indexOf('all') >= 0) return true;
+        if (reqRoles.includes('all')) return true;
 
         if (!this.roles) return false;
-        let userRoles = this.roles.trim().split(' ');
+        let userRoles = this.rolesArray;
         let authorized = reqRoles.some(reqRole => userRoles.includes(reqRole));
 
         if (path) {

@@ -9,7 +9,8 @@ import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 
 interface IDatasetConfig extends IServiceConfig {
     datasetName: string;
-    schema?: Record<string, unknown>
+    schema?: Record<string, unknown>;
+    uploadBaseUrl?: string;
 }
 
 const service = new Service<IDataAdapter, IDatasetConfig>();

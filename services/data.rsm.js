@@ -4,8 +4,13 @@ export default {
     "moduleUrl": "./services/data.ts",
     "apis": [ "store", "data.base" ],
     "adapterInterface": "IDataAdapter",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "uploadBaseUrl": { "type": "string", "description": "The url to a file store for uploading associated files" }
+        }
+    },
     "defaults": {
-        "basePath": "/data",
-        "xyz": "abc"
+        "basePath": "/data"
     }
 }
