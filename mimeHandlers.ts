@@ -42,13 +42,19 @@ const final = (s: string) => {
 export const mimeHandlers: { [ mimeType: string ]: (msg: Message, url: Url, requestInternal: (req: Message) => Promise<Message>) => Promise<Message> } = {
     "inode/directory+json": async (msg, url, requestInternal) => {
         const listFlags = (url.query['$list'] || []).join(',') as string;
-        const isRecursive = listFlags.includes('recursive');
+        let isRecursive = listFlags.includes('recursive');
         const getItems = listFlags.includes('items');
         const details = listFlags.includes('details');
-        const pathsOnly = !(details || getItems);
+        let pathsOnly = !(details || getItems);
         const allFiles = listFlags.includes('all');
         const fileInfo = listFlags.includes('fileinfo') && pathsOnly;
         const noDirs = listFlags.includes('nodirs');
+
+        const isZip = listFlags.includes('zip');
+        if (isZip) {
+            isRecursive = true;
+            pathsOnly = true;
+        }
         let results = [] as any[];
         for await (const [ resMsg, resDir ] of generatePaths(msg, isRecursive ? requestInternal : undefined)) {
             if (!resDir) continue;

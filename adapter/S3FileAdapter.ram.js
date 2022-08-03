@@ -10,6 +10,7 @@ export default {
             "region": { "type": "string" },
             "tenantDirectories": { "type": "boolean" },
             "secretAccessKey": { "type": "string" },
+            "ec2IamRole": { "type": "string", "description": "If running on EC2 with an associated IAM role, this can be provided instead of account keys" },
             "accessKeyId": { "type": "string" }
         },
         "required": [ "rootPath", "bucketName", "region" ]

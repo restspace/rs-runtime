@@ -9,7 +9,8 @@ import { applyServiceConfigTemplate } from "./Modules.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
-import { ServiceContext } from "../rs-core/ServiceContext.ts";
+import { IStateClass, ServiceContext, StateClass } from "../rs-core/ServiceContext.ts";
+import { StateFunction } from "./tenant.ts";
 
 interface ITemplateConfigFromManifest {
     serviceConfigTemplates?: Record<string, IServiceConfigTemplate>;
@@ -194,7 +195,7 @@ export class ServiceFactory {
     }
 
     /** select service with longest path match */
-    getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => <T>(cons: new() => T) => T, source: Source): Promise<MessageFunction> {
+    getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => StateFunction, source: Source): Promise<MessageFunction> {
         const pathParts = [ ...url.pathElements ];
 
         let exactPath = '/' + pathParts.join('/') + '.';

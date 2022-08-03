@@ -13,6 +13,7 @@ import { Message } from "rs-core/Message.ts";
 import { parse } from "https://deno.land/x/xml/mod.ts";
 import { node } from "https://deno.land/x/xml@2.0.4/utils/types.ts";
 import { Url } from "../../rs-core/Url.ts";
+import { config } from "../config.ts";
 
 export interface S3FileAdapterProps {
     rootPath: string;
@@ -21,6 +22,7 @@ export interface S3FileAdapterProps {
     tenantDirectories?: boolean;
 	secretAccessKey?: string;
 	accessKeyId?: string;
+    ec2IamRole?: string;
 }
 
 interface ListItem {
@@ -56,7 +58,8 @@ class S3FileAdapterBase implements IFileAdapter {
 			region: this.props.region,
 			secretAccessKey: this.props.secretAccessKey,
 			accessKeyId: this.props.accessKeyId,
-			urlPattern: `https://${this.bucketName}.s3.amazonaws.com/$P*`
+			urlPattern: `https://${this.bucketName}.s3.amazonaws.com/$P*`,
+            ec2IamRole: this.props.ec2IamRole
 		});
 	}
 
@@ -134,17 +137,18 @@ class S3FileAdapterBase implements IFileAdapter {
         const key = this.getPath(path, extensions);
 		const s3Msg = new Message(key, this.context.tenant, "PUT");
 		s3Msg.data = data;
+        await s3Msg.data.ensureDataIsArrayBuffer(); // processForAws only handles non-stream data atm
 		const msgSend = await this.processForAws(s3Msg);
 
         try {
 			const msgOut = await this.context.makeRequest(msgSend);
 			if (!msgOut.ok) {
-				console.log('write error: ' + (await msgOut.data?.asString()));
+				this.context.logger.error('write error: ' + (await msgOut.data?.asString()));
 			}
 			if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
             return msgOut.status || 500;
         } catch (err) {
-            console.log(err);
+            this.context.logger.error(err);
             return 500;
         }
     }

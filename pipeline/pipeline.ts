@@ -1,8 +1,8 @@
 import { config } from "../config.ts";
 
-//import { zip } from "../pipeline/zipJoiner";
+import { zip } from "../pipeline/zipJoiner.ts";
 import { jsonObject } from "./jsonObjectJoiner.ts";
-//import { unzip } from "../pipeline/unzipSplitter";
+import { unzip } from "../pipeline/unzipSplitter.ts";
 //import { multipartSplit } from "../pipeline/multipartSplitSplitter";
 //import { jsonSplit } from "../pipeline/jsonSplitSplitter";
 import { Message } from "rs-core/Message.ts";
@@ -178,25 +178,25 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                     break;
                 }
                 case PipelineElementType.parallelizer: {
-                    // const op = el as PipelineParallelizer;
-                    // switch (op) {
-                    //     case PipelineParallelizer.unzip:
-                    //         msgs = msgs.flatMap(msg => unzip(msg));
-                    //         break;
+                    const op = el as PipelineParallelizer;
+                    switch (op) {
+                        case PipelineParallelizer.unzip:
+                            msgs = msgs.flatMap(msg => unzip(msg));
+                            break;
                     //     case PipelineParallelizer.split:
                     //         msgs = msgs.flatMap(msg => multipartSplit(msg));
                     //         break;
                     //     case PipelineParallelizer.jsonSplit:
                     //         msgs = msgs.flatMap(msg => jsonSplit(msg));
                     //         break;
-                    // }
+                    }
                     break;
                 }
                 case PipelineElementType.serializer:
                     switch (el) {
-                        // case PipelineSerializer.zip:
-                        //     msgs = AsyncQueue.fromPromises(zip(msgs));
-                        //     break;
+                        case PipelineSerializer.zip:
+                            msgs = AsyncQueue.fromPromises(zip(msgs));
+                            break;
                         case PipelineSerializer.jsonObject:
                             msgs = AsyncQueue.fromPromises(jsonObject(msgs));
                             break;

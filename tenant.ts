@@ -10,6 +10,7 @@ import { IChord } from "./IChord.ts";
 import { deepEqualIfPresent, mergeDeep } from "rs-core/utility/utility.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
+import { IStateClass, SimpleServiceContext, StateClass } from "../rs-core/ServiceContext.ts";
 
 export interface IServicesConfig {
     services: Record<string, IServiceConfig>;
@@ -21,7 +22,7 @@ export interface IRawServicesConfig extends IServicesConfig {
     defaults?: Record<string, unknown>;
 }
 
-export type StateSelector = <T>(cons: new() => T) => T;
+export type StateFunction = <T extends IStateClass<T>>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => Promise<T>;
 
 const baseChord: IChord = {
     id: 'sys.base',
@@ -41,9 +42,13 @@ export class Tenant {
     authServiceConfig?: IServiceConfig;
     servicesConfig = null as IServicesConfig | null;
     chordMap: Record<string, Record<string, string>> = {};
-    _state: Record<string, any> = {};
-    state = (basePath: string) => <T>(cons: new () => T) => {
-        if (this._state[basePath] === undefined) this._state[basePath] = new cons();
+    _state: Record<string, IStateClass<any>> = {};
+
+    state = (basePath: string) => async <T extends IStateClass<T>>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => {
+        if (this._state[basePath] === undefined) {
+            this._state[basePath] = new cons();
+            await this._state[basePath].load(context, config);
+        }
         if (!(this._state[basePath] instanceof cons)) throw new Error('Changed type of state attached to service');
         return this._state[basePath] as T;
     }

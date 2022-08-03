@@ -5,8 +5,10 @@ import { ItemFile } from "rs-core/ItemMetadata.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { IServiceConfig } from "../../rs-core/IServiceConfig.ts";
-import { getType } from "../../rs-core/mimeType.ts";
+import { getType, isZip } from "../../rs-core/mimeType.ts";
 import { ServiceContext } from "../../rs-core/ServiceContext.ts";
+import { unzip } from "../pipeline/unzipSplitter.ts";
+import { contextOrFrameLookup } from "https://deno.land/x/nunjucks@3.2.3/src/runtime.js";
 
 interface IFileServiceConfig extends IServiceConfig {
     extensions?: string[];
@@ -65,50 +67,43 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IFileAdapt
     return msg.setDirectoryJson(featureResult);
 });
 
-service.post(async (msg: Message, { adapter }: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
+const writeAction = (returnData: boolean) => async (msg: Message, context: ServiceContext<IFileAdapter>, config: IFileServiceConfig): Promise<Message> => {
+    const { adapter } = context;
     if (!msg.hasData()) return msg.setStatus(400, "No data to write");
 
     const details = await adapter.check(msg.url.servicePath, config.extensions);
     if (details.status === "directory" || (details.status === "none" && msg.url.isDirectory)) {
-        // if (isZip(msg.getHeader('Content-Type'))) {
-        //     // save directory as zip
-        //     let failCount = 0;
-        //     let failStatus: number;
-        //     for await (let resMsg of unzip(msg).flatMap(msg => this.processPut(msg))) {
-        //         if (!resMsg.ok) {
-        //             failCount++;
-        //             if (failStatus === undefined) failStatus = resMsg.status;
-        //             else if (failStatus !== resMsg.status) failStatus = -1;
-        //         }
-        //     }
-        //     if (failCount) return msg.setStatus(failStatus || 400);
-        // } else {
+        if (isZip(msg.getHeader('Content-Type'))) {
+            // save directory as zip
+            let failCount = 0;
+            let failStatus: number | undefined = undefined;
+            try {
+                for await (const resMsg of unzip(msg).flatMap(msg => writeAction(returnData)(msg, context, config))) {
+                    if (!resMsg.ok) {
+                        failCount++;
+                        if (failStatus === undefined) failStatus = resMsg.status;
+                        else if (failStatus !== resMsg.status) failStatus = -1;
+                    }
+                }
+            } catch (err) {
+                return msg.setStatus(500, `Error unzipping: ${err}`);
+            }
+            if (failCount) return msg.setStatus(failStatus || 400);
+        } else {
             return msg.setStatus(403, "Forbidden: can't overwrite directory");
-        //}
+        }
     } else {
         const resCode = await adapter.write(msg.url.servicePath, msg.data!.copy(), config.extensions);
+        if (!returnData) msg.data = undefined;
         if (resCode !== 200) return msg.setStatus(resCode);
     }
     return msg
         .setHeader('Location', msg.url.toString())
         .setStatus(details.status === "none" ? 201 : 200);
-});
+};
 
-service.put(async (msg: Message, { adapter }: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
-    if (!msg.hasData()) return msg.setStatus(400, "No data to write");
-
-    const details = await adapter.check(msg.url.servicePath, config.extensions);
-    if (details.status === "directory" || (details.status === "none" && msg.url.isDirectory)) {
-        return msg.setStatus(403, "Forbidden: can't overwrite directory");
-    } else {
-        const resCode = await adapter.write(msg.url.servicePath, msg.data!, config.extensions);
-        msg.data = undefined;
-        if (resCode !== 200) return msg.setStatus(resCode);
-    }
-    return msg
-        .setHeader('Location', msg.url.toString())
-        .setStatus(details.status === "none" ? 201 : 200);
-});
+service.post(writeAction(true));
+service.put(writeAction(false));
 
 service.delete(async (msg: Message, { adapter }: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
     const res = await adapter.delete(msg.url.servicePath, config.extensions);

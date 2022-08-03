@@ -88,3 +88,6 @@ User-Agent: DiscordBot (https://restspace.io, 0.1)
 
 ###
 GET http://restspace.local:3100/discord/command/950463239186165760/do-stuff%7C953576078503452692
+
+###
+GET https://apis.restspace.io/templates/home

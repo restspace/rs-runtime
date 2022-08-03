@@ -93,7 +93,7 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
         case DirState.createInstance: {
             const instanceMimeType = await (adapter as IDataAdapter & IReadOnlySchemaAdapter).instanceContentType(dataset, msg.url.baseUrl());
             spec.storeMimeTypes = [ instanceMimeType ];
-            spec.exceptionMimeTypes = { ".schema.json": [ 'application/schema+json', '' ] };
+            spec.exceptionMimeTypes = { ".schema.json": [ 'application/schema+json', 'application/schema+json' ] };
             break;
         }
         case DirState.createJson:

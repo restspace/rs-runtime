@@ -9,6 +9,7 @@ export default {
             "region": { "type": "string", "description": "AWS region e.g. eu-west-1" },
             "secretAccessKey": { "type": "string", "description": "AWS account keys, secret" },
             "accessKeyId": { "type": "string", "description": "AWS account keys, public access" },
+            "ec2IamRole": { "type": "string", "description": "If running on EC2 with an associated IAM role, this can be provided instead of account keys" },
             "urlPattern": { "type": "string", "description": "AWS endpoint url pattern" }
         },
         "required": [ "urlPattern" ]
