@@ -19,7 +19,14 @@ interface PipelineConfig extends IServiceConfig {
 const service = new Service<IAdapter, PipelineConfig>();
 
 service.all((msg, context, config) => {
-	return pipeline(msg, config.pipeline, msg.url, false, msg => context.makeRequest(msg));
+	let runPipeline = config.pipeline;
+	if (msg.url.query["$to-step"]) {
+		const toStep = parseInt(msg.url.query["$to-step"][0]);
+		if (!isNaN(toStep) && toStep < config.pipeline.length - 1) {
+			runPipeline = config.pipeline.slice(0, toStep + 1);
+		} 
+	}
+	return pipeline(msg, runPipeline, msg.url, false, msg => context.makeRequest(msg));
 })
 
 export default service;

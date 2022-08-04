@@ -12,5 +12,6 @@ export default {
     },
     "defaults": {
         "basePath": "/data"
-    }
+    },
+    "exposedConfigProperties": [ "uploadBaseUrl" ]
 }

@@ -159,7 +159,7 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                 }
                 case PipelineElementType.transform: {
                     const transform = el as PipelineTransform;
-                    msgs = msgs.flatMap(msg => transform.execute(msg));
+                    msgs = msgs.flatMap(msg => transform.execute(msg, context));
                     break;
                 }
                 case PipelineElementType.subpipeline: {
@@ -253,7 +253,7 @@ function runDistributePipelineOne(pipeline: PipelineSpec, msg: Message, context:
                     break;
                 case PipelineElementType.transform: {
                     const transform = el as PipelineTransform;
-                    msgs.enqueue(transform.execute(msg));
+                    msgs.enqueue(transform.execute(msg, context));
                     break;
                 }
                 default:

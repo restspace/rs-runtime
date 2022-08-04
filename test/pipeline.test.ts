@@ -1,5 +1,5 @@
 import { assertStrictEquals } from "std/testing/asserts.ts";
-import { Message } from "rs-core/Message.ts";
+import { Message, MessageMethod } from "rs-core/Message.ts";
 import { config } from "../config.ts";
 import { testServicesConfig } from "./TestConfigFileAdapter.ts";
 import { pipeline } from "../pipeline/pipeline.ts";
@@ -32,7 +32,7 @@ mockHandler.getJson("/test/list", [ "abc", "xyz" ]);
 mockHandler.getJson("/test/timing-list", [ 100, 80, 50 ]);
 mockHandler.getJson("/test/object", { val1: "aaa", val2: "bbb" });
 
-function testMessage(url: string, method: string) {
+function testMessage(url: string, method: MessageMethod) {
     const msg = new Message(url, 'pipeline', method)
         .setHeader('host', 'pipeline.restspace.local:3100');
     return msg;
@@ -64,6 +64,19 @@ Deno.test('complex parallel json', async function () {
     const output = await msgOut.data?.asJson();
     assertStrictEquals(output.xyz, 'xyz result');
     assertStrictEquals(output.abc, 'abc result');
+});
+Deno.test('complex parallel json 2', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson({ a: 1, b: 2}), [
+        [ 
+           "GET /test/object :abc",
+           ":$this"
+        ],
+       "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    console.log('output ' + JSON.stringify(output));
+    assertStrictEquals(output.a, 1);
+    assertStrictEquals(output.abc.val1, 'aaa');
 });
 Deno.test('expansion', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [
@@ -165,6 +178,26 @@ Deno.test('transform', async function () {
     ]);
     const output = await msgOut.data?.asJson();
     assertStrictEquals(output.out, 'aaa');
+});
+Deno.test('transform with url query string', async function () {
+    const msgOut = await await pipeline(testMessage('/?vvv=111&projectId=aa%20a', 'GET'), [
+        "GET /test/object",
+        {
+            out: "pathPattern('$?(projectId)')"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertStrictEquals(output.out, 'aa a');
+});
+Deno.test('transform with url segments', async function () {
+    const msgOut = await await pipeline(testMessage('/111/aa%20a', 'GET'), [
+        "GET /test/object",
+        {
+            out: "pathPattern('$<0')"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertStrictEquals(output.out, 'aa a');
 });
 // Deno.test('simple post', async function () {
 //     let postedBody: any = {};

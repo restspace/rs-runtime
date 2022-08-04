@@ -25,7 +25,7 @@ service.getPath('catalogue', (msg: Message) => {
     if (catalogue === null) {
         catalogue = { services: {}, adapters: {}, infra: {} };
         for (const [ name, serviceManifest ] of Object.entries(config.modules.serviceManifests)) {
-            const manifest = serviceManifest as (IServiceManifest & { source: string });
+            const manifest = { ...serviceManifest } as (IServiceManifest & { source: string });
             deleteManifestProperties.forEach(prop => delete (manifest as any)[prop]);
             manifest.source = name;
             catalogue.services[manifest.name] = manifest;

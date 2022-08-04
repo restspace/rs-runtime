@@ -9,10 +9,11 @@ export default {
 			"pipeline": {
 				"type": "array",
 				"items": {
-					"type": [ "string", "array" ],
+					"type": [ "string", "array", "object" ],
 					"oneOf": [
 						{ "title": "request", "type": "string" },
-						{ "title": "subpipeline", "$ref": "#/definitions/pipeline" }
+						{ "title": "subpipeline", "$ref": "#/definitions/pipeline" },
+						{ "title": "transform", "type": "object" }
 					],
 					"editor": "oneOfRadio"
 				}

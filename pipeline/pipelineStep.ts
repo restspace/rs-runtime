@@ -30,7 +30,11 @@ export class PipelineStep {
         this.condition = conditionPart;
         if (posNew > 0) pos = posNew;
 
-        [ match, posNew ] = scanFirst(step, pos, [ " :" ]);
+        if (step[pos] === ':') {
+            [ match, posNew ] = [ " :", pos + 1 ];
+        } else {
+            [ match, posNew ] = scanFirst(step, pos, [ " :" ]);
+        }
         if (match === " :") {
             this.spec = step.substring(pos, posNew - 2).trim();
             this.rename = upTo(step, " ", posNew);

@@ -1419,7 +1419,7 @@ class Url {
         return (this.isRelative ? '' : '/') + this.pathElements.join('/') + (this.isDirectory && this.pathElements.length > 0 ? '/' : '');
     }
     set path(val) {
-        this.pathElements = slashTrim(val).split('/').filter((el)=>!!el);
+        this.pathElements = decodeURI(slashTrim(val)).split('/').filter((el)=>!!el);
         this._isDirectory = val.endsWith('/') || val === '';
     }
     pathElements = [];
@@ -1524,8 +1524,8 @@ class Url {
         this.isRelative = !this.domain && urlParse[1] !== '/';
         this.path = urlParse[4];
         this._isDirectory = this.path.endsWith('/');
-        this.queryString = urlParse[5];
-        this.queryString = this.queryString ? this.queryString.substr(1) : '';
+        const qs = urlParse[5];
+        this.queryString = qs ? decodeURI(qs.substr(1)) : '';
         this.fragment = urlParse[6];
         this.fragment = this.fragment ? this.fragment.substr(1) : '';
     }
@@ -19593,6 +19593,17 @@ class AuthService extends Service {
     };
     setUserFunc = (msg)=>Promise.resolve(msg);
 }
+class BaseStateClass {
+    load(_context, _config) {
+        return Promise.resolve();
+    }
+    unload() {
+        return Promise.resolve();
+    }
+}
+const nullState = (_cons)=>{
+    throw new Error('State not set');
+};
 async function getUserFromEmail(context, userUrlPattern, msg, email, internalPrivilege = false) {
     if (!email) return null;
     const userUrl = resolvePathPatternWithObject(userUrlPattern, {
@@ -23790,9 +23801,9 @@ class PipelineTransform {
     constructor(transform){
         this.transform = transform;
     }
-    async execute(msg) {
+    async execute(msg, context) {
         const jsonIn = msg.data ? await msg.data.asJson() : {};
-        const transJson = transformation(this.transform, jsonIn, msg.url);
+        const transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url);
         return msg.setDataJson(transJson);
     }
     static isValid(item) {
@@ -32680,7 +32691,10 @@ const __default18 = {
     },
     "defaults": {
         "basePath": "/data"
-    }
+    },
+    "exposedConfigProperties": [
+        "uploadBaseUrl"
+    ]
 };
 const service1 = new Service();
 const isSchema1 = (adapter)=>adapter.checkSchema !== undefined;
@@ -33027,7 +33041,8 @@ const __default22 = {
                 "items": {
                     "type": [
                         "string",
-                        "array"
+                        "array",
+                        "object"
                     ],
                     "oneOf": [
                         {
@@ -33037,6 +33052,10 @@ const __default22 = {
                         {
                             "title": "subpipeline",
                             "$ref": "#/definitions/pipeline"
+                        },
+                        {
+                            "title": "transform",
+                            "type": "object"
                         }
                     ],
                     "editor": "oneOfRadio"
@@ -36558,6 +36577,27 @@ const __default32 = {
     },
     "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts"
 };
+const __default33 = {
+    "name": "Temporary access service",
+    "description": "Generates a token for temporary access to resources and then gives access",
+    "moduleUrl": "./services/temporary-access.ts",
+    "apis": [
+        "access-token"
+    ],
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "acquiredRole": {
+                "type": "string",
+                "description": "The role which use of the token grants to the request"
+            },
+            "expirySecs": {
+                "type": "number",
+                "description": "Number of seconds for which the token is valid"
+            }
+        }
+    }
+};
 var LogLevels;
 (function(LogLevels) {
     LogLevels[LogLevels["NOTSET"] = 0] = "NOTSET";
@@ -37760,6 +37800,9 @@ class AuthUser {
     roles = '';
     password = '';
     exp;
+    get rolesArray() {
+        return this.roles.split(' ').filter((r)=>!!r).map((r)=>r.trim());
+    }
     constructor(userObj){
         userObj && Object.assign(this, userObj);
     }
@@ -37770,12 +37813,18 @@ class AuthUser {
         };
     }
     hasRole(role) {
-        return this.roles && this.roles.split(' ').indexOf(role) >= 0;
+        return this.rolesArray.indexOf(role) >= 0;
+    }
+    addRole(role) {
+        if (!this.rolesArray.includes(role)) {
+            this.roles += (this.roles ? " " : "") + role;
+        }
+        return this;
     }
     authorizedForInner(reqRoles, path) {
-        if (reqRoles.indexOf('all') >= 0) return true;
+        if (reqRoles.includes('all')) return true;
         if (!this.roles) return false;
-        let userRoles = this.roles.trim().split(' ');
+        let userRoles = this.rolesArray;
         let authorized = reqRoles.some((reqRole)=>userRoles.includes(reqRole));
         if (path) {
             const pathMatches = reqRoles.filter((r)=>r.startsWith('{') && r.endsWith('}')).map((r)=>this[r.slice(1, -1)].toString()).filter((m)=>!!m);
@@ -37837,10 +37886,15 @@ class AuthUser {
     static noPasswordMask = '<no password>';
     static anon = new AuthUser({});
 }
+(function(Externality) {
+    Externality[Externality["External"] = 0] = "External";
+    Externality[Externality["Outer"] = 1] = "Outer";
+    Externality[Externality["Internal"] = 2] = "Internal";
+})(Externality || (Externality = {}));
 function makeServiceContext(tenantName, state, prePost) {
     const context = {
         tenant: tenantName,
-        makeRequest: handleOutgoingRequest,
+        makeRequest: (msg, externality)=>externality === Externality.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg),
         runPipeline: (msg, pipelineSpec, contextUrl)=>{
             pipeline(msg, pipelineSpec, contextUrl);
         },
@@ -37884,6 +37938,10 @@ function mapLegalChanges(msg, oldValues, newUser) {
     return 'not an allowable change';
 }
 const service11 = new Service();
+class TemporaryAccessState extends BaseStateClass {
+    validTokenExpiries = [];
+    tokenBaseUrls = {};
+}
 const ajv2 = new __pika_web_default_export_for_treeshaking__1({
     allErrors: true,
     strictSchema: false,
@@ -37939,6 +37997,7 @@ async function validateChange(msg, context) {
     return msg;
 }
 const service14 = new Service();
+const service15 = new Service();
 class Modules {
     adapterConstructors;
     serviceManifests;
@@ -37991,7 +38050,8 @@ class Modules {
             "./services/proxy.ts": service6,
             "./services/email.ts": service7,
             "./services/account.ts": service11,
-            "./services/discord.ts": service8
+            "./services/discord.ts": service8,
+            "./services/temporary-access.ts": service15
         };
         this.serviceManifests = {
             "./services/services.rsm.json": __default16,
@@ -38010,7 +38070,8 @@ class Modules {
             "./services/proxy.rsm.json": __default29,
             "./services/email.rsm.json": __default30,
             "./services/account.rsm.json": __default31,
-            "./services/discord.rsm.json": __default32
+            "./services/discord.rsm.json": __default32,
+            "./services/temporary-access.rsm.json": __default33
         };
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
             v.source = url;
@@ -38022,7 +38083,7 @@ class Modules {
             ...config.server.infra[config.server.configStore]
         };
         configStoreAdapterSpec.basePath = "/";
-        const context = makeServiceContext(tenant);
+        const context = makeServiceContext(tenant, nullState);
         const configAdapter = await config.modules.getAdapter(configStoreAdapterSpec.adapterSource, context, configStoreAdapterSpec);
         return configAdapter;
     }
@@ -38286,8 +38347,9 @@ class Tenant {
         this._state = {};
         this.state = (basePath)=>async (cons, context, config)=>{
                 if (this._state[basePath] === undefined) {
-                    this._state[basePath] = new cons();
-                    await this._state[basePath].load(context, config);
+                    const newState = new cons();
+                    this._state[basePath] = newState;
+                    await newState.load(context, config);
                 }
                 if (!(this._state[basePath] instanceof cons)) throw new Error('Changed type of state attached to service');
                 return this._state[basePath];
@@ -38382,13 +38444,10 @@ class Tenant {
         }
     }
     async unload() {
-        await Promise.allSettled(Object.values(this._state).map((cls)=>typeof cls.unload === "function" ? cls.unload() : Promise.resolve()));
+        await Promise.allSettled(Object.values(this._state).map((cls)=>cls.unload()));
     }
     getMessageFunctionByUrl(url, source) {
-        const dummyState = (_cons)=>{
-            throw new Error('State not set');
-        };
-        return this.serviceFactory.getMessageFunctionByUrl(url, makeServiceContext(this.name, dummyState), this.state, source);
+        return this.serviceFactory.getMessageFunctionByUrl(url, makeServiceContext(this.name, nullState), this.state, source);
     }
     getMessageFunctionForService(serviceConfig, source, prePost) {
         return this.serviceFactory.getMessageFunctionForService(serviceConfig, makeServiceContext(this.name, this.state(serviceConfig.basePath), prePost), source);
@@ -38446,7 +38505,9 @@ service12.getPath('catalogue', (msg)=>{
             infra: {}
         };
         for (const [name, serviceManifest] of Object.entries(config.modules.serviceManifests)){
-            const manifest = serviceManifest;
+            const manifest = {
+                ...serviceManifest
+            };
             deleteManifestProperties.forEach((prop)=>delete manifest[prop]);
             manifest.source = name;
             catalogue.services[manifest.name] = manifest;
@@ -38730,7 +38791,7 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                 case PipelineElementType.transform:
                     {
                         const transform = el1;
-                        msgs = msgs.flatMap((msg)=>transform.execute(msg));
+                        msgs = msgs.flatMap((msg)=>transform.execute(msg, context));
                         break;
                     }
                 case PipelineElementType.subpipeline:
@@ -38812,7 +38873,7 @@ function runDistributePipelineOne(pipeline, msg, context) {
                 case PipelineElementType.transform:
                     {
                         const transform = el;
-                        msgs.enqueue(transform.execute(msg));
+                        msgs.enqueue(transform.execute(msg, context));
                         break;
                     }
                 default:
@@ -38863,11 +38924,6 @@ async function pipeline(msg, pipeline, contextUrl, external, handler = handleOut
     Object.assign(outMsg.headers, context.outputHeaders || {});
     return outMsg || msg.copy().setStatus(204, '');
 }
-(function(Externality) {
-    Externality[Externality["External"] = 0] = "External";
-    Externality[Externality["Outer"] = 1] = "Outer";
-    Externality[Externality["Internal"] = 2] = "Internal";
-})(Externality || (Externality = {}));
 class PipelineStep {
     condition;
     spec;
@@ -38894,9 +38950,16 @@ class PipelineStep {
         [conditionPart, posNew] = PipelineCondition.scan(step, pos);
         this.condition = conditionPart;
         if (posNew > 0) pos = posNew;
-        [match, posNew] = scanFirst(step, pos, [
-            " :"
-        ]);
+        if (step[pos] === ':') {
+            [match, posNew] = [
+                " :",
+                pos + 1
+            ];
+        } else {
+            [match, posNew] = scanFirst(step, pos, [
+                " :"
+            ]);
+        }
         if (match === " :") {
             this.spec = step.substring(pos, posNew - 2).trim();
             this.rename = upTo(step, " ", posNew);
@@ -39142,7 +39205,14 @@ service13.setUser(async (msg)=>{
     return msg;
 });
 service9.all((msg, context, config)=>{
-    return pipeline(msg, config.pipeline, msg.url, false, (msg)=>context.makeRequest(msg));
+    let runPipeline = config.pipeline;
+    if (msg.url.query["$to-step"]) {
+        const toStep = parseInt(msg.url.query["$to-step"][0]);
+        if (!isNaN(toStep) && toStep < config.pipeline.length - 1) {
+            runPipeline = config.pipeline.slice(0, toStep + 1);
+        }
+    }
+    return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg));
 });
 service10.all(async (msg, context)=>{
     const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
@@ -39282,6 +39352,41 @@ service11.postPath('confirm-email', (msg, context, config)=>{
         return Promise.resolve(user);
     });
 }, tokenVerifySchema);
+service15.all(async (msg, context, config)=>{
+    const state = await context.state(TemporaryAccessState, context, config);
+    const expireTokens = ()=>{
+        const now = new Date();
+        while(state.validTokenExpiries.length > 0 && state.validTokenExpiries[0][0] < now){
+            delete state.tokenBaseUrls[state.validTokenExpiries[0][1]];
+            state.validTokenExpiries.shift();
+        }
+    };
+    const key = msg.url.servicePathElements[0];
+    expireTokens();
+    if (key && state.tokenBaseUrls[key]) {
+        msg.url = new Url('/' + msg.url.servicePathElements.slice(1).join('/'));
+        if (!msg.url.toString().startsWith(state.tokenBaseUrls[key])) {
+            return msg.setStatus(403, "Attempt to access a url outside the base url for which this token is valid");
+        }
+        msg.user = new AuthUser(msg.user || AuthUser.anon).addRole(config.acquiredRole);
+        return context.makeRequest(msg, Externality.External);
+    } else if (msg.method === 'GET') {
+        if (!(msg.user && new AuthUser(msg.user).authorizedFor(config.acquiredRole))) {
+            return msg.setStatus(401, "Cannot generate a temporary access token with an acquired role for which the user is not authorized");
+        }
+        const newToken = crypto.randomUUID();
+        const now = new Date();
+        const expiry = new Date().setTime(now.getTime() + 1000 * config.expirySecs);
+        state.validTokenExpiries.push([
+            new Date(expiry),
+            newToken
+        ]);
+        state.tokenBaseUrls[newToken] = '/' + msg.url.servicePath;
+        return msg.setText(newToken);
+    } else {
+        return msg.setStatus(404, "Not found");
+    }
+});
 const getServerConfig = async (serverConfigLocation)=>{
     if (!serverConfigLocation) throw new Error('Missing server config location');
     try {
