@@ -1,14 +1,33 @@
 # Restspace Runtime
 
-This Deno program acts as a multi-tenant web server which can be configured using a JSON file to run packages of code called service components which handle requests to a subtree of url paths.
+## Introduction
+
+Restspace is a new take on a web application builder platform which encompasses the functionality of a CMS, an integration tool like Zapier, a backend as a service like Parse or Firebase and a low-code tool which avoids a lot of the pitfalls
+such tools have for developers, particularly it is open and very easy to extend. As an example, let's say we want to set up some basic CMS functionality. Restspace gives you an empty web server initially. Then you can configure 'service components'
+to run on base paths within that server's url space. So we would configure a Data service component to run on `/json`. The component lets you read and write JSON files by POSTing/GETing them from e.g. `/json/page-data`. Then we configure a Template service
+component at `/templates` and add a template file in e.g. Nunjucks by POSTing it to `/templates/page-template`. Then we configure a Pipeline component on `/` whose purpose is to take an HTTP request and send it to the first of a series of URLs, getting the response
+from that and sending it to the second etc. We would create a pipeline specification (as a JSON file) like this:
+
+    [
+		"GET /json/page-data",
+		"POST /templates/page-template"
+	]
+
+So when a request is made to `/`, the Pipeline component handles it and reads the JSON data in the Data service, then sends this to the Template service, which poplates the `page-template` template with it and returns the result to the user. Note that the internal routing prefers the service with the most specific URL match. Restspace has built-in role-based access control which you can use to hide the `/json` and `/templates` paths, and put the page behind a login if you want.
+
+Service components can provide a huge range of functionality e.g. static site hosting, external API wrapping e.g. email, SMS providers, user and account management, infrastructure services etc. and enable easy composition of these functionalities without code
+using pipelines. The use of Deno as the base runtime enables creation of new service components by simply publishing a JSON manifest and a JS/TS module to the web.
+
+How to build a service component is explained [here](/https://github.com/restspace/rs-runtime/services/README.md).
+
+Restspace has an Admin front end which avoids having to do all this in `curl` or somesuch, providing editors for entering data, giving an experience usable by non-technical people.
 
 ## Other repositories
 
-The repo has many dependencies on Restspace Core. Restspace Core contains all the necessary dependencies for custom service or adapter code: when writing your own service or adapter, you won't need any dependencies in Restspace Runtime.
+The repo has many dependencies on [Restspace Core](https://github.com/restspace/rs-core). The simplest approach to working with them is to have the two repos installed in the same parent directory. Restspace Core contains all the necessary dependencies for custom service or adapter code: when writing your own service or adapter, you won't need any dependencies in Restspace Runtime.
 
 ## Site and documentation
 
-The main site for Restspace is at [http://restspace.io](http://restspace.io).
 The technical overview in the documentation for Restspace is at [https://restspace.io/docs/overview/Technical%20Overview](https://restspace.io/docs/overview/Technical%20Overview).
 
 ## Code Architecture
