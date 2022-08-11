@@ -101,3 +101,12 @@ GET http://restspace.local:3100/files/telephone.svg
 
 ###
 GET http://restspace.local:3100/files/telephone.svg
+
+###
+POST http://restspace.local:3100/pipelines/test-b64?$to-step=0
+
+###
+POST http://restspace.local:3100/lib/to-b64
+Content-Type: application/pdf
+
+hello

@@ -1,10 +1,9 @@
 import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
-import { SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
+import { BaseStateClass, SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 
-class State {
-	constructor() { }
+class PubSubState extends BaseStateClass {
 	pathSockets: Record<string, WebSocket[]> = {};
 
 	addSocket(path: string, socket: WebSocket) {
@@ -29,8 +28,10 @@ const service = new Service();
 service.get((msg: Message, context: SimpleServiceContext, config: IServiceConfig) => {
 	if (msg.websocket) {
 		const websocket = msg.websocket;
-		msg.websocket.onopen = () => service.state(State, context, config).addSocket(msg.url.servicePath, websocket);
-		msg.websocket.onclose = () => service.state(State, context, config).removeSocket(msg.url.servicePath, websocket);
+		msg.websocket.onopen = () => context.state(PubSubState, context, config)
+			.then((state) => state.addSocket(msg.url.servicePath, websocket));
+		msg.websocket.onclose = () => context.state(PubSubState, context, config)
+			.then((state) => state.removeSocket(msg.url.servicePath, websocket));
 		//msg.websocket.
 	}
 	return Promise.resolve(msg);

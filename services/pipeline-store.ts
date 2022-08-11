@@ -1,4 +1,5 @@
 import { Service } from "rs-core/Service.ts";
+import { PipelineSpec } from "../../rs-core/PipelineSpec.ts";
 import { pipeline } from "../pipeline/pipeline.ts";
 
 const service = new Service();
@@ -10,9 +11,14 @@ service.all(async (msg, context) => {
 	const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
 	const msgPipelineSpec = await context.makeRequest(getFromStore);
 	if (!msgPipelineSpec.ok) return msgPipelineSpec;
-	const pipelineSpec = await msgPipelineSpec.data!.asJson();
+	let pipelineSpec = await msgPipelineSpec.data!.asJson() as PipelineSpec;
+	if (msg.url.query["$to-step"]) {
+		const toStep = parseInt(msg.url.query["$to-step"][0]);
+		if (!isNaN(toStep) && toStep < pipelineSpec.length - 1) {
+			pipelineSpec = pipelineSpec.slice(0, toStep + 1);
+		} 
+	}
 	return pipeline(msg, pipelineSpec, msg.url, false, msg => context.makeRequest(msg));
 })
 
 export default service;
-

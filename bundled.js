@@ -1457,8 +1457,7 @@ class Url {
     }
     query = {};
     encodeQueryValue(s) {
-        const enc = encodeURI(s);
-        return enc.replace('&', '%26').replace('=', '%3D').replace('#', '%23');
+        return s.replace('&', '%26').replace('=', '%3D').replace('#', '%23');
     }
     get queryString() {
         return Object.entries(this.query).flatMap(([key, vals])=>vals.map((val)=>`${key}=${this.encodeQueryValue(val)}`)).join('&') || '';
@@ -12777,7 +12776,7 @@ class Message {
         return msg;
     }
     static isUrl(url) {
-        return Url.urlRegex.test(url) || url.startsWith('$') && !url.startsWith('$this');
+        return (Url.urlRegex.test(url) || url.startsWith('$')) && !url.startsWith('$this');
     }
     static isMethod(method) {
         return [
@@ -19564,7 +19563,10 @@ class Service {
         return this;
     }
     initializer(initFunc) {
-        this.initFunc = initFunc;
+        this.initFunc = (context, config)=>{
+            this.enhanceContext(context, config);
+            return initFunc(context, config);
+        };
     }
     get = (func)=>this.setMethodPath('get', '/', func);
     getPath = (path, func)=>this.setMethodPath('get', path, func);
@@ -33013,9 +33015,117 @@ const __default20 = {
         }
     }
 };
+const base64abc1 = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h",
+    "i",
+    "j",
+    "k",
+    "l",
+    "m",
+    "n",
+    "o",
+    "p",
+    "q",
+    "r",
+    "s",
+    "t",
+    "u",
+    "v",
+    "w",
+    "x",
+    "y",
+    "z",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "+",
+    "/"
+];
+function encode2(data) {
+    const uint8 = typeof data === "string" ? new TextEncoder().encode(data) : data instanceof Uint8Array ? data : new Uint8Array(data);
+    let result = "", i;
+    const l = uint8.length;
+    for(i = 2; i < l; i += 3){
+        result += base64abc1[uint8[i - 2] >> 2];
+        result += base64abc1[(uint8[i - 2] & 0x03) << 4 | uint8[i - 1] >> 4];
+        result += base64abc1[(uint8[i - 1] & 0x0f) << 2 | uint8[i] >> 6];
+        result += base64abc1[uint8[i] & 0x3f];
+    }
+    if (i === l + 1) {
+        result += base64abc1[uint8[i - 2] >> 2];
+        result += base64abc1[(uint8[i - 2] & 0x03) << 4];
+        result += "==";
+    }
+    if (i === l) {
+        result += base64abc1[uint8[i - 2] >> 2];
+        result += base64abc1[(uint8[i - 2] & 0x03) << 4 | uint8[i - 1] >> 4];
+        result += base64abc1[(uint8[i - 1] & 0x0f) << 2];
+        result += "=";
+    }
+    return result;
+}
+function decode3(b64) {
+    const binString = atob(b64);
+    const size = binString.length;
+    const bytes = new Uint8Array(size);
+    for(let i = 0; i < size; i++){
+        bytes[i] = binString.charCodeAt(i);
+    }
+    return bytes;
+}
 const service3 = new Service();
 service3.postPath('/bypass', (msg)=>{
     return Promise.resolve(msg);
+});
+service3.postPath('/to-b64', async (msg)=>{
+    if (!msg.data) return msg;
+    const arry = new Uint8Array(await msg.data.asArrayBuffer());
+    return msg.setData(encode2(arry), msg.data.mimeType);
+});
+service3.postPath('/from-b64', async (msg)=>{
+    if (!msg.data) return msg;
+    const str = new TextDecoder().decode(await msg.data.asArrayBuffer());
+    return msg.setData(decode3(str).buffer, msg.data.mimeType);
 });
 const __default21 = {
     "name": "Library functions",
@@ -33989,7 +34099,7 @@ class TextProtoReader {
     }
     r;
 }
-function decode3(b64) {
+function decode4(b64) {
     const binString = atob(b64);
     const size = binString.length;
     const bytes = new Uint8Array(size);
@@ -34385,7 +34495,7 @@ function resolveAttachment(attachment) {
             filename: attachment.filename,
             contentType: attachment.contentType,
             encoding: "binary",
-            content: decode3(attachment.content)
+            content: decode4(attachment.content)
         };
     } else {
         return attachment;
@@ -36114,13 +36224,13 @@ function pow2523(o, i) {
     }
     for(a = 0; a < 16; a++)o[a] = c[a];
 }
-const applyMapUrl = (mapUrl, msg, createTest, createMapUrl)=>{
+const applyMapUrl = (mapUrl, msg, config, createTest, createMapUrl)=>{
     if (createTest && createMapUrl) {
         if (createTest(msg)) mapUrl = createMapUrl;
     }
     if (typeof mapUrl === 'string') {
         return [
-            resolvePathPatternWithUrl(mapUrl, msg.url),
+            resolvePathPatternWithUrl(mapUrl, msg.url, config),
             msg.method
         ];
     } else {
@@ -36128,7 +36238,7 @@ const applyMapUrl = (mapUrl, msg, createTest, createMapUrl)=>{
         if (typeof mappedUrl === 'string') return msg.setStatus(400, mappedUrl);
         const [url, method] = mappedUrl;
         return [
-            resolvePathPatternWithUrl(url, msg.url),
+            resolvePathPatternWithUrl(url, msg.url, config),
             method
         ];
     }
@@ -36150,6 +36260,10 @@ const applyTransform = async (transform, resp, config)=>{
         return await resp.data.asJson();
     }
 };
+const schemaInstanceMime = (url)=>{
+    const schemaUrl = pathCombine(url.baseUrl(), upToLast(url.servicePath, '/'), ".schema.json");
+    return `application/json; schema="${schemaUrl}"`;
+};
 const buildDefaultDirectory = ({ basePath , service  })=>{
     service.getDirectoryPath(basePath, (msg)=>{
         const dirJson = {
@@ -36166,13 +36280,9 @@ const buildDefaultDirectory = ({ basePath , service  })=>{
     });
 };
 const buildStore = ({ basePath , service , schema , mapUrlRead , mapUrlWrite , mapUrlDelete , createTest , mapUrlCreate , mapUrlDirectoryRead , mapUrlDirectoryDelete , transformDirectory , transformRead , transformWrite  })=>{
-    const schemaInstanceMime = (url)=>{
-        const schemaUrl = pathCombine(url.baseUrl(), upToLast(url.servicePath, '/'), ".schema.json");
-        return `application/json; schema="${schemaUrl}"`;
-    };
     service.getDirectoryPath(basePath, async (msg, context, config)=>{
         if (!mapUrlDirectoryRead) return msg.setStatus(500, 'No mapping for directory read configured when building store');
-        const transformedUrl = applyMapUrl(mapUrlDirectoryRead, msg);
+        const transformedUrl = applyMapUrl(mapUrlDirectoryRead, msg, config);
         if (transformedUrl instanceof Message) return transformedUrl;
         const [url, method] = transformedUrl;
         const reqMsg = new Message(url, context.tenant, method);
@@ -36204,7 +36314,7 @@ const buildStore = ({ basePath , service , schema , mapUrlRead , mapUrlWrite , m
             if (msg.url.resourceName === ".schema.json" && msg.method === "GET") {
                 return msg.setDataJson(schema, "application/schema+json");
             }
-            const mappedUrl = applyMapUrl(mapUrl, msg, createTest, mapUrlCreate);
+            const mappedUrl = applyMapUrl(mapUrl, msg, config, createTest, mapUrlCreate);
             if (mappedUrl instanceof Message) return mappedUrl;
             const [url, method] = mappedUrl;
             const reqMsg = new Message(url, context.tenant, method);
@@ -36243,8 +36353,253 @@ const buildStore = ({ basePath , service , schema , mapUrlRead , mapUrlWrite , m
     if (mapUrlDelete) service.deletePath(basePath, mapPath(mapUrlDelete, undefined, undefined));
     if (mapUrlDirectoryDelete) service.deleteDirectoryPath(basePath, mapPath(mapUrlDirectoryDelete, undefined, undefined));
 };
+const intentsNumber = (intents)=>{
+    const intentValues = {
+        "GUILDS": 1 << 0,
+        "GUILD_MEMBERS": 1 << 1,
+        "GUILD_BANS": 1 << 2,
+        "GUILD_EMOJIS_AND_STICKERS": 1 << 3,
+        "GUILD_INTEGRATIONS": 1 << 4,
+        "GUILD_WEBHOOKS": 1 << 5,
+        "GUILD_INVITES": 1 << 6,
+        "GUILD_VOICE_STATES": 1 << 7,
+        "GUILD_PRESENCES": 1 << 8,
+        "GUILD_MESSAGES": 1 << 9,
+        "GUILD_MESSAGE_REACTIONS": 1 << 10,
+        "GUILD_MESSAGE_TYPING": 1 << 11,
+        "DIRECT_MESSAGES": 1 << 12,
+        "DIRECT_MESSAGE_REACTIONS": 1 << 13,
+        "DIRECT_MESSAGE_TYPING": 1 << 14,
+        "MESSAGE_CONTENT": 1 << 15,
+        "GUILD_SCHEDULED_EVENTS": 1 << 16,
+        "AUTO_MODERATED_CONFIGURATION": 1 << 20,
+        "AUTO_MODERATED_EXECUTION": 1 << 21
+    };
+    return intents.reduce((p, c)=>p += intentValues[c], 0);
+};
+var Op;
+(function(Op) {
+    Op[Op["Event"] = 0] = "Event";
+    Op[Op["Heartbeat"] = 1] = "Heartbeat";
+    Op[Op["Identify"] = 2] = "Identify";
+    Op[Op["Hello"] = 10] = "Hello";
+    Op[Op["HeartbeatAck"] = 11] = "HeartbeatAck";
+})(Op || (Op = {}));
+const messageToInteractionResponse = async (msg)=>{
+    const intResponse = {
+        type: 4
+    };
+    let intMessage = {};
+    if (!(msg.ok && msg.data)) return intResponse;
+    switch(msg.data.mimeType){
+        case "text/plain":
+            {
+                intMessage.content = await msg.data.asString() || undefined;
+                break;
+            }
+        case "application/json":
+            {
+                intMessage = await msg.data.asJson();
+                break;
+            }
+    }
+    intResponse.data = intMessage;
+    return intResponse;
+};
+const sendTrigger = async (event, data, triggerUrl, context)=>{
+    let respMsg;
+    if (triggerUrl) {
+        const url = triggerUrl.replace('${name}', data?.data?.name || '').replace('${event}', event);
+        context.logger.info(`Discord trigger to ${url} with data ${JSON.stringify(data)}`);
+        const reqMsg = new Message(url, context.tenant, "GET");
+        respMsg = await context.makeRequest(reqMsg);
+    } else {
+        respMsg = new Message('/', context.tenant, 'GET');
+        respMsg.setStatus(400, "Configuration error in bot: no processor");
+    }
+    return await messageToInteractionResponse(respMsg);
+};
+class DiscordState extends BaseStateClass {
+    ws = null;
+    wsState = "initializing";
+    heartbeatInterval;
+    intervalId;
+    heartbeatAcked = null;
+    token;
+    receiveIntents = [];
+    context;
+    sessionId;
+    triggerUrl;
+    guilds;
+    async load(context, config) {
+        if (this.ws !== null) return;
+        this.ws = "opening";
+        this.token = config.proxyAdapterConfig.botToken;
+        this.receiveIntents = config.receiveIntents || [];
+        this.triggerUrl = config.triggerUrl;
+        this.context = context;
+        const gatewayLocationMsg = await context.makeProxyRequest(Message.fromSpec("GET /gateway/bot", context.tenant));
+        const gatewayInfo = await gatewayLocationMsg.data.asJson();
+        console.log(gatewayInfo);
+        const ws = new WebSocket(gatewayInfo.url + "?v=10&encoding=json");
+        ws.addEventListener('message', (ev)=>this.receive(ev.data));
+        ws.addEventListener('close', (ev)=>this.close(ev));
+        await new Promise((resolve)=>ws.addEventListener('open', ()=>resolve()));
+        if (this.wsState === "closed") {
+            ws.close();
+        } else {
+            this.ws = ws;
+        }
+    }
+    resume() {
+        this.context?.logger.info('No heartbeat ack, resuming');
+    }
+    async receive(dataStr) {
+        const data = JSON.parse(dataStr);
+        this.context.logger.info("Discord message received: " + dataStr);
+        switch(this.wsState){
+            case "initializing":
+                {
+                    if (data.op === Op.Hello) {
+                        this.heartbeatInterval = data.d['heartbeat_interval'];
+                        this.wsState = "running";
+                        const jitter = this.heartbeatInterval * Math.random();
+                        let d = null;
+                        const sendHeartbeat = ()=>{
+                            if (this.ws instanceof WebSocket) {
+                                if (this.heartbeatAcked === false) {
+                                    this.resume();
+                                } else {
+                                    try {
+                                        this.ws.send(JSON.stringify({
+                                            op: Op.Heartbeat,
+                                            d
+                                        }));
+                                        this.context?.logger.info(`Heartbeat send ${d}`);
+                                        this.heartbeatAcked = false;
+                                        d = d === null ? 0 : d + 1;
+                                    } catch (err) {
+                                        this.context?.logger.error(`Heartbeat send failed ${err}`);
+                                    }
+                                }
+                            }
+                        };
+                        setTimeout(()=>{
+                            sendHeartbeat();
+                            this.intervalId = setInterval(sendHeartbeat, this.heartbeatInterval);
+                        }, jitter);
+                        if (this.ws instanceof WebSocket) {
+                            this.ws.send(JSON.stringify({
+                                op: Op.Identify,
+                                d: {
+                                    token: this.token || '',
+                                    intents: intentsNumber(this.receiveIntents),
+                                    properties: {
+                                        os: "linux",
+                                        browser: "restspace",
+                                        device: "restspace"
+                                    }
+                                }
+                            }));
+                            this.wsState = "identifying";
+                        }
+                    }
+                    break;
+                }
+            case "identifying":
+                {
+                    if (data.t === "READY") {
+                        const readyEvent = data.d;
+                        this.sessionId = readyEvent.session_id;
+                        this.guilds = Object.fromEntries(readyEvent.guilds.map((g)=>[
+                                g.id,
+                                null
+                            ]));
+                        this.wsState = "running";
+                    } else {
+                        this.context?.logger.error(`Received wrong event while Identifying: ${JSON.stringify(data)}`);
+                    }
+                    break;
+                }
+            case "running":
+                await this.handleDiscordMessage(data);
+                break;
+        }
+    }
+    close(ev) {
+        this.context.logger.warning(`Discord socket closed: ${ev.code} ${ev.reason}`);
+        clearInterval(this.intervalId);
+    }
+    async handleDiscordMessage(data) {
+        let resp = null;
+        switch(data.op || data.t){
+            case Op.HeartbeatAck:
+                {
+                    this.heartbeatAcked = true;
+                    return;
+                }
+            case "INTERACTION_CREATE":
+                {
+                    resp = await sendTrigger("interaction", data.d, this.triggerUrl, this.context);
+                    break;
+                }
+            case "MESSAGE_CREATE":
+                {
+                    await sendTrigger("message", data.d, this.triggerUrl, this.context);
+                    break;
+                }
+            case "GUILD_CREATE":
+                {
+                    const guild = data.d;
+                    const id = guild['id'];
+                    this.guilds[id] = {
+                        id,
+                        botJoined: new Date(guild['joined_at']),
+                        memberCount: guild['member_count'],
+                        members: guild['members'].map((m)=>({
+                                id: m.user.id,
+                                username: m.user.username,
+                                discriminator: m.user.discriminator,
+                                locale: m.user.locale,
+                                verified: m.user.verified,
+                                email: m.user.email,
+                                roles: m.roles,
+                                joinedAt: new Date(m.joined_at),
+                                pending: m.pending
+                            })),
+                        channels: guild['channels'].map((c)=>({
+                                id: c.id,
+                                name: c.name
+                            }))
+                    };
+                    if (this.guilds[id].members.length === 1) this.context.logger.warning(`Guild ${id} has only one member listed on GUILD_CREATE event. Probably need Presence intent enabled in Discord application config and Restspace config for Discord service.`);
+                    break;
+                }
+        }
+        if (resp) {
+            this.context?.logger.info(`Interaction response: ${JSON.stringify(resp)}`);
+            const respMsg = Message.fromSpec(`POST $this /interactions/${data.d.id}/${data.d.token}/callback`, this.context.tenant, undefined, resp);
+            const respSent = await this.context.makeProxyRequest(respMsg);
+            if (!respSent.ok) {
+                const respData = await respSent.data?.asString();
+                this.context.logger.error(`Error sending interaction response for command ${data.d.data.name}, ${respSent.status} ${respData}`);
+            }
+        }
+    }
+    unload() {
+        if (this.ws instanceof WebSocket && this.wsState !== "closed") {
+            if (this.intervalId) clearInterval(this.intervalId);
+            this.ws.close(1000);
+            this.wsState = "closed";
+        }
+        return Promise.resolve();
+    }
+}
 const service8 = new Service();
-service8.initializer(async (context, config)=>{});
+service8.initializer(async (context, config)=>{
+    const state = await context.state(DiscordState, context, config);
+    await state.load(context, config);
+});
 const commandSchema = {
     type: "object",
     properties: {
@@ -36400,27 +36755,6 @@ const snowflakeToTimestamp = (snf)=>{
     const snfi = Number(BigInt(snf) >> 22n);
     return snfi + 1420070400000;
 };
-const messageToInteractionResponse = async (msg)=>{
-    const intResponse = {
-        type: 4
-    };
-    let intMessage = {};
-    if (!msg.data) return intResponse;
-    switch(msg.data.mimeType){
-        case "text/plain":
-            {
-                intMessage.content = await msg.data.asString() || undefined;
-                break;
-            }
-        case "application/json":
-            {
-                intMessage = await msg.data.asJson();
-                break;
-            }
-    }
-    intResponse.data = intMessage;
-    return intResponse;
-};
 service8.postPath("interaction", async (msg, context, config)=>{
     if (!await verify3(msg, config)) {
         console.log('Invalid');
@@ -36433,16 +36767,7 @@ service8.postPath("interaction", async (msg, context, config)=>{
             type: 1
         }).setStatus(200);
     }
-    let respMsg;
-    if (config.triggerUrl) {
-        const url = config.triggerUrl.replace('${name}', json?.data?.name || '');
-        const reqMsg = new Message(url, context.tenant, "GET");
-        respMsg = await context.makeRequest(reqMsg);
-    } else {
-        respMsg = new Message('/', context.tenant, 'GET');
-        respMsg.setStatus(400, "Configuration error in bot: no processor");
-    }
-    const intResp = await messageToInteractionResponse(respMsg);
+    const intResp = await sendTrigger("INTERACTION_CREATE", json?.data, config.triggerUrl, context);
     msg.setDataJson(intResp).setStatus(200);
     return msg;
 });
@@ -36460,28 +36785,29 @@ const transformDirectory = (json)=>{
             ])
     };
 };
+const applicationPath = 'applications/${proxyAdapterConfig.applicationId}';
 buildStore({
     basePath: "/command/global",
     service: service8,
     schema: commandSchema,
     mapUrlRead: (msg)=>[
-            `commands/${extractId(msg)}`,
+            `${applicationPath}/commands/${extractId(msg)}`,
             "GET"
         ],
     mapUrlWrite: (msg)=>[
-            `commands/${extractId(msg)}`,
+            `${applicationPath}/commands/${extractId(msg)}`,
             "PATCH"
         ],
     mapUrlDelete: (msg)=>[
-            `commands/${extractId(msg)}`,
+            `${applicationPath}/commands/${extractId(msg)}`,
             "DELETE"
         ],
     createTest: (msg)=>!extractId(msg),
     mapUrlCreate: (_)=>[
-            "commands",
+            `${applicationPath}/commands`,
             "POST"
         ],
-    mapUrlDirectoryRead: "commands",
+    mapUrlDirectoryRead: applicationPath + "/commands",
     transformDirectory
 });
 buildStore({
@@ -36489,23 +36815,23 @@ buildStore({
     service: service8,
     schema: commandSchema,
     mapUrlRead: (msg)=>[
-            `guilds/$>0/commands/${extractId(msg)}`,
+            `${applicationPath}/guilds/$>0/commands/${extractId(msg)}`,
             "GET"
         ],
     mapUrlWrite: (msg)=>[
-            `guilds/$>0/commands/${extractId(msg)}`,
+            `${applicationPath}/guilds/$>0/commands/${extractId(msg)}`,
             "PATCH"
         ],
     mapUrlDelete: (msg)=>[
-            `guilds/$>0/commmands/${extractId(msg)}`,
+            `${applicationPath}/guilds/$>0/commmands/${extractId(msg)}`,
             "DELETE"
         ],
     createTest: (msg)=>!extractId(msg),
     mapUrlCreate: (_)=>[
-            "guilds/$>0/commands",
+            `${applicationPath}/guilds/$>0/commands`,
             "POST"
         ],
-    mapUrlDirectoryRead: "guilds/$>0/commands",
+    mapUrlDirectoryRead: applicationPath + "/guilds/$>0/commands",
     transformDirectory
 });
 buildDefaultDirectory({
@@ -36565,9 +36891,44 @@ const __default32 = {
                     "type": "string"
                 }
             },
+            "receiveIntents": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": [
+                        "GUILDS",
+                        "GUILD_MEMBERS",
+                        "GUILD_BANS",
+                        "GUILD_EMOJIS_AND_STICKERS",
+                        "GUILD_INTEGRATIONS",
+                        "GUILD_WEBHOOKS",
+                        "GUILD_INVITES",
+                        "GUILD_VOICE_STATES",
+                        "GUILD_PRESENCES",
+                        "GUILD_MESSAGES",
+                        "GUILD_MESSAGE_REACTIONS",
+                        "GUILD_MESSAGE_TYPING",
+                        "DIRECT_MESSAGES",
+                        "DIRECT_MESSAGE_REACTIONS",
+                        "DIRECT_MESSAGE_TYPING",
+                        "MESSAGE_CONTENT",
+                        "GUILD_SCHEDULED_EVENTS",
+                        "AUTO_MODERATED_CONFIGURATION",
+                        "AUTO_MODERATED_EXECUTION"
+                    ]
+                }
+            },
             "triggerUrl": {
                 "type": "string",
                 "description": "Url pattern called when Discord calls the service with an interaction"
+            },
+            "memberStoreUrl": {
+                "type": "string",
+                "description": "Url pattern where the service stores member data"
+            },
+            "messageStoreUrl": {
+                "type": "string",
+                "description": "Url pattern where the service stores message data"
             }
         },
         "required": [
@@ -37554,6 +37915,8 @@ class ServiceFactory {
     }
     async initService(serviceConfig, serviceContext) {
         const service = await config.modules.getService(serviceConfig.source);
+        const manifest = this.serviceManifestsBySource[serviceConfig.source];
+        serviceContext.manifest = manifest;
         await service.initFunc(serviceContext, serviceConfig);
     }
     async getMessageFunctionForService(serviceConfig, serviceContext, source) {
@@ -38430,11 +38793,14 @@ class Tenant {
         this.servicesConfig = await this.buildServicesConfig(this.rawServicesConfig);
         this.serviceFactory.serviceConfigs = this.servicesConfig.services;
         await this.serviceFactory.loadAdapterManifests();
-        Promise.all(Object.values(this.serviceFactory.serviceConfigs).map((config)=>{
+        await Promise.all(Object.values(this.serviceFactory.serviceConfigs).map((config)=>{
             const context = makeServiceContext(this.name, this.state(config.basePath));
-            return this.serviceFactory.initService(config, context);
-        })).catch(()=>{
-            throw new Error("Failed to init all services");
+            return this.serviceFactory.initService(config, context).catch((reason)=>{
+                throw new Error(`Service ${config.name} failed to initialize: ${reason}`);
+            });
+        })).catch((reason)=>{
+            config.logger.error(`Failed to init all services, ${reason}`);
+            throw new Error(`${reason}`);
         });
         const res = await this.serviceFactory.getServiceAndConfigByApi("auth");
         if (res) {
@@ -39068,6 +39434,9 @@ const handleOutgoingRequest = async (msg)=>{
             const msgOut = await messageFunction(msg);
             return msgOut;
         } else {
+            let auth = msg.getHeader('Authorization') || '';
+            if (auth) auth = ' Authorization: ' + auth;
+            config.logger.info(`Request external ${msg.method} ${msg.url}${auth}`);
             return config.requestExternal(msg);
         }
     } catch (err) {
@@ -39220,7 +39589,13 @@ service10.all(async (msg, context)=>{
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
     const msgPipelineSpec = await context.makeRequest(getFromStore);
     if (!msgPipelineSpec.ok) return msgPipelineSpec;
-    const pipelineSpec = await msgPipelineSpec.data.asJson();
+    let pipelineSpec = await msgPipelineSpec.data.asJson();
+    if (msg.url.query["$to-step"]) {
+        const toStep = parseInt(msg.url.query["$to-step"][0]);
+        if (!isNaN(toStep) && toStep < pipelineSpec.length - 1) {
+            pipelineSpec = pipelineSpec.slice(0, toStep + 1);
+        }
+    }
     return pipeline(msg, pipelineSpec, msg.url, false, (msg)=>context.makeRequest(msg));
 });
 service14.get(async (msg, context)=>{

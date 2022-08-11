@@ -11,6 +11,7 @@ import { deepEqualIfPresent, mergeDeep } from "rs-core/utility/utility.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
 import { SimpleServiceContext, StateClass, nullState, BaseStateClass } from "../rs-core/ServiceContext.ts";
+import { p } from "https://cdn.skypack.dev/dayjs@1.10.4";
 
 export interface IServicesConfig {
     services: Record<string, IServiceConfig>;
@@ -145,12 +146,22 @@ export class Tenant {
         this.serviceFactory.serviceConfigs = this.servicesConfig.services;
         await this.serviceFactory.loadAdapterManifests();
 
+        const seq = async (ps: Promise<void>[]) => {
+            for (const p of ps) {
+                await p;
+            } 
+        }
+
         // init state for tenant here
-        Promise.all(Object.values(this.serviceFactory.serviceConfigs).map(config => {
+        await Promise.all(Object.values(this.serviceFactory.serviceConfigs).map(config => {
             const context = makeServiceContext(this.name, this.state(config.basePath));
-            return this.serviceFactory.initService(config, context);
-        })).catch(() => {
-            throw new Error("Failed to init all services");
+            return this.serviceFactory.initService(config, context)
+                .catch(reason => {
+                    throw new Error(`Service ${config.name} failed to initialize: ${reason}`);
+                });
+        })).catch((reason) => {
+            config.logger.error(`Failed to init all services, ${reason}`);
+            throw new Error(`${reason}`);
         });
 
         const res = await this.serviceFactory.getServiceAndConfigByApi("auth");

@@ -97,6 +97,9 @@ export const handleOutgoingRequest = async (msg: Message) => {
             const msgOut = await messageFunction(msg);
             return msgOut;
         } else {
+            let auth = msg.getHeader('Authorization') || '';
+            if (auth) auth = ' Authorization: ' + auth;
+            config.logger.info(`Request external ${msg.method} ${msg.url}${auth}`);
             return config.requestExternal(msg);
         }
     } catch (err) {

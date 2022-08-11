@@ -1,5 +1,4 @@
 import { Service } from "rs-core/Service.ts";
-import { ITriggerServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IDataAdapter } from "rs-core/adapter/IDataAdapter.ts";
 import { Message } from "rs-core/Message.ts";
 import { sign_detached_verify } from "https://cdn.jsdelivr.net/gh/intob/tweetnacl-deno@1.1.0/src/sign.ts";
@@ -7,37 +6,15 @@ import { hex2array } from "rs-core/utility/utility.ts";
 import { buildDefaultDirectory, buildStore } from "rs-core/WrapperBuilder.ts";
 import { DirDescriptor, PathInfo } from "rs-core/DirDescriptor.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
-import { contextOrFrameLookup } from "https://deno.land/x/nunjucks@3.2.3/src/runtime.js";
-import { BaseStateClass, SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
-
-type Intent = "GUILDS" | "GUILD_MEMBERS" | "GUILD_BANS" | "GUILD_EMOJIS_AND_STICKERS" |
-			   "GUILD_INTEGRATIONS" | "GUILD_WEBHOOKS" | "GUILD_INVITES" |
-			   "GUILD_VOICE_STATES" | "GUILD_PRESENCES" | "GUILD_MESSAGES" |
-			   "GUILD_MESSAGE_REACTIONS" | "GUILD_MESSAGE_TYPING" | "DIRECT_MESSAGES" |
-			   "DIRECT_MESSAGE_REACTIONS" | "DIRECT_MESSAGE_TYPING" | "MESSAGE_CONTENT" |
-			   "GUILD_SCHEDULED_EVENTS" | "AUTO_MODERATED_CONFIGURATION" | "AUTO_MODERATED_EXECUTION";
-
-interface IDiscordConfig extends ITriggerServiceConfig {
-	publicKey: string; 
-	guildIds?: string[];
-	receiveIntents?: Intent[];
-}
+import { IDiscordConfig } from "./discord/IDiscordConfig.ts";
+import { DiscordState } from "./discord/DiscordState.ts";
+import { sendTrigger } from "./discord/sendTrigger.ts";
 
 const service = new Service<IDataAdapter, IDiscordConfig>();
 
-class DiscordState extends BaseStateClass {
-	//const ws: WebSocket;
-
-	async load(context: SimpleServiceContext) {
-		const gatewayLocationMsg = await context.makeProxyRequest!(
-			Message.fromSpec("GET /gateway/bot", context.tenant) as Message
-		);
-		//if (!gatewayLocationMsg.ok) throw 
-	}
-}
-
 service.initializer(async (context, config) => {
-	//const _dummyState = context.state(StateClass, context, config); // fetch the state to construct & initialize it
+	const state = await context.state(DiscordState, context, config);
+	await state.load(context, config);
 });
 
 const commandSchema = {
@@ -140,35 +117,6 @@ const snowflakeToTimestamp = (snf: string) => {
 	return snfi + 1420070400000;
 }
 
-interface IIntResponse {
-	type: number;
-	data?: IIntMessage;
-}
-
-interface IIntMessage {
-	content?: string;
-}
-
-const messageToInteractionResponse = async (msg: Message) => {
-	const intResponse = {
-		type: 4
-	} as IIntResponse;
-	let intMessage = {} as IIntMessage;
-	if (!msg.data) return intResponse;
-	switch (msg.data.mimeType) {
-		case "text/plain": {
-			intMessage.content = (await msg.data.asString()) || undefined;
-			break;
-		}
-		case "application/json": {
-			intMessage = await msg.data.asJson();
-			break;
-		}
-	}
-	intResponse.data = intMessage;
-	return intResponse;
-}
-
 // incoming interaction from Discord
 service.postPath("interaction", async (msg, context, config) => {
 	if (!await verify(msg, config)) {
@@ -183,34 +131,13 @@ service.postPath("interaction", async (msg, context, config) => {
 		return msg.setDataJson({ type: 1 }).setStatus(200);
 	}
 
-	let respMsg: Message;
-	if (config.triggerUrl) {
-		const url = config.triggerUrl.replace('${name}', json?.data?.name || '');
-		const reqMsg = new Message(url as string, context.tenant, "GET");
-		respMsg = await context.makeRequest(reqMsg);
-	} else {
-		respMsg = new Message('/', context.tenant, 'GET');
-		respMsg.setStatus(400, "Configuration error in bot: no processor");
-	}
-	const intResp = await messageToInteractionResponse(respMsg);
+	const intResp = await sendTrigger("INTERACTION_CREATE", json?.data, config.triggerUrl, context);
 	msg.setDataJson(intResp).setStatus(200);
 	return msg;
 });
 
 service.getPath("command/.schema.json", (msg) =>
 	Promise.resolve(msg.setDataJson(commandSchema, "application/schema+json")));
-
-// const processArgs = (msg: Message): [ string, string ] | string => {
-// 	const scope = msg.url.servicePathElements[0];
-// 	let nameId = msg.url.servicePathElements[1];
-// 	if (nameId.endsWith('.json')) nameId = nameId.slice(0, -5);
-// 	if (!scope) return 'no scope for command';
-// 	if (!/^(global|[0-9]{18})$/.test(scope)) return 'scope not 18 digit snowflake id or "global"';
-// 	if (!nameId) return 'missing command name-id';
-// 	const [ _, id ] = decodeURIComponent(nameId).split('|');
-// 	if (id && !/^[0-9]{18}$/.test(id)) return 'id part of resource is present but is not 18 digit snowflake id';
-// 	return [ scope, id?.trim() ];
-// }
 
 const extractId = (msg: Message) => {
 	const id = decodeURIComponent(msg.url.servicePathElements[1]?.replace(/.json$/, '')).split('|')?.[1];
@@ -226,16 +153,20 @@ const transformDirectory = (json: any) => {
 	};
 };
 
+// The $ substitution here is a url pattern to pick up the service configuration data
+// which is matched against in MapUrl
+const applicationPath = 'applications/${proxyAdapterConfig.applicationId}';
+
 buildStore({
 	basePath: "/command/global",
 	service,
 	schema: commandSchema,
-	mapUrlRead: msg => [ `commands/${extractId(msg)}`, "GET" ],
-	mapUrlWrite: msg => [ `commands/${extractId(msg)}`, "PATCH" ],
-	mapUrlDelete: msg => [ `commands/${extractId(msg)}`, "DELETE" ],
+	mapUrlRead: msg => [  `${applicationPath}/commands/${extractId(msg)}`, "GET" ],
+	mapUrlWrite: msg => [ `${applicationPath}/commands/${extractId(msg)}`, "PATCH" ],
+	mapUrlDelete: msg => [ `${applicationPath}/commands/${extractId(msg)}`, "DELETE" ],
 	createTest: msg => !extractId(msg),
-	mapUrlCreate: _ => [ "commands", "POST" ],
-	mapUrlDirectoryRead: "commands",
+	mapUrlCreate: _ => [ `${applicationPath}/commands`, "POST" ],
+	mapUrlDirectoryRead: applicationPath + "/commands",
 	transformDirectory
 });
 
@@ -243,12 +174,12 @@ buildStore({
 	basePath: "/command",
 	service,
 	schema: commandSchema,
-	mapUrlRead: msg => [ `guilds/$>0/commands/${extractId(msg)}`, "GET" ],
-	mapUrlWrite: msg => [ `guilds/$>0/commands/${extractId(msg)}`, "PATCH" ],
-	mapUrlDelete: msg => [ `guilds/$>0/commmands/${extractId(msg)}`, "DELETE" ],
+	mapUrlRead: msg => [ `${applicationPath}/guilds/$>0/commands/${extractId(msg)}`, "GET" ],
+	mapUrlWrite: msg => [ `${applicationPath}/guilds/$>0/commands/${extractId(msg)}`, "PATCH" ],
+	mapUrlDelete: msg => [ `${applicationPath}/guilds/$>0/commmands/${extractId(msg)}`, "DELETE" ],
 	createTest: msg => !extractId(msg),
-	mapUrlCreate: _ => [ "guilds/$>0/commands", "POST" ],
-	mapUrlDirectoryRead: "guilds/$>0/commands",
+	mapUrlCreate: _ => [ `${applicationPath}/guilds/$>0/commands`, "POST" ],
+	mapUrlDirectoryRead:  applicationPath + "/guilds/$>0/commands",
 	transformDirectory
 });
 

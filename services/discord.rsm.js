@@ -16,7 +16,18 @@ export default {
             },
 	        "publicKey": { "type": "string" },
 	        "guildIds": { "type": "array", "items": { "type": "string" } },
-            "triggerUrl": { "type": "string", "description": "Url pattern called when Discord calls the service with an interaction" }
+            "receiveIntents": { "type": "array", "items": {
+                "type": "string",
+                "enum": [ "GUILDS", "GUILD_MEMBERS", "GUILD_BANS", "GUILD_EMOJIS_AND_STICKERS",
+                    "GUILD_INTEGRATIONS", "GUILD_WEBHOOKS", "GUILD_INVITES",
+                    "GUILD_VOICE_STATES", "GUILD_PRESENCES", "GUILD_MESSAGES",
+                    "GUILD_MESSAGE_REACTIONS", "GUILD_MESSAGE_TYPING", "DIRECT_MESSAGES",
+                    "DIRECT_MESSAGE_REACTIONS", "DIRECT_MESSAGE_TYPING", "MESSAGE_CONTENT",
+                    "GUILD_SCHEDULED_EVENTS", "AUTO_MODERATED_CONFIGURATION", "AUTO_MODERATED_EXECUTION" ]
+            } },
+            "triggerUrl": { "type": "string", "description": "Url pattern called when Discord calls the service with an interaction" },
+            "memberStoreUrl": { "type": "string", "description": "Url pattern where the service stores member data" },
+            "messageStoreUrl": { "type": "string", "description": "Url pattern where the service stores message data" }
         },
         "required": [ "publicKey", "proxyAdapterConfig" ]
     },

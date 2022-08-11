@@ -149,6 +149,8 @@ export class ServiceFactory {
 
     async initService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>): Promise<void> {
         const service = await config.modules.getService(serviceConfig.source);
+        const manifest = this.serviceManifestsBySource[serviceConfig.source];
+        serviceContext.manifest = manifest;
         await service.initFunc(serviceContext, serviceConfig);
     }
 

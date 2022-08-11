@@ -9,14 +9,15 @@ export interface DiscordProxyAdapterProps {
     applicationId: string;
 }
 
-const discordBaseUrl = "https://discord.com/api/v8";
+const discordBaseUrl = "https://discord.com/api/v10";
 
 export default class DiscordProxyAdapter implements IProxyAdapter {
   constructor(public context: AdapterContext, public props: DiscordProxyAdapterProps) {
   }
     
   buildMessage(msg: Message): Promise<Message> {
-    const url = pathCombine(discordBaseUrl, `applications/${this.props.applicationId}`, msg.url.path);
+    const url = pathCombine(discordBaseUrl, msg.url.path);
+    console.log(url);
     msg.url = new Url(url);
     msg.setHeader("Authorization", "Bot " + this.props.botToken);
     msg.setHeader("User-Agent", "DiscordBot (https://restspace.io, 0.1)");
