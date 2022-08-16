@@ -1,7 +1,7 @@
 {
     "imports": {
         "rs-core/": "../rs-core/",
-        "std/": "https://deno.land/std@0.96.0/",
+        "std/": "https://deno.land/std@0.152.0/",
         "events": "https://deno.land/x/eventemitter@1.2.1/mod.ts"
     }
 }

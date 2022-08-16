@@ -3,7 +3,7 @@ import { Tenant } from "./tenant.ts";
 import * as log from "std/log/mod.ts";
 import Ajv from "https://cdn.skypack.dev/ajv?dts";
 import * as path from "std/path/mod.ts";
-import { LogRecord } from "https://deno.land/std@0.96.0/log/logger.ts";
+import { LogRecord } from "std/log/logger.ts";
 import { Authoriser } from "./auth/Authoriser.ts";
 import { IChordServiceConfig } from "rs-core/IServiceConfig.ts";
 import { schemaIChordServiceConfig } from "rs-core/IServiceConfig.ts";
