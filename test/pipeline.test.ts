@@ -1,4 +1,4 @@
-import { assertStrictEquals } from "std/testing/asserts.ts";
+import { assert, assertStrictEquals } from "std/testing/asserts.ts";
 import { Message, MessageMethod } from "rs-core/Message.ts";
 import { config } from "../config.ts";
 import { testServicesConfig } from "./TestConfigFileAdapter.ts";
@@ -170,7 +170,7 @@ Deno.test('conditional mime type subpipelines', async function () {
 //     assertStrictEquals(domainCount, 1);
 // });
 Deno.test('transform', async function () {
-    const msgOut = await await pipeline(testMessage('/', 'GET'), [
+    const msgOut = await pipeline(testMessage('/', 'GET'), [
         "GET /test/object",
         {
             out: "val1"
@@ -180,7 +180,7 @@ Deno.test('transform', async function () {
     assertStrictEquals(output.out, 'aaa');
 });
 Deno.test('transform with url query string', async function () {
-    const msgOut = await await pipeline(testMessage('/?vvv=111&projectId=aa%20a', 'GET'), [
+    const msgOut = await pipeline(testMessage('/?vvv=111&projectId=aa%20a', 'GET'), [
         "GET /test/object",
         {
             out: "pathPattern('$?(projectId)')"
@@ -190,7 +190,7 @@ Deno.test('transform with url query string', async function () {
     assertStrictEquals(output.out, 'aa a');
 });
 Deno.test('transform with url segments', async function () {
-    const msgOut = await await pipeline(testMessage('/111/aa%20a', 'GET'), [
+    const msgOut = await pipeline(testMessage('/111/aa%20a', 'GET'), [
         "GET /test/object",
         {
             out: "pathPattern('$<0')"
@@ -198,6 +198,47 @@ Deno.test('transform with url segments', async function () {
     ]);
     const output = await msgOut.data?.asJson();
     assertStrictEquals(output.out, 'aa a');
+});
+Deno.test('transform list', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'GET'), [
+        {
+            "$this": "[ 'abc', 'def' ]"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assert(Array.isArray(output));
+    assertStrictEquals(output[0], 'abc');
+});
+Deno.test('transform list 2', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson({ a: { x: 111 }, b: { x: 222 }}), [
+        {
+            "$this": "propsToList($this)"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assert(Array.isArray(output));
+    assertStrictEquals(output[0].x, 111);
+});
+Deno.test('list form function', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson([
+        {
+            a: { x: 111 },
+            b: { x: 222 }
+        }
+    ]), [
+        {
+            "$this": [
+                "transformMap()",
+                "$this",
+                {
+                    q: "b.x"
+                }
+            ]
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    console.log(output);
+    assertStrictEquals(output[0].q, 222);
 });
 // Deno.test('simple post', async function () {
 //     let postedBody: any = {};

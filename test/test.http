@@ -38,7 +38,7 @@ OPTIONS https://restspace.local:3131/?$list=details
 Origin: https://restspace.local:3003
 
 ###
-GET https://restspace.local:3131/files/?$list=details
+GET https://restspace.local:3131/files/?$filter=/lib/selector-schema
 
 ###
 POST https://restspace.local:3131/templates/test
@@ -114,3 +114,6 @@ hello
 ###
 
 https://restspace.local:3131/files/tulips.png
+
+###
+https://ademchic2.restspace.io/project-list

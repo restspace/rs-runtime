@@ -3,14 +3,15 @@ import { MessageFunction, Service } from "../rs-core/Service.ts";
 import { Source } from "rs-core/Source.ts";
 import { Url } from "rs-core/Url.ts";
 import { config } from "./config.ts";
-import { IServiceConfigTemplate, IServiceConfig } from "rs-core/IServiceConfig.ts";
+import { IServiceConfigTemplate, IServiceConfig, IAccessControl } from "rs-core/IServiceConfig.ts";
 import { ServiceWrapper } from "./ServiceWrapper.ts";
 import { applyServiceConfigTemplate } from "./Modules.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
-import { ServiceContext } from "../rs-core/ServiceContext.ts";
+import { ServiceContext, SimpleServiceContext } from "../rs-core/ServiceContext.ts";
 import { StateFunction } from "./tenant.ts";
+import { Externality } from "./pipeline/pipelineStep.ts";
 
 interface ITemplateConfigFromManifest {
     serviceConfigTemplates?: Record<string, IServiceConfigTemplate>;
@@ -196,8 +197,23 @@ export class ServiceFactory {
         return (msg: Message) => sourceServiceFunc(msg, serviceContext, copyServiceConfig);
     }
 
+    attachFilter(url: Url, func: MessageFunction, context: ServiceContext<IAdapter>): MessageFunction {
+        const filterUrl = url.query['$filter']?.[0];
+        if (filterUrl) {
+            const url = new Url(filterUrl);
+            const newFunc: MessageFunction = async (msg: Message) => {
+                const msg2 = await func(msg);
+                msg2.setUrl(url).setMethod('POST');
+                return context.makeRequest(msg2, Externality.Outer);
+            };
+            return newFunc;
+        } else {
+            return func;
+        }
+    }
+
     /** select service with longest path match */
-    getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => StateFunction, source: Source): Promise<MessageFunction> {
+    async getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => StateFunction, source: Source): Promise<MessageFunction> {
         const pathParts = [ ...url.pathElements ];
 
         let exactPath = '/' + pathParts.join('/') + '.';
@@ -209,7 +225,8 @@ export class ServiceFactory {
             serviceConfig = this.serviceConfigs![exactPath];
             if (serviceConfig) {
                 serviceContext.state = stateByBasePath(exactPath);
-                return this.getMessageFunctionForService(serviceConfig, serviceContext, source);
+                const innerFunc = await this.getMessageFunctionForService(serviceConfig, serviceContext, source);
+                return await this.attachFilter(url, innerFunc, serviceContext)
             } else {
                 if (pathParts.length === 0) break;
                 pathParts.pop();
