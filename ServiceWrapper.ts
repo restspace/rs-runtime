@@ -48,9 +48,12 @@ export class ServiceWrapper {
         }
         newMsg.setHeader('X-Restspace-Service', serviceConfig.name);
 
-        if (newMsg.data) {
+        if (newMsg.data && !newMsg.data.wasMimeHandled) {
             const handler = mimeHandlers[newMsg.data.mimeType];
-            if (handler) newMsg = await handler(newMsg, msg.url, (innerMsg: Message) => this.internal(innerMsg, context, serviceConfig));
+            if (handler) {
+                newMsg = await handler(newMsg, msg.url, (innerMsg: Message) => this.internal(innerMsg, context, serviceConfig));
+                if (newMsg.data) newMsg.data.wasMimeHandled = true;
+            }
         }
         return newMsg;
     }

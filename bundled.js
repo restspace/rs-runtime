@@ -23931,7 +23931,9 @@ dayjs_min.p;
 dayjs_min.unix;
 const arrayToFunction = (arr, transformHelper)=>{
     if (arr.length === 0) return '';
-    const functionName = arr[0];
+    let functionName = arr[0];
+    if (!functionName.endsWith('()')) return '';
+    functionName = functionName.slice(0, -2);
     const args = [];
     for(let i = 1; i < arr.length; i++){
         if (Array.isArray(arr[i])) {
@@ -23995,10 +23997,11 @@ const transformation = (transformObject, data, url)=>{
     if (typeof transformObject === 'string') {
         return evaluate(transformObject, data, transformHelper);
     } else if (Array.isArray(transformObject)) {
-        if (transformObject.length === 0 || typeof transformObject[0] !== 'string' || !transformObject[0].endsWith("(")) {
+        if (transformObject.length === 0 || typeof transformObject[0] !== 'string' || !transformObject[0].endsWith("()")) {
             return transformObject.map((item)=>transformation(item, data, url));
         }
         const expr = arrayToFunction(transformObject, transformHelper);
+        console.log('expr ' + expr);
         const arrResult = evaluate(expr, data, transformHelper);
         return arrResult;
     } else {
@@ -39557,6 +39560,9 @@ const handleIncomingRequest = async (msg)=>{
         config.logger.info(`Request (${tenantName}) by ${msg.user?.email || '?'} ${msg.method} ${msg.url}`);
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg);
+        if (!msgOut.ok) {
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
+        }
         return msgOut;
     } catch (err) {
         config.logger.warning(`request processing failed: ${err}`);
@@ -39573,19 +39579,21 @@ const handleOutgoingRequest = async (msg)=>{
         } else {
             tenantName = tenantFromHostname(msg.url.domain);
         }
+        let msgOut;
         if (tenantName !== null) {
             const tenant = await getTenant(tenantName || 'main');
             config.logger.info(`Request (${tenantName}) ${msg.method} ${msg.url}`);
             msg.tenant = tenantName;
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.Internal);
-            const msgOut = await messageFunction(msg);
-            return msgOut;
+            msgOut = await messageFunction(msg);
         } else {
-            let auth = msg.getHeader('Authorization') || '';
-            if (auth) auth = ' Authorization: ' + auth;
-            config.logger.info(`Request external ${msg.method} ${msg.url}${auth}`);
-            return config.requestExternal(msg);
+            config.logger.info(`Request external ${msg.method} ${msg.url}`);
+            msgOut = await config.requestExternal(msg);
         }
+        if (!msgOut.ok) {
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
+        }
+        return msgOut;
     } catch (err) {
         config.logger.warning(`request processing failed: ${err}`);
         return originalMethod === 'OPTIONS' && tenantName ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
@@ -39710,7 +39718,6 @@ service13.setUser(async (msg)=>{
         });
         const refreshTime = (msg.user.exp || 0) - 30 * 60 * 1000 / 2;
         const nowTime = new Date().getTime();
-        config.logger.info(`refreshTime ${new Date(refreshTime)} nowTime ${new Date(nowTime)}`);
         if (nowTime > refreshTime) {
             const timeToExpirySecs = await setJwt(msg, msg.user);
             const newExpiryTime = nowTime + timeToExpirySecs * 1000;

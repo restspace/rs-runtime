@@ -123,7 +123,6 @@ service.setUser(async (msg) => {
         // refresh jwt expiry if later than halfway through expiry
         const refreshTime = (msg.user.exp || 0) - jwtExpiryMins * 60 * 1000 / 2;
         const nowTime = new Date().getTime();
-        config.logger.info(`refreshTime ${new Date(refreshTime)} nowTime ${new Date(nowTime)}`);
         if (nowTime > refreshTime) {
             const timeToExpirySecs = await setJwt(msg, msg.user as AuthUser);
             const newExpiryTime = nowTime + timeToExpirySecs * 1000;

@@ -69,6 +69,9 @@ export const handleIncomingRequest = async (msg: Message) => {
         config.logger.info(`Request (${tenantName}) by ${msg.user?.email || '?'} ${msg.method} ${msg.url}`);
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg);
+        if (!msgOut.ok) {
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
+        }
         return msgOut;
     } catch (err) {
         config.logger.warning(`request processing failed: ${err}`);
@@ -89,19 +92,22 @@ export const handleOutgoingRequest = async (msg: Message) => {
             tenantName = tenantFromHostname(msg.url.domain);
         }
 
+        let msgOut: Message;
         if (tenantName !== null) {
             const tenant = await getTenant(tenantName || 'main');
             config.logger.info(`Request (${tenantName}) ${msg.method} ${msg.url}`);
             msg.tenant = tenantName;
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.Internal);
-            const msgOut = await messageFunction(msg);
-            return msgOut;
+            msgOut = await messageFunction(msg);
         } else {
-            let auth = msg.getHeader('Authorization') || '';
-            if (auth) auth = ' Authorization: ' + auth;
-            config.logger.info(`Request external ${msg.method} ${msg.url}${auth}`);
-            return config.requestExternal(msg);
+            config.logger.info(`Request external ${msg.method} ${msg.url}`);
+            msgOut = await config.requestExternal(msg);
         }
+        
+        if (!msgOut.ok) {
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
+        }
+        return msgOut;
     } catch (err) {
         config.logger.warning(`request processing failed: ${err}`);
         return originalMethod === 'OPTIONS' && tenantName
