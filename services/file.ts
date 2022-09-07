@@ -51,6 +51,9 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IFileAdapt
     // TODO manage as a stream as adapter can list directory files as a stream
     const readDirPath = async (path: string) => {
         const dirData = await adapter.readDirectory(path);
+
+        // convention is a non-existent directory is not a 404 but an empty list, because in some systems,
+        // a directory exists only by virtue of files existing on the path of the directory
         const paths = dirData?.ok ? ((await dirData.asJson()) || []) : [];
         return {
             path: msg.url.servicePath,

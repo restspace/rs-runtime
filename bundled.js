@@ -1352,14 +1352,14 @@ function resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl
             return '';
         }
     };
-    const result = pathPattern.replace('$*', currentPath + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$$', encodeURIComponent(fullUrl || '')).replace('$P*', fullPathParts.join('/') + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$N*', name || '$N*').replace(/\$([BSNP])?([<>]\d+)([<>]\d+)?(:\((.+?)\)|:\$([BSNP])?([<>]\d+)([<>]\d+)?)?/g, (_match, p1, p2, p3, p4, p5, p6, p7, p8)=>{
+    const result = pathPattern.replace('$*', currentPath + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$$', encodeURIComponent(fullUrl || '')).replace('$P*', fullPathParts.join('/') + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$N*', name || '').replace(/\$([BSNP])?([<>]\d+)([<>]\d+)?(:\((.+?)\)|:\$([BSNP])?([<>]\d+)([<>]\d+)?)?/g, (_match, p1, p2, p3, p4, p5, p6, p7, p8)=>{
         const partsMatch = getPartsMatch(p1, p2, p3);
         if (partsMatch || !p4) return partsMatch;
         if (p4.startsWith(':(')) return p5;
         return getPartsMatch(p6, p7, p8);
     }).replace(/\$\?(\*|\((.+?)\))/g, (_match, p1, p2)=>{
         if (p1 === '*') return queryString(query);
-        return (query || {})[p2] === [] ? '' : (query || {})[p2].join(',') || '';
+        return (query || {})[p2] === [] ? '' : ((query || {})[p2] || []).join(',') || '';
     });
     return result;
 }
@@ -11894,6 +11894,7 @@ async function writeAll(w, arr) {
 }
 class MessageBody {
     statusCode;
+    wasMimeHandled;
     _size;
     get size() {
         if (this.data instanceof ArrayBuffer) return this.data.byteLength;
@@ -11915,6 +11916,7 @@ class MessageBody {
         this.dateModified = dateModified;
         this.filename = filename;
         this.statusCode = 0;
+        this.wasMimeHandled = false;
         this._size = size;
     }
     copy() {
@@ -19842,1236 +19844,6 @@ async function saveUser(context, userUrlPattern, msg, user, internalPrivilege = 
 function userIsAnon(user) {
     return !user.email;
 }
-new TextEncoder();
-new TextDecoder();
-"./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
-new Uint8Array([
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    0,
-    1,
-    54,
-    55,
-    56,
-    57,
-    58,
-    59,
-    60,
-    61,
-    62,
-    63,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-    18,
-    19,
-    20,
-    21,
-    22,
-    23,
-    24,
-    25,
-    26,
-    27,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    28,
-    29,
-    30,
-    31,
-    32,
-    33,
-    34,
-    35,
-    36,
-    37,
-    38,
-    39,
-    40,
-    41,
-    42,
-    43,
-    44,
-    45,
-    46,
-    47,
-    48,
-    49,
-    50,
-    51,
-    52,
-    53,
-    -1,
-    -1,
-    -1,
-    -1,
-    -1, 
-]);
-globalThis.crypto;
-new Int32Array([
-    0x243f6a88,
-    0x85a308d3,
-    0x13198a2e,
-    0x03707344,
-    0xa4093822,
-    0x299f31d0,
-    0x082efa98,
-    0xec4e6c89,
-    0x452821e6,
-    0x38d01377,
-    0xbe5466cf,
-    0x34e90c6c,
-    0xc0ac29b7,
-    0xc97c50dd,
-    0x3f84d5b5,
-    0xb5470917,
-    0x9216d5d9,
-    0x8979fb1b, 
-]);
-new Int32Array([
-    0xd1310ba6,
-    0x98dfb5ac,
-    0x2ffd72db,
-    0xd01adfb7,
-    0xb8e1afed,
-    0x6a267e96,
-    0xba7c9045,
-    0xf12c7f99,
-    0x24a19947,
-    0xb3916cf7,
-    0x0801f2e2,
-    0x858efc16,
-    0x636920d8,
-    0x71574e69,
-    0xa458fea3,
-    0xf4933d7e,
-    0x0d95748f,
-    0x728eb658,
-    0x718bcd58,
-    0x82154aee,
-    0x7b54a41d,
-    0xc25a59b5,
-    0x9c30d539,
-    0x2af26013,
-    0xc5d1b023,
-    0x286085f0,
-    0xca417918,
-    0xb8db38ef,
-    0x8e79dcb0,
-    0x603a180e,
-    0x6c9e0e8b,
-    0xb01e8a3e,
-    0xd71577c1,
-    0xbd314b27,
-    0x78af2fda,
-    0x55605c60,
-    0xe65525f3,
-    0xaa55ab94,
-    0x57489862,
-    0x63e81440,
-    0x55ca396a,
-    0x2aab10b6,
-    0xb4cc5c34,
-    0x1141e8ce,
-    0xa15486af,
-    0x7c72e993,
-    0xb3ee1411,
-    0x636fbc2a,
-    0x2ba9c55d,
-    0x741831f6,
-    0xce5c3e16,
-    0x9b87931e,
-    0xafd6ba33,
-    0x6c24cf5c,
-    0x7a325381,
-    0x28958677,
-    0x3b8f4898,
-    0x6b4bb9af,
-    0xc4bfe81b,
-    0x66282193,
-    0x61d809cc,
-    0xfb21a991,
-    0x487cac60,
-    0x5dec8032,
-    0xef845d5d,
-    0xe98575b1,
-    0xdc262302,
-    0xeb651b88,
-    0x23893e81,
-    0xd396acc5,
-    0x0f6d6ff3,
-    0x83f44239,
-    0x2e0b4482,
-    0xa4842004,
-    0x69c8f04a,
-    0x9e1f9b5e,
-    0x21c66842,
-    0xf6e96c9a,
-    0x670c9c61,
-    0xabd388f0,
-    0x6a51a0d2,
-    0xd8542f68,
-    0x960fa728,
-    0xab5133a3,
-    0x6eef0b6c,
-    0x137a3be4,
-    0xba3bf050,
-    0x7efb2a98,
-    0xa1f1651d,
-    0x39af0176,
-    0x66ca593e,
-    0x82430e88,
-    0x8cee8619,
-    0x456f9fb4,
-    0x7d84a5c3,
-    0x3b8b5ebe,
-    0xe06f75d8,
-    0x85c12073,
-    0x401a449f,
-    0x56c16aa6,
-    0x4ed3aa62,
-    0x363f7706,
-    0x1bfedf72,
-    0x429b023d,
-    0x37d0d724,
-    0xd00a1248,
-    0xdb0fead3,
-    0x49f1c09b,
-    0x075372c9,
-    0x80991b7b,
-    0x25d479d8,
-    0xf6e8def7,
-    0xe3fe501a,
-    0xb6794c3b,
-    0x976ce0bd,
-    0x04c006ba,
-    0xc1a94fb6,
-    0x409f60c4,
-    0x5e5c9ec2,
-    0x196a2463,
-    0x68fb6faf,
-    0x3e6c53b5,
-    0x1339b2eb,
-    0x3b52ec6f,
-    0x6dfc511f,
-    0x9b30952c,
-    0xcc814544,
-    0xaf5ebd09,
-    0xbee3d004,
-    0xde334afd,
-    0x660f2807,
-    0x192e4bb3,
-    0xc0cba857,
-    0x45c8740f,
-    0xd20b5f39,
-    0xb9d3fbdb,
-    0x5579c0bd,
-    0x1a60320a,
-    0xd6a100c6,
-    0x402c7279,
-    0x679f25fe,
-    0xfb1fa3cc,
-    0x8ea5e9f8,
-    0xdb3222f8,
-    0x3c7516df,
-    0xfd616b15,
-    0x2f501ec8,
-    0xad0552ab,
-    0x323db5fa,
-    0xfd238760,
-    0x53317b48,
-    0x3e00df82,
-    0x9e5c57bb,
-    0xca6f8ca0,
-    0x1a87562e,
-    0xdf1769db,
-    0xd542a8f6,
-    0x287effc3,
-    0xac6732c6,
-    0x8c4f5573,
-    0x695b27b0,
-    0xbbca58c8,
-    0xe1ffa35d,
-    0xb8f011a0,
-    0x10fa3d98,
-    0xfd2183b8,
-    0x4afcb56c,
-    0x2dd1d35b,
-    0x9a53e479,
-    0xb6f84565,
-    0xd28e49bc,
-    0x4bfb9790,
-    0xe1ddf2da,
-    0xa4cb7e33,
-    0x62fb1341,
-    0xcee4c6e8,
-    0xef20cada,
-    0x36774c01,
-    0xd07e9efe,
-    0x2bf11fb4,
-    0x95dbda4d,
-    0xae909198,
-    0xeaad8e71,
-    0x6b93d5a0,
-    0xd08ed1d0,
-    0xafc725e0,
-    0x8e3c5b2f,
-    0x8e7594b7,
-    0x8ff6e2fb,
-    0xf2122b64,
-    0x8888b812,
-    0x900df01c,
-    0x4fad5ea0,
-    0x688fc31c,
-    0xd1cff191,
-    0xb3a8c1ad,
-    0x2f2f2218,
-    0xbe0e1777,
-    0xea752dfe,
-    0x8b021fa1,
-    0xe5a0cc0f,
-    0xb56f74e8,
-    0x18acf3d6,
-    0xce89e299,
-    0xb4a84fe0,
-    0xfd13e0b7,
-    0x7cc43b81,
-    0xd2ada8d9,
-    0x165fa266,
-    0x80957705,
-    0x93cc7314,
-    0x211a1477,
-    0xe6ad2065,
-    0x77b5fa86,
-    0xc75442f5,
-    0xfb9d35cf,
-    0xebcdaf0c,
-    0x7b3e89a0,
-    0xd6411bd3,
-    0xae1e7e49,
-    0x00250e2d,
-    0x2071b35e,
-    0x226800bb,
-    0x57b8e0af,
-    0x2464369b,
-    0xf009b91e,
-    0x5563911d,
-    0x59dfa6aa,
-    0x78c14389,
-    0xd95a537f,
-    0x207d5ba2,
-    0x02e5b9c5,
-    0x83260376,
-    0x6295cfa9,
-    0x11c81968,
-    0x4e734a41,
-    0xb3472dca,
-    0x7b14a94a,
-    0x1b510052,
-    0x9a532915,
-    0xd60f573f,
-    0xbc9bc6e4,
-    0x2b60a476,
-    0x81e67400,
-    0x08ba6fb5,
-    0x571be91f,
-    0xf296ec6b,
-    0x2a0dd915,
-    0xb6636521,
-    0xe7b9f9b6,
-    0xff34052e,
-    0xc5855664,
-    0x53b02d5d,
-    0xa99f8fa1,
-    0x08ba4799,
-    0x6e85076a,
-    0x4b7a70e9,
-    0xb5b32944,
-    0xdb75092e,
-    0xc4192623,
-    0xad6ea6b0,
-    0x49a7df7d,
-    0x9cee60b8,
-    0x8fedb266,
-    0xecaa8c71,
-    0x699a17ff,
-    0x5664526c,
-    0xc2b19ee1,
-    0x193602a5,
-    0x75094c29,
-    0xa0591340,
-    0xe4183a3e,
-    0x3f54989a,
-    0x5b429d65,
-    0x6b8fe4d6,
-    0x99f73fd6,
-    0xa1d29c07,
-    0xefe830f5,
-    0x4d2d38e6,
-    0xf0255dc1,
-    0x4cdd2086,
-    0x8470eb26,
-    0x6382e9c6,
-    0x021ecc5e,
-    0x09686b3f,
-    0x3ebaefc9,
-    0x3c971814,
-    0x6b6a70a1,
-    0x687f3584,
-    0x52a0e286,
-    0xb79c5305,
-    0xaa500737,
-    0x3e07841c,
-    0x7fdeae5c,
-    0x8e7d44ec,
-    0x5716f2b8,
-    0xb03ada37,
-    0xf0500c0d,
-    0xf01c1f04,
-    0x0200b3ff,
-    0xae0cf51a,
-    0x3cb574b2,
-    0x25837a58,
-    0xdc0921bd,
-    0xd19113f9,
-    0x7ca92ff6,
-    0x94324773,
-    0x22f54701,
-    0x3ae5e581,
-    0x37c2dadc,
-    0xc8b57634,
-    0x9af3dda7,
-    0xa9446146,
-    0x0fd0030e,
-    0xecc8c73e,
-    0xa4751e41,
-    0xe238cd99,
-    0x3bea0e2f,
-    0x3280bba1,
-    0x183eb331,
-    0x4e548b38,
-    0x4f6db908,
-    0x6f420d03,
-    0xf60a04bf,
-    0x2cb81290,
-    0x24977c79,
-    0x5679b072,
-    0xbcaf89af,
-    0xde9a771f,
-    0xd9930810,
-    0xb38bae12,
-    0xdccf3f2e,
-    0x5512721f,
-    0x2e6b7124,
-    0x501adde6,
-    0x9f84cd87,
-    0x7a584718,
-    0x7408da17,
-    0xbc9f9abc,
-    0xe94b7d8c,
-    0xec7aec3a,
-    0xdb851dfa,
-    0x63094366,
-    0xc464c3d2,
-    0xef1c1847,
-    0x3215d908,
-    0xdd433b37,
-    0x24c2ba16,
-    0x12a14d43,
-    0x2a65c451,
-    0x50940002,
-    0x133ae4dd,
-    0x71dff89e,
-    0x10314e55,
-    0x81ac77d6,
-    0x5f11199b,
-    0x043556f1,
-    0xd7a3c76b,
-    0x3c11183b,
-    0x5924a509,
-    0xf28fe6ed,
-    0x97f1fbfa,
-    0x9ebabf2c,
-    0x1e153c6e,
-    0x86e34570,
-    0xeae96fb1,
-    0x860e5e0a,
-    0x5a3e2ab3,
-    0x771fe71c,
-    0x4e3d06fa,
-    0x2965dcb9,
-    0x99e71d0f,
-    0x803e89d6,
-    0x5266c825,
-    0x2e4cc978,
-    0x9c10b36a,
-    0xc6150eba,
-    0x94e2ea78,
-    0xa5fc3c53,
-    0x1e0a2df4,
-    0xf2f74ea7,
-    0x361d2b3d,
-    0x1939260f,
-    0x19c27960,
-    0x5223a708,
-    0xf71312b6,
-    0xebadfe6e,
-    0xeac31f66,
-    0xe3bc4595,
-    0xa67bc883,
-    0xb17f37d1,
-    0x018cff28,
-    0xc332ddef,
-    0xbe6c5aa5,
-    0x65582185,
-    0x68ab9802,
-    0xeecea50f,
-    0xdb2f953b,
-    0x2aef7dad,
-    0x5b6e2f84,
-    0x1521b628,
-    0x29076170,
-    0xecdd4775,
-    0x619f1510,
-    0x13cca830,
-    0xeb61bd96,
-    0x0334fe1e,
-    0xaa0363cf,
-    0xb5735c90,
-    0x4c70a239,
-    0xd59e9e0b,
-    0xcbaade14,
-    0xeecc86bc,
-    0x60622ca7,
-    0x9cab5cab,
-    0xb2f3846e,
-    0x648b1eaf,
-    0x19bdf0ca,
-    0xa02369b9,
-    0x655abb50,
-    0x40685a32,
-    0x3c2ab4b3,
-    0x319ee9d5,
-    0xc021b8f7,
-    0x9b540b19,
-    0x875fa099,
-    0x95f7997e,
-    0x623d7da8,
-    0xf837889a,
-    0x97e32d77,
-    0x11ed935f,
-    0x16681281,
-    0x0e358829,
-    0xc7e61fd6,
-    0x96dedfa1,
-    0x7858ba99,
-    0x57f584a5,
-    0x1b227263,
-    0x9b83c3ff,
-    0x1ac24696,
-    0xcdb30aeb,
-    0x532e3054,
-    0x8fd948e4,
-    0x6dbc3128,
-    0x58ebf2ef,
-    0x34c6ffea,
-    0xfe28ed61,
-    0xee7c3c73,
-    0x5d4a14d9,
-    0xe864b7e3,
-    0x42105d14,
-    0x203e13e0,
-    0x45eee2b6,
-    0xa3aaabea,
-    0xdb6c4f15,
-    0xfacb4fd0,
-    0xc742f442,
-    0xef6abbb5,
-    0x654f3b1d,
-    0x41cd2105,
-    0xd81e799e,
-    0x86854dc7,
-    0xe44b476a,
-    0x3d816250,
-    0xcf62a1f2,
-    0x5b8d2646,
-    0xfc8883a0,
-    0xc1c7b6a3,
-    0x7f1524c3,
-    0x69cb7492,
-    0x47848a0b,
-    0x5692b285,
-    0x095bbf00,
-    0xad19489d,
-    0x1462b174,
-    0x23820e00,
-    0x58428d2a,
-    0x0c55f5ea,
-    0x1dadf43e,
-    0x233f7061,
-    0x3372f092,
-    0x8d937e41,
-    0xd65fecf1,
-    0x6c223bdb,
-    0x7cde3759,
-    0xcbee7460,
-    0x4085f2a7,
-    0xce77326e,
-    0xa6078084,
-    0x19f8509e,
-    0xe8efd855,
-    0x61d99735,
-    0xa969a7aa,
-    0xc50c06c2,
-    0x5a04abfc,
-    0x800bcadc,
-    0x9e447a2e,
-    0xc3453484,
-    0xfdd56705,
-    0x0e1e9ec9,
-    0xdb73dbd3,
-    0x105588cd,
-    0x675fda79,
-    0xe3674340,
-    0xc5c43465,
-    0x713e38d8,
-    0x3d28f89e,
-    0xf16dff20,
-    0x153e21e7,
-    0x8fb03d4a,
-    0xe6e39f2b,
-    0xdb83adf7,
-    0xe93d5a68,
-    0x948140f7,
-    0xf64c261c,
-    0x94692934,
-    0x411520f7,
-    0x7602d4f7,
-    0xbcf46b2e,
-    0xd4a20068,
-    0xd4082471,
-    0x3320f46a,
-    0x43b7d4b7,
-    0x500061af,
-    0x1e39f62e,
-    0x97244546,
-    0x14214f74,
-    0xbf8b8840,
-    0x4d95fc1d,
-    0x96b591af,
-    0x70f4ddd3,
-    0x66a02f45,
-    0xbfbc09ec,
-    0x03bd9785,
-    0x7fac6dd0,
-    0x31cb8504,
-    0x96eb27b3,
-    0x55fd3941,
-    0xda2547e6,
-    0xabca0a9a,
-    0x28507825,
-    0x530429f4,
-    0x0a2c86da,
-    0xe9b66dfb,
-    0x68dc1462,
-    0xd7486900,
-    0x680ec0a4,
-    0x27a18dee,
-    0x4f3ffea2,
-    0xe887ad8c,
-    0xb58ce006,
-    0x7af4d6b6,
-    0xaace1e7c,
-    0xd3375fec,
-    0xce78a399,
-    0x406b2a42,
-    0x20fe9e35,
-    0xd9f385b9,
-    0xee39d7ab,
-    0x3b124e8b,
-    0x1dc9faf7,
-    0x4b6d1856,
-    0x26a36631,
-    0xeae397b2,
-    0x3a6efa74,
-    0xdd5b4332,
-    0x6841e7f7,
-    0xca7820fb,
-    0xfb0af54e,
-    0xd8feb397,
-    0x454056ac,
-    0xba489527,
-    0x55533a3a,
-    0x20838d87,
-    0xfe6ba9b7,
-    0xd096954b,
-    0x55a867bc,
-    0xa1159a58,
-    0xcca92963,
-    0x99e1db33,
-    0xa62a4a56,
-    0x3f3125f9,
-    0x5ef47e1c,
-    0x9029317c,
-    0xfdf8e802,
-    0x04272f70,
-    0x80bb155c,
-    0x05282ce3,
-    0x95c11548,
-    0xe4c66d22,
-    0x48c1133f,
-    0xc70f86dc,
-    0x07f9c9ee,
-    0x41041f0f,
-    0x404779a4,
-    0x5d886e17,
-    0x325f51eb,
-    0xd59bc0d1,
-    0xf2bcc18f,
-    0x41113564,
-    0x257b7834,
-    0x602a9c60,
-    0xdff8e8a3,
-    0x1f636c1b,
-    0x0e12b4c2,
-    0x02e1329e,
-    0xaf664fd1,
-    0xcad18115,
-    0x6b2395e0,
-    0x333e92e1,
-    0x3b240b62,
-    0xeebeb922,
-    0x85b2a20e,
-    0xe6ba0d99,
-    0xde720c8c,
-    0x2da2f728,
-    0xd0127845,
-    0x95b794fd,
-    0x647d0862,
-    0xe7ccf5f0,
-    0x5449a36f,
-    0x877d48fa,
-    0xc39dfd27,
-    0xf33e8d1e,
-    0x0a476341,
-    0x992eff74,
-    0x3a6f6eab,
-    0xf4f8fd37,
-    0xa812dc60,
-    0xa1ebddf8,
-    0x991be14c,
-    0xdb6e6b0d,
-    0xc67b5510,
-    0x6d672c37,
-    0x2765d43b,
-    0xdcd0e804,
-    0xf1290dc7,
-    0xcc00ffa3,
-    0xb5390f92,
-    0x690fed0b,
-    0x667b9ffb,
-    0xcedb7d9c,
-    0xa091cf0b,
-    0xd9155ea3,
-    0xbb132f88,
-    0x515bad24,
-    0x7b9479bf,
-    0x763bd6eb,
-    0x37392eb3,
-    0xcc115979,
-    0x8026e297,
-    0xf42e312d,
-    0x6842ada7,
-    0xc66a2b3b,
-    0x12754ccc,
-    0x782ef11c,
-    0x6a124237,
-    0xb79251e7,
-    0x06a1bbe6,
-    0x4bfb6350,
-    0x1a6b1018,
-    0x11caedfa,
-    0x3d25bdd8,
-    0xe2e1c3c9,
-    0x44421659,
-    0x0a121386,
-    0xd90cec6e,
-    0xd5abea2a,
-    0x64af674e,
-    0xda86a85f,
-    0xbebfe988,
-    0x64e4c3fe,
-    0x9dbc8057,
-    0xf0f7c086,
-    0x60787bf8,
-    0x6003604d,
-    0xd1fd8346,
-    0xf6381fb0,
-    0x7745ae04,
-    0xd736fccc,
-    0x83426b33,
-    0xf01eab71,
-    0xb0804187,
-    0x3c005e5f,
-    0x77a057be,
-    0xbde8ae24,
-    0x55464299,
-    0xbf582e61,
-    0x4e58f48f,
-    0xf2ddfda2,
-    0xf474ef38,
-    0x8789bdc2,
-    0x5366f9c3,
-    0xc8b38e74,
-    0xb475f255,
-    0x46fcd9b9,
-    0x7aeb2661,
-    0x8b1ddf84,
-    0x846a0e79,
-    0x915f95e2,
-    0x466e598e,
-    0x20b45770,
-    0x8cd55591,
-    0xc902de4c,
-    0xb90bace1,
-    0xbb8205d0,
-    0x11a86248,
-    0x7574a99e,
-    0xb77f19b6,
-    0xe0a9dc09,
-    0x662d09a1,
-    0xc4324633,
-    0xe85a1f02,
-    0x09f0be8c,
-    0x4a99a025,
-    0x1d6efe10,
-    0x1ab93d1d,
-    0x0ba5a4df,
-    0xa186f20f,
-    0x2868f169,
-    0xdcb7da83,
-    0x573906fe,
-    0xa1e2ce9b,
-    0x4fcd7f52,
-    0x50115e01,
-    0xa70683fa,
-    0xa002b5c4,
-    0x0de6d027,
-    0x9af88c27,
-    0x773f8641,
-    0xc3604c06,
-    0x61a806b5,
-    0xf0177a28,
-    0xc0f586e0,
-    0x006058aa,
-    0x30dc7d62,
-    0x11e69ed7,
-    0x2338ea63,
-    0x53c2dd94,
-    0xc2c21634,
-    0xbbcbee56,
-    0x90bcb6de,
-    0xebfc7da1,
-    0xce591d76,
-    0x6f05e409,
-    0x4b7c0188,
-    0x39720a3d,
-    0x7c927c24,
-    0x86e3725f,
-    0x724d9db9,
-    0x1ac15bb4,
-    0xd39eb8fc,
-    0xed545578,
-    0x08fca5b5,
-    0xd83d7cd3,
-    0x4dad0fc4,
-    0x1e50ef5e,
-    0xb161e6f8,
-    0xa28514d9,
-    0x6c51133c,
-    0x6fd5c7e7,
-    0x56e14ec4,
-    0x362abfce,
-    0xddc6c837,
-    0xd79a3234,
-    0x92638212,
-    0x670efa8e,
-    0x406000e0,
-    0x3a39ce37,
-    0xd3faf5cf,
-    0xabc27737,
-    0x5ac52d1b,
-    0x5cb0679e,
-    0x4fa33742,
-    0xd3822740,
-    0x99bc9bbe,
-    0xd5118e9d,
-    0xbf0f7315,
-    0xd62d1c7e,
-    0xc700c47b,
-    0xb78c1b6b,
-    0x21a19045,
-    0xb26eb1be,
-    0x6a366eb4,
-    0x5748ab2f,
-    0xbc946e79,
-    0xc6a376d2,
-    0x6549c2c8,
-    0x530ff8ee,
-    0x468dde7d,
-    0xd5730a1d,
-    0x4cd04dc6,
-    0x2939bbdb,
-    0xa9ba4650,
-    0xac9526e8,
-    0xbe5ee304,
-    0xa1fad5f0,
-    0x6a2d519a,
-    0x63ef8ce2,
-    0x9a86ee22,
-    0xc089c2b8,
-    0x43242ef6,
-    0xa51e03aa,
-    0x9cf2d0a4,
-    0x83c061ba,
-    0x9be96a4d,
-    0x8fe51550,
-    0xba645bd6,
-    0x2826a2f9,
-    0xa73a3ae1,
-    0x4ba99586,
-    0xef5562e9,
-    0xc72fefd3,
-    0xf752f7da,
-    0x3f046f69,
-    0x77fa0a59,
-    0x80e4a915,
-    0x87b08601,
-    0x9b09e6ad,
-    0x3b3ee593,
-    0xe990fd5a,
-    0x9e34d797,
-    0x2cf0b7d9,
-    0x022b8b51,
-    0x96d5ac3a,
-    0x017da67d,
-    0xd1cf3ed6,
-    0x7c7d2d28,
-    0x1f9f25cf,
-    0xadf2b89b,
-    0x5ad6b472,
-    0x5a88f54c,
-    0xe029ac71,
-    0xe019a5e6,
-    0x47b0acfd,
-    0xed93fa9b,
-    0xe8d3c48d,
-    0x283b57cc,
-    0xf8d56629,
-    0x79132e28,
-    0x785f0191,
-    0xed756055,
-    0xf7960e44,
-    0xe3d35e8c,
-    0x15056dd4,
-    0x88f46dba,
-    0x03a16125,
-    0x0564f0bd,
-    0xc3eb9e15,
-    0x3c9057a2,
-    0x97271aec,
-    0xa93a072a,
-    0x1b3f6d9b,
-    0x1e6321f5,
-    0xf59c66fb,
-    0x26dcf319,
-    0x7533d928,
-    0xb155fdf5,
-    0x03563482,
-    0x8aba3cbb,
-    0x28517711,
-    0xc20ad9f8,
-    0xabcc5167,
-    0xccad925f,
-    0x4de81751,
-    0x3830dc8e,
-    0x379d5862,
-    0x9320f991,
-    0xea7a90c2,
-    0xfb3e7bce,
-    0x5121ce64,
-    0x774fbe32,
-    0xa8b6e37e,
-    0xc3293d46,
-    0x48de5369,
-    0x6413e680,
-    0xa2ae0810,
-    0xdd6db224,
-    0x69852dfd,
-    0x09072166,
-    0xb39a460a,
-    0x6445c0dd,
-    0x586cdecf,
-    0x1c20c8ae,
-    0x5bbef7dd,
-    0x1b588d40,
-    0xccd2017f,
-    0x6bb4e3bb,
-    0xdda26a7e,
-    0x3a59ff45,
-    0x3e350a44,
-    0xbcb4cdd5,
-    0x72eacea8,
-    0xfa6484bb,
-    0x8d6612ae,
-    0xbf3c6f47,
-    0xd29be463,
-    0x542f5d9e,
-    0xaec2771b,
-    0xf64e6370,
-    0x740e0d8d,
-    0xe75b1357,
-    0xf8721671,
-    0xaf537d5d,
-    0x4040cb08,
-    0x4eb4e2cc,
-    0x34d2466a,
-    0x0115af84,
-    0xe1b00428,
-    0x95983a1d,
-    0x06b89fb4,
-    0xce6ea048,
-    0x6f3f3b82,
-    0x3520ab82,
-    0x011a1d4b,
-    0x277227f8,
-    0x611560b1,
-    0xe7933fdc,
-    0xbb3a792b,
-    0x344525bd,
-    0xa08839e1,
-    0x51ce794b,
-    0x2f32c9b7,
-    0xa01fbac9,
-    0xe01cc87e,
-    0xbcc7d1f6,
-    0xcf0111c3,
-    0xa1e8aac7,
-    0x1a908749,
-    0xd44fbd9a,
-    0xd0dadecb,
-    0xd50ada38,
-    0x0339c32a,
-    0xc6913667,
-    0x8df9317c,
-    0xe0b12b4f,
-    0xf79e59b7,
-    0x43f5bb3a,
-    0xf2d519ff,
-    0x27d9459c,
-    0xbf97222c,
-    0x15e6fc2a,
-    0x0f91fc71,
-    0x9b941525,
-    0xfae59361,
-    0xceb69ceb,
-    0xc2a86459,
-    0x12baa8d1,
-    0xb6c1075e,
-    0xe3056a0c,
-    0x10d25065,
-    0xcb03a442,
-    0xe0ec6e0e,
-    0x1698db3b,
-    0x4c98a0be,
-    0x3278e964,
-    0x9f1f9532,
-    0xe0d392df,
-    0xd3a0342b,
-    0x8971f21e,
-    0x1b0a7441,
-    0x4ba3348c,
-    0xc5be7120,
-    0xc37632d8,
-    0xdf359f8d,
-    0x9b992f2e,
-    0xe60b6f47,
-    0x0fe3f11d,
-    0xe54cda54,
-    0x1edad891,
-    0xce6279cf,
-    0xcd3e7e6f,
-    0x1618b166,
-    0xfd2c1d05,
-    0x848fd2c5,
-    0xf6fb2299,
-    0xf523f357,
-    0xa6327623,
-    0x93a83531,
-    0x56cccd02,
-    0xacf08162,
-    0x5a75ebb5,
-    0x6e163697,
-    0x88d273cc,
-    0xde966292,
-    0x81b949d0,
-    0x4c50901b,
-    0x71c65614,
-    0xe6c6c7bd,
-    0x327a140a,
-    0x45e1d006,
-    0xc3f27b9a,
-    0xc9aa53fd,
-    0x62a80f00,
-    0xbb25bfe2,
-    0x35bdd2f6,
-    0x71126905,
-    0xb2040222,
-    0xb6cbcf7c,
-    0xcd769c2b,
-    0x53113ec0,
-    0x1640e3d3,
-    0x38abbd60,
-    0x2547adf0,
-    0xba38209c,
-    0xf746ce76,
-    0x77afa1c5,
-    0x20756060,
-    0x85cbfe4e,
-    0x8ae88dd8,
-    0x7aaaf9b0,
-    0x4cf9aa7e,
-    0x1948c25c,
-    0x02fb8a8c,
-    0x01c36ae4,
-    0xd6ebe1f9,
-    0x90d4f869,
-    0xa65cdea0,
-    0x3f09252d,
-    0xc208e69f,
-    0xb74e6132,
-    0xce77e25b,
-    0x578fdfe3,
-    0x3ac372e6, 
-]);
-new Int32Array([
-    0x4f727068,
-    0x65616e42,
-    0x65686f6c,
-    0x64657253,
-    0x63727944,
-    0x6f756274, 
-]);
-const importMeta = {
-    url: "https://deno.land/x/bcrypt@v0.2.4/src/main.ts",
-    main: false
-};
-async function hash(plaintext, salt = undefined) {
-    let worker = new Worker(new URL("worker.ts", importMeta.url).toString(), {
-        type: "module",
-        deno: true
-    });
-    worker.postMessage({
-        action: "hash",
-        payload: {
-            plaintext,
-            salt
-        }
-    });
-    return new Promise((resolve)=>{
-        worker.onmessage = (event)=>{
-            resolve(event.data);
-            worker.terminate();
-        };
-    });
-}
-async function compare(plaintext, hash) {
-    let worker = new Worker(new URL("worker.ts", importMeta.url).toString(), {
-        type: "module",
-        deno: true
-    });
-    worker.postMessage({
-        action: "compare",
-        payload: {
-            plaintext,
-            hash
-        }
-    });
-    return new Promise((resolve)=>{
-        worker.onmessage = (event)=>{
-            resolve(event.data);
-            worker.terminate();
-        };
-    });
-}
 var Source;
 (function(Source) {
     Source[Source["External"] = 0] = "External";
@@ -23985,6 +22757,9 @@ const transformation = (transformObject, data, url)=>{
         expressionSort_expArgs: [
             1
         ],
+        unique: (list)=>!list ? [] : [
+                ...new Set(Array.from(list))
+            ],
         pathCombine,
         pathPattern: (pattern)=>resolvePathPatternWithUrl(pattern, url, data),
         newDate: (...args)=>args.length === 0 ? new Date() : args.length === 1 ? typeof args[0] === 'number' ? new Date(args[0]) : dayjs_min(args[0]).toDate() : new Date(args[0], args[1], args[2], args[3], args[4], args[5], args[6]),
@@ -24228,1718 +23003,1236 @@ const schemaIServiceConfigExposedProperties = [
     "caching",
     "adapterSource"
 ];
-function verify(alg, key) {
-    if (alg === "none") {
-        if (key) throw new Error(`The alg '${alg}' does not allow a key.`);
-        else return true;
-    } else {
-        if (!key) throw new Error(`The alg '${alg}' demands a key.`);
-        const algorithm = getAlgorithm(alg);
-        if (key.algorithm.name === algorithm.name) {
-            if (key.algorithm.hash?.name && key.algorithm.hash?.name === algorithm.hash.name) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-function getAlgorithm(alg) {
-    switch(alg){
-        case "HS256":
-            return {
-                hash: {
-                    name: "SHA-256"
-                },
-                name: "HMAC"
-            };
-        case "HS384":
-            return {
-                hash: {
-                    name: "SHA-384"
-                },
-                name: "HMAC"
-            };
-        case "HS512":
-            return {
-                hash: {
-                    name: "SHA-512"
-                },
-                name: "HMAC"
-            };
-        case "PS256":
-            return {
-                hash: {
-                    name: "SHA-256"
-                },
-                name: "RSA-PSS",
-                saltLength: 256 >> 3
-            };
-        case "PS384":
-            return {
-                hash: {
-                    name: "SHA-384"
-                },
-                name: "RSA-PSS",
-                saltLength: 384 >> 3
-            };
-        case "PS512":
-            return {
-                hash: {
-                    name: "SHA-512"
-                },
-                name: "RSA-PSS",
-                saltLength: 512 >> 3
-            };
-        case "RS256":
-            return {
-                hash: {
-                    name: "SHA-256"
-                },
-                name: "RSASSA-PKCS1-v1_5"
-            };
-        case "RS384":
-            return {
-                hash: {
-                    name: "SHA-384"
-                },
-                name: "RSASSA-PKCS1-v1_5"
-            };
-        case "RS512":
-            return {
-                hash: {
-                    name: "SHA-512"
-                },
-                name: "RSASSA-PKCS1-v1_5"
-            };
-        default:
-            throw new Error(`The jwt's alg '${alg}' is not supported.`);
-    }
-}
-const base64abc = [
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G",
-    "H",
-    "I",
-    "J",
-    "K",
-    "L",
-    "M",
-    "N",
-    "O",
-    "P",
-    "Q",
-    "R",
-    "S",
-    "T",
-    "U",
-    "V",
-    "W",
-    "X",
-    "Y",
-    "Z",
-    "a",
-    "b",
-    "c",
-    "d",
-    "e",
-    "f",
-    "g",
-    "h",
-    "i",
-    "j",
-    "k",
-    "l",
-    "m",
-    "n",
-    "o",
-    "p",
-    "q",
-    "r",
-    "s",
-    "t",
-    "u",
-    "v",
-    "w",
-    "x",
-    "y",
-    "z",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "+",
-    "/"
-];
-function encode(data) {
-    const uint8 = typeof data === "string" ? new TextEncoder().encode(data) : data instanceof Uint8Array ? data : new Uint8Array(data);
-    let result = "", i;
-    const l = uint8.length;
-    for(i = 2; i < l; i += 3){
-        result += base64abc[uint8[i - 2] >> 2];
-        result += base64abc[(uint8[i - 2] & 0x03) << 4 | uint8[i - 1] >> 4];
-        result += base64abc[(uint8[i - 1] & 0x0f) << 2 | uint8[i] >> 6];
-        result += base64abc[uint8[i] & 0x3f];
-    }
-    if (i === l + 1) {
-        result += base64abc[uint8[i - 2] >> 2];
-        result += base64abc[(uint8[i - 2] & 0x03) << 4];
-        result += "==";
-    }
-    if (i === l) {
-        result += base64abc[uint8[i - 2] >> 2];
-        result += base64abc[(uint8[i - 2] & 0x03) << 4 | uint8[i - 1] >> 4];
-        result += base64abc[(uint8[i - 1] & 0x0f) << 2];
-        result += "=";
-    }
-    return result;
-}
-function decode(b64) {
-    const binString = atob(b64);
-    const size = binString.length;
-    const bytes = new Uint8Array(size);
-    for(let i = 0; i < size; i++){
-        bytes[i] = binString.charCodeAt(i);
-    }
-    return bytes;
-}
-function addPaddingToBase64url(base64url) {
-    if (base64url.length % 4 === 2) return base64url + "==";
-    if (base64url.length % 4 === 3) return base64url + "=";
-    if (base64url.length % 4 === 1) {
-        throw new TypeError("Illegal base64url string!");
-    }
-    return base64url;
-}
-function convertBase64urlToBase64(b64url) {
-    if (!/^[-_A-Z0-9]*?={0,2}$/i.test(b64url)) {
-        throw new TypeError("Failed to decode base64url: invalid character");
-    }
-    return addPaddingToBase64url(b64url).replace(/\-/g, "+").replace(/_/g, "/");
-}
-function convertBase64ToBase64url(b64) {
-    return b64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-function encode1(uint8) {
-    return convertBase64ToBase64url(encode(uint8));
-}
-function decode1(b64url) {
-    return decode(convertBase64urlToBase64(b64url));
-}
-const mod4 = {
-    addPaddingToBase64url: addPaddingToBase64url,
-    encode: encode1,
-    decode: decode1
+new TextEncoder();
+new TextDecoder();
+"./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
+new Uint8Array([
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    0,
+    1,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1, 
+]);
+globalThis.crypto;
+new Int32Array([
+    0x243f6a88,
+    0x85a308d3,
+    0x13198a2e,
+    0x03707344,
+    0xa4093822,
+    0x299f31d0,
+    0x082efa98,
+    0xec4e6c89,
+    0x452821e6,
+    0x38d01377,
+    0xbe5466cf,
+    0x34e90c6c,
+    0xc0ac29b7,
+    0xc97c50dd,
+    0x3f84d5b5,
+    0xb5470917,
+    0x9216d5d9,
+    0x8979fb1b, 
+]);
+new Int32Array([
+    0xd1310ba6,
+    0x98dfb5ac,
+    0x2ffd72db,
+    0xd01adfb7,
+    0xb8e1afed,
+    0x6a267e96,
+    0xba7c9045,
+    0xf12c7f99,
+    0x24a19947,
+    0xb3916cf7,
+    0x0801f2e2,
+    0x858efc16,
+    0x636920d8,
+    0x71574e69,
+    0xa458fea3,
+    0xf4933d7e,
+    0x0d95748f,
+    0x728eb658,
+    0x718bcd58,
+    0x82154aee,
+    0x7b54a41d,
+    0xc25a59b5,
+    0x9c30d539,
+    0x2af26013,
+    0xc5d1b023,
+    0x286085f0,
+    0xca417918,
+    0xb8db38ef,
+    0x8e79dcb0,
+    0x603a180e,
+    0x6c9e0e8b,
+    0xb01e8a3e,
+    0xd71577c1,
+    0xbd314b27,
+    0x78af2fda,
+    0x55605c60,
+    0xe65525f3,
+    0xaa55ab94,
+    0x57489862,
+    0x63e81440,
+    0x55ca396a,
+    0x2aab10b6,
+    0xb4cc5c34,
+    0x1141e8ce,
+    0xa15486af,
+    0x7c72e993,
+    0xb3ee1411,
+    0x636fbc2a,
+    0x2ba9c55d,
+    0x741831f6,
+    0xce5c3e16,
+    0x9b87931e,
+    0xafd6ba33,
+    0x6c24cf5c,
+    0x7a325381,
+    0x28958677,
+    0x3b8f4898,
+    0x6b4bb9af,
+    0xc4bfe81b,
+    0x66282193,
+    0x61d809cc,
+    0xfb21a991,
+    0x487cac60,
+    0x5dec8032,
+    0xef845d5d,
+    0xe98575b1,
+    0xdc262302,
+    0xeb651b88,
+    0x23893e81,
+    0xd396acc5,
+    0x0f6d6ff3,
+    0x83f44239,
+    0x2e0b4482,
+    0xa4842004,
+    0x69c8f04a,
+    0x9e1f9b5e,
+    0x21c66842,
+    0xf6e96c9a,
+    0x670c9c61,
+    0xabd388f0,
+    0x6a51a0d2,
+    0xd8542f68,
+    0x960fa728,
+    0xab5133a3,
+    0x6eef0b6c,
+    0x137a3be4,
+    0xba3bf050,
+    0x7efb2a98,
+    0xa1f1651d,
+    0x39af0176,
+    0x66ca593e,
+    0x82430e88,
+    0x8cee8619,
+    0x456f9fb4,
+    0x7d84a5c3,
+    0x3b8b5ebe,
+    0xe06f75d8,
+    0x85c12073,
+    0x401a449f,
+    0x56c16aa6,
+    0x4ed3aa62,
+    0x363f7706,
+    0x1bfedf72,
+    0x429b023d,
+    0x37d0d724,
+    0xd00a1248,
+    0xdb0fead3,
+    0x49f1c09b,
+    0x075372c9,
+    0x80991b7b,
+    0x25d479d8,
+    0xf6e8def7,
+    0xe3fe501a,
+    0xb6794c3b,
+    0x976ce0bd,
+    0x04c006ba,
+    0xc1a94fb6,
+    0x409f60c4,
+    0x5e5c9ec2,
+    0x196a2463,
+    0x68fb6faf,
+    0x3e6c53b5,
+    0x1339b2eb,
+    0x3b52ec6f,
+    0x6dfc511f,
+    0x9b30952c,
+    0xcc814544,
+    0xaf5ebd09,
+    0xbee3d004,
+    0xde334afd,
+    0x660f2807,
+    0x192e4bb3,
+    0xc0cba857,
+    0x45c8740f,
+    0xd20b5f39,
+    0xb9d3fbdb,
+    0x5579c0bd,
+    0x1a60320a,
+    0xd6a100c6,
+    0x402c7279,
+    0x679f25fe,
+    0xfb1fa3cc,
+    0x8ea5e9f8,
+    0xdb3222f8,
+    0x3c7516df,
+    0xfd616b15,
+    0x2f501ec8,
+    0xad0552ab,
+    0x323db5fa,
+    0xfd238760,
+    0x53317b48,
+    0x3e00df82,
+    0x9e5c57bb,
+    0xca6f8ca0,
+    0x1a87562e,
+    0xdf1769db,
+    0xd542a8f6,
+    0x287effc3,
+    0xac6732c6,
+    0x8c4f5573,
+    0x695b27b0,
+    0xbbca58c8,
+    0xe1ffa35d,
+    0xb8f011a0,
+    0x10fa3d98,
+    0xfd2183b8,
+    0x4afcb56c,
+    0x2dd1d35b,
+    0x9a53e479,
+    0xb6f84565,
+    0xd28e49bc,
+    0x4bfb9790,
+    0xe1ddf2da,
+    0xa4cb7e33,
+    0x62fb1341,
+    0xcee4c6e8,
+    0xef20cada,
+    0x36774c01,
+    0xd07e9efe,
+    0x2bf11fb4,
+    0x95dbda4d,
+    0xae909198,
+    0xeaad8e71,
+    0x6b93d5a0,
+    0xd08ed1d0,
+    0xafc725e0,
+    0x8e3c5b2f,
+    0x8e7594b7,
+    0x8ff6e2fb,
+    0xf2122b64,
+    0x8888b812,
+    0x900df01c,
+    0x4fad5ea0,
+    0x688fc31c,
+    0xd1cff191,
+    0xb3a8c1ad,
+    0x2f2f2218,
+    0xbe0e1777,
+    0xea752dfe,
+    0x8b021fa1,
+    0xe5a0cc0f,
+    0xb56f74e8,
+    0x18acf3d6,
+    0xce89e299,
+    0xb4a84fe0,
+    0xfd13e0b7,
+    0x7cc43b81,
+    0xd2ada8d9,
+    0x165fa266,
+    0x80957705,
+    0x93cc7314,
+    0x211a1477,
+    0xe6ad2065,
+    0x77b5fa86,
+    0xc75442f5,
+    0xfb9d35cf,
+    0xebcdaf0c,
+    0x7b3e89a0,
+    0xd6411bd3,
+    0xae1e7e49,
+    0x00250e2d,
+    0x2071b35e,
+    0x226800bb,
+    0x57b8e0af,
+    0x2464369b,
+    0xf009b91e,
+    0x5563911d,
+    0x59dfa6aa,
+    0x78c14389,
+    0xd95a537f,
+    0x207d5ba2,
+    0x02e5b9c5,
+    0x83260376,
+    0x6295cfa9,
+    0x11c81968,
+    0x4e734a41,
+    0xb3472dca,
+    0x7b14a94a,
+    0x1b510052,
+    0x9a532915,
+    0xd60f573f,
+    0xbc9bc6e4,
+    0x2b60a476,
+    0x81e67400,
+    0x08ba6fb5,
+    0x571be91f,
+    0xf296ec6b,
+    0x2a0dd915,
+    0xb6636521,
+    0xe7b9f9b6,
+    0xff34052e,
+    0xc5855664,
+    0x53b02d5d,
+    0xa99f8fa1,
+    0x08ba4799,
+    0x6e85076a,
+    0x4b7a70e9,
+    0xb5b32944,
+    0xdb75092e,
+    0xc4192623,
+    0xad6ea6b0,
+    0x49a7df7d,
+    0x9cee60b8,
+    0x8fedb266,
+    0xecaa8c71,
+    0x699a17ff,
+    0x5664526c,
+    0xc2b19ee1,
+    0x193602a5,
+    0x75094c29,
+    0xa0591340,
+    0xe4183a3e,
+    0x3f54989a,
+    0x5b429d65,
+    0x6b8fe4d6,
+    0x99f73fd6,
+    0xa1d29c07,
+    0xefe830f5,
+    0x4d2d38e6,
+    0xf0255dc1,
+    0x4cdd2086,
+    0x8470eb26,
+    0x6382e9c6,
+    0x021ecc5e,
+    0x09686b3f,
+    0x3ebaefc9,
+    0x3c971814,
+    0x6b6a70a1,
+    0x687f3584,
+    0x52a0e286,
+    0xb79c5305,
+    0xaa500737,
+    0x3e07841c,
+    0x7fdeae5c,
+    0x8e7d44ec,
+    0x5716f2b8,
+    0xb03ada37,
+    0xf0500c0d,
+    0xf01c1f04,
+    0x0200b3ff,
+    0xae0cf51a,
+    0x3cb574b2,
+    0x25837a58,
+    0xdc0921bd,
+    0xd19113f9,
+    0x7ca92ff6,
+    0x94324773,
+    0x22f54701,
+    0x3ae5e581,
+    0x37c2dadc,
+    0xc8b57634,
+    0x9af3dda7,
+    0xa9446146,
+    0x0fd0030e,
+    0xecc8c73e,
+    0xa4751e41,
+    0xe238cd99,
+    0x3bea0e2f,
+    0x3280bba1,
+    0x183eb331,
+    0x4e548b38,
+    0x4f6db908,
+    0x6f420d03,
+    0xf60a04bf,
+    0x2cb81290,
+    0x24977c79,
+    0x5679b072,
+    0xbcaf89af,
+    0xde9a771f,
+    0xd9930810,
+    0xb38bae12,
+    0xdccf3f2e,
+    0x5512721f,
+    0x2e6b7124,
+    0x501adde6,
+    0x9f84cd87,
+    0x7a584718,
+    0x7408da17,
+    0xbc9f9abc,
+    0xe94b7d8c,
+    0xec7aec3a,
+    0xdb851dfa,
+    0x63094366,
+    0xc464c3d2,
+    0xef1c1847,
+    0x3215d908,
+    0xdd433b37,
+    0x24c2ba16,
+    0x12a14d43,
+    0x2a65c451,
+    0x50940002,
+    0x133ae4dd,
+    0x71dff89e,
+    0x10314e55,
+    0x81ac77d6,
+    0x5f11199b,
+    0x043556f1,
+    0xd7a3c76b,
+    0x3c11183b,
+    0x5924a509,
+    0xf28fe6ed,
+    0x97f1fbfa,
+    0x9ebabf2c,
+    0x1e153c6e,
+    0x86e34570,
+    0xeae96fb1,
+    0x860e5e0a,
+    0x5a3e2ab3,
+    0x771fe71c,
+    0x4e3d06fa,
+    0x2965dcb9,
+    0x99e71d0f,
+    0x803e89d6,
+    0x5266c825,
+    0x2e4cc978,
+    0x9c10b36a,
+    0xc6150eba,
+    0x94e2ea78,
+    0xa5fc3c53,
+    0x1e0a2df4,
+    0xf2f74ea7,
+    0x361d2b3d,
+    0x1939260f,
+    0x19c27960,
+    0x5223a708,
+    0xf71312b6,
+    0xebadfe6e,
+    0xeac31f66,
+    0xe3bc4595,
+    0xa67bc883,
+    0xb17f37d1,
+    0x018cff28,
+    0xc332ddef,
+    0xbe6c5aa5,
+    0x65582185,
+    0x68ab9802,
+    0xeecea50f,
+    0xdb2f953b,
+    0x2aef7dad,
+    0x5b6e2f84,
+    0x1521b628,
+    0x29076170,
+    0xecdd4775,
+    0x619f1510,
+    0x13cca830,
+    0xeb61bd96,
+    0x0334fe1e,
+    0xaa0363cf,
+    0xb5735c90,
+    0x4c70a239,
+    0xd59e9e0b,
+    0xcbaade14,
+    0xeecc86bc,
+    0x60622ca7,
+    0x9cab5cab,
+    0xb2f3846e,
+    0x648b1eaf,
+    0x19bdf0ca,
+    0xa02369b9,
+    0x655abb50,
+    0x40685a32,
+    0x3c2ab4b3,
+    0x319ee9d5,
+    0xc021b8f7,
+    0x9b540b19,
+    0x875fa099,
+    0x95f7997e,
+    0x623d7da8,
+    0xf837889a,
+    0x97e32d77,
+    0x11ed935f,
+    0x16681281,
+    0x0e358829,
+    0xc7e61fd6,
+    0x96dedfa1,
+    0x7858ba99,
+    0x57f584a5,
+    0x1b227263,
+    0x9b83c3ff,
+    0x1ac24696,
+    0xcdb30aeb,
+    0x532e3054,
+    0x8fd948e4,
+    0x6dbc3128,
+    0x58ebf2ef,
+    0x34c6ffea,
+    0xfe28ed61,
+    0xee7c3c73,
+    0x5d4a14d9,
+    0xe864b7e3,
+    0x42105d14,
+    0x203e13e0,
+    0x45eee2b6,
+    0xa3aaabea,
+    0xdb6c4f15,
+    0xfacb4fd0,
+    0xc742f442,
+    0xef6abbb5,
+    0x654f3b1d,
+    0x41cd2105,
+    0xd81e799e,
+    0x86854dc7,
+    0xe44b476a,
+    0x3d816250,
+    0xcf62a1f2,
+    0x5b8d2646,
+    0xfc8883a0,
+    0xc1c7b6a3,
+    0x7f1524c3,
+    0x69cb7492,
+    0x47848a0b,
+    0x5692b285,
+    0x095bbf00,
+    0xad19489d,
+    0x1462b174,
+    0x23820e00,
+    0x58428d2a,
+    0x0c55f5ea,
+    0x1dadf43e,
+    0x233f7061,
+    0x3372f092,
+    0x8d937e41,
+    0xd65fecf1,
+    0x6c223bdb,
+    0x7cde3759,
+    0xcbee7460,
+    0x4085f2a7,
+    0xce77326e,
+    0xa6078084,
+    0x19f8509e,
+    0xe8efd855,
+    0x61d99735,
+    0xa969a7aa,
+    0xc50c06c2,
+    0x5a04abfc,
+    0x800bcadc,
+    0x9e447a2e,
+    0xc3453484,
+    0xfdd56705,
+    0x0e1e9ec9,
+    0xdb73dbd3,
+    0x105588cd,
+    0x675fda79,
+    0xe3674340,
+    0xc5c43465,
+    0x713e38d8,
+    0x3d28f89e,
+    0xf16dff20,
+    0x153e21e7,
+    0x8fb03d4a,
+    0xe6e39f2b,
+    0xdb83adf7,
+    0xe93d5a68,
+    0x948140f7,
+    0xf64c261c,
+    0x94692934,
+    0x411520f7,
+    0x7602d4f7,
+    0xbcf46b2e,
+    0xd4a20068,
+    0xd4082471,
+    0x3320f46a,
+    0x43b7d4b7,
+    0x500061af,
+    0x1e39f62e,
+    0x97244546,
+    0x14214f74,
+    0xbf8b8840,
+    0x4d95fc1d,
+    0x96b591af,
+    0x70f4ddd3,
+    0x66a02f45,
+    0xbfbc09ec,
+    0x03bd9785,
+    0x7fac6dd0,
+    0x31cb8504,
+    0x96eb27b3,
+    0x55fd3941,
+    0xda2547e6,
+    0xabca0a9a,
+    0x28507825,
+    0x530429f4,
+    0x0a2c86da,
+    0xe9b66dfb,
+    0x68dc1462,
+    0xd7486900,
+    0x680ec0a4,
+    0x27a18dee,
+    0x4f3ffea2,
+    0xe887ad8c,
+    0xb58ce006,
+    0x7af4d6b6,
+    0xaace1e7c,
+    0xd3375fec,
+    0xce78a399,
+    0x406b2a42,
+    0x20fe9e35,
+    0xd9f385b9,
+    0xee39d7ab,
+    0x3b124e8b,
+    0x1dc9faf7,
+    0x4b6d1856,
+    0x26a36631,
+    0xeae397b2,
+    0x3a6efa74,
+    0xdd5b4332,
+    0x6841e7f7,
+    0xca7820fb,
+    0xfb0af54e,
+    0xd8feb397,
+    0x454056ac,
+    0xba489527,
+    0x55533a3a,
+    0x20838d87,
+    0xfe6ba9b7,
+    0xd096954b,
+    0x55a867bc,
+    0xa1159a58,
+    0xcca92963,
+    0x99e1db33,
+    0xa62a4a56,
+    0x3f3125f9,
+    0x5ef47e1c,
+    0x9029317c,
+    0xfdf8e802,
+    0x04272f70,
+    0x80bb155c,
+    0x05282ce3,
+    0x95c11548,
+    0xe4c66d22,
+    0x48c1133f,
+    0xc70f86dc,
+    0x07f9c9ee,
+    0x41041f0f,
+    0x404779a4,
+    0x5d886e17,
+    0x325f51eb,
+    0xd59bc0d1,
+    0xf2bcc18f,
+    0x41113564,
+    0x257b7834,
+    0x602a9c60,
+    0xdff8e8a3,
+    0x1f636c1b,
+    0x0e12b4c2,
+    0x02e1329e,
+    0xaf664fd1,
+    0xcad18115,
+    0x6b2395e0,
+    0x333e92e1,
+    0x3b240b62,
+    0xeebeb922,
+    0x85b2a20e,
+    0xe6ba0d99,
+    0xde720c8c,
+    0x2da2f728,
+    0xd0127845,
+    0x95b794fd,
+    0x647d0862,
+    0xe7ccf5f0,
+    0x5449a36f,
+    0x877d48fa,
+    0xc39dfd27,
+    0xf33e8d1e,
+    0x0a476341,
+    0x992eff74,
+    0x3a6f6eab,
+    0xf4f8fd37,
+    0xa812dc60,
+    0xa1ebddf8,
+    0x991be14c,
+    0xdb6e6b0d,
+    0xc67b5510,
+    0x6d672c37,
+    0x2765d43b,
+    0xdcd0e804,
+    0xf1290dc7,
+    0xcc00ffa3,
+    0xb5390f92,
+    0x690fed0b,
+    0x667b9ffb,
+    0xcedb7d9c,
+    0xa091cf0b,
+    0xd9155ea3,
+    0xbb132f88,
+    0x515bad24,
+    0x7b9479bf,
+    0x763bd6eb,
+    0x37392eb3,
+    0xcc115979,
+    0x8026e297,
+    0xf42e312d,
+    0x6842ada7,
+    0xc66a2b3b,
+    0x12754ccc,
+    0x782ef11c,
+    0x6a124237,
+    0xb79251e7,
+    0x06a1bbe6,
+    0x4bfb6350,
+    0x1a6b1018,
+    0x11caedfa,
+    0x3d25bdd8,
+    0xe2e1c3c9,
+    0x44421659,
+    0x0a121386,
+    0xd90cec6e,
+    0xd5abea2a,
+    0x64af674e,
+    0xda86a85f,
+    0xbebfe988,
+    0x64e4c3fe,
+    0x9dbc8057,
+    0xf0f7c086,
+    0x60787bf8,
+    0x6003604d,
+    0xd1fd8346,
+    0xf6381fb0,
+    0x7745ae04,
+    0xd736fccc,
+    0x83426b33,
+    0xf01eab71,
+    0xb0804187,
+    0x3c005e5f,
+    0x77a057be,
+    0xbde8ae24,
+    0x55464299,
+    0xbf582e61,
+    0x4e58f48f,
+    0xf2ddfda2,
+    0xf474ef38,
+    0x8789bdc2,
+    0x5366f9c3,
+    0xc8b38e74,
+    0xb475f255,
+    0x46fcd9b9,
+    0x7aeb2661,
+    0x8b1ddf84,
+    0x846a0e79,
+    0x915f95e2,
+    0x466e598e,
+    0x20b45770,
+    0x8cd55591,
+    0xc902de4c,
+    0xb90bace1,
+    0xbb8205d0,
+    0x11a86248,
+    0x7574a99e,
+    0xb77f19b6,
+    0xe0a9dc09,
+    0x662d09a1,
+    0xc4324633,
+    0xe85a1f02,
+    0x09f0be8c,
+    0x4a99a025,
+    0x1d6efe10,
+    0x1ab93d1d,
+    0x0ba5a4df,
+    0xa186f20f,
+    0x2868f169,
+    0xdcb7da83,
+    0x573906fe,
+    0xa1e2ce9b,
+    0x4fcd7f52,
+    0x50115e01,
+    0xa70683fa,
+    0xa002b5c4,
+    0x0de6d027,
+    0x9af88c27,
+    0x773f8641,
+    0xc3604c06,
+    0x61a806b5,
+    0xf0177a28,
+    0xc0f586e0,
+    0x006058aa,
+    0x30dc7d62,
+    0x11e69ed7,
+    0x2338ea63,
+    0x53c2dd94,
+    0xc2c21634,
+    0xbbcbee56,
+    0x90bcb6de,
+    0xebfc7da1,
+    0xce591d76,
+    0x6f05e409,
+    0x4b7c0188,
+    0x39720a3d,
+    0x7c927c24,
+    0x86e3725f,
+    0x724d9db9,
+    0x1ac15bb4,
+    0xd39eb8fc,
+    0xed545578,
+    0x08fca5b5,
+    0xd83d7cd3,
+    0x4dad0fc4,
+    0x1e50ef5e,
+    0xb161e6f8,
+    0xa28514d9,
+    0x6c51133c,
+    0x6fd5c7e7,
+    0x56e14ec4,
+    0x362abfce,
+    0xddc6c837,
+    0xd79a3234,
+    0x92638212,
+    0x670efa8e,
+    0x406000e0,
+    0x3a39ce37,
+    0xd3faf5cf,
+    0xabc27737,
+    0x5ac52d1b,
+    0x5cb0679e,
+    0x4fa33742,
+    0xd3822740,
+    0x99bc9bbe,
+    0xd5118e9d,
+    0xbf0f7315,
+    0xd62d1c7e,
+    0xc700c47b,
+    0xb78c1b6b,
+    0x21a19045,
+    0xb26eb1be,
+    0x6a366eb4,
+    0x5748ab2f,
+    0xbc946e79,
+    0xc6a376d2,
+    0x6549c2c8,
+    0x530ff8ee,
+    0x468dde7d,
+    0xd5730a1d,
+    0x4cd04dc6,
+    0x2939bbdb,
+    0xa9ba4650,
+    0xac9526e8,
+    0xbe5ee304,
+    0xa1fad5f0,
+    0x6a2d519a,
+    0x63ef8ce2,
+    0x9a86ee22,
+    0xc089c2b8,
+    0x43242ef6,
+    0xa51e03aa,
+    0x9cf2d0a4,
+    0x83c061ba,
+    0x9be96a4d,
+    0x8fe51550,
+    0xba645bd6,
+    0x2826a2f9,
+    0xa73a3ae1,
+    0x4ba99586,
+    0xef5562e9,
+    0xc72fefd3,
+    0xf752f7da,
+    0x3f046f69,
+    0x77fa0a59,
+    0x80e4a915,
+    0x87b08601,
+    0x9b09e6ad,
+    0x3b3ee593,
+    0xe990fd5a,
+    0x9e34d797,
+    0x2cf0b7d9,
+    0x022b8b51,
+    0x96d5ac3a,
+    0x017da67d,
+    0xd1cf3ed6,
+    0x7c7d2d28,
+    0x1f9f25cf,
+    0xadf2b89b,
+    0x5ad6b472,
+    0x5a88f54c,
+    0xe029ac71,
+    0xe019a5e6,
+    0x47b0acfd,
+    0xed93fa9b,
+    0xe8d3c48d,
+    0x283b57cc,
+    0xf8d56629,
+    0x79132e28,
+    0x785f0191,
+    0xed756055,
+    0xf7960e44,
+    0xe3d35e8c,
+    0x15056dd4,
+    0x88f46dba,
+    0x03a16125,
+    0x0564f0bd,
+    0xc3eb9e15,
+    0x3c9057a2,
+    0x97271aec,
+    0xa93a072a,
+    0x1b3f6d9b,
+    0x1e6321f5,
+    0xf59c66fb,
+    0x26dcf319,
+    0x7533d928,
+    0xb155fdf5,
+    0x03563482,
+    0x8aba3cbb,
+    0x28517711,
+    0xc20ad9f8,
+    0xabcc5167,
+    0xccad925f,
+    0x4de81751,
+    0x3830dc8e,
+    0x379d5862,
+    0x9320f991,
+    0xea7a90c2,
+    0xfb3e7bce,
+    0x5121ce64,
+    0x774fbe32,
+    0xa8b6e37e,
+    0xc3293d46,
+    0x48de5369,
+    0x6413e680,
+    0xa2ae0810,
+    0xdd6db224,
+    0x69852dfd,
+    0x09072166,
+    0xb39a460a,
+    0x6445c0dd,
+    0x586cdecf,
+    0x1c20c8ae,
+    0x5bbef7dd,
+    0x1b588d40,
+    0xccd2017f,
+    0x6bb4e3bb,
+    0xdda26a7e,
+    0x3a59ff45,
+    0x3e350a44,
+    0xbcb4cdd5,
+    0x72eacea8,
+    0xfa6484bb,
+    0x8d6612ae,
+    0xbf3c6f47,
+    0xd29be463,
+    0x542f5d9e,
+    0xaec2771b,
+    0xf64e6370,
+    0x740e0d8d,
+    0xe75b1357,
+    0xf8721671,
+    0xaf537d5d,
+    0x4040cb08,
+    0x4eb4e2cc,
+    0x34d2466a,
+    0x0115af84,
+    0xe1b00428,
+    0x95983a1d,
+    0x06b89fb4,
+    0xce6ea048,
+    0x6f3f3b82,
+    0x3520ab82,
+    0x011a1d4b,
+    0x277227f8,
+    0x611560b1,
+    0xe7933fdc,
+    0xbb3a792b,
+    0x344525bd,
+    0xa08839e1,
+    0x51ce794b,
+    0x2f32c9b7,
+    0xa01fbac9,
+    0xe01cc87e,
+    0xbcc7d1f6,
+    0xcf0111c3,
+    0xa1e8aac7,
+    0x1a908749,
+    0xd44fbd9a,
+    0xd0dadecb,
+    0xd50ada38,
+    0x0339c32a,
+    0xc6913667,
+    0x8df9317c,
+    0xe0b12b4f,
+    0xf79e59b7,
+    0x43f5bb3a,
+    0xf2d519ff,
+    0x27d9459c,
+    0xbf97222c,
+    0x15e6fc2a,
+    0x0f91fc71,
+    0x9b941525,
+    0xfae59361,
+    0xceb69ceb,
+    0xc2a86459,
+    0x12baa8d1,
+    0xb6c1075e,
+    0xe3056a0c,
+    0x10d25065,
+    0xcb03a442,
+    0xe0ec6e0e,
+    0x1698db3b,
+    0x4c98a0be,
+    0x3278e964,
+    0x9f1f9532,
+    0xe0d392df,
+    0xd3a0342b,
+    0x8971f21e,
+    0x1b0a7441,
+    0x4ba3348c,
+    0xc5be7120,
+    0xc37632d8,
+    0xdf359f8d,
+    0x9b992f2e,
+    0xe60b6f47,
+    0x0fe3f11d,
+    0xe54cda54,
+    0x1edad891,
+    0xce6279cf,
+    0xcd3e7e6f,
+    0x1618b166,
+    0xfd2c1d05,
+    0x848fd2c5,
+    0xf6fb2299,
+    0xf523f357,
+    0xa6327623,
+    0x93a83531,
+    0x56cccd02,
+    0xacf08162,
+    0x5a75ebb5,
+    0x6e163697,
+    0x88d273cc,
+    0xde966292,
+    0x81b949d0,
+    0x4c50901b,
+    0x71c65614,
+    0xe6c6c7bd,
+    0x327a140a,
+    0x45e1d006,
+    0xc3f27b9a,
+    0xc9aa53fd,
+    0x62a80f00,
+    0xbb25bfe2,
+    0x35bdd2f6,
+    0x71126905,
+    0xb2040222,
+    0xb6cbcf7c,
+    0xcd769c2b,
+    0x53113ec0,
+    0x1640e3d3,
+    0x38abbd60,
+    0x2547adf0,
+    0xba38209c,
+    0xf746ce76,
+    0x77afa1c5,
+    0x20756060,
+    0x85cbfe4e,
+    0x8ae88dd8,
+    0x7aaaf9b0,
+    0x4cf9aa7e,
+    0x1948c25c,
+    0x02fb8a8c,
+    0x01c36ae4,
+    0xd6ebe1f9,
+    0x90d4f869,
+    0xa65cdea0,
+    0x3f09252d,
+    0xc208e69f,
+    0xb74e6132,
+    0xce77e25b,
+    0x578fdfe3,
+    0x3ac372e6, 
+]);
+new Int32Array([
+    0x4f727068,
+    0x65616e42,
+    0x65686f6c,
+    0x64657253,
+    0x63727944,
+    0x6f756274, 
+]);
+const importMeta = {
+    url: "https://deno.land/x/bcrypt@v0.2.4/src/main.ts",
+    main: false
 };
-const encoder = new TextEncoder();
-async function verify1(signature, key, alg, signingInput) {
-    return key === null ? signature.length === 0 : await crypto.subtle.verify(getAlgorithm(alg), key, signature, encoder.encode(signingInput));
-}
-const decoder = new TextDecoder();
-function isExpired(exp, leeway = 0) {
-    return exp + leeway < Date.now() / 1000;
-}
-function isTooEarly(nbf, leeway = 0) {
-    return nbf - leeway > Date.now() / 1000;
-}
-function isObject1(obj) {
-    return obj !== null && typeof obj === "object" && Array.isArray(obj) === false;
-}
-function is3Tuple(arr) {
-    return arr.length === 3;
-}
-function hasInvalidTimingClaims(...claimValues) {
-    return claimValues.some((claimValue)=>claimValue !== undefined ? typeof claimValue !== "number" : false);
-}
-function decode2(jwt) {
-    try {
-        const arr = jwt.split(".").map(mod4.decode).map((uint8Array, index)=>{
-            switch(index){
-                case 0:
-                case 1:
-                    return JSON.parse(decoder.decode(uint8Array));
-                case 2:
-                    return uint8Array;
-            }
-        });
-        if (is3Tuple(arr)) return arr;
-        else throw new Error();
-    } catch  {
-        throw TypeError("The serialization of the jwt is invalid.");
-    }
-}
-function validate1([header, payload, signature]) {
-    if (typeof header?.alg !== "string") {
-        throw new Error(`The header 'alg' parameter of the jwt must be a string.`);
-    }
-    if (isObject1(payload)) {
-        if (hasInvalidTimingClaims(payload.exp, payload.nbf)) {
-            throw new Error(`The jwt has an invalid 'exp' or 'nbf' claim.`);
-        }
-        if (typeof payload.exp === "number" && isExpired(payload.exp, 1)) {
-            throw RangeError("The jwt is expired.");
-        }
-        if (typeof payload.nbf === "number" && isTooEarly(payload.nbf, 1)) {
-            throw RangeError("The jwt is used too early.");
-        }
-        return {
-            header,
-            payload,
-            signature
-        };
-    } else {
-        throw new Error(`The jwt claims set is not a JSON object.`);
-    }
-}
-async function verify2(jwt, key) {
-    const { header , payload , signature  } = validate1(decode2(jwt));
-    if (verify(header.alg, key)) {
-        if (!await verify1(signature, key, header.alg, jwt.slice(0, jwt.lastIndexOf(".")))) {
-            throw new Error("The jwt's signature does not match the verification signature.");
-        }
-        return payload;
-    } else {
-        throw new Error(`The jwt's alg '${header.alg}' does not match the key's algorithm.`);
-    }
-}
-function createSigningInput(header, payload) {
-    return `${mod4.encode(encoder.encode(JSON.stringify(header)))}.${mod4.encode(encoder.encode(JSON.stringify(payload)))}`;
-}
-async function create(alg, key, signingInput) {
-    return key === null ? "" : mod4.encode(new Uint8Array(await crypto.subtle.sign(getAlgorithm(alg), key, encoder.encode(signingInput))));
-}
-async function create1(header, payload, key) {
-    if (verify(header.alg, key)) {
-        const signingInput = createSigningInput(header, payload);
-        const signature = await create(header.alg, key, signingInput);
-        return `${signingInput}.${signature}`;
-    } else {
-        throw new Error(`The jwt's alg '${header.alg}' does not match the key's algorithm.`);
-    }
-}
-function getNumericDate(exp) {
-    return Math.round((exp instanceof Date ? exp.getTime() : Date.now() + exp * 1000) / 1000);
-}
-const assignProperties = (schema, properties, required)=>{
-    const newSchema = {
-        ...schema,
-        properties: {
-            ...schema.properties,
-            ...properties
-        }
-    };
-    if (required) {
-        newSchema['required'] = [
-            ...schema['required'] || [],
-            ...required
-        ];
-    }
-    return newSchema;
-};
-function getFileInfoType(fileInfo) {
-    return fileInfo.isFile ? "file" : fileInfo.isDirectory ? "dir" : fileInfo.isSymlink ? "symlink" : undefined;
-}
-async function ensureDir(dir) {
-    try {
-        const fileInfo = await Deno.lstat(dir);
-        if (!fileInfo.isDirectory) {
-            throw new Error(`Ensure path exists, expected 'dir', got '${getFileInfoType(fileInfo)}'`);
-        }
-    } catch (err) {
-        if (err instanceof Deno.errors.NotFound) {
-            await Deno.mkdir(dir, {
-                recursive: true
-            });
-            return;
-        }
-        throw err;
-    }
-}
-async function exists(filePath) {
-    try {
-        await Deno.lstat(filePath);
-        return true;
-    } catch (err) {
-        if (err instanceof Deno.errors.NotFound) {
-            return false;
-        }
-        throw err;
-    }
-}
-function existsSync(filePath) {
-    try {
-        Deno.lstatSync(filePath);
-        return true;
-    } catch (err) {
-        if (err instanceof Deno.errors.NotFound) {
-            return false;
-        }
-        throw err;
-    }
-}
-var EOL;
-(function(EOL) {
-    EOL["LF"] = "\n";
-    EOL["CRLF"] = "\r\n";
-})(EOL || (EOL = {}));
-const { Deno: Deno1  } = globalThis;
-const noColor = typeof Deno1?.noColor === "boolean" ? Deno1.noColor : true;
-let enabled = !noColor;
-function code1(open, close) {
-    return {
-        open: `\x1b[${open.join(";")}m`,
-        close: `\x1b[${close}m`,
-        regexp: new RegExp(`\\x1b\\[${close}m`, "g")
-    };
-}
-function run(str, code) {
-    return enabled ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
-}
-function bold(str) {
-    return run(str, code1([
-        1
-    ], 22));
-}
-function red(str) {
-    return run(str, code1([
-        31
-    ], 39));
-}
-function yellow(str) {
-    return run(str, code1([
-        33
-    ], 39));
-}
-function blue(str) {
-    return run(str, code1([
-        34
-    ], 39));
-}
-new RegExp([
-    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
-    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))", 
-].join("|"), "g");
-var DiffType;
-(function(DiffType) {
-    DiffType["removed"] = "removed";
-    DiffType["common"] = "common";
-    DiffType["added"] = "added";
-})(DiffType || (DiffType = {}));
-BigInt(Number.MAX_SAFE_INTEGER);
-const BUF_SIZE = 64 * 1024;
-async function* limitBytes(itbl, limit) {
-    let bytes = 0;
-    for await (let chunk of itbl){
-        bytes += chunk.byteLength;
-        if (bytes > limit) {
-            return chunk.slice(0, limit - bytes);
-        } else if (bytes === limit) {
-            return chunk;
-        } else {
-            yield chunk;
-        }
-    }
-}
-async function* toBlockChunks(stringItbl) {
-    const buffer = new Uint8Array(BUF_SIZE);
-    let pointer = 0;
-    const encoder = new TextEncoder();
-    for await (const stringChunk of stringItbl){
-        const bytes = encoder.encode(stringChunk);
-        let start = 0;
-        let bytesRemaining = bytes.length - start;
-        let bufferRemaining = BUF_SIZE - pointer;
-        while(bytesRemaining >= bufferRemaining){
-            buffer.set(bytes.slice(start, start + bufferRemaining), pointer);
-            yield buffer;
-            start += bufferRemaining;
-            bytesRemaining = bytes.length - start;
-            pointer = 0;
-            bufferRemaining = BUF_SIZE - pointer;
-        }
-        if (bytesRemaining > 0) {
-            buffer.set(bytes.slice(start), pointer);
-            pointer += bytesRemaining;
-        }
-    }
-    yield buffer.slice(0, pointer);
-}
-async function* iterateReader(r, options) {
-    const bufSize = options?.bufSize ?? BUF_SIZE;
-    while(true){
-        const b = new Uint8Array(bufSize);
-        const result = await r.read(b);
-        if (result === null) {
-            break;
-        }
-        yield b.subarray(0, result);
-    }
-}
-async function readFileStream(path, startByte = 0, endByte = -1) {
-    const f = await Deno.open(path);
-    if (startByte > 0) {
-        await Deno.seek(f.rid, startByte, Deno.SeekMode.Start);
-    }
-    let itbl = iterateReader(f, {
-        bufSize: BUF_SIZE
+async function hash(plaintext, salt = undefined) {
+    let worker = new Worker(new URL("worker.ts", importMeta.url).toString(), {
+        type: "module",
+        deno: true
     });
-    if (endByte > -1) {
-        itbl = limitBytes(itbl, endByte - startByte);
-    }
-    const stream = new ReadableStream({
-        async pull (controller) {
-            try {
-                const { value , done  } = await itbl.next();
-                if (done) {
-                    controller.close();
-                    f.close();
-                } else {
-                    controller.enqueue(value);
-                }
-            } catch (err) {
-                controller.error(err);
-                console.log('stream error: ' + JSON.stringify(err));
-                f.close();
-            }
-        },
-        cancel () {
-            f.close();
+    worker.postMessage({
+        action: "hash",
+        payload: {
+            plaintext,
+            salt
         }
     });
-    return stream;
-}
-async function writeFileStream(path) {
-    await ensureDir(dirname2(path));
-    let f = await Deno.open(path, {
-        create: true,
-        write: true,
-        truncate: true
+    return new Promise((resolve)=>{
+        worker.onmessage = (event)=>{
+            resolve(event.data);
+            worker.terminate();
+        };
     });
-    const stream = new WritableStream({
-        async write (chunk) {
-            await writeAll(f, chunk);
-        },
-        close () {
-            f.close();
-        },
-        abort (reason) {
-            console.error('Write abort: ', reason);
-            f.close();
+}
+async function compare(plaintext, hash) {
+    let worker = new Worker(new URL("worker.ts", importMeta.url).toString(), {
+        type: "module",
+        deno: true
+    });
+    worker.postMessage({
+        action: "compare",
+        payload: {
+            plaintext,
+            hash
         }
     });
-    return stream;
+    return new Promise((resolve)=>{
+        worker.onmessage = (event)=>{
+            resolve(event.data);
+            worker.terminate();
+        };
+    });
 }
-function fileToDataAdapter(fileAdapter) {
-    return class FileAsDataAdapter extends fileAdapter {
-        readKey = async (dataset, key)=>{
-            const data = await this.read(pathCombine(dataset, key), [
-                'json'
-            ]);
-            return data.ok ? await data.asJson() || {} : data.statusCode;
-        };
-        writeKey = (dataset, key, data)=>this.write(pathCombine(dataset, key), data, [
-                'json'
-            ]);
-        deleteKey = (dataset, key)=>this.delete(pathCombine(dataset, key), [
-                'json'
-            ]);
-        listDataset = async (dataset, getUpdateTime)=>{
-            const msgBody = await this.readDirectory(dataset || '/', getUpdateTime);
-            if (!msgBody.ok) {
-                if (msgBody.statusCode === 404) {
-                    return [];
-                } else {
-                    return msgBody.statusCode;
-                }
-            }
-            const paths = await msgBody.asJson() || [];
-            return paths;
-        };
-        deleteDataset = (dataset)=>this.deleteDirectory(dataset, '.schema.json');
-        checkKey = (dataset, key)=>this.check(pathCombine(dataset, key), [
-                'json'
-            ]);
-    };
-}
-function dataToSchemaAdapter(dataAdapter) {
-    return class DataAsSchemaAdapter extends dataAdapter {
-        checkSchema(dataset) {
-            return this.checkKey(dataset, '.schema.json');
-        }
-        readSchema(dataset) {
-            return this.readKey(dataset, '.schema.json');
-        }
-        writeSchema(dataset, schema) {
-            return this.writeKey(dataset, '.schema.json', MessageBody.fromObject(schema));
-        }
-        instanceContentType(dataset, baseUrl) {
-            const url = [
-                baseUrl,
-                dataset,
-                '.schema.json'
-            ].filter((s)=>s !== '').join('/');
-            return Promise.resolve(`application/json; schema="${url}"`);
-        }
-    };
-}
-class LocalFileAdapterBase {
-    rootPath;
-    basePath;
-    constructor(context, props){
-        this.context = context;
-        this.props = props;
-        this.dirIter = async function*(dirPath, getUpdateTime) {
-            yield '[';
-            let first = true;
-            for await (const entry of Deno.readDir(dirPath)){
-                let updateStr = "";
-                if (getUpdateTime) {
-                    const stat = await Deno.stat(join3(dirPath, entry.name));
-                    updateStr = stat.mtime ? "," + stat.mtime.getTime().toString() : "";
-                }
-                const listName = entry.name + (entry.isDirectory ? "/" : "");
-                yield `${first ? '' : ','} [ "${listName}"${updateStr} ]`;
-                first = false;
-            }
-            yield ']';
-        };
-        this.rootPath = props.rootPath.replace('${tenant}', context.tenant);
-        this.basePath = props.basePath;
-    }
-    canonicalisePath(path) {
-        return path.replace(/[\\:*"<>|]/g, '-');
-    }
-    decanonicalisePath(path) {
-        return path;
-    }
-    getPathParts(reqPath, extensions, forDir, ensureDirExists) {
-        reqPath = reqPath.split('?')[0];
-        if (reqPath.endsWith('/')) forDir = true;
-        let fullPath = this.basePath + '/' + decodeURI(slashTrim(reqPath));
-        fullPath = fullPath.replace(/^\//, '').replace('//', '/');
-        fullPath = this.canonicalisePath(fullPath);
-        const pathParts = fullPath.split('/');
-        if (ensureDirExists) ensureDir(join3(this.rootPath, ...pathParts.slice(0, -1)));
-        let ext = '';
-        if (!forDir) {
-            const dotParts = pathParts[pathParts.length - 1].split('.');
-            const pathExt = dotParts[dotParts.length - 1];
-            extensions = extensions || [];
-            if (extensions.length && (dotParts.length === 1 || !extensions.includes(pathExt))) {
-                ext = extensions[0];
-            } else if (dotParts.length > 1) {
-                ext = dotParts.pop();
-                pathParts[pathParts.length - 1] = dotParts.join('.');
-            }
-        }
-        const filePath = join3(this.rootPath, ...pathParts);
-        return [
-            filePath,
-            ext
-        ];
-    }
-    getPath(reqPath, extensions, forDir, ensureDir) {
-        const [filePath, ext] = this.getPathParts(reqPath, extensions, forDir, ensureDir);
-        return filePath + (ext ? '.' + ext : '');
-    }
-    async read(readPath, extensions, startByte, endByte) {
-        const filePath = this.getPath(readPath, extensions);
-        let stream;
-        try {
-            stream = await readFileStream(filePath, startByte, endByte);
-            return new MessageBody(stream, getType(filePath) || 'text/plain');
-        } catch (err) {
-            if (err instanceof Deno.errors.NotFound) return MessageBody.fromError(404);
-            throw new Error(`LocalFileAdapter reading file: ${readPath}, ${err}`);
-        }
-    }
-    async write(path, data, extensions) {
-        let writeStream = null;
-        try {
-            writeStream = await writeFileStream(this.getPath(path, extensions, false, true));
-            const readableStream = data.asReadable();
-            if (readableStream === null) throw new Error('no data');
-            await readableStream.pipeTo(writeStream);
-            return 200;
-        } catch (err) {
-            return err instanceof Deno.errors.NotFound ? 404 : 500;
-        }
-    }
-    async delete(path, extensions) {
-        try {
-            await Deno.remove(this.getPath(path, extensions));
-        } catch (err) {
-            return err instanceof Deno.errors.NotFound ? 404 : 500;
-        }
-        return 200;
-    }
-    dirIter;
-    async readDirectory(readPath, getUpdateTime = false) {
-        const filePath = this.getPath(readPath, undefined, true);
-        let stat;
-        try {
-            stat = await Deno.stat(filePath);
-        } catch (err) {
-            return err instanceof Deno.errors.NotFound ? MessageBody.fromError(404) : MessageBody.fromError(500);
-        }
-        if (!stat.isDirectory) return MessageBody.fromError(400);
-        const blockIter = toBlockChunks(this.dirIter(filePath, getUpdateTime || false));
-        return new MessageBody(readableStreamFromIterable(blockIter), 'text/plain').setIsDirectory();
-    }
-    async deleteDirectory(path, deleteableFileSuffix = '') {
-        const filePath = this.getPath(path, undefined, true);
-        let stat;
-        try {
-            stat = await Deno.stat(filePath);
-        } catch (err) {
-            return err instanceof Deno.errors.NotFound ? 200 : 500;
-        }
-        if (!stat.isDirectory) return 400;
-        for await (const entry of Deno.readDir(filePath)){
-            if (entry.isDirectory || !(deleteableFileSuffix && entry.name.endsWith(deleteableFileSuffix))) {
-                return 400;
-            }
-        }
-        await Deno.remove(filePath, {
-            recursive: true
-        });
-        return 200;
-    }
-    async check(path, extensions) {
-        const filePath = this.getPath(path, extensions);
-        let stat;
-        try {
-            stat = await Deno.stat(filePath);
-        } catch  {
-            return {
-                status: 'none'
-            };
-        }
-        const status = stat.isDirectory ? "directory" : "file";
-        switch(status){
-            case "directory":
-                return {
-                    status,
-                    dateModified: stat.mtime
-                };
-            default:
-                return {
-                    status,
-                    size: stat.size,
-                    dateModified: stat.mtime
-                };
-        }
-    }
-    async move(fromPath, toPath, extensions) {
-        const fromFullPath = this.getPath(fromPath);
-        const toFullPath = this.getPath(toPath, extensions, false, true);
-        try {
-            await Deno.rename(fromFullPath, toFullPath);
-        } catch (err) {
-            return err instanceof Deno.errors.NotFound ? 404 : 500;
-        }
-        return 200;
-    }
-    context;
-    props;
-}
-const __default1 = dataToSchemaAdapter(fileToDataAdapter(LocalFileAdapterBase));
-const __default2 = {
-    "name": "Local File Adapter",
-    "description": "Reads and writes files on the file system local to the runtime",
-    "moduleUrl": "./adapter/LocalFileAdapter.ts",
-    "configSchema": {
-        "type": "object",
-        "properties": {
-            "rootPath": {
-                "type": "string",
-                "description": "File path to root of all file storage"
-            },
-            "basePath": {
-                "type": "string",
-                "description": "Path below root path to storage for this service (generally unique)"
-            }
-        }
-    },
-    "adapterInterfaces": [
-        "IFileAdapter",
-        "IDataAdapter"
-    ]
-};
-const $XML = Symbol("x/xml");
-const schema = {
-    comment: "#comment",
-    text: "#text",
-    attribute: {
-        prefix: "@"
-    },
-    property: {
-        prefix: "@"
-    }
-};
-const SeekMode = Object.freeze({
-    Current: Deno?.SeekMode?.Current ?? 0,
-    Start: Deno?.SeekMode?.Start ?? 1,
-    End: Deno?.SeekMode?.End ?? 2
-});
-const entities = {
-    xml: {
-        "&lt;": "<",
-        "&gt;": ">",
-        "&apos;": "'",
-        "&quot;": '"',
-        "&amp;": "&"
-    },
-    char: {
-        "&": "&amp;",
-        '"': "&quot;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "'": "&apos;"
-    }
-};
-const tokens = {
-    entity: {
-        regex: {
-            entities: /&#(?<hex>x?)(?<code>\d+);/g
-        }
-    },
-    prolog: {
-        start: "<?xml",
-        end: "?>"
-    },
-    doctype: {
-        start: "<!DOCTYPE",
-        end: ">",
-        elements: {
-            start: "[",
-            end: "]"
-        },
-        element: {
-            start: "<!ELEMENT",
-            end: ">",
-            value: {
-                start: "(",
-                end: ")",
-                regex: {
-                    end: {
-                        until: /\)/,
-                        bytes: 1
-                    }
-                }
-            }
-        }
-    },
-    comment: {
-        start: "<!--",
-        end: "-->",
-        regex: {
-            end: {
-                until: /(?<!-)-->/,
-                bytes: 4,
-                length: 3
-            }
-        }
-    },
-    cdata: {
-        start: "<![CDATA[",
-        end: "]]>",
-        regex: {
-            end: {
-                until: /\]\]>/,
-                bytes: 3
-            }
-        }
-    },
-    tag: {
-        start: "<",
-        end: ">",
-        close: {
-            start: "</",
-            end: ">",
-            self: "/",
-            regex: {
-                start: /<\//,
-                end: /\/?>/
-            }
-        },
-        attribute: {
-            regex: {
-                name: {
-                    until: /=/,
-                    bytes: 1
-                }
-            }
-        },
-        regex: {
-            name: {
-                until: /[\s\/>]/,
-                bytes: 1
-            },
-            start: {
-                until: /</,
-                bytes: 1
-            }
-        }
-    },
-    text: {
-        regex: {
-            end: {
-                until: /(<\/)|(<!)/,
-                bytes: 2
-            }
-        }
-    }
-};
-class Parser {
-    constructor(stream, options = {}){
-        this.#stream = stream;
-        this.#options = options;
-        this.#options.reviver ??= function({ value  }) {
-            return value;
-        };
-    }
-    parse() {
-        return this.#document();
-    }
-    #options;
-     #debug(path4, string) {
-        if (this.#options.debug) {
-            console.debug(`${path4.map((node)=>node[$XML].name).join(" > ")} | ${string}`.trim());
-        }
-    }
-     #document() {
-        const document = {};
-        const path11 = [];
-        const comments = [];
-        let root = false;
-        let clean;
-        this.#trim();
-        try {
-            while(true){
-                clean = true;
-                if (this.#peek(tokens.comment.start)) {
-                    clean = false;
-                    comments.push(this.#comment({
-                        path: path11
-                    }));
-                    continue;
-                }
-                if (this.#peek(tokens.prolog.start)) {
-                    if (document.xml) {
-                        throw new SyntaxError("Multiple prolog declaration found");
-                    }
-                    clean = false;
-                    Object.assign(document, this.#prolog({
-                        path: path11
-                    }));
-                    continue;
-                }
-                if (this.#peek(tokens.doctype.start)) {
-                    if (document.doctype) {
-                        throw new SyntaxError("Multiple doctype declaration found");
-                    }
-                    clean = false;
-                    Object.assign(document, this.#doctype({
-                        path: path11
-                    }));
-                    continue;
-                }
-                if (this.#peek(tokens.tag.start)) {
-                    if (root) {
-                        throw new SyntaxError("Multiple root elements found");
-                    }
-                    clean = false;
-                    Object.assign(document, this.#node({
-                        path: path11
-                    }));
-                    this.#trim();
-                    root = true;
-                    continue;
-                }
-            }
-        } catch (error) {
-            if (error instanceof Deno.errors.UnexpectedEof && clean) {
-                if (comments.length) {
-                    document[schema.comment] = comments;
-                }
-                return document;
-            }
-            throw error;
-        }
-    }
-     #node({ path: path21  }) {
-        if (this.#options.progress) {
-            this.#options.progress(this.#stream.cursor);
-        }
-        if (this.#peek(tokens.comment.start)) {
-            return {
-                [schema.comment]: this.#comment({
-                    path: path21
-                })
-            };
-        }
-        return this.#tag({
-            path: path21
-        });
-    }
-     #prolog({ path: path31  }) {
-        this.#debug(path31, "parsing prolog");
-        const prolog = this.#make.node({
-            name: "xml",
-            path: path31
-        });
-        this.#consume(tokens.prolog.start);
-        while(!this.#peek(tokens.prolog.end)){
-            Object.assign(prolog, this.#attribute({
-                path: [
-                    ...path31,
-                    prolog
-                ]
-            }));
-        }
-        this.#consume(tokens.prolog.end);
-        return {
-            xml: prolog
-        };
-    }
-     #doctype({ path: path41  }) {
-        this.#debug(path41, "parsing doctype");
-        const doctype = this.#make.node({
-            name: "doctype",
-            path: path41
-        });
-        Object.defineProperty(doctype, $XML, {
-            enumerable: false,
-            writable: true
-        });
-        this.#consume(tokens.doctype.start);
-        while(!this.#peek(tokens.doctype.end)){
-            if (this.#peek(tokens.doctype.elements.start)) {
-                this.#consume(tokens.doctype.elements.start);
-                while(!this.#peek(tokens.doctype.elements.end)){
-                    Object.assign(doctype, this.#doctypeElement({
-                        path: path41
-                    }));
-                }
-                this.#consume(tokens.doctype.elements.end);
-            } else {
-                Object.assign(doctype, this.#property({
-                    path: path41
-                }));
-            }
-        }
-        this.#stream.consume({
-            content: tokens.doctype.end
-        });
-        return {
-            doctype
-        };
-    }
-     #doctypeElement({ path: path5  }) {
-        this.#debug(path5, "parsing doctype element");
-        this.#consume(tokens.doctype.element.start);
-        const element = Object.keys(this.#property({
-            path: path5
-        })).shift().substring(schema.property.prefix.length);
-        this.#debug(path5, `found doctype element "${element}"`);
-        this.#consume(tokens.doctype.element.value.start);
-        const value = this.#capture(tokens.doctype.element.value.regex.end);
-        this.#consume(tokens.doctype.element.value.end);
-        this.#debug(path5, `found doctype element value "${value}"`);
-        this.#consume(tokens.doctype.element.end);
-        return {
-            [element]: value
-        };
-    }
-     #tag({ path: path6  }) {
-        this.#debug(path6, "parsing tag");
-        const tag = this.#make.node({
-            path: path6
-        });
-        this.#consume(tokens.tag.start);
-        const name = this.#capture(tokens.tag.regex.name);
-        Object.assign(tag[$XML], {
-            name
-        });
-        this.#debug(path6, `found tag "${name}"`);
-        while(!tokens.tag.close.regex.end.test(this.#stream.peek(2))){
-            Object.assign(tag, this.#attribute({
-                path: [
-                    ...path6,
-                    tag
-                ]
-            }));
-        }
-        const selfclosed = this.#peek(tokens.tag.close.self);
-        if (selfclosed) {
-            this.#debug(path6, `tag "${name}" is self-closed`);
-            this.#consume(tokens.tag.close.self);
-        }
-        this.#consume(tokens.tag.end);
-        if (!selfclosed) {
-            if (this.#peek(tokens.cdata.start) || !this.#peek(tokens.tag.start)) {
-                Object.assign(tag, this.#text({
-                    close: name,
-                    path: [
-                        ...path6,
-                        tag
-                    ]
-                }));
-            } else {
-                while(!tokens.tag.close.regex.start.test(this.#stream.peek(2))){
-                    const child = this.#node({
-                        path: [
-                            ...path6,
-                            tag
-                        ]
-                    });
-                    const [key, value1] = Object.entries(child).shift();
-                    if (Array.isArray(tag[key])) {
-                        tag[key].push(value1);
-                        this.#debug([
-                            ...path6,
-                            tag
-                        ], `add new child "${key}" to array`);
-                    } else if (key in tag) {
-                        const array = [
-                            tag[key],
-                            value1
-                        ];
-                        Object.defineProperty(array, $XML, {
-                            enumerable: false,
-                            writable: true
-                        });
-                        if (tag[key]?.[$XML]) {
-                            Object.assign(array, {
-                                [$XML]: tag[key][$XML]
-                            });
-                        }
-                        tag[key] = array;
-                        this.#debug([
-                            ...path6,
-                            tag
-                        ], `multiple children named "${key}", using array notation`);
-                    } else {
-                        Object.assign(tag, child);
-                        this.#debug([
-                            ...path6,
-                            tag
-                        ], `add new child "${key}"`);
-                    }
-                }
-            }
-            this.#consume(tokens.tag.close.start);
-            this.#consume(name);
-            this.#consume(tokens.tag.close.end);
-            this.#debug(path6, `found closing tag for "${name}"`);
-        }
-        for (const [key1] of Object.entries(tag).filter(([_, value])=>typeof value === "undefined")){
-            delete tag[key1];
-        }
-        if (!Object.keys(tag).includes(schema.text)) {
-            const children = Object.keys(tag).filter((key)=>!key.startsWith(schema.attribute.prefix) && key !== schema.text);
-            if (!children.length) {
-                this.#debug(path6, `tag "${name}" has implictely obtained a text node as it has no children but has attributes`);
-                tag[schema.text] = this.#revive({
-                    key: schema.text,
-                    value: "",
-                    tag
-                });
-            }
-        }
-        if ((this.#options.flatten ?? true) && Object.keys(tag).includes(schema.text) && Object.keys(tag).length === 1) {
-            this.#debug(path6, `tag "${name}" has been implicitely flattened as it only has a text node`);
-            return {
-                [name]: tag[schema.text]
-            };
-        }
-        return {
-            [name]: tag
-        };
-    }
-     #attribute({ path: path7  }) {
-        this.#debug(path7, "parsing attribute");
-        const attribute = this.#capture(tokens.tag.attribute.regex.name);
-        this.#debug(path7, `found attribute "${attribute}"`);
-        this.#consume("=");
-        const quote = this.#stream.peek();
-        this.#consume(quote);
-        const value2 = this.#capture({
-            until: new RegExp(quote),
-            bytes: quote.length
-        });
-        this.#consume(quote);
-        this.#debug(path7, `found attribute value "${value2}"`);
-        return {
-            [`${schema.attribute.prefix}${attribute}`]: this.#revive({
-                key: `${schema.attribute.prefix}${attribute}`,
-                value: value2,
-                tag: path7.at(-1)
-            })
-        };
-    }
-     #property({ path: path8  }) {
-        this.#debug(path8, "parsing property");
-        const quote1 = this.#stream.peek();
-        const delimiter6 = /["']/.test(quote1) ? quote1 : " ";
-        if (delimiter6.trim().length) {
-            this.#consume(delimiter6);
-        }
-        const property = this.#capture({
-            until: new RegExp(delimiter6),
-            bytes: delimiter6.length
-        });
-        this.#debug(path8, `found property ${property}`);
-        if (delimiter6.trim().length) {
-            this.#consume(delimiter6);
-        }
-        return {
-            [`${schema.property.prefix}${property}`]: true
-        };
-    }
-     #text({ close , path: path9  }) {
-        this.#debug(path9, "parsing text");
-        const tag1 = this.#make.node({
-            name: schema.text,
-            path: path9
-        });
-        let text = "";
-        const comments1 = [];
-        while(this.#peek(tokens.cdata.start) || !this.#peeks([
-            tokens.tag.close.start,
-            close,
-            tokens.tag.close.end
-        ])){
-            if (this.#peek(tokens.cdata.start)) {
-                text += this.#cdata({
-                    path: [
-                        ...path9,
-                        tag1
-                    ]
-                });
-            } else if (this.#peek(tokens.comment.start)) {
-                comments1.push(this.#comment({
-                    path: [
-                        ...path9,
-                        tag1
-                    ]
-                }));
-            } else {
-                text += this.#capture(tokens.text.regex.end);
-                if (this.#peek(tokens.cdata.start) || this.#peek(tokens.comment.start)) {
-                    continue;
-                }
-                if (!this.#peeks([
-                    tokens.tag.close.start,
-                    close,
-                    tokens.tag.close.end
-                ])) {
-                    text += tokens.tag.close.start;
-                    this.#consume(tokens.tag.close.start);
-                }
-            }
-        }
-        this.#debug(path9, `parsed text "${text}"`);
-        if (comments1.length) {
-            this.#debug(path9, `parsed comments ${JSON.stringify(comments1)}`);
-        }
-        Object.assign(tag1, {
-            [schema.text]: this.#revive({
-                key: schema.text,
-                value: text.trim(),
-                tag: path9.at(-1)
-            }),
-            ...comments1.length ? {
-                [schema.comment]: comments1
-            } : {}
-        });
-        return tag1;
-    }
-     #cdata({ path: path10  }) {
-        this.#debug(path10, "parsing cdata");
-        this.#consume(tokens.cdata.start);
-        const data = this.#capture(tokens.cdata.regex.end);
-        this.#consume(tokens.cdata.end);
-        return data;
-    }
-     #comment({ path: path111  }) {
-        this.#debug(path111, "parsing comment");
-        this.#consume(tokens.comment.start);
-        const comment = this.#capture(tokens.comment.regex.end).trim();
-        this.#consume(tokens.comment.end);
-        return comment;
-    }
-     #revive({ key: key2 , value: value3 , tag: tag2  }) {
-        return this.#options.reviver.call(tag2, {
-            key: key2,
-            tag: tag2[$XML].name,
-            properties: !(key2.startsWith(schema.attribute.prefix) || key2.startsWith(schema.property.prefix)) ? {
-                ...tag2
-            } : null,
-            value: (()=>{
-                switch(true){
-                    case (this.#options.emptyToNull ?? true) && /^\s*$/.test(value3):
-                        return null;
-                    case (this.#options.reviveBooleans ?? true) && /^(?:true|false)$/i.test(value3):
-                        return /^true$/i.test(value3);
-                    case this.#options.reviveNumbers ?? true:
-                        {
-                            const num = Number(value3);
-                            if (Number.isFinite(num)) {
-                                return num;
-                            }
-                        }
-                    default:
-                        value3 = value3.replace(tokens.entity.regex.entities, (_, hex, code)=>String.fromCharCode(parseInt(code, hex ? 16 : 10)));
-                        for (const [entity, character] of Object.entries(entities.xml)){
-                            value3 = value3.replaceAll(entity, character);
-                        }
-                        return value3;
-                }
-            })()
-        });
-    }
-    #make = {
-        node ({ name ="" , path =[]  }) {
-            const node = {
-                [$XML]: {
-                    name,
-                    parent: path[path.length - 1] ?? null
-                }
-            };
-            Object.defineProperty(node, $XML, {
-                enumerable: false,
-                writable: true
-            });
-            return node;
-        }
-    };
-    #stream;
-     #peek(token) {
-        return this.#stream.peek(token.length) === token;
-    }
-     #peeks(tokens1) {
-        let offset = 0;
-        for(let i1 = 0; i1 < tokens1.length; i1++){
-            const token1 = tokens1[i1];
-            while(true){
-                if (/\s/.test(this.#stream.peek(1, offset))) {
-                    offset++;
-                    continue;
-                }
-                if (this.#stream.peek(token1.length, offset) === token1) {
-                    offset += token1.length;
-                    break;
-                }
-                return false;
-            }
-        }
-        return true;
-    }
-     #consume(token2) {
-        return this.#stream.consume({
-            content: token2
-        });
-    }
-     #capture(token3) {
-        return this.#stream.capture(token3);
-    }
-     #trim() {
-        return this.#stream.trim();
-    }
-}
-class Stream {
-    constructor(content){
-        this.#content = content;
-    }
-    #decoder = new TextDecoder();
-    #encoder = new TextEncoder();
-    #content;
-    get cursor() {
-        return this.#content.seekSync(0, SeekMode.Current);
-    }
-    peek(bytes = 1, offset = 0) {
-        const buffer = new Uint8Array(bytes);
-        const cursor = this.cursor;
-        if (offset) {
-            this.#content.seekSync(offset, SeekMode.Current);
-        }
-        if (this.#content.readSync(buffer)) {
-            this.#content.seekSync(cursor, SeekMode.Start);
-            return this.#decoder.decode(buffer);
-        }
-        throw new Deno.errors.UnexpectedEof();
-    }
-    read(bytes = 1) {
-        const buffer = new Uint8Array(bytes);
-        if (this.#content.readSync(buffer)) {
-            return buffer;
-        }
-        throw new Deno.errors.UnexpectedEof();
-    }
-    capture({ until , bytes , trim =true , length =bytes  }) {
-        if (trim) {
-            this.trim();
-        }
-        const buffer = [];
-        while(!until.test(this.peek(bytes))){
-            buffer.push(this.read(1)[0]);
-        }
-        if (bytes !== length) {
-            buffer.push(...this.read(bytes - length));
-        }
-        if (trim) {
-            this.trim();
-        }
-        return this.#decoder.decode(Uint8Array.from(buffer));
-    }
-    consume({ content , trim =true  }) {
-        if (trim) {
-            this.trim();
-        }
-        const bytes = this.#encoder.encode(content).length;
-        if (content === this.peek(bytes)) {
-            this.read(bytes);
-            if (trim) {
-                this.trim();
-            }
-            return;
-        }
-        throw new SyntaxError(`Expected next sequence to be "${content}", got "${this.peek(bytes)}" instead`);
-    }
-    trim() {
-        try {
-            while(/\s/.test(this.peek())){
-                this.read(1);
-            }
-        } catch (error) {
-            if (error instanceof Deno.errors.UnexpectedEof) {
-                return;
-            }
-            throw error;
-        }
-    }
-}
-class Streamable {
-    constructor(string){
-        this.#buffer = new TextEncoder().encode(string);
-    }
-    #buffer;
-    #cursor = 0;
-    readSync(buffer) {
-        const bytes = this.#buffer.slice(this.#cursor, this.#cursor + buffer.length);
-        buffer.set(bytes);
-        this.#cursor = Math.min(this.#cursor + bytes.length, this.#buffer.length);
-        return bytes.length || null;
-    }
-    seekSync(offset, whence) {
-        switch(whence){
-            case SeekMode.Start:
-                this.#cursor = offset;
-                break;
-            case SeekMode.Current:
-                this.#cursor += offset;
-                break;
-            case SeekMode.End:
-                this.#cursor = this.#buffer.length + offset;
-                break;
-        }
-        return this.#cursor;
-    }
-}
-function parse6(content, options) {
-    if (typeof content === "string") {
-        content = new Streamable(content);
-    }
-    return new Parser(new Stream(content), options).parse();
-}
-class S3FileAdapterBase {
-    basePath;
-    bucketName;
-    aws4ProxyAdapter;
-    constructor(context, props){
-        this.context = context;
-        this.props = props;
-        this.aws4ProxyAdapter = null;
-        this.basePath = props.rootPath;
-        this.bucketName = props.bucketName;
-    }
-    async ensureProxyAdapter() {
-        this.aws4ProxyAdapter = await this.context.getAdapter("./adapter/AWS4ProxyAdapter.ts", {
-            service: "s3",
-            region: this.props.region,
-            secretAccessKey: this.props.secretAccessKey,
-            accessKeyId: this.props.accessKeyId,
-            urlPattern: `https://${this.bucketName}.s3.amazonaws.com/$P*`,
-            ec2IamRole: this.props.ec2IamRole
-        });
-    }
-    async processForAws(msg) {
-        await this.ensureProxyAdapter();
-        const msgOut = await this.aws4ProxyAdapter.buildMessage(msg);
-        return msgOut;
-    }
-    canonicalisePath(path) {
-        return path.replace(/[^0-9a-zA-Z!_.*'()/-]/g, (match)=>match === '~' ? '%7E' : encodeURIComponent(match));
-    }
-    queryCanonicalisePath(path) {
-        return path;
-    }
-    decanonicalisePath(path) {
-        return decodeURIComponent(path.replace('%7E', '~'));
-    }
-    getPathParts(reqPath, extensions, forDir, forQuery) {
-        reqPath = reqPath.split('?')[0];
-        let fullPath = pathCombine(this.basePath, decodeURI(reqPath));
-        if (fullPath.startsWith('/')) fullPath = fullPath.substr(1);
-        if (fullPath.endsWith('/')) {
-            forDir = true;
-            fullPath = fullPath.slice(0, -1);
-        }
-        const transPath = forQuery ? this.queryCanonicalisePath(fullPath) : this.canonicalisePath(fullPath);
-        const pathParts = transPath.split('/');
-        if (this.props.tenantDirectories) pathParts.unshift(this.context.tenant);
-        let ext = '';
-        if (!forDir) {
-            const dotParts = last(pathParts).split('.');
-            extensions = extensions || [];
-            if (extensions.length && (dotParts.length === 1 || extensions.indexOf(last(dotParts)) < 0)) {
-                ext = extensions[0];
-            } else if (dotParts.length > 1) {
-                ext = dotParts.pop();
-                pathParts[pathParts.length - 1] = dotParts.join('.');
-            }
-        }
-        let filePath = pathParts.join('/');
-        if (filePath === '.') filePath = '';
-        return [
-            filePath,
-            ext
-        ];
-    }
-    getPath(reqPath, extensions, forDir, forQuery) {
-        const [filePath, ext] = this.getPathParts(reqPath, extensions, forDir, forQuery);
-        return filePath + (ext ? '.' + ext : '');
-    }
-    async read(readPath, extensions, startByte, endByte) {
-        const getParams = {
-            bucket: this.bucketName,
-            key: this.getPath(readPath, extensions)
-        };
-        const s3Msg = new Message(getParams.key, this.context.tenant, "GET");
-        if (startByte || endByte) {
-            const range = `bytes=${startByte ?? ''}-${endByte ?? ''}`;
-            s3Msg.setHeader('Range', range);
-        }
-        const msgSend = await this.processForAws(s3Msg);
-        const msgOut = await this.context.makeRequest(msgSend);
-        msgOut.data.statusCode = msgOut.status;
-        return msgOut.data;
-    }
-    async write(path, data, extensions) {
-        const key = this.getPath(path, extensions);
-        const s3Msg = new Message(key, this.context.tenant, "PUT");
-        s3Msg.data = data;
-        await s3Msg.data.ensureDataIsArrayBuffer();
-        const msgSend = await this.processForAws(s3Msg);
-        try {
-            const msgOut = await this.context.makeRequest(msgSend);
-            if (!msgOut.ok) {
-                this.context.logger.error('write error: ' + await msgOut.data?.asString());
-            }
-            if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
-            return msgOut.status || 500;
-        } catch (err) {
-            this.context.logger.error(err);
-            return 500;
-        }
-    }
-    async delete(path, extensions) {
-        const deleteParams = {
-            bucket: this.bucketName,
-            key: this.getPath(path, extensions)
-        };
-        const metadata = await this.check(path, extensions);
-        if (metadata.status === "none") return 404;
-        const s3Msg = new Message(deleteParams.key, this.context.tenant, "DELETE");
-        const msgSend = await this.processForAws(s3Msg);
-        try {
-            const msgOut = await this.context.makeRequest(msgSend);
-            if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
-            return msgOut.ok ? 200 : msgOut.status;
-        } catch (err) {
-            console.log(err);
-            return 500;
-        }
-    }
-    async *listPrefixed(filePath, maxKeys) {
-        const url = new Url("/?list-type=2");
-        if (maxKeys) url.query['max-keys'] = [
-            maxKeys.toString()
-        ];
-        if (filePath) url.query['prefix'] = [
-            filePath
-        ];
-        try {
-            url.query["delimiter"] = [
-                "/"
-            ];
-            const s3Msg = new Message(url, this.context.tenant, "GET");
-            const sendMsg = await this.processForAws(s3Msg);
-            const msgOut = await this.context.makeRequest(sendMsg);
-            if (!msgOut.ok) console.log(await msgOut.data.asString());
-            const status = msgOut.status;
-            if (status && status !== 200) return status;
-            const text = await msgOut.data.asString();
-            const output = parse6(text);
-            const contents = output?.['ListBucketResult']?.['Contents'];
-            for (const item of arrayify(contents)){
-                yield {
-                    key: this.decanonicalisePath(item.Key || ''),
-                    name: this.decanonicalisePath(last((item.Key || '').split('/'))),
-                    lastModified: new Date(item.LastModified),
-                    size: item.Size
-                };
-            }
-            const commonPrefixes = output?.['ListBucketResult']?.['CommonPrefixes'];
-            for (const item1 of arrayify(commonPrefixes)){
-                yield {
-                    key: this.decanonicalisePath(item1.Prefix || ''),
-                    name: this.decanonicalisePath((item1.Prefix || '').split('/').slice(-2, -1)[0] + '/'),
-                    lastModified: undefined,
-                    size: undefined
-                };
-            }
-        } catch (err) {
-            console.log(err);
-            return 500;
-        }
-    }
-    async *jsonStreamPrefixed(filePath, maxKeys) {
-        yield '[';
-        let first = true;
-        for await (const item of this.listPrefixed(filePath, maxKeys)){
-            let modifiedStr = '';
-            if (item.name.endsWith('/') && item.lastModified) {
-                modifiedStr = "," + item.lastModified.getTime().toString();
-            }
-            yield `${first ? '' : ','} [ "${item.name}"${modifiedStr} ]`;
-            first = false;
-        }
-        yield ']';
-    }
-    readDirectory(readPath, getUpdateTime = false) {
-        const filePath = this.getPath(readPath, undefined, true, true) + '/';
-        const blockIter = toBlockChunks(this.jsonStreamPrefixed(filePath));
-        return Promise.resolve(new MessageBody(readableStreamFromIterable(blockIter), 'text/plain').setIsDirectory());
-    }
-    async deleteDirectory(path, deleteableFileSuffix = '') {
-        const filePath = this.getPath(path, undefined, true);
-        const files = this.listPrefixed(filePath);
-        let file = await files.next();
-        if (file.done) return 200;
-        if (deleteableFileSuffix !== '*') {
-            while(!file.done){
-                if (file.value.name.includes('/') || !(deleteableFileSuffix && file.value.name.endsWith(deleteableFileSuffix))) return 400;
-                file = await files.next();
-            }
-        }
-        return 200;
-    }
-    async check(path, extensions) {
-        const fullPath = this.getPath(path, extensions, undefined, true);
-        const files = this.listPrefixed(fullPath, 1);
-        const file = await files.next();
-        const item = file.done ? null : file.value;
-        const deFullPath = this.decanonicalisePath(fullPath);
-        let status = "none";
-        if (item != null) {
-            if (item.key === deFullPath) {
-                status = "file";
-            } else if (path.endsWith('/') && item.key !== deFullPath || deFullPath + '/' === item.key) {
-                status = "directory";
-            } else {
-                status = "none";
-            }
-        } else {
-            return {
-                status: "none"
-            };
-        }
-        switch(status){
-            case "none":
-                return {
-                    status
-                };
-            case "directory":
-                return {
-                    status,
-                    dateModified: item.lastModified
-                };
-            case "file":
-                return {
-                    status,
-                    size: item.size,
-                    dateModified: item.lastModified
-                };
-        }
-    }
-    context;
-    props;
-}
-const __default3 = dataToSchemaAdapter(fileToDataAdapter(S3FileAdapterBase));
-const __default4 = {
-    "name": "S3 File Adapter",
-    "description": "Reads and writes files on the AWS S3",
-    "moduleUrl": "./adapter/S3FileAdapter.ts",
-    "configSchema": {
-        "type": "object",
-        "properties": {
-            "rootPath": {
-                "type": "string"
-            },
-            "bucketName": {
-                "type": "string"
-            },
-            "region": {
-                "type": "string"
-            },
-            "tenantDirectories": {
-                "type": "boolean"
-            },
-            "secretAccessKey": {
-                "type": "string"
-            },
-            "ec2IamRole": {
-                "type": "string",
-                "description": "If running on EC2 with an associated IAM role, this can be provided instead of account keys"
-            },
-            "accessKeyId": {
-                "type": "string"
-            }
-        },
-        "required": [
-            "rootPath",
-            "bucketName",
-            "region"
-        ]
-    },
-    "adapterInterfaces": [
-        "IFileAdapter",
-        "IDataAdapter"
-    ]
-};
 var ArrayProto = Array.prototype;
 var ObjProto = Object.prototype;
 var escapeMap = {
@@ -26052,7 +24345,7 @@ function isArray(obj) {
 function isString(obj) {
     return ObjProto.toString.call(obj) === "[object String]";
 }
-function isObject2(obj) {
+function isObject1(obj) {
     return ObjProto.toString.call(obj) === "[object Object]";
 }
 function _prepareAttributeParts(attr) {
@@ -26205,12 +24498,12 @@ function extend(obj1, obj2) {
 function inOperator(key, val) {
     if (isArray(val) || isString(val)) {
         return val.indexOf(key) !== -1;
-    } else if (isObject2(val)) {
+    } else if (isObject1(val)) {
         return key in val;
     }
     throw new Error('Cannot use "in" operator to search for "' + key + '" in unexpected types.');
 }
-const mod5 = {
+const mod4 = {
     keys: keys_,
     _assign: extend,
     hasOwnProp: hasOwnProp,
@@ -26220,7 +24513,7 @@ const mod5 = {
     isFunction: isFunction,
     isArray: isArray,
     isString: isString,
-    isObject: isObject2,
+    isObject: isObject1,
     getAttrGetter: getAttrGetter,
     groupBy: groupBy,
     toArray: toArray,
@@ -26236,7 +24529,7 @@ const mod5 = {
     extend: extend,
     inOperator: inOperator
 };
-function __default5(tasks, callback = function() {}, forceAsync) {
+function __default1(tasks, callback = function() {}, forceAsync) {
     const nextTick = forceAsync ? queueMicrotask : executeSync;
     if (!Array.isArray(tasks)) {
         return callback(new Error("First argument to waterfall must be an array of functions"));
@@ -26315,7 +24608,7 @@ let TOKEN_NONE = "none";
 let TOKEN_SYMBOL = "symbol";
 let TOKEN_SPECIAL = "special";
 let TOKEN_REGEX = "regex";
-function token4(type, value, lineno, colno) {
+function token(type, value, lineno, colno) {
     return {
         type: type,
         value: value,
@@ -26353,9 +24646,9 @@ class Tokenizer {
             if (this.isFinished()) {
                 return null;
             } else if (cur === '"' || cur === "'") {
-                return token4(TOKEN_STRING, this._parseString(cur), lineno, colno);
+                return token(TOKEN_STRING, this._parseString(cur), lineno, colno);
             } else if (tok = this._extract(whitespaceChars)) {
-                return token4(TOKEN_WHITESPACE, tok, lineno, colno);
+                return token(TOKEN_WHITESPACE, tok, lineno, colno);
             } else if ((tok = this._extractString(this.tags.BLOCK_END)) || (tok = this._extractString("-" + this.tags.BLOCK_END))) {
                 this.in_code = false;
                 if (this.trimBlocks) {
@@ -26372,10 +24665,10 @@ class Tokenizer {
                         }
                     }
                 }
-                return token4(TOKEN_BLOCK_END, tok, lineno, colno);
+                return token(TOKEN_BLOCK_END, tok, lineno, colno);
             } else if ((tok = this._extractString(this.tags.VARIABLE_END)) || (tok = this._extractString("-" + this.tags.VARIABLE_END))) {
                 this.in_code = false;
-                return token4(TOKEN_VARIABLE_END, tok, lineno, colno);
+                return token(TOKEN_VARIABLE_END, tok, lineno, colno);
             } else if (cur === "r" && this.str.charAt(this.index + 1) === "/") {
                 this.forwardN(2);
                 let regexBody = "";
@@ -26404,7 +24697,7 @@ class Tokenizer {
                         break;
                     }
                 }
-                return token4(TOKEN_REGEX, {
+                return token(TOKEN_REGEX, {
                     body: regexBody,
                     flags: regexFlags
                 }, lineno, colno);
@@ -26464,25 +24757,25 @@ class Tokenizer {
                     default:
                         type = TOKEN_OPERATOR;
                 }
-                return token4(type, cur, lineno, colno);
+                return token(type, cur, lineno, colno);
             } else {
                 tok = this._extractUntil(whitespaceChars + delimChars);
                 if (tok.match(/^[-+]?[0-9]+$/)) {
                     if (this.current() === ".") {
                         this.forward();
                         let dec = this._extract(intChars);
-                        return token4(TOKEN_FLOAT, tok + "." + dec, lineno, colno);
+                        return token(TOKEN_FLOAT, tok + "." + dec, lineno, colno);
                     } else {
-                        return token4(TOKEN_INT, tok, lineno, colno);
+                        return token(TOKEN_INT, tok, lineno, colno);
                     }
                 } else if (tok.match(/^(true|false)$/)) {
-                    return token4(TOKEN_BOOLEAN, tok, lineno, colno);
+                    return token(TOKEN_BOOLEAN, tok, lineno, colno);
                 } else if (tok === "none") {
-                    return token4(TOKEN_NONE, tok, lineno, colno);
+                    return token(TOKEN_NONE, tok, lineno, colno);
                 } else if (tok === "null") {
-                    return token4(TOKEN_NONE, tok, lineno, colno);
+                    return token(TOKEN_NONE, tok, lineno, colno);
                 } else if (tok) {
-                    return token4(TOKEN_SYMBOL, tok, lineno, colno);
+                    return token(TOKEN_SYMBOL, tok, lineno, colno);
                 } else {
                     throw new Error("Unexpected value while parsing: " + tok);
                 }
@@ -26493,10 +24786,10 @@ class Tokenizer {
                 return null;
             } else if ((tok = this._extractString(this.tags.BLOCK_START + "-")) || (tok = this._extractString(this.tags.BLOCK_START))) {
                 this.in_code = true;
-                return token4(TOKEN_BLOCK_START, tok, lineno, colno);
+                return token(TOKEN_BLOCK_START, tok, lineno, colno);
             } else if ((tok = this._extractString(this.tags.VARIABLE_START + "-")) || (tok = this._extractString(this.tags.VARIABLE_START))) {
                 this.in_code = true;
-                return token4(TOKEN_VARIABLE_START, tok, lineno, colno);
+                return token(TOKEN_VARIABLE_START, tok, lineno, colno);
             } else {
                 tok = "";
                 let data;
@@ -26532,7 +24825,7 @@ class Tokenizer {
                 if (data === null && inComment) {
                     throw new Error("expected end of comment, got end of file");
                 }
-                return token4(inComment ? TOKEN_COMMENT : TOKEN_DATA, tok, lineno, colno);
+                return token(inComment ? TOKEN_COMMENT : TOKEN_DATA, tok, lineno, colno);
             }
         }
     }
@@ -26663,7 +24956,7 @@ class Tokenizer {
         return this.str.charAt(this.index - 1);
     }
 }
-const __default6 = {
+const __default2 = {
     lex (src, opts) {
         return new Tokenizer(src, opts);
     },
@@ -26805,7 +25098,7 @@ function assert2(expr, msg = "") {
     }
 }
 const sep6 = "\\";
-const delimiter7 = ";";
+const delimiter6 = ";";
 function resolve7(...pathSegments) {
     let resolvedDevice = "";
     let resolvedTail = "";
@@ -27295,7 +25588,7 @@ function format7(pathObject) {
     }
     return _format2("\\", pathObject);
 }
-function parse7(path) {
+function parse6(path) {
     assertPath2(path);
     const ret = {
         root: "",
@@ -27423,9 +25716,9 @@ function toFileUrl6(path) {
     }
     return url;
 }
-const mod6 = {
+const mod5 = {
     sep: sep6,
-    delimiter: delimiter7,
+    delimiter: delimiter6,
     resolve: resolve7,
     normalize: normalize8,
     isAbsolute: isAbsolute6,
@@ -27436,12 +25729,12 @@ const mod6 = {
     basename: basename6,
     extname: extname6,
     format: format7,
-    parse: parse7,
+    parse: parse6,
     fromFileUrl: fromFileUrl6,
     toFileUrl: toFileUrl6
 };
 const sep7 = "/";
-const delimiter8 = ":";
+const delimiter7 = ":";
 function resolve8(...pathSegments) {
     let resolvedPath = "";
     let resolvedAbsolute = false;
@@ -27672,7 +25965,7 @@ function format8(pathObject) {
     }
     return _format2("/", pathObject);
 }
-function parse8(path) {
+function parse7(path) {
     assertPath2(path);
     const ret = {
         root: "",
@@ -27753,9 +26046,9 @@ function toFileUrl7(path) {
     url.pathname = encodeWhitespace2(path.replace(/%/g, "%25").replace(/\\/g, "%5C"));
     return url;
 }
-const mod7 = {
+const mod6 = {
     sep: sep7,
-    delimiter: delimiter8,
+    delimiter: delimiter7,
     resolve: resolve8,
     normalize: normalize9,
     isAbsolute: isAbsolute7,
@@ -27766,7 +26059,7 @@ const mod7 = {
     basename: basename7,
     extname: extname7,
     format: format8,
-    parse: parse8,
+    parse: parse7,
     fromFileUrl: fromFileUrl7,
     toFileUrl: toFileUrl7
 };
@@ -27793,8 +26086,8 @@ function common(paths, sep = SEP) {
     const prefix = parts.slice(0, endOfPrefix).join(sep);
     return prefix.endsWith(sep) ? prefix : `${prefix}${sep}`;
 }
-const path12 = isWindows2 ? mod6 : mod7;
-const { join: join10 , normalize: normalize10  } = path12;
+const path4 = isWindows2 ? mod5 : mod6;
+const { join: join10 , normalize: normalize10  } = path4;
 const regExpEscapeChars = [
     "!",
     "$",
@@ -28069,15 +26362,15 @@ function joinGlobs(globs, { extended =false , globstar =false  } = {}) {
         globstar
     });
 }
-const path13 = isWindows2 ? mod6 : mod7;
-const { basename: basename8 , delimiter: delimiter9 , dirname: dirname8 , extname: extname8 , format: format9 , fromFileUrl: fromFileUrl8 , isAbsolute: isAbsolute8 , join: join11 , normalize: normalize11 , parse: parse9 , relative: relative8 , resolve: resolve9 , sep: sep8 , toFileUrl: toFileUrl8 , toNamespacedPath: toNamespacedPath8 ,  } = path13;
-const mod8 = {
+const path5 = isWindows2 ? mod5 : mod6;
+const { basename: basename8 , delimiter: delimiter8 , dirname: dirname8 , extname: extname8 , format: format9 , fromFileUrl: fromFileUrl8 , isAbsolute: isAbsolute8 , join: join11 , normalize: normalize11 , parse: parse8 , relative: relative8 , resolve: resolve9 , sep: sep8 , toFileUrl: toFileUrl8 , toNamespacedPath: toNamespacedPath8 ,  } = path5;
+const mod7 = {
     SEP: SEP,
     SEP_PATTERN: SEP_PATTERN,
-    win32: mod6,
-    posix: mod7,
+    win32: mod5,
+    posix: mod6,
     basename: basename8,
-    delimiter: delimiter9,
+    delimiter: delimiter8,
     dirname: dirname8,
     extname: extname8,
     format: format9,
@@ -28085,7 +26378,7 @@ const mod8 = {
     isAbsolute: isAbsolute8,
     join: join11,
     normalize: normalize11,
-    parse: parse9,
+    parse: parse8,
     relative: relative8,
     resolve: resolve9,
     sep: sep8,
@@ -28262,7 +26555,7 @@ class EventEmitter1 {
         ];
     }
 }
-function existsSync1(p) {
+function existsSync(p) {
     try {
         Deno.statSync(p);
         return true;
@@ -28635,7 +26928,7 @@ function printNodes(node, indent) {
         });
     }
 }
-const __default7 = {
+const __default3 = {
     Node: Node,
     Root: Root,
     NodeList: NodeList,
@@ -28693,7 +26986,7 @@ const __default7 = {
     CallExtensionAsync: CallExtensionAsync,
     printNodes: printNodes
 };
-class Parser1 extends Obj {
+class Parser extends Obj {
     init(tokens) {
         this.tokens = tokens;
         this.peeked = null;
@@ -28704,7 +26997,7 @@ class Parser1 extends Obj {
     nextToken(withWhitespace) {
         var tok;
         if (this.peeked) {
-            if (!withWhitespace && this.peeked.type === __default6.TOKEN_WHITESPACE) {
+            if (!withWhitespace && this.peeked.type === __default2.TOKEN_WHITESPACE) {
                 this.peeked = null;
             } else {
                 tok = this.peeked;
@@ -28714,7 +27007,7 @@ class Parser1 extends Obj {
         }
         tok = this.tokens.nextToken();
         if (!withWhitespace) {
-            while(tok && tok.type === __default6.TOKEN_WHITESPACE){
+            while(tok && tok.type === __default2.TOKEN_WHITESPACE){
                 tok = this.tokens.nextToken();
             }
         }
@@ -28771,7 +27064,7 @@ class Parser1 extends Obj {
         return true;
     }
     skipSymbol(val) {
-        return this.skipValue(__default6.TOKEN_SYMBOL, val);
+        return this.skipValue(__default2.TOKEN_SYMBOL, val);
     }
     advanceAfterBlockEnd(name) {
         var tok;
@@ -28780,13 +27073,13 @@ class Parser1 extends Obj {
             if (!tok) {
                 this.fail("unexpected end of file");
             }
-            if (tok.type !== __default6.TOKEN_SYMBOL) {
+            if (tok.type !== __default2.TOKEN_SYMBOL) {
                 this.fail("advanceAfterBlockEnd: expected symbol token or " + "explicit name to be passed");
             }
             name = this.nextToken().value;
         }
         tok = this.nextToken();
-        if (tok && tok.type === __default6.TOKEN_BLOCK_END) {
+        if (tok && tok.type === __default2.TOKEN_BLOCK_END) {
             if (tok.value.charAt(0) === "-") {
                 this.dropLeadingWhitespace = true;
             }
@@ -28797,7 +27090,7 @@ class Parser1 extends Obj {
     }
     advanceAfterVariableEnd() {
         var tok = this.nextToken();
-        if (tok && tok.type === __default6.TOKEN_VARIABLE_END) {
+        if (tok && tok.type === __default2.TOKEN_VARIABLE_END) {
             this.dropLeadingWhitespace = tok.value.charAt(tok.value.length - this.tokens.tags.VARIABLE_END.length - 1) === "-";
         } else {
             this.pushToken(tok);
@@ -28809,27 +27102,27 @@ class Parser1 extends Obj {
         var node;
         var endBlock;
         if (this.skipSymbol("for")) {
-            node = new __default7.For(forTok.lineno, forTok.colno);
+            node = new __default3.For(forTok.lineno, forTok.colno);
             endBlock = "endfor";
         } else if (this.skipSymbol("asyncEach")) {
-            node = new __default7.AsyncEach(forTok.lineno, forTok.colno);
+            node = new __default3.AsyncEach(forTok.lineno, forTok.colno);
             endBlock = "endeach";
         } else if (this.skipSymbol("asyncAll")) {
-            node = new __default7.AsyncAll(forTok.lineno, forTok.colno);
+            node = new __default3.AsyncAll(forTok.lineno, forTok.colno);
             endBlock = "endall";
         } else {
             this.fail("parseFor: expected for{Async}", forTok.lineno, forTok.colno);
         }
         node.name = this.parsePrimary();
-        if (!(node.name instanceof __default7.Symbol)) {
+        if (!(node.name instanceof __default3.Symbol)) {
             this.fail("parseFor: variable name expected for loop");
         }
         const type = this.peekToken().type;
-        if (type === __default6.TOKEN_COMMA) {
+        if (type === __default2.TOKEN_COMMA) {
             const key = node.name;
-            node.name = new __default7.Array(key.lineno, key.colno);
+            node.name = new __default3.Array(key.lineno, key.colno);
             node.name.addChild(key);
-            while(this.skip(__default6.TOKEN_COMMA)){
+            while(this.skip(__default2.TOKEN_COMMA)){
                 const prim = this.parsePrimary();
                 node.name.addChild(prim);
             }
@@ -28854,7 +27147,7 @@ class Parser1 extends Obj {
         }
         const name = this.parsePrimary(true);
         const args = this.parseSignature();
-        const node = new __default7.Macro(macroTok.lineno, macroTok.colno, name, args);
+        const node = new __default3.Macro(macroTok.lineno, macroTok.colno, name, args);
         this.advanceAfterBlockEnd(macroTok.value);
         node.body = this.parseUntilBlocks("endmacro");
         this.advanceAfterBlockEnd();
@@ -28865,20 +27158,20 @@ class Parser1 extends Obj {
         if (!this.skipSymbol("call")) {
             this.fail("expected call");
         }
-        const callerArgs = this.parseSignature(true) || new __default7.NodeList();
+        const callerArgs = this.parseSignature(true) || new __default3.NodeList();
         const macroCall = this.parsePrimary();
         this.advanceAfterBlockEnd(callTok.value);
         const body = this.parseUntilBlocks("endcall");
         this.advanceAfterBlockEnd();
-        const callerName = new __default7.Symbol(callTok.lineno, callTok.colno, "caller");
-        const callerNode = new __default7.Caller(callTok.lineno, callTok.colno, callerName, callerArgs, body);
+        const callerName = new __default3.Symbol(callTok.lineno, callTok.colno, "caller");
+        const callerNode = new __default3.Caller(callTok.lineno, callTok.colno, callerName, callerArgs, body);
         const args = macroCall.args.children;
-        if (!(args[args.length - 1] instanceof __default7.KeywordArgs)) {
-            args.push(new __default7.KeywordArgs());
+        if (!(args[args.length - 1] instanceof __default3.KeywordArgs)) {
+            args.push(new __default3.KeywordArgs());
         }
         const kwargs = args[args.length - 1];
-        kwargs.addChild(new __default7.Pair(callTok.lineno, callTok.colno, callerName, callerNode));
-        return new __default7.Output(callTok.lineno, callTok.colno, [
+        kwargs.addChild(new __default3.Pair(callTok.lineno, callTok.colno, callerName, callerNode));
+        return new __default3.Output(callTok.lineno, callTok.colno, [
             macroCall
         ]);
     }
@@ -28908,7 +27201,7 @@ class Parser1 extends Obj {
         }
         const target = this.parseExpression();
         const withContext = this.parseWithContext();
-        const node = new __default7.Import(importTok.lineno, importTok.colno, template, target, withContext);
+        const node = new __default3.Import(importTok.lineno, importTok.colno, template, target, withContext);
         this.advanceAfterBlockEnd(importTok.value);
         return node;
     }
@@ -28921,11 +27214,11 @@ class Parser1 extends Obj {
         if (!this.skipSymbol("import")) {
             this.fail("parseFrom: expected import", fromTok.lineno, fromTok.colno);
         }
-        const names = new __default7.NodeList();
+        const names = new __default3.NodeList();
         let withContext;
         while(1){
             const nextTok = this.peekToken();
-            if (nextTok.type === __default6.TOKEN_BLOCK_END) {
+            if (nextTok.type === __default2.TOKEN_BLOCK_END) {
                 if (!names.children.length) {
                     this.fail("parseFrom: Expected at least one import name", fromTok.lineno, fromTok.colno);
                 }
@@ -28935,7 +27228,7 @@ class Parser1 extends Obj {
                 this.nextToken();
                 break;
             }
-            if (names.children.length > 0 && !this.skip(__default6.TOKEN_COMMA)) {
+            if (names.children.length > 0 && !this.skip(__default2.TOKEN_COMMA)) {
                 this.fail("parseFrom: expected comma", fromTok.lineno, fromTok.colno);
             }
             const name = this.parsePrimary();
@@ -28944,22 +27237,22 @@ class Parser1 extends Obj {
             }
             if (this.skipSymbol("as")) {
                 const alias = this.parsePrimary();
-                names.addChild(new __default7.Pair(name.lineno, name.colno, name, alias));
+                names.addChild(new __default3.Pair(name.lineno, name.colno, name, alias));
             } else {
                 names.addChild(name);
             }
             withContext = this.parseWithContext();
         }
-        return new __default7.FromImport(fromTok.lineno, fromTok.colno, template, names, withContext);
+        return new __default3.FromImport(fromTok.lineno, fromTok.colno, template, names, withContext);
     }
     parseBlock() {
         const tag = this.peekToken();
         if (!this.skipSymbol("block")) {
             this.fail("parseBlock: expected block", tag.lineno, tag.colno);
         }
-        const node = new __default7.Block(tag.lineno, tag.colno);
+        const node = new __default3.Block(tag.lineno, tag.colno);
         node.name = this.parsePrimary();
-        if (!(node.name instanceof __default7.Symbol)) {
+        if (!(node.name instanceof __default3.Symbol)) {
             this.fail("parseBlock: variable name expected", tag.lineno, tag.colno);
         }
         this.advanceAfterBlockEnd(tag.value);
@@ -28979,7 +27272,7 @@ class Parser1 extends Obj {
         if (!this.skipSymbol(tagName)) {
             this.fail("parseTemplateRef: expected " + tagName);
         }
-        const node = new __default7.Extends(tag.lineno, tag.colno);
+        const node = new __default3.Extends(tag.lineno, tag.colno);
         node.template = this.parseExpression();
         this.advanceAfterBlockEnd(tag.value);
         return node;
@@ -28990,7 +27283,7 @@ class Parser1 extends Obj {
         if (!this.skipSymbol(tagName)) {
             this.fail("parseInclude: expected " + tagName);
         }
-        const node = new __default7.Include(tag.lineno, tag.colno);
+        const node = new __default3.Include(tag.lineno, tag.colno);
         node.template = this.parseExpression();
         if (this.skipSymbol("ignore") && this.skipSymbol("missing")) {
             node.ignoreMissing = true;
@@ -29002,9 +27295,9 @@ class Parser1 extends Obj {
         const tag = this.peekToken();
         let node;
         if (this.skipSymbol("if") || this.skipSymbol("elif") || this.skipSymbol("elseif")) {
-            node = new __default7.If(tag.lineno, tag.colno);
+            node = new __default3.If(tag.lineno, tag.colno);
         } else if (this.skipSymbol("ifAsync")) {
-            node = new __default7.IfAsync(tag.lineno, tag.colno);
+            node = new __default3.IfAsync(tag.lineno, tag.colno);
         } else {
             this.fail("parseIf: expected if, elif, or elseif", tag.lineno, tag.colno);
         }
@@ -29036,19 +27329,19 @@ class Parser1 extends Obj {
         if (!this.skipSymbol("set")) {
             this.fail("parseSet: expected set", tag.lineno, tag.colno);
         }
-        const node = new __default7.Set(tag.lineno, tag.colno, []);
+        const node = new __default3.Set(tag.lineno, tag.colno, []);
         let target;
         while(target = this.parsePrimary()){
             node.targets.push(target);
-            if (!this.skip(__default6.TOKEN_COMMA)) {
+            if (!this.skip(__default2.TOKEN_COMMA)) {
                 break;
             }
         }
-        if (!this.skipValue(__default6.TOKEN_OPERATOR, "=")) {
-            if (!this.skip(__default6.TOKEN_BLOCK_END)) {
+        if (!this.skipValue(__default2.TOKEN_OPERATOR, "=")) {
+            if (!this.skip(__default2.TOKEN_BLOCK_END)) {
                 this.fail("parseSet: expected = or block end in set tag", tag.lineno, tag.colno);
             } else {
-                node.body = new __default7.Capture(tag.lineno, tag.colno, this.parseUntilBlocks("endset"));
+                node.body = new __default3.Capture(tag.lineno, tag.colno, this.parseUntilBlocks("endset"));
                 node.value = null;
                 this.advanceAfterBlockEnd();
             }
@@ -29078,7 +27371,7 @@ class Parser1 extends Obj {
             const cond = this.parseExpression();
             this.advanceAfterBlockEnd(switchStart);
             const body = this.parseUntilBlocks(caseStart, caseDefault, switchEnd);
-            cases.push(new __default7.Case(tok.line, tok.col, cond, body));
+            cases.push(new __default3.Case(tok.line, tok.col, cond, body));
             tok = this.peekToken();
         }while (tok && tok.value === caseStart)
         switch(tok.value){
@@ -29093,12 +27386,12 @@ class Parser1 extends Obj {
             default:
                 this.fail('parseSwitch: expected "case," "default" or "endswitch," got EOF.');
         }
-        return new __default7.Switch(tag.lineno, tag.colno, expr, cases, defaultCase);
+        return new __default3.Switch(tag.lineno, tag.colno, expr, cases, defaultCase);
     }
     parseStatement() {
         var tok = this.peekToken();
         var node;
-        if (tok.type !== __default6.TOKEN_SYMBOL) {
+        if (tok.type !== __default2.TOKEN_SYMBOL) {
             this.fail("tag name expected", tok.lineno, tok.colno);
         }
         if (this.breakOnBlocks && indexOf(this.breakOnBlocks, tok.value) !== -1) {
@@ -29141,7 +27434,7 @@ class Parser1 extends Obj {
                     for(let i = 0; i < this.extensions.length; i++){
                         const ext = this.extensions[i];
                         if (indexOf(ext.tags || [], tok.value) !== -1) {
-                            return ext.parse(this, __default7, __default6);
+                            return ext.parse(this, __default3, __default2);
                         }
                     }
                 }
@@ -29173,30 +27466,30 @@ class Parser1 extends Obj {
                 str += all;
             }
         }
-        return new __default7.Output(begun.lineno, begun.colno, [
-            new __default7.TemplateData(begun.lineno, begun.colno, str)
+        return new __default3.Output(begun.lineno, begun.colno, [
+            new __default3.TemplateData(begun.lineno, begun.colno, str)
         ]);
     }
     parsePostfix(node) {
         let lookup;
         let tok = this.peekToken();
         while(tok){
-            if (tok.type === __default6.TOKEN_LEFT_PAREN) {
-                node = new __default7.FunCall(tok.lineno, tok.colno, node, this.parseSignature());
-            } else if (tok.type === __default6.TOKEN_LEFT_BRACKET) {
+            if (tok.type === __default2.TOKEN_LEFT_PAREN) {
+                node = new __default3.FunCall(tok.lineno, tok.colno, node, this.parseSignature());
+            } else if (tok.type === __default2.TOKEN_LEFT_BRACKET) {
                 lookup = this.parseAggregate();
                 if (lookup.children.length > 1) {
                     this.fail("invalid index");
                 }
-                node = new __default7.LookupVal(tok.lineno, tok.colno, node, lookup.children[0]);
-            } else if (tok.type === __default6.TOKEN_OPERATOR && tok.value === ".") {
+                node = new __default3.LookupVal(tok.lineno, tok.colno, node, lookup.children[0]);
+            } else if (tok.type === __default2.TOKEN_OPERATOR && tok.value === ".") {
                 this.nextToken();
                 const val = this.nextToken();
-                if (val.type !== __default6.TOKEN_SYMBOL) {
+                if (val.type !== __default2.TOKEN_SYMBOL) {
                     this.fail("expected name as lookup value, got " + val.value, val.lineno, val.colno);
                 }
-                lookup = new __default7.Literal(val.lineno, val.colno, val.value);
-                node = new __default7.LookupVal(tok.lineno, tok.colno, node, lookup);
+                lookup = new __default3.Literal(val.lineno, val.colno, val.value);
+                node = new __default3.LookupVal(tok.lineno, tok.colno, node, lookup);
             } else {
                 break;
             }
@@ -29213,7 +27506,7 @@ class Parser1 extends Obj {
         if (this.skipSymbol("if")) {
             const condNode = this.parseOr();
             const bodyNode = node;
-            node = new __default7.InlineIf(node.lineno, node.colno);
+            node = new __default3.InlineIf(node.lineno, node.colno);
             node.body = bodyNode;
             node.cond = condNode;
             if (this.skipSymbol("else")) {
@@ -29228,7 +27521,7 @@ class Parser1 extends Obj {
         let node = this.parseAnd();
         while(this.skipSymbol("or")){
             const node2 = this.parseAnd();
-            node = new __default7.Or(node.lineno, node.colno, node, node2);
+            node = new __default3.Or(node.lineno, node.colno, node, node2);
         }
         return node;
     }
@@ -29236,14 +27529,14 @@ class Parser1 extends Obj {
         let node = this.parseNot();
         while(this.skipSymbol("and")){
             const node2 = this.parseNot();
-            node = new __default7.And(node.lineno, node.colno, node, node2);
+            node = new __default3.And(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parseNot() {
         const tok = this.peekToken();
         if (this.skipSymbol("not")) {
-            return new __default7.Not(tok.lineno, tok.colno, this.parseNot());
+            return new __default3.Not(tok.lineno, tok.colno, this.parseNot());
         }
         return this.parseIn();
     }
@@ -29254,15 +27547,15 @@ class Parser1 extends Obj {
             if (!tok) {
                 break;
             }
-            const invert = tok.type === __default6.TOKEN_SYMBOL && tok.value === "not";
+            const invert = tok.type === __default2.TOKEN_SYMBOL && tok.value === "not";
             if (!invert) {
                 this.pushToken(tok);
             }
             if (this.skipSymbol("in")) {
                 const node2 = this.parseIs();
-                node = new __default7.In(node.lineno, node.colno, node, node2);
+                node = new __default3.In(node.lineno, node.colno, node, node2);
                 if (invert) {
-                    node = new __default7.Not(node.lineno, node.colno, node);
+                    node = new __default3.Not(node.lineno, node.colno, node);
                 }
             } else {
                 if (invert) {
@@ -29278,9 +27571,9 @@ class Parser1 extends Obj {
         if (this.skipSymbol("is")) {
             const not = this.skipSymbol("not");
             const node2 = this.parseCompare();
-            node = new __default7.Is(node.lineno, node.colno, node, node2);
+            node = new __default3.Is(node.lineno, node.colno, node, node2);
             if (not) {
-                node = new __default7.Not(node.lineno, node.colno, node);
+                node = new __default3.Not(node.lineno, node.colno, node);
             }
         }
         return node;
@@ -29303,89 +27596,89 @@ class Parser1 extends Obj {
             if (!tok) {
                 break;
             } else if (compareOps.indexOf(tok.value) !== -1) {
-                ops.push(new __default7.CompareOperand(tok.lineno, tok.colno, this.parseConcat(), tok.value));
+                ops.push(new __default3.CompareOperand(tok.lineno, tok.colno, this.parseConcat(), tok.value));
             } else {
                 this.pushToken(tok);
                 break;
             }
         }
         if (ops.length) {
-            return new __default7.Compare(ops[0].lineno, ops[0].colno, expr, ops);
+            return new __default3.Compare(ops[0].lineno, ops[0].colno, expr, ops);
         } else {
             return expr;
         }
     }
     parseConcat() {
         let node = this.parseAdd();
-        while(this.skipValue(__default6.TOKEN_TILDE, "~")){
+        while(this.skipValue(__default2.TOKEN_TILDE, "~")){
             const node2 = this.parseAdd();
-            node = new __default7.Concat(node.lineno, node.colno, node, node2);
+            node = new __default3.Concat(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parseAdd() {
         let node = this.parseSub();
-        while(this.skipValue(__default6.TOKEN_OPERATOR, "+")){
+        while(this.skipValue(__default2.TOKEN_OPERATOR, "+")){
             const node2 = this.parseSub();
-            node = new __default7.Add(node.lineno, node.colno, node, node2);
+            node = new __default3.Add(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parseSub() {
         let node = this.parseMul();
-        while(this.skipValue(__default6.TOKEN_OPERATOR, "-")){
+        while(this.skipValue(__default2.TOKEN_OPERATOR, "-")){
             const node2 = this.parseMul();
-            node = new __default7.Sub(node.lineno, node.colno, node, node2);
+            node = new __default3.Sub(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parseMul() {
         let node = this.parseDiv();
-        while(this.skipValue(__default6.TOKEN_OPERATOR, "*")){
+        while(this.skipValue(__default2.TOKEN_OPERATOR, "*")){
             const node2 = this.parseDiv();
-            node = new __default7.Mul(node.lineno, node.colno, node, node2);
+            node = new __default3.Mul(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parseDiv() {
         let node = this.parseFloorDiv();
-        while(this.skipValue(__default6.TOKEN_OPERATOR, "/")){
+        while(this.skipValue(__default2.TOKEN_OPERATOR, "/")){
             const node2 = this.parseFloorDiv();
-            node = new __default7.Div(node.lineno, node.colno, node, node2);
+            node = new __default3.Div(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parseFloorDiv() {
         let node = this.parseMod();
-        while(this.skipValue(__default6.TOKEN_OPERATOR, "//")){
+        while(this.skipValue(__default2.TOKEN_OPERATOR, "//")){
             const node2 = this.parseMod();
-            node = new __default7.FloorDiv(node.lineno, node.colno, node, node2);
+            node = new __default3.FloorDiv(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parseMod() {
         let node = this.parsePow();
-        while(this.skipValue(__default6.TOKEN_OPERATOR, "%")){
+        while(this.skipValue(__default2.TOKEN_OPERATOR, "%")){
             const node2 = this.parsePow();
-            node = new __default7.Mod(node.lineno, node.colno, node, node2);
+            node = new __default3.Mod(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parsePow() {
         let node = this.parseUnary();
-        while(this.skipValue(__default6.TOKEN_OPERATOR, "**")){
+        while(this.skipValue(__default2.TOKEN_OPERATOR, "**")){
             const node2 = this.parseUnary();
-            node = new __default7.Pow(node.lineno, node.colno, node, node2);
+            node = new __default3.Pow(node.lineno, node.colno, node, node2);
         }
         return node;
     }
     parseUnary(noFilters) {
         const tok = this.peekToken();
         let node;
-        if (this.skipValue(__default6.TOKEN_OPERATOR, "-")) {
-            node = new __default7.Neg(tok.lineno, tok.colno, this.parseUnary(true));
-        } else if (this.skipValue(__default6.TOKEN_OPERATOR, "+")) {
-            node = new __default7.Pos(tok.lineno, tok.colno, this.parseUnary(true));
+        if (this.skipValue(__default2.TOKEN_OPERATOR, "-")) {
+            node = new __default3.Neg(tok.lineno, tok.colno, this.parseUnary(true));
+        } else if (this.skipValue(__default2.TOKEN_OPERATOR, "+")) {
+            node = new __default3.Pos(tok.lineno, tok.colno, this.parseUnary(true));
         } else {
             node = this.parsePrimary();
         }
@@ -29400,13 +27693,13 @@ class Parser1 extends Obj {
         let node = null;
         if (!tok) {
             this.fail("expected expression, got end of file");
-        } else if (tok.type === __default6.TOKEN_STRING) {
+        } else if (tok.type === __default2.TOKEN_STRING) {
             val = tok.value;
-        } else if (tok.type === __default6.TOKEN_INT) {
+        } else if (tok.type === __default2.TOKEN_INT) {
             val = parseInt(tok.value, 10);
-        } else if (tok.type === __default6.TOKEN_FLOAT) {
+        } else if (tok.type === __default2.TOKEN_FLOAT) {
             val = parseFloat(tok.value);
-        } else if (tok.type === __default6.TOKEN_BOOLEAN) {
+        } else if (tok.type === __default2.TOKEN_BOOLEAN) {
             if (tok.value === "true") {
                 val = true;
             } else if (tok.value === "false") {
@@ -29414,15 +27707,15 @@ class Parser1 extends Obj {
             } else {
                 this.fail("invalid boolean: " + tok.value, tok.lineno, tok.colno);
             }
-        } else if (tok.type === __default6.TOKEN_NONE) {
+        } else if (tok.type === __default2.TOKEN_NONE) {
             val = null;
-        } else if (tok.type === __default6.TOKEN_REGEX) {
+        } else if (tok.type === __default2.TOKEN_REGEX) {
             val = new RegExp(tok.value.body, tok.value.flags);
         }
         if (val !== undefined) {
-            node = new __default7.Literal(tok.lineno, tok.colno, val);
-        } else if (tok.type === __default6.TOKEN_SYMBOL) {
-            node = new __default7.Symbol(tok.lineno, tok.colno, tok.value);
+            node = new __default3.Literal(tok.lineno, tok.colno, val);
+        } else if (tok.type === __default2.TOKEN_SYMBOL) {
+            node = new __default3.Symbol(tok.lineno, tok.colno, tok.value);
         } else {
             this.pushToken(tok);
             node = this.parseAggregate();
@@ -29437,24 +27730,24 @@ class Parser1 extends Obj {
         }
     }
     parseFilterName() {
-        const tok = this.expect(__default6.TOKEN_SYMBOL);
+        const tok = this.expect(__default2.TOKEN_SYMBOL);
         let name = tok.value;
-        while(this.skipValue(__default6.TOKEN_OPERATOR, ".")){
-            name += "." + this.expect(__default6.TOKEN_SYMBOL).value;
+        while(this.skipValue(__default2.TOKEN_OPERATOR, ".")){
+            name += "." + this.expect(__default2.TOKEN_SYMBOL).value;
         }
-        return new __default7.Symbol(tok.lineno, tok.colno, name);
+        return new __default3.Symbol(tok.lineno, tok.colno, name);
     }
     parseFilterArgs(node) {
-        if (this.peekToken().type === __default6.TOKEN_LEFT_PAREN) {
+        if (this.peekToken().type === __default2.TOKEN_LEFT_PAREN) {
             const call = this.parsePostfix(node);
             return call.args.children;
         }
         return [];
     }
     parseFilter(node) {
-        while(this.skip(__default6.TOKEN_PIPE)){
+        while(this.skip(__default2.TOKEN_PIPE)){
             const name = this.parseFilterName();
-            node = new __default7.Filter(name.lineno, name.colno, name, new __default7.NodeList(name.lineno, name.colno, [
+            node = new __default3.Filter(name.lineno, name.colno, name, new __default3.NodeList(name.lineno, name.colno, [
                 node
             ].concat(this.parseFilterArgs(node))));
         }
@@ -29468,12 +27761,12 @@ class Parser1 extends Obj {
         const name = this.parseFilterName();
         const args = this.parseFilterArgs(name);
         this.advanceAfterBlockEnd(filterTok.value);
-        const body = new __default7.Capture(name.lineno, name.colno, this.parseUntilBlocks("endfilter"));
+        const body = new __default3.Capture(name.lineno, name.colno, this.parseUntilBlocks("endfilter"));
         this.advanceAfterBlockEnd();
-        const node = new __default7.Filter(name.lineno, name.colno, name, new __default7.NodeList(name.lineno, name.colno, [
+        const node = new __default3.Filter(name.lineno, name.colno, name, new __default3.NodeList(name.lineno, name.colno, [
             body
         ].concat(args)));
-        return new __default7.Output(name.lineno, name.colno, [
+        return new __default3.Output(name.lineno, name.colno, [
             node
         ]);
     }
@@ -29481,36 +27774,36 @@ class Parser1 extends Obj {
         var tok = this.nextToken();
         var node;
         switch(tok.type){
-            case __default6.TOKEN_LEFT_PAREN:
-                node = new __default7.Group(tok.lineno, tok.colno);
+            case __default2.TOKEN_LEFT_PAREN:
+                node = new __default3.Group(tok.lineno, tok.colno);
                 break;
-            case __default6.TOKEN_LEFT_BRACKET:
-                node = new __default7.Array(tok.lineno, tok.colno);
+            case __default2.TOKEN_LEFT_BRACKET:
+                node = new __default3.Array(tok.lineno, tok.colno);
                 break;
-            case __default6.TOKEN_LEFT_CURLY:
-                node = new __default7.Dict(tok.lineno, tok.colno);
+            case __default2.TOKEN_LEFT_CURLY:
+                node = new __default3.Dict(tok.lineno, tok.colno);
                 break;
             default:
                 return null;
         }
         while(1){
             const type = this.peekToken().type;
-            if (type === __default6.TOKEN_RIGHT_PAREN || type === __default6.TOKEN_RIGHT_BRACKET || type === __default6.TOKEN_RIGHT_CURLY) {
+            if (type === __default2.TOKEN_RIGHT_PAREN || type === __default2.TOKEN_RIGHT_BRACKET || type === __default2.TOKEN_RIGHT_CURLY) {
                 this.nextToken();
                 break;
             }
             if (node.children.length > 0) {
-                if (!this.skip(__default6.TOKEN_COMMA)) {
+                if (!this.skip(__default2.TOKEN_COMMA)) {
                     this.fail("parseAggregate: expected comma after expression", tok.lineno, tok.colno);
                 }
             }
-            if (node instanceof __default7.Dict) {
+            if (node instanceof __default3.Dict) {
                 const key = this.parsePrimary();
-                if (!this.skip(__default6.TOKEN_COLON)) {
+                if (!this.skip(__default2.TOKEN_COLON)) {
                     this.fail("parseAggregate: expected colon after dict key", tok.lineno, tok.colno);
                 }
                 const value = this.parseExpression();
-                node.addChild(new __default7.Pair(key.lineno, key.colno, key, value));
+                node.addChild(new __default3.Pair(key.lineno, key.colno, key, value));
             } else {
                 const expr = this.parseExpression();
                 node.addChild(expr);
@@ -29520,33 +27813,33 @@ class Parser1 extends Obj {
     }
     parseSignature(tolerant, noParens) {
         let tok = this.peekToken();
-        if (!noParens && tok.type !== __default6.TOKEN_LEFT_PAREN) {
+        if (!noParens && tok.type !== __default2.TOKEN_LEFT_PAREN) {
             if (tolerant) {
                 return null;
             } else {
                 this.fail("expected arguments", tok.lineno, tok.colno);
             }
         }
-        if (tok.type === __default6.TOKEN_LEFT_PAREN) {
+        if (tok.type === __default2.TOKEN_LEFT_PAREN) {
             tok = this.nextToken();
         }
-        const args = new __default7.NodeList(tok.lineno, tok.colno);
-        const kwargs = new __default7.KeywordArgs(tok.lineno, tok.colno);
+        const args = new __default3.NodeList(tok.lineno, tok.colno);
+        const kwargs = new __default3.KeywordArgs(tok.lineno, tok.colno);
         let checkComma = false;
         while(1){
             tok = this.peekToken();
-            if (!noParens && tok.type === __default6.TOKEN_RIGHT_PAREN) {
+            if (!noParens && tok.type === __default2.TOKEN_RIGHT_PAREN) {
                 this.nextToken();
                 break;
-            } else if (noParens && tok.type === __default6.TOKEN_BLOCK_END) {
+            } else if (noParens && tok.type === __default2.TOKEN_BLOCK_END) {
                 break;
             }
-            if (checkComma && !this.skip(__default6.TOKEN_COMMA)) {
+            if (checkComma && !this.skip(__default2.TOKEN_COMMA)) {
                 this.fail("parseSignature: expected comma after expression", tok.lineno, tok.colno);
             } else {
                 const arg = this.parseExpression();
-                if (this.skipValue(__default6.TOKEN_OPERATOR, "=")) {
-                    kwargs.addChild(new __default7.Pair(arg.lineno, arg.colno, arg, this.parseExpression()));
+                if (this.skipValue(__default2.TOKEN_OPERATOR, "=")) {
+                    kwargs.addChild(new __default3.Pair(arg.lineno, arg.colno, arg, this.parseExpression()));
                 } else {
                     args.addChild(arg);
                 }
@@ -29569,7 +27862,7 @@ class Parser1 extends Obj {
         let tok;
         const buf = [];
         while(tok = this.nextToken()){
-            if (tok.type === __default6.TOKEN_DATA) {
+            if (tok.type === __default2.TOKEN_DATA) {
                 let data = tok.value;
                 const nextToken = this.peekToken();
                 const nextVal = nextToken && nextToken.value;
@@ -29577,27 +27870,27 @@ class Parser1 extends Obj {
                     data = data.replace(/^\s*/, "");
                     this.dropLeadingWhitespace = false;
                 }
-                if (nextToken && (nextToken.type === __default6.TOKEN_BLOCK_START && nextVal.charAt(nextVal.length - 1) === "-" || nextToken.type === __default6.TOKEN_VARIABLE_START && nextVal.charAt(this.tokens.tags.VARIABLE_START.length) === "-" || nextToken.type === __default6.TOKEN_COMMENT && nextVal.charAt(this.tokens.tags.COMMENT_START.length) === "-")) {
+                if (nextToken && (nextToken.type === __default2.TOKEN_BLOCK_START && nextVal.charAt(nextVal.length - 1) === "-" || nextToken.type === __default2.TOKEN_VARIABLE_START && nextVal.charAt(this.tokens.tags.VARIABLE_START.length) === "-" || nextToken.type === __default2.TOKEN_COMMENT && nextVal.charAt(this.tokens.tags.COMMENT_START.length) === "-")) {
                     data = data.replace(/\s*$/, "");
                 }
-                buf.push(new __default7.Output(tok.lineno, tok.colno, [
-                    new __default7.TemplateData(tok.lineno, tok.colno, data), 
+                buf.push(new __default3.Output(tok.lineno, tok.colno, [
+                    new __default3.TemplateData(tok.lineno, tok.colno, data), 
                 ]));
-            } else if (tok.type === __default6.TOKEN_BLOCK_START) {
+            } else if (tok.type === __default2.TOKEN_BLOCK_START) {
                 this.dropLeadingWhitespace = false;
                 const n = this.parseStatement();
                 if (!n) {
                     break;
                 }
                 buf.push(n);
-            } else if (tok.type === __default6.TOKEN_VARIABLE_START) {
+            } else if (tok.type === __default2.TOKEN_VARIABLE_START) {
                 const e = this.parseExpression();
                 this.dropLeadingWhitespace = false;
                 this.advanceAfterVariableEnd();
-                buf.push(new __default7.Output(tok.lineno, tok.colno, [
+                buf.push(new __default3.Output(tok.lineno, tok.colno, [
                     e
                 ]));
-            } else if (tok.type === __default6.TOKEN_COMMENT) {
+            } else if (tok.type === __default2.TOKEN_COMMENT) {
                 this.dropLeadingWhitespace = tok.value.charAt(tok.value.length - this.tokens.tags.COMMENT_END.length - 1) === "-";
             } else {
                 this.fail("Unexpected token at top-level: " + tok.type, tok.lineno, tok.colno);
@@ -29606,21 +27899,21 @@ class Parser1 extends Obj {
         return buf;
     }
     parse() {
-        return new __default7.NodeList(0, 0, this.parseNodes());
+        return new __default3.NodeList(0, 0, this.parseNodes());
     }
     parseAsRoot() {
-        return new __default7.Root(0, 0, this.parseNodes());
+        return new __default3.Root(0, 0, this.parseNodes());
     }
 }
-const __default8 = {
+const __default4 = {
     parse (src, extensions, opts) {
-        var p = new Parser1(__default6.lex(src, opts));
+        var p = new Parser(__default2.lex(src, opts));
         if (extensions !== undefined) {
             p.extensions = extensions;
         }
         return p.parseAsRoot();
     },
-    Parser: Parser1
+    Parser: Parser
 };
 var sym = 0;
 function gensym() {
@@ -29640,7 +27933,7 @@ function mapCOW(arr, func) {
     return res || arr;
 }
 function walk(ast, func, depthFirst) {
-    if (!(ast instanceof __default7.Node)) {
+    if (!(ast instanceof __default3.Node)) {
         return ast;
     }
     if (!depthFirst) {
@@ -29649,22 +27942,22 @@ function walk(ast, func, depthFirst) {
             return astT;
         }
     }
-    if (ast instanceof __default7.NodeList) {
+    if (ast instanceof __default3.NodeList) {
         const children = mapCOW(ast.children, (node)=>walk(node, func, depthFirst));
         if (children !== ast.children) {
-            ast = new __default7[ast.typename](ast.lineno, ast.colno, children);
+            ast = new __default3[ast.typename](ast.lineno, ast.colno, children);
         }
-    } else if (ast instanceof __default7.CallExtension) {
+    } else if (ast instanceof __default3.CallExtension) {
         const args = walk(ast.args, func, depthFirst);
         const contentArgs = mapCOW(ast.contentArgs, (node)=>walk(node, func, depthFirst));
         if (args !== ast.args || contentArgs !== ast.contentArgs) {
-            ast = new __default7[ast.typename](ast.extName, ast.prop, args, contentArgs);
+            ast = new __default3[ast.typename](ast.extName, ast.prop, args, contentArgs);
         }
     } else {
         const props = ast.fields.map((field)=>ast[field]);
         const propsT = mapCOW(props, (prop)=>walk(prop, func, depthFirst));
         if (propsT !== props) {
-            ast = new __default7[ast.typename](ast.lineno, ast.colno);
+            ast = new __default3[ast.typename](ast.lineno, ast.colno);
             propsT.forEach((prop, i)=>{
                 ast[ast.fields[i]] = prop;
             });
@@ -29679,11 +27972,11 @@ function _liftFilters(node, asyncFilters, prop) {
     var children = [];
     var walked = depthWalk(prop ? node[prop] : node, (descNode)=>{
         let symbol;
-        if (descNode instanceof __default7.Block) {
+        if (descNode instanceof __default3.Block) {
             return descNode;
-        } else if (descNode instanceof __default7.Filter && indexOf(asyncFilters, descNode.name.value) !== -1 || descNode instanceof __default7.CallExtensionAsync) {
-            symbol = new __default7.Symbol(descNode.lineno, descNode.colno, gensym());
-            children.push(new __default7.FilterAsync(descNode.lineno, descNode.colno, descNode.name, descNode.args, symbol));
+        } else if (descNode instanceof __default3.Filter && indexOf(asyncFilters, descNode.name.value) !== -1 || descNode instanceof __default3.CallExtensionAsync) {
+            symbol = new __default3.Symbol(descNode.lineno, descNode.colno, gensym());
+            children.push(new __default3.FilterAsync(descNode.lineno, descNode.colno, descNode.name, descNode.args, symbol));
         }
         return symbol;
     });
@@ -29694,22 +27987,22 @@ function _liftFilters(node, asyncFilters, prop) {
     }
     if (children.length) {
         children.push(node);
-        return new __default7.NodeList(node.lineno, node.colno, children);
+        return new __default3.NodeList(node.lineno, node.colno, children);
     } else {
         return node;
     }
 }
 function liftFilters(ast, asyncFilters) {
     return depthWalk(ast, (node)=>{
-        if (node instanceof __default7.Output) {
+        if (node instanceof __default3.Output) {
             return _liftFilters(node, asyncFilters);
-        } else if (node instanceof __default7.Set) {
+        } else if (node instanceof __default3.Set) {
             return _liftFilters(node, asyncFilters, "value");
-        } else if (node instanceof __default7.For) {
+        } else if (node instanceof __default3.For) {
             return _liftFilters(node, asyncFilters, "arr");
-        } else if (node instanceof __default7.If) {
+        } else if (node instanceof __default3.If) {
             return _liftFilters(node, asyncFilters, "cond");
-        } else if (node instanceof __default7.CallExtension) {
+        } else if (node instanceof __default3.CallExtension) {
             return _liftFilters(node, asyncFilters, "args");
         } else {
             return undefined;
@@ -29718,40 +28011,40 @@ function liftFilters(ast, asyncFilters) {
 }
 function liftSuper(ast) {
     return walk(ast, (blockNode)=>{
-        if (!(blockNode instanceof __default7.Block)) {
+        if (!(blockNode instanceof __default3.Block)) {
             return;
         }
         let hasSuper = false;
         const symbol = gensym();
         blockNode.body = walk(blockNode.body, (node)=>{
-            if (node instanceof __default7.FunCall && node.name.value === "super") {
+            if (node instanceof __default3.FunCall && node.name.value === "super") {
                 hasSuper = true;
-                return new __default7.Symbol(node.lineno, node.colno, symbol);
+                return new __default3.Symbol(node.lineno, node.colno, symbol);
             }
         });
         if (hasSuper) {
-            blockNode.body.children.unshift(new __default7.Super(0, 0, blockNode.name, new __default7.Symbol(0, 0, symbol)));
+            blockNode.body.children.unshift(new __default3.Super(0, 0, blockNode.name, new __default3.Symbol(0, 0, symbol)));
         }
     });
 }
 function convertStatements(ast) {
     return depthWalk(ast, (node)=>{
-        if (!(node instanceof __default7.If) && !(node instanceof __default7.For)) {
+        if (!(node instanceof __default3.If) && !(node instanceof __default3.For)) {
             return undefined;
         }
         let async = false;
         walk(node, (child)=>{
-            if (child instanceof __default7.FilterAsync || child instanceof __default7.IfAsync || child instanceof __default7.AsyncEach || child instanceof __default7.AsyncAll || child instanceof __default7.CallExtensionAsync) {
+            if (child instanceof __default3.FilterAsync || child instanceof __default3.IfAsync || child instanceof __default3.AsyncEach || child instanceof __default3.AsyncAll || child instanceof __default3.CallExtensionAsync) {
                 async = true;
                 return child;
             }
             return undefined;
         });
         if (async) {
-            if (node instanceof __default7.If) {
-                return new __default7.IfAsync(node.lineno, node.colno, node.cond, node.body, node.else_);
-            } else if (node instanceof __default7.For && !(node instanceof __default7.AsyncAll)) {
-                return new __default7.AsyncEach(node.lineno, node.colno, node.arr, node.name, node.body, node.else_);
+            if (node instanceof __default3.If) {
+                return new __default3.IfAsync(node.lineno, node.colno, node.cond, node.body, node.else_);
+            } else if (node instanceof __default3.For && !(node instanceof __default3.AsyncAll)) {
+                return new __default3.AsyncEach(node.lineno, node.colno, node.arr, node.name, node.body, node.else_);
             }
         }
         return undefined;
@@ -29763,7 +28056,7 @@ function cps(ast, asyncFilters) {
 function transform(ast, asyncFilters) {
     return cps(ast, asyncFilters || []);
 }
-const __default9 = {
+const __default5 = {
     transform: transform
 };
 var arrayFrom = Array.from;
@@ -29925,13 +28218,13 @@ function markSafe(val) {
 function suppressValue(val, autoescape) {
     val = val !== undefined && val !== null ? val : "";
     if (autoescape && !(val instanceof SafeString)) {
-        val = mod5.escape(val.toString());
+        val = mod4.escape(val.toString());
     }
     return val;
 }
 function ensureDefined(val, lineno, colno) {
     if (val === null || val === undefined) {
-        throw new mod5.TemplateError("attempted to output null or undefined value", lineno + 1, colno + 1);
+        throw new mod4.TemplateError("attempted to output null or undefined value", lineno + 1, colno + 1);
     }
     return val;
 }
@@ -29960,13 +28253,13 @@ function handleError(error, lineno, colno) {
     if (error.lineno) {
         return error;
     } else {
-        return new mod5.TemplateError(error, lineno, colno);
+        return new mod4.TemplateError(error, lineno, colno);
     }
 }
 function asyncEach(arr, dimen, iter, cb) {
-    if (mod5.isArray(arr)) {
+    if (mod4.isArray(arr)) {
         const len = arr.length;
-        mod5.asyncIter(arr, function iterCallback(item, i, next) {
+        mod4.asyncIter(arr, function iterCallback(item, i, next) {
             switch(dimen){
                 case 1:
                     iter(item, i, len, next);
@@ -29983,7 +28276,7 @@ function asyncEach(arr, dimen, iter, cb) {
             }
         }, cb);
     } else {
-        mod5.asyncFor(arr, function iterCallback(key, val, i, len, next) {
+        mod4.asyncFor(arr, function iterCallback(key, val, i, len, next) {
             iter(key, val, i, len, next);
         }, cb);
     }
@@ -29999,7 +28292,7 @@ function asyncAll(arr, dimen, func, cb) {
             cb(null, outputArr.join(""));
         }
     }
-    if (mod5.isArray(arr)) {
+    if (mod4.isArray(arr)) {
         len = arr.length;
         outputArr = new Array(len);
         if (len === 0) {
@@ -30024,7 +28317,7 @@ function asyncAll(arr, dimen, func, cb) {
             }
         }
     } else {
-        const keys = mod5.keys(arr || {});
+        const keys = mod4.keys(arr || {});
         len = keys.length;
         outputArr = new Array(len);
         if (len === 0) {
@@ -30038,7 +28331,7 @@ function asyncAll(arr, dimen, func, cb) {
     }
 }
 function fromIterator(arr) {
-    if (typeof arr !== "object" || arr === null || mod5.isArray(arr)) {
+    if (typeof arr !== "object" || arr === null || mod4.isArray(arr)) {
         return arr;
     } else if (supportsIterators && Symbol.iterator in arr) {
         return arrayFrom(arr);
@@ -30046,8 +28339,8 @@ function fromIterator(arr) {
         return arr;
     }
 }
-const { inOperator: inOperator1 , isArray: isArray1 , keys  } = mod5;
-const mod9 = {
+const { inOperator: inOperator1 , isArray: isArray1 , keys  } = mod4;
+const mod8 = {
     asyncAll: asyncAll,
     asyncEach: asyncEach,
     callWrap: callWrap,
@@ -30182,7 +28475,7 @@ class Compiler extends Obj {
         }
     }
     _compileExpression(node, frame) {
-        this.assertType(node, __default7.Literal, __default7.Symbol, __default7.Group, __default7.Array, __default7.Dict, __default7.FunCall, __default7.Caller, __default7.Filter, __default7.LookupVal, __default7.Compare, __default7.InlineIf, __default7.In, __default7.Is, __default7.And, __default7.Or, __default7.Not, __default7.Add, __default7.Concat, __default7.Sub, __default7.Mul, __default7.Div, __default7.FloorDiv, __default7.Mod, __default7.Pow, __default7.Neg, __default7.Pos, __default7.Compare, __default7.NodeList);
+        this.assertType(node, __default3.Literal, __default3.Symbol, __default3.Group, __default3.Array, __default3.Dict, __default3.FunCall, __default3.Caller, __default3.Filter, __default3.LookupVal, __default3.Compare, __default3.InlineIf, __default3.In, __default3.Is, __default3.And, __default3.Or, __default3.Not, __default3.Add, __default3.Concat, __default3.Sub, __default3.Mul, __default3.Div, __default3.FloorDiv, __default3.Mod, __default3.Pow, __default3.Neg, __default3.Pos, __default3.Compare, __default3.NodeList);
         this.compile(node, frame);
     }
     assertType(node, ...types) {
@@ -30203,7 +28496,7 @@ class Compiler extends Obj {
             this._emit(",");
         }
         if (args) {
-            if (!(args instanceof __default7.NodeList)) {
+            if (!(args instanceof __default3.NodeList)) {
                 this.fail("compileCallExtension: arguments must be a NodeList, " + "use `parser.parseSignature`");
             }
             args.children.forEach((arg, i)=>{
@@ -30286,9 +28579,9 @@ class Compiler extends Obj {
     compilePair(node, frame) {
         var key = node.key;
         var val = node.value;
-        if (key instanceof __default7.Symbol) {
-            key = new __default7.Literal(key.lineno, key.colno, key.value);
-        } else if (!(key instanceof __default7.Literal && typeof key.value === "string")) {
+        if (key instanceof __default3.Symbol) {
+            key = new __default3.Literal(key.lineno, key.colno, key.value);
+        } else if (!(key instanceof __default3.Literal && typeof key.value === "string")) {
             this.fail("compilePair: Dict keys must be strings or names", key.lineno, key.colno);
         }
         this.compile(key, frame);
@@ -30418,7 +28711,7 @@ class Compiler extends Obj {
     }
     compileFilter(node, frame) {
         var name = node.name;
-        this.assertType(name, __default7.Symbol);
+        this.assertType(name, __default3.Symbol);
         this._emit('env.getFilter("' + name.value + '").call(context, ');
         this._compileAggregate(node.args, frame);
         this._emit(")");
@@ -30426,7 +28719,7 @@ class Compiler extends Obj {
     compileFilterAsync(node, frame) {
         var name = node.name;
         var symbol = node.symbol.value;
-        this.assertType(name, __default7.Symbol);
+        this.assertType(name, __default3.Symbol);
         frame.set(symbol, symbol);
         this._emit('env.getFilter("' + name.value + '").call(context, ');
         this._compileAggregate(node.args, frame);
@@ -30567,7 +28860,7 @@ class Compiler extends Obj {
         this._emitLine(";");
         this._emit(`if(${arr}) {`);
         this._emitLine(arr + " = runtime.fromIterator(" + arr + ");");
-        if (node.name instanceof __default7.Array) {
+        if (node.name instanceof __default3.Array) {
             this._emitLine(`var ${i};`);
             this._emitLine(`if(runtime.isArray(${arr})) {`);
             this._emitLine(`var ${len} = ${arr}.length;`);
@@ -30633,7 +28926,7 @@ class Compiler extends Obj {
         this._emit("var " + arr + " = runtime.fromIterator(");
         this._compileExpression(node.arr, frame);
         this._emitLine(");");
-        if (node.name instanceof __default7.Array) {
+        if (node.name instanceof __default3.Array) {
             const arrayLen = node.name.children.length;
             this._emit(`runtime.${asyncMethod}(${arr}, ${arrayLen}, function(`);
             node.name.children.forEach((name)=>{
@@ -30688,10 +28981,10 @@ class Compiler extends Obj {
         var funcId = "macro_" + this._tmpid();
         var keepFrame = frame !== undefined;
         node.args.children.forEach((arg, i)=>{
-            if (i === node.args.children.length - 1 && arg instanceof __default7.Dict) {
+            if (i === node.args.children.length - 1 && arg instanceof __default3.Dict) {
                 kwargs = arg;
             } else {
-                this.assertType(arg, __default7.Symbol);
+                this.assertType(arg, __default3.Symbol);
                 args.push(arg);
             }
         });
@@ -30783,7 +29076,7 @@ class Compiler extends Obj {
             var name;
             var alias;
             var id = this._tmpid();
-            if (nameNode instanceof __default7.Pair) {
+            if (nameNode instanceof __default3.Pair) {
                 name = nameNode.key.value;
                 alias = nameNode.value.value;
             } else {
@@ -30873,7 +29166,7 @@ class Compiler extends Obj {
     compileOutput(node, frame) {
         const children = node.children;
         children.forEach((child)=>{
-            if (child instanceof __default7.TemplateData) {
+            if (child instanceof __default3.TemplateData) {
                 if (child.value) {
                     this._emit(`${this.buffer} += `);
                     this.compileLiteral(child, frame);
@@ -30908,7 +29201,7 @@ class Compiler extends Obj {
         this._emitFuncEnd(true);
         this.inBlock = true;
         const blockNames = [];
-        const blocks = node.findAll(__default7.Block);
+        const blocks = node.findAll(__default3.Block);
         blocks.forEach((block, i)=>{
             const name = block.name.value;
             if (blockNames.indexOf(name) !== -1) {
@@ -30940,12 +29233,12 @@ class Compiler extends Obj {
         return this.codebuf.join("");
     }
 }
-const __default10 = {
+const __default6 = {
     compile: function compile(src, asyncFilters, extensions, name, opts = {}) {
         const c = new Compiler(name, opts.throwOnUndefined);
         const preprocessors = (extensions || []).map((ext)=>ext.preprocess).filter((f)=>!!f);
         const processedSrc = preprocessors.reduce((s, processor)=>processor(s), src);
-        c.compile(__default9.transform(__default8.parse(processedSrc, extensions, opts), asyncFilters, name));
+        c.compile(__default5.transform(__default4.parse(processedSrc, extensions, opts), asyncFilters, name));
         return c.getCode();
     },
     Compiler: Compiler
@@ -31010,7 +29303,7 @@ function default_(val, def, bool) {
 }
 exports["default"] = default_;
 function dictsort(val, caseSensitive, by) {
-    if (!isObject2(val)) {
+    if (!isObject1(val)) {
         throw new TemplateError("dictsort filter: val must be an object");
     }
     let array = [];
@@ -31109,7 +29402,7 @@ function lengthFilter(val) {
         if (typeof Map === "function" && value instanceof Map || typeof Set === "function" && value instanceof Set) {
             return value.size;
         }
-        if (isObject2(value) && !(value instanceof SafeString)) {
+        if (isObject1(value) && !(value instanceof SafeString)) {
             return keys_(value).length;
         }
         return value.length;
@@ -31120,7 +29413,7 @@ exports.length = lengthFilter;
 function list(val) {
     if (isString(val)) {
         return val.split("");
-    } else if (isObject2(val)) {
+    } else if (isObject1(val)) {
         return _entries(val || {}).map(([key, value])=>({
                 key,
                 value
@@ -31293,10 +29586,10 @@ exports.sort = makeMacro([
     });
     return array;
 });
-function string1(obj) {
+function string(obj) {
     return copySafeness(obj, obj);
 }
-exports.string = string1;
+exports.string = string;
 function striptags(input, preserveLinebreaks) {
     input = normalize12(input, "");
     let tags = /<\/?([a-z][a-z0-9]*)\b[^>]*>|<!--[\s\S]*?-->/gi;
@@ -31412,7 +29705,7 @@ exports.d = exports.default;
 exports.e = exports.escape;
 class Loader extends EmitterObj {
     resolve(from, to) {
-        return mod8.resolve(mod8.dirname(from), to);
+        return mod7.resolve(mod7.dirname(from), to);
     }
     isRelative(filename) {
         return filename.indexOf("./") === 0 || filename.indexOf("../") === 0;
@@ -31449,7 +29742,7 @@ class FileSystemLoader extends Loader {
             searchPaths = Array.isArray(searchPaths) ? searchPaths : [
                 searchPaths
             ];
-            this.searchPaths = searchPaths.map(mod8.normalize);
+            this.searchPaths = searchPaths.map(mod7.normalize);
         } else {
             this.searchPaths = [
                 "."
@@ -31463,9 +29756,9 @@ class FileSystemLoader extends Loader {
         var fullpath = null;
         var paths = this.searchPaths;
         for(let i = 0; i < paths.length; i++){
-            const basePath = mod8.resolve(paths[i]);
-            const p = mod8.resolve(paths[i], name);
-            if (p.indexOf(basePath) === 0 && existsSync1(p)) {
+            const basePath = mod7.resolve(paths[i]);
+            const p = mod7.resolve(paths[i], name);
+            if (p.indexOf(basePath) === 0 && existsSync(p)) {
                 fullpath = p;
                 break;
             }
@@ -31585,10 +29878,10 @@ function odd(value) {
     return value % 2 === 1;
 }
 exports1.odd = odd;
-function string2(value) {
+function string1(value) {
     return typeof value === "string";
 }
-exports1.string = string2;
+exports1.string = string1;
 function truthy(value) {
     return !!value;
 }
@@ -31680,7 +29973,7 @@ function express(env, app) {
         this.name = name;
         this.path = name;
         this.defaultEngine = opts.defaultEngine;
-        this.ext = mod8.extname(name);
+        this.ext = mod7.extname(name);
         if (!this.ext && !this.defaultEngine) {
             throw new Error("No default engine was specified and no extension was provided.");
         }
@@ -31695,7 +29988,7 @@ function express(env, app) {
     app.set("nunjucksEnv", env);
     return env;
 }
-const { handleError: handleError1 , Frame: Frame1  } = mod9;
+const { handleError: handleError1 , Frame: Frame1  } = mod8;
 function callbackAsap(cb, err, res) {
     queueMicrotask(()=>{
         cb(err, res);
@@ -31940,7 +30233,7 @@ class Environment extends EmitterObj {
         return tmpl.render(ctx, cb);
     }
     waterfall(tasks, callback, forceAsync) {
-        return __default5(tasks, callback, forceAsync);
+        return __default1(tasks, callback, forceAsync);
     }
 }
 class Context extends Obj {
@@ -32000,7 +30293,7 @@ class Context extends Obj {
 class Template extends Obj {
     init(src, env, path, eagerCompile) {
         this.env = env || new Environment();
-        if (isObject2(src)) {
+        if (isObject1(src)) {
             switch(src.type){
                 case "code":
                     this.tmplProps = src.obj;
@@ -32051,7 +30344,7 @@ class Template extends Obj {
         frame.topLevel = true;
         let syncResult = null;
         let didError = false;
-        this.rootRenderFunc(this.env, context, frame, mod9, (err, res)=>{
+        this.rootRenderFunc(this.env, context, frame, mod8, (err, res)=>{
             if (didError && cb && typeof res !== "undefined") {
                 return;
             }
@@ -32095,7 +30388,7 @@ class Template extends Obj {
         const frame = parentFrame ? parentFrame.push() : new Frame1();
         frame.topLevel = true;
         const context = new Context(ctx || {}, this.blocks, this.env);
-        this.rootRenderFunc(this.env, context, frame, mod9, (err)=>{
+        this.rootRenderFunc(this.env, context, frame, mod8, (err)=>{
             if (err) {
                 cb(err, null);
             } else {
@@ -32113,7 +30406,7 @@ class Template extends Obj {
         if (this.tmplProps) {
             props = this.tmplProps;
         } else {
-            const source = __default10.compile(this.tmplStr, this.env.asyncFilters, this.env.extensionsList, this.path, this.env.opts);
+            const source = __default6.compile(this.tmplStr, this.env.asyncFilters, this.env.extensionsList, this.path, this.env.opts);
             const func = new Function(source);
             props = func();
         }
@@ -32171,13 +30464,13 @@ function precompile(input, opts) {
     if (opts.isString) {
         return precompileString(input, opts);
     }
-    const pathStats = existsSync1(input) && Deno.statSync(input);
+    const pathStats = existsSync(input) && Deno.statSync(input);
     const precompiled = [];
     const templates = [];
     function addTemplates(dir) {
         readdirNamesSync(dir).forEach((file)=>{
-            const filepath = mod8.join(dir, file);
-            let subpath = filepath.substr(mod8.join(input, "/").length);
+            const filepath = mod7.join(dir, file);
+            let subpath = filepath.substr(mod7.join(input, "/").length);
             const stat = Deno.statSync(filepath);
             if (stat && stat.isDirectory()) {
                 subpath += "/";
@@ -32194,7 +30487,7 @@ function precompile(input, opts) {
     } else if (pathStats.isDirectory()) {
         addTemplates(input);
         for(let i = 0; i < templates.length; i++){
-            const name = templates[i].replace(mod8.join(input, "/"), "");
+            const name = templates[i].replace(mod7.join(input, "/"), "");
             try {
                 precompiled.push(_precompile(Deno.readTextFileSync(templates[i]), name, env));
             } catch (e) {
@@ -32215,7 +30508,7 @@ function _precompile(str, name, env) {
     let template;
     name = name.replace(/\\/g, "/");
     try {
-        template = __default10.compile(str, asyncFilters, extensions, name, env.opts);
+        template = __default6.compile(str, asyncFilters, extensions, name, env.opts);
     } catch (err) {
         throw _prettifyError(name, false, err);
     }
@@ -32224,7 +30517,7 @@ function _precompile(str, name, env) {
         template: template
     };
 }
-const __default11 = {
+const __default7 = {
     precompile: precompile,
     precompileString: precompileString
 };
@@ -32508,7 +30801,7 @@ function installCompat() {
 let e;
 function configure(templatesPath, opts) {
     opts = opts || {};
-    if (mod5.isObject(templatesPath)) {
+    if (mod4.isObject(templatesPath)) {
         opts = templatesPath;
         templatesPath = null;
     }
@@ -32525,19 +30818,19 @@ function configure(templatesPath, opts) {
     }
     return e;
 }
-const __default12 = {
+const __default8 = {
     Environment: Environment,
     Template: Template,
     Loader: Loader,
     FileSystemLoader: FileSystemLoader,
     NodeResolveLoader: NodeResolveLoader,
     PrecompiledLoader: PrecompiledLoader,
-    compiler: __default10,
-    parser: __default8,
-    lexer: __default6,
-    runtime: mod9,
-    lib: mod5,
-    nodes: __default7,
+    compiler: __default6,
+    parser: __default4,
+    lexer: __default2,
+    runtime: mod8,
+    lib: mod4,
+    nodes: __default3,
     installJinjaCompat: installCompat,
     configure: configure,
     reset () {
@@ -32561,18 +30854,1721 @@ const __default12 = {
         }
         return e.renderString(src, ctx, cb);
     },
-    precompile: __default11 ? __default11.precompile : undefined,
-    precompileString: __default11 ? __default11.precompileString : undefined
+    precompile: __default7 ? __default7.precompile : undefined,
+    precompileString: __default7 ? __default7.precompileString : undefined
 };
-class NunjucksTemplateAdapter {
-    constructor(context){
-        this.context = context;
+function verify(alg, key) {
+    if (alg === "none") {
+        if (key) throw new Error(`The alg '${alg}' does not allow a key.`);
+        else return true;
+    } else {
+        if (!key) throw new Error(`The alg '${alg}' demands a key.`);
+        const algorithm = getAlgorithm(alg);
+        if (key.algorithm.name === algorithm.name) {
+            if (key.algorithm.hash?.name && key.algorithm.hash?.name === algorithm.hash.name) {
+                return true;
+            }
+        }
     }
-    fillTemplate(data, template) {
-        return Promise.resolve(__default12.renderString(template, data));
+    return false;
+}
+function getAlgorithm(alg) {
+    switch(alg){
+        case "HS256":
+            return {
+                hash: {
+                    name: "SHA-256"
+                },
+                name: "HMAC"
+            };
+        case "HS384":
+            return {
+                hash: {
+                    name: "SHA-384"
+                },
+                name: "HMAC"
+            };
+        case "HS512":
+            return {
+                hash: {
+                    name: "SHA-512"
+                },
+                name: "HMAC"
+            };
+        case "PS256":
+            return {
+                hash: {
+                    name: "SHA-256"
+                },
+                name: "RSA-PSS",
+                saltLength: 256 >> 3
+            };
+        case "PS384":
+            return {
+                hash: {
+                    name: "SHA-384"
+                },
+                name: "RSA-PSS",
+                saltLength: 384 >> 3
+            };
+        case "PS512":
+            return {
+                hash: {
+                    name: "SHA-512"
+                },
+                name: "RSA-PSS",
+                saltLength: 512 >> 3
+            };
+        case "RS256":
+            return {
+                hash: {
+                    name: "SHA-256"
+                },
+                name: "RSASSA-PKCS1-v1_5"
+            };
+        case "RS384":
+            return {
+                hash: {
+                    name: "SHA-384"
+                },
+                name: "RSASSA-PKCS1-v1_5"
+            };
+        case "RS512":
+            return {
+                hash: {
+                    name: "SHA-512"
+                },
+                name: "RSASSA-PKCS1-v1_5"
+            };
+        default:
+            throw new Error(`The jwt's alg '${alg}' is not supported.`);
+    }
+}
+const base64abc = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h",
+    "i",
+    "j",
+    "k",
+    "l",
+    "m",
+    "n",
+    "o",
+    "p",
+    "q",
+    "r",
+    "s",
+    "t",
+    "u",
+    "v",
+    "w",
+    "x",
+    "y",
+    "z",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "+",
+    "/"
+];
+function encode(data) {
+    const uint8 = typeof data === "string" ? new TextEncoder().encode(data) : data instanceof Uint8Array ? data : new Uint8Array(data);
+    let result = "", i;
+    const l = uint8.length;
+    for(i = 2; i < l; i += 3){
+        result += base64abc[uint8[i - 2] >> 2];
+        result += base64abc[(uint8[i - 2] & 0x03) << 4 | uint8[i - 1] >> 4];
+        result += base64abc[(uint8[i - 1] & 0x0f) << 2 | uint8[i] >> 6];
+        result += base64abc[uint8[i] & 0x3f];
+    }
+    if (i === l + 1) {
+        result += base64abc[uint8[i - 2] >> 2];
+        result += base64abc[(uint8[i - 2] & 0x03) << 4];
+        result += "==";
+    }
+    if (i === l) {
+        result += base64abc[uint8[i - 2] >> 2];
+        result += base64abc[(uint8[i - 2] & 0x03) << 4 | uint8[i - 1] >> 4];
+        result += base64abc[(uint8[i - 1] & 0x0f) << 2];
+        result += "=";
+    }
+    return result;
+}
+function decode(b64) {
+    const binString = atob(b64);
+    const size = binString.length;
+    const bytes = new Uint8Array(size);
+    for(let i = 0; i < size; i++){
+        bytes[i] = binString.charCodeAt(i);
+    }
+    return bytes;
+}
+function addPaddingToBase64url(base64url) {
+    if (base64url.length % 4 === 2) return base64url + "==";
+    if (base64url.length % 4 === 3) return base64url + "=";
+    if (base64url.length % 4 === 1) {
+        throw new TypeError("Illegal base64url string!");
+    }
+    return base64url;
+}
+function convertBase64urlToBase64(b64url) {
+    if (!/^[-_A-Z0-9]*?={0,2}$/i.test(b64url)) {
+        throw new TypeError("Failed to decode base64url: invalid character");
+    }
+    return addPaddingToBase64url(b64url).replace(/\-/g, "+").replace(/_/g, "/");
+}
+function convertBase64ToBase64url(b64) {
+    return b64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+function encode1(uint8) {
+    return convertBase64ToBase64url(encode(uint8));
+}
+function decode1(b64url) {
+    return decode(convertBase64urlToBase64(b64url));
+}
+const mod9 = {
+    addPaddingToBase64url: addPaddingToBase64url,
+    encode: encode1,
+    decode: decode1
+};
+const encoder = new TextEncoder();
+async function verify1(signature, key, alg, signingInput) {
+    return key === null ? signature.length === 0 : await crypto.subtle.verify(getAlgorithm(alg), key, signature, encoder.encode(signingInput));
+}
+const decoder = new TextDecoder();
+function isExpired(exp, leeway = 0) {
+    return exp + leeway < Date.now() / 1000;
+}
+function isTooEarly(nbf, leeway = 0) {
+    return nbf - leeway > Date.now() / 1000;
+}
+function isObject2(obj) {
+    return obj !== null && typeof obj === "object" && Array.isArray(obj) === false;
+}
+function is3Tuple(arr) {
+    return arr.length === 3;
+}
+function hasInvalidTimingClaims(...claimValues) {
+    return claimValues.some((claimValue)=>claimValue !== undefined ? typeof claimValue !== "number" : false);
+}
+function decode2(jwt) {
+    try {
+        const arr = jwt.split(".").map(mod9.decode).map((uint8Array, index)=>{
+            switch(index){
+                case 0:
+                case 1:
+                    return JSON.parse(decoder.decode(uint8Array));
+                case 2:
+                    return uint8Array;
+            }
+        });
+        if (is3Tuple(arr)) return arr;
+        else throw new Error();
+    } catch  {
+        throw TypeError("The serialization of the jwt is invalid.");
+    }
+}
+function validate1([header, payload, signature]) {
+    if (typeof header?.alg !== "string") {
+        throw new Error(`The header 'alg' parameter of the jwt must be a string.`);
+    }
+    if (isObject2(payload)) {
+        if (hasInvalidTimingClaims(payload.exp, payload.nbf)) {
+            throw new Error(`The jwt has an invalid 'exp' or 'nbf' claim.`);
+        }
+        if (typeof payload.exp === "number" && isExpired(payload.exp, 1)) {
+            throw RangeError("The jwt is expired.");
+        }
+        if (typeof payload.nbf === "number" && isTooEarly(payload.nbf, 1)) {
+            throw RangeError("The jwt is used too early.");
+        }
+        return {
+            header,
+            payload,
+            signature
+        };
+    } else {
+        throw new Error(`The jwt claims set is not a JSON object.`);
+    }
+}
+async function verify2(jwt, key) {
+    const { header , payload , signature  } = validate1(decode2(jwt));
+    if (verify(header.alg, key)) {
+        if (!await verify1(signature, key, header.alg, jwt.slice(0, jwt.lastIndexOf(".")))) {
+            throw new Error("The jwt's signature does not match the verification signature.");
+        }
+        return payload;
+    } else {
+        throw new Error(`The jwt's alg '${header.alg}' does not match the key's algorithm.`);
+    }
+}
+function createSigningInput(header, payload) {
+    return `${mod9.encode(encoder.encode(JSON.stringify(header)))}.${mod9.encode(encoder.encode(JSON.stringify(payload)))}`;
+}
+async function create(alg, key, signingInput) {
+    return key === null ? "" : mod9.encode(new Uint8Array(await crypto.subtle.sign(getAlgorithm(alg), key, encoder.encode(signingInput))));
+}
+async function create1(header, payload, key) {
+    if (verify(header.alg, key)) {
+        const signingInput = createSigningInput(header, payload);
+        const signature = await create(header.alg, key, signingInput);
+        return `${signingInput}.${signature}`;
+    } else {
+        throw new Error(`The jwt's alg '${header.alg}' does not match the key's algorithm.`);
+    }
+}
+function getNumericDate(exp) {
+    return Math.round((exp instanceof Date ? exp.getTime() : Date.now() + exp * 1000) / 1000);
+}
+const assignProperties = (schema, properties, required)=>{
+    const newSchema = {
+        ...schema,
+        properties: {
+            ...schema.properties,
+            ...properties
+        }
+    };
+    if (required) {
+        newSchema['required'] = [
+            ...schema['required'] || [],
+            ...required
+        ];
+    }
+    return newSchema;
+};
+function getFileInfoType(fileInfo) {
+    return fileInfo.isFile ? "file" : fileInfo.isDirectory ? "dir" : fileInfo.isSymlink ? "symlink" : undefined;
+}
+async function ensureDir(dir) {
+    try {
+        const fileInfo = await Deno.lstat(dir);
+        if (!fileInfo.isDirectory) {
+            throw new Error(`Ensure path exists, expected 'dir', got '${getFileInfoType(fileInfo)}'`);
+        }
+    } catch (err) {
+        if (err instanceof Deno.errors.NotFound) {
+            await Deno.mkdir(dir, {
+                recursive: true
+            });
+            return;
+        }
+        throw err;
+    }
+}
+async function exists(filePath) {
+    try {
+        await Deno.lstat(filePath);
+        return true;
+    } catch (err) {
+        if (err instanceof Deno.errors.NotFound) {
+            return false;
+        }
+        throw err;
+    }
+}
+function existsSync1(filePath) {
+    try {
+        Deno.lstatSync(filePath);
+        return true;
+    } catch (err) {
+        if (err instanceof Deno.errors.NotFound) {
+            return false;
+        }
+        throw err;
+    }
+}
+var EOL;
+(function(EOL) {
+    EOL["LF"] = "\n";
+    EOL["CRLF"] = "\r\n";
+})(EOL || (EOL = {}));
+const { Deno: Deno1  } = globalThis;
+const noColor = typeof Deno1?.noColor === "boolean" ? Deno1.noColor : true;
+let enabled = !noColor;
+function code1(open, close) {
+    return {
+        open: `\x1b[${open.join(";")}m`,
+        close: `\x1b[${close}m`,
+        regexp: new RegExp(`\\x1b\\[${close}m`, "g")
+    };
+}
+function run(str, code) {
+    return enabled ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
+}
+function bold(str) {
+    return run(str, code1([
+        1
+    ], 22));
+}
+function red(str) {
+    return run(str, code1([
+        31
+    ], 39));
+}
+function yellow(str) {
+    return run(str, code1([
+        33
+    ], 39));
+}
+function blue(str) {
+    return run(str, code1([
+        34
+    ], 39));
+}
+new RegExp([
+    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
+    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))", 
+].join("|"), "g");
+var DiffType;
+(function(DiffType) {
+    DiffType["removed"] = "removed";
+    DiffType["common"] = "common";
+    DiffType["added"] = "added";
+})(DiffType || (DiffType = {}));
+BigInt(Number.MAX_SAFE_INTEGER);
+const BUF_SIZE = 64 * 1024;
+async function* limitBytes(itbl, limit) {
+    let bytes = 0;
+    for await (let chunk of itbl){
+        bytes += chunk.byteLength;
+        if (bytes > limit) {
+            return chunk.slice(0, limit - bytes);
+        } else if (bytes === limit) {
+            return chunk;
+        } else {
+            yield chunk;
+        }
+    }
+}
+async function* toBlockChunks(stringItbl) {
+    const buffer = new Uint8Array(BUF_SIZE);
+    let pointer = 0;
+    const encoder = new TextEncoder();
+    for await (const stringChunk of stringItbl){
+        const bytes = encoder.encode(stringChunk);
+        let start = 0;
+        let bytesRemaining = bytes.length - start;
+        let bufferRemaining = BUF_SIZE - pointer;
+        while(bytesRemaining >= bufferRemaining){
+            buffer.set(bytes.slice(start, start + bufferRemaining), pointer);
+            yield buffer;
+            start += bufferRemaining;
+            bytesRemaining = bytes.length - start;
+            pointer = 0;
+            bufferRemaining = BUF_SIZE - pointer;
+        }
+        if (bytesRemaining > 0) {
+            buffer.set(bytes.slice(start), pointer);
+            pointer += bytesRemaining;
+        }
+    }
+    yield buffer.slice(0, pointer);
+}
+async function* iterateReader(r, options) {
+    const bufSize = options?.bufSize ?? BUF_SIZE;
+    while(true){
+        const b = new Uint8Array(bufSize);
+        const result = await r.read(b);
+        if (result === null) {
+            break;
+        }
+        yield b.subarray(0, result);
+    }
+}
+async function readFileStream(path, startByte = 0, endByte = -1) {
+    const f = await Deno.open(path);
+    if (startByte > 0) {
+        await Deno.seek(f.rid, startByte, Deno.SeekMode.Start);
+    }
+    let itbl = iterateReader(f, {
+        bufSize: BUF_SIZE
+    });
+    if (endByte > -1) {
+        itbl = limitBytes(itbl, endByte - startByte);
+    }
+    const stream = new ReadableStream({
+        async pull (controller) {
+            try {
+                const { value , done  } = await itbl.next();
+                if (done) {
+                    controller.close();
+                    f.close();
+                } else {
+                    controller.enqueue(value);
+                }
+            } catch (err) {
+                controller.error(err);
+                console.log('stream error: ' + JSON.stringify(err));
+                f.close();
+            }
+        },
+        cancel () {
+            f.close();
+        }
+    });
+    return stream;
+}
+async function writeFileStream(path) {
+    await ensureDir(dirname2(path));
+    let f = await Deno.open(path, {
+        create: true,
+        write: true,
+        truncate: true
+    });
+    const stream = new WritableStream({
+        async write (chunk) {
+            await writeAll(f, chunk);
+        },
+        close () {
+            f.close();
+        },
+        abort (reason) {
+            console.error('Write abort: ', reason);
+            f.close();
+        }
+    });
+    return stream;
+}
+function fileToDataAdapter(fileAdapter) {
+    return class FileAsDataAdapter extends fileAdapter {
+        readKey = async (dataset, key)=>{
+            const data = await this.read(pathCombine(dataset, key), [
+                'json'
+            ]);
+            return data.ok ? await data.asJson() || {} : data.statusCode;
+        };
+        writeKey = (dataset, key, data)=>this.write(pathCombine(dataset, key), data, [
+                'json'
+            ]);
+        deleteKey = (dataset, key)=>this.delete(pathCombine(dataset, key), [
+                'json'
+            ]);
+        listDataset = async (dataset, getUpdateTime)=>{
+            const msgBody = await this.readDirectory(dataset || '/', getUpdateTime);
+            if (!msgBody.ok) {
+                if (msgBody.statusCode === 404) {
+                    return [];
+                } else {
+                    return msgBody.statusCode;
+                }
+            }
+            const paths = await msgBody.asJson() || [];
+            return paths;
+        };
+        deleteDataset = (dataset)=>this.deleteDirectory(dataset, '.schema.json');
+        checkKey = (dataset, key)=>this.check(pathCombine(dataset, key), [
+                'json'
+            ]);
+    };
+}
+function dataToSchemaAdapter(dataAdapter) {
+    return class DataAsSchemaAdapter extends dataAdapter {
+        checkSchema(dataset) {
+            return this.checkKey(dataset, '.schema.json');
+        }
+        readSchema(dataset) {
+            return this.readKey(dataset, '.schema.json');
+        }
+        writeSchema(dataset, schema) {
+            return this.writeKey(dataset, '.schema.json', MessageBody.fromObject(schema));
+        }
+        instanceContentType(dataset, baseUrl) {
+            const url = [
+                baseUrl,
+                dataset,
+                '.schema.json'
+            ].filter((s)=>s !== '').join('/');
+            return Promise.resolve(`application/json; schema="${url}"`);
+        }
+    };
+}
+class LocalFileAdapterBase {
+    rootPath;
+    basePath;
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+        this.dirIter = async function*(dirPath, getUpdateTime) {
+            yield '[';
+            let first = true;
+            for await (const entry of Deno.readDir(dirPath)){
+                let updateStr = "";
+                if (getUpdateTime) {
+                    const stat = await Deno.stat(join3(dirPath, entry.name));
+                    updateStr = stat.mtime ? "," + stat.mtime.getTime().toString() : "";
+                }
+                const listName = entry.name + (entry.isDirectory ? "/" : "");
+                yield `${first ? '' : ','} [ "${listName}"${updateStr} ]`;
+                first = false;
+            }
+            yield ']';
+        };
+        this.rootPath = props.rootPath.replace('${tenant}', context.tenant);
+        this.basePath = props.basePath;
+    }
+    canonicalisePath(path) {
+        return path.replace(/[\\:*"<>|]/g, '-');
+    }
+    decanonicalisePath(path) {
+        return path;
+    }
+    getPathParts(reqPath, extensions, forDir, ensureDirExists) {
+        reqPath = reqPath.split('?')[0];
+        if (reqPath.endsWith('/')) forDir = true;
+        let fullPath = this.basePath + '/' + decodeURI(slashTrim(reqPath));
+        fullPath = fullPath.replace(/^\//, '').replace('//', '/');
+        fullPath = this.canonicalisePath(fullPath);
+        const pathParts = fullPath.split('/');
+        if (ensureDirExists) ensureDir(join3(this.rootPath, ...pathParts.slice(0, -1)));
+        let ext = '';
+        if (!forDir) {
+            const dotParts = pathParts[pathParts.length - 1].split('.');
+            const pathExt = dotParts[dotParts.length - 1];
+            extensions = extensions || [];
+            if (extensions.length && (dotParts.length === 1 || !extensions.includes(pathExt))) {
+                ext = extensions[0];
+            } else if (dotParts.length > 1) {
+                ext = dotParts.pop();
+                pathParts[pathParts.length - 1] = dotParts.join('.');
+            }
+        }
+        const filePath = join3(this.rootPath, ...pathParts);
+        return [
+            filePath,
+            ext
+        ];
+    }
+    getPath(reqPath, extensions, forDir, ensureDir) {
+        const [filePath, ext] = this.getPathParts(reqPath, extensions, forDir, ensureDir);
+        return filePath + (ext ? '.' + ext : '');
+    }
+    async read(readPath, extensions, startByte, endByte) {
+        const filePath = this.getPath(readPath, extensions);
+        let stream;
+        try {
+            stream = await readFileStream(filePath, startByte, endByte);
+            return new MessageBody(stream, getType(filePath) || 'text/plain');
+        } catch (err) {
+            if (err instanceof Deno.errors.NotFound) return MessageBody.fromError(404);
+            throw new Error(`LocalFileAdapter reading file: ${readPath}, ${err}`);
+        }
+    }
+    async write(path, data, extensions) {
+        let writeStream = null;
+        try {
+            writeStream = await writeFileStream(this.getPath(path, extensions, false, true));
+            const readableStream = data.asReadable();
+            if (readableStream === null) throw new Error('no data');
+            await readableStream.pipeTo(writeStream);
+            return 200;
+        } catch (err) {
+            return err instanceof Deno.errors.NotFound ? 404 : 500;
+        }
+    }
+    async delete(path, extensions) {
+        try {
+            await Deno.remove(this.getPath(path, extensions));
+        } catch (err) {
+            return err instanceof Deno.errors.NotFound ? 404 : 500;
+        }
+        return 200;
+    }
+    dirIter;
+    async readDirectory(readPath, getUpdateTime = false) {
+        const filePath = this.getPath(readPath, undefined, true);
+        let stat;
+        try {
+            stat = await Deno.stat(filePath);
+        } catch (err) {
+            return err instanceof Deno.errors.NotFound ? MessageBody.fromError(404) : MessageBody.fromError(500);
+        }
+        if (!stat.isDirectory) return MessageBody.fromError(400);
+        const blockIter = toBlockChunks(this.dirIter(filePath, getUpdateTime || false));
+        return new MessageBody(readableStreamFromIterable(blockIter), 'text/plain').setIsDirectory();
+    }
+    async deleteDirectory(path, deleteableFileSuffix = '') {
+        const filePath = this.getPath(path, undefined, true);
+        let stat;
+        try {
+            stat = await Deno.stat(filePath);
+        } catch (err) {
+            return err instanceof Deno.errors.NotFound ? 200 : 500;
+        }
+        if (!stat.isDirectory) return 400;
+        for await (const entry of Deno.readDir(filePath)){
+            if (entry.isDirectory || !(deleteableFileSuffix && entry.name.endsWith(deleteableFileSuffix))) {
+                return 400;
+            }
+        }
+        await Deno.remove(filePath, {
+            recursive: true
+        });
+        return 200;
+    }
+    async check(path, extensions) {
+        const filePath = this.getPath(path, extensions);
+        let stat;
+        try {
+            stat = await Deno.stat(filePath);
+        } catch  {
+            return {
+                status: 'none'
+            };
+        }
+        const status = stat.isDirectory ? "directory" : "file";
+        switch(status){
+            case "directory":
+                return {
+                    status,
+                    dateModified: stat.mtime
+                };
+            default:
+                return {
+                    status,
+                    size: stat.size,
+                    dateModified: stat.mtime
+                };
+        }
+    }
+    async move(fromPath, toPath, extensions) {
+        const fromFullPath = this.getPath(fromPath);
+        const toFullPath = this.getPath(toPath, extensions, false, true);
+        try {
+            await Deno.rename(fromFullPath, toFullPath);
+        } catch (err) {
+            return err instanceof Deno.errors.NotFound ? 404 : 500;
+        }
+        return 200;
     }
     context;
+    props;
 }
+const __default9 = dataToSchemaAdapter(fileToDataAdapter(LocalFileAdapterBase));
+const __default10 = {
+    "name": "Local File Adapter",
+    "description": "Reads and writes files on the file system local to the runtime",
+    "moduleUrl": "./adapter/LocalFileAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "rootPath": {
+                "type": "string",
+                "description": "File path to root of all file storage"
+            },
+            "basePath": {
+                "type": "string",
+                "description": "Path below root path to storage for this service (generally unique)"
+            }
+        }
+    },
+    "adapterInterfaces": [
+        "IFileAdapter",
+        "IDataAdapter"
+    ]
+};
+const $XML = Symbol("x/xml");
+const schema = {
+    comment: "#comment",
+    text: "#text",
+    attribute: {
+        prefix: "@"
+    },
+    property: {
+        prefix: "@"
+    }
+};
+const SeekMode = Object.freeze({
+    Current: Deno?.SeekMode?.Current ?? 0,
+    Start: Deno?.SeekMode?.Start ?? 1,
+    End: Deno?.SeekMode?.End ?? 2
+});
+const entities = {
+    xml: {
+        "&lt;": "<",
+        "&gt;": ">",
+        "&apos;": "'",
+        "&quot;": '"',
+        "&amp;": "&"
+    },
+    char: {
+        "&": "&amp;",
+        '"': "&quot;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&apos;"
+    }
+};
+const tokens = {
+    entity: {
+        regex: {
+            entities: /&#(?<hex>x?)(?<code>\d+);/g
+        }
+    },
+    prolog: {
+        start: "<?xml",
+        end: "?>"
+    },
+    doctype: {
+        start: "<!DOCTYPE",
+        end: ">",
+        elements: {
+            start: "[",
+            end: "]"
+        },
+        element: {
+            start: "<!ELEMENT",
+            end: ">",
+            value: {
+                start: "(",
+                end: ")",
+                regex: {
+                    end: {
+                        until: /\)/,
+                        bytes: 1
+                    }
+                }
+            }
+        }
+    },
+    comment: {
+        start: "<!--",
+        end: "-->",
+        regex: {
+            end: {
+                until: /(?<!-)-->/,
+                bytes: 4,
+                length: 3
+            }
+        }
+    },
+    cdata: {
+        start: "<![CDATA[",
+        end: "]]>",
+        regex: {
+            end: {
+                until: /\]\]>/,
+                bytes: 3
+            }
+        }
+    },
+    tag: {
+        start: "<",
+        end: ">",
+        close: {
+            start: "</",
+            end: ">",
+            self: "/",
+            regex: {
+                start: /<\//,
+                end: /\/?>/
+            }
+        },
+        attribute: {
+            regex: {
+                name: {
+                    until: /=/,
+                    bytes: 1
+                }
+            }
+        },
+        regex: {
+            name: {
+                until: /[\s\/>]/,
+                bytes: 1
+            },
+            start: {
+                until: /</,
+                bytes: 1
+            }
+        }
+    },
+    text: {
+        regex: {
+            end: {
+                until: /(<\/)|(<!)/,
+                bytes: 2
+            }
+        }
+    }
+};
+class Parser1 {
+    constructor(stream, options = {}){
+        this.#stream = stream;
+        this.#options = options;
+        this.#options.reviver ??= function({ value  }) {
+            return value;
+        };
+    }
+    parse() {
+        return this.#document();
+    }
+    #options;
+     #debug(path6, string2) {
+        if (this.#options.debug) {
+            console.debug(`${path6.map((node)=>node[$XML].name).join(" > ")} | ${string2}`.trim());
+        }
+    }
+     #document() {
+        const document = {};
+        const path11 = [];
+        const comments = [];
+        let root = false;
+        let clean;
+        this.#trim();
+        try {
+            while(true){
+                clean = true;
+                if (this.#peek(tokens.comment.start)) {
+                    clean = false;
+                    comments.push(this.#comment({
+                        path: path11
+                    }));
+                    continue;
+                }
+                if (this.#peek(tokens.prolog.start)) {
+                    if (document.xml) {
+                        throw new SyntaxError("Multiple prolog declaration found");
+                    }
+                    clean = false;
+                    Object.assign(document, this.#prolog({
+                        path: path11
+                    }));
+                    continue;
+                }
+                if (this.#peek(tokens.doctype.start)) {
+                    if (document.doctype) {
+                        throw new SyntaxError("Multiple doctype declaration found");
+                    }
+                    clean = false;
+                    Object.assign(document, this.#doctype({
+                        path: path11
+                    }));
+                    continue;
+                }
+                if (this.#peek(tokens.tag.start)) {
+                    if (root) {
+                        throw new SyntaxError("Multiple root elements found");
+                    }
+                    clean = false;
+                    Object.assign(document, this.#node({
+                        path: path11
+                    }));
+                    this.#trim();
+                    root = true;
+                    continue;
+                }
+            }
+        } catch (error) {
+            if (error instanceof Deno.errors.UnexpectedEof && clean) {
+                if (comments.length) {
+                    document[schema.comment] = comments;
+                }
+                return document;
+            }
+            throw error;
+        }
+    }
+     #node({ path: path21  }) {
+        if (this.#options.progress) {
+            this.#options.progress(this.#stream.cursor);
+        }
+        if (this.#peek(tokens.comment.start)) {
+            return {
+                [schema.comment]: this.#comment({
+                    path: path21
+                })
+            };
+        }
+        return this.#tag({
+            path: path21
+        });
+    }
+     #prolog({ path: path31  }) {
+        this.#debug(path31, "parsing prolog");
+        const prolog = this.#make.node({
+            name: "xml",
+            path: path31
+        });
+        this.#consume(tokens.prolog.start);
+        while(!this.#peek(tokens.prolog.end)){
+            Object.assign(prolog, this.#attribute({
+                path: [
+                    ...path31,
+                    prolog
+                ]
+            }));
+        }
+        this.#consume(tokens.prolog.end);
+        return {
+            xml: prolog
+        };
+    }
+     #doctype({ path: path41  }) {
+        this.#debug(path41, "parsing doctype");
+        const doctype = this.#make.node({
+            name: "doctype",
+            path: path41
+        });
+        Object.defineProperty(doctype, $XML, {
+            enumerable: false,
+            writable: true
+        });
+        this.#consume(tokens.doctype.start);
+        while(!this.#peek(tokens.doctype.end)){
+            if (this.#peek(tokens.doctype.elements.start)) {
+                this.#consume(tokens.doctype.elements.start);
+                while(!this.#peek(tokens.doctype.elements.end)){
+                    Object.assign(doctype, this.#doctypeElement({
+                        path: path41
+                    }));
+                }
+                this.#consume(tokens.doctype.elements.end);
+            } else {
+                Object.assign(doctype, this.#property({
+                    path: path41
+                }));
+            }
+        }
+        this.#stream.consume({
+            content: tokens.doctype.end
+        });
+        return {
+            doctype
+        };
+    }
+     #doctypeElement({ path: path51  }) {
+        this.#debug(path51, "parsing doctype element");
+        this.#consume(tokens.doctype.element.start);
+        const element = Object.keys(this.#property({
+            path: path51
+        })).shift().substring(schema.property.prefix.length);
+        this.#debug(path51, `found doctype element "${element}"`);
+        this.#consume(tokens.doctype.element.value.start);
+        const value = this.#capture(tokens.doctype.element.value.regex.end);
+        this.#consume(tokens.doctype.element.value.end);
+        this.#debug(path51, `found doctype element value "${value}"`);
+        this.#consume(tokens.doctype.element.end);
+        return {
+            [element]: value
+        };
+    }
+     #tag({ path: path61  }) {
+        this.#debug(path61, "parsing tag");
+        const tag = this.#make.node({
+            path: path61
+        });
+        this.#consume(tokens.tag.start);
+        const name = this.#capture(tokens.tag.regex.name);
+        Object.assign(tag[$XML], {
+            name
+        });
+        this.#debug(path61, `found tag "${name}"`);
+        while(!tokens.tag.close.regex.end.test(this.#stream.peek(2))){
+            Object.assign(tag, this.#attribute({
+                path: [
+                    ...path61,
+                    tag
+                ]
+            }));
+        }
+        const selfclosed = this.#peek(tokens.tag.close.self);
+        if (selfclosed) {
+            this.#debug(path61, `tag "${name}" is self-closed`);
+            this.#consume(tokens.tag.close.self);
+        }
+        this.#consume(tokens.tag.end);
+        if (!selfclosed) {
+            if (this.#peek(tokens.cdata.start) || !this.#peek(tokens.tag.start)) {
+                Object.assign(tag, this.#text({
+                    close: name,
+                    path: [
+                        ...path61,
+                        tag
+                    ]
+                }));
+            } else {
+                while(!tokens.tag.close.regex.start.test(this.#stream.peek(2))){
+                    const child = this.#node({
+                        path: [
+                            ...path61,
+                            tag
+                        ]
+                    });
+                    const [key, value1] = Object.entries(child).shift();
+                    if (Array.isArray(tag[key])) {
+                        tag[key].push(value1);
+                        this.#debug([
+                            ...path61,
+                            tag
+                        ], `add new child "${key}" to array`);
+                    } else if (key in tag) {
+                        const array = [
+                            tag[key],
+                            value1
+                        ];
+                        Object.defineProperty(array, $XML, {
+                            enumerable: false,
+                            writable: true
+                        });
+                        if (tag[key]?.[$XML]) {
+                            Object.assign(array, {
+                                [$XML]: tag[key][$XML]
+                            });
+                        }
+                        tag[key] = array;
+                        this.#debug([
+                            ...path61,
+                            tag
+                        ], `multiple children named "${key}", using array notation`);
+                    } else {
+                        Object.assign(tag, child);
+                        this.#debug([
+                            ...path61,
+                            tag
+                        ], `add new child "${key}"`);
+                    }
+                }
+            }
+            this.#consume(tokens.tag.close.start);
+            this.#consume(name);
+            this.#consume(tokens.tag.close.end);
+            this.#debug(path61, `found closing tag for "${name}"`);
+        }
+        for (const [key1] of Object.entries(tag).filter(([_, value])=>typeof value === "undefined")){
+            delete tag[key1];
+        }
+        if (!Object.keys(tag).includes(schema.text)) {
+            const children = Object.keys(tag).filter((key)=>!key.startsWith(schema.attribute.prefix) && key !== schema.text);
+            if (!children.length) {
+                this.#debug(path61, `tag "${name}" has implictely obtained a text node as it has no children but has attributes`);
+                tag[schema.text] = this.#revive({
+                    key: schema.text,
+                    value: "",
+                    tag
+                });
+            }
+        }
+        if ((this.#options.flatten ?? true) && Object.keys(tag).includes(schema.text) && Object.keys(tag).length === 1) {
+            this.#debug(path61, `tag "${name}" has been implicitely flattened as it only has a text node`);
+            return {
+                [name]: tag[schema.text]
+            };
+        }
+        return {
+            [name]: tag
+        };
+    }
+     #attribute({ path: path7  }) {
+        this.#debug(path7, "parsing attribute");
+        const attribute = this.#capture(tokens.tag.attribute.regex.name);
+        this.#debug(path7, `found attribute "${attribute}"`);
+        this.#consume("=");
+        const quote = this.#stream.peek();
+        this.#consume(quote);
+        const value2 = this.#capture({
+            until: new RegExp(quote),
+            bytes: quote.length
+        });
+        this.#consume(quote);
+        this.#debug(path7, `found attribute value "${value2}"`);
+        return {
+            [`${schema.attribute.prefix}${attribute}`]: this.#revive({
+                key: `${schema.attribute.prefix}${attribute}`,
+                value: value2,
+                tag: path7.at(-1)
+            })
+        };
+    }
+     #property({ path: path8  }) {
+        this.#debug(path8, "parsing property");
+        const quote1 = this.#stream.peek();
+        const delimiter9 = /["']/.test(quote1) ? quote1 : " ";
+        if (delimiter9.trim().length) {
+            this.#consume(delimiter9);
+        }
+        const property = this.#capture({
+            until: new RegExp(delimiter9),
+            bytes: delimiter9.length
+        });
+        this.#debug(path8, `found property ${property}`);
+        if (delimiter9.trim().length) {
+            this.#consume(delimiter9);
+        }
+        return {
+            [`${schema.property.prefix}${property}`]: true
+        };
+    }
+     #text({ close , path: path9  }) {
+        this.#debug(path9, "parsing text");
+        const tag1 = this.#make.node({
+            name: schema.text,
+            path: path9
+        });
+        let text = "";
+        const comments1 = [];
+        while(this.#peek(tokens.cdata.start) || !this.#peeks([
+            tokens.tag.close.start,
+            close,
+            tokens.tag.close.end
+        ])){
+            if (this.#peek(tokens.cdata.start)) {
+                text += this.#cdata({
+                    path: [
+                        ...path9,
+                        tag1
+                    ]
+                });
+            } else if (this.#peek(tokens.comment.start)) {
+                comments1.push(this.#comment({
+                    path: [
+                        ...path9,
+                        tag1
+                    ]
+                }));
+            } else {
+                text += this.#capture(tokens.text.regex.end);
+                if (this.#peek(tokens.cdata.start) || this.#peek(tokens.comment.start)) {
+                    continue;
+                }
+                if (!this.#peeks([
+                    tokens.tag.close.start,
+                    close,
+                    tokens.tag.close.end
+                ])) {
+                    text += tokens.tag.close.start;
+                    this.#consume(tokens.tag.close.start);
+                }
+            }
+        }
+        this.#debug(path9, `parsed text "${text}"`);
+        if (comments1.length) {
+            this.#debug(path9, `parsed comments ${JSON.stringify(comments1)}`);
+        }
+        Object.assign(tag1, {
+            [schema.text]: this.#revive({
+                key: schema.text,
+                value: text.trim(),
+                tag: path9.at(-1)
+            }),
+            ...comments1.length ? {
+                [schema.comment]: comments1
+            } : {}
+        });
+        return tag1;
+    }
+     #cdata({ path: path10  }) {
+        this.#debug(path10, "parsing cdata");
+        this.#consume(tokens.cdata.start);
+        const data = this.#capture(tokens.cdata.regex.end);
+        this.#consume(tokens.cdata.end);
+        return data;
+    }
+     #comment({ path: path111  }) {
+        this.#debug(path111, "parsing comment");
+        this.#consume(tokens.comment.start);
+        const comment = this.#capture(tokens.comment.regex.end).trim();
+        this.#consume(tokens.comment.end);
+        return comment;
+    }
+     #revive({ key: key2 , value: value3 , tag: tag2  }) {
+        return this.#options.reviver.call(tag2, {
+            key: key2,
+            tag: tag2[$XML].name,
+            properties: !(key2.startsWith(schema.attribute.prefix) || key2.startsWith(schema.property.prefix)) ? {
+                ...tag2
+            } : null,
+            value: (()=>{
+                switch(true){
+                    case (this.#options.emptyToNull ?? true) && /^\s*$/.test(value3):
+                        return null;
+                    case (this.#options.reviveBooleans ?? true) && /^(?:true|false)$/i.test(value3):
+                        return /^true$/i.test(value3);
+                    case this.#options.reviveNumbers ?? true:
+                        {
+                            const num = Number(value3);
+                            if (Number.isFinite(num)) {
+                                return num;
+                            }
+                        }
+                    default:
+                        value3 = value3.replace(tokens.entity.regex.entities, (_, hex, code)=>String.fromCharCode(parseInt(code, hex ? 16 : 10)));
+                        for (const [entity, character] of Object.entries(entities.xml)){
+                            value3 = value3.replaceAll(entity, character);
+                        }
+                        return value3;
+                }
+            })()
+        });
+    }
+    #make = {
+        node ({ name ="" , path =[]  }) {
+            const node = {
+                [$XML]: {
+                    name,
+                    parent: path[path.length - 1] ?? null
+                }
+            };
+            Object.defineProperty(node, $XML, {
+                enumerable: false,
+                writable: true
+            });
+            return node;
+        }
+    };
+    #stream;
+     #peek(token1) {
+        return this.#stream.peek(token1.length) === token1;
+    }
+     #peeks(tokens1) {
+        let offset = 0;
+        for(let i1 = 0; i1 < tokens1.length; i1++){
+            const token11 = tokens1[i1];
+            while(true){
+                if (/\s/.test(this.#stream.peek(1, offset))) {
+                    offset++;
+                    continue;
+                }
+                if (this.#stream.peek(token11.length, offset) === token11) {
+                    offset += token11.length;
+                    break;
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+     #consume(token2) {
+        return this.#stream.consume({
+            content: token2
+        });
+    }
+     #capture(token3) {
+        return this.#stream.capture(token3);
+    }
+     #trim() {
+        return this.#stream.trim();
+    }
+}
+class Stream {
+    constructor(content){
+        this.#content = content;
+    }
+    #decoder = new TextDecoder();
+    #encoder = new TextEncoder();
+    #content;
+    get cursor() {
+        return this.#content.seekSync(0, SeekMode.Current);
+    }
+    peek(bytes = 1, offset = 0) {
+        const buffer = new Uint8Array(bytes);
+        const cursor = this.cursor;
+        if (offset) {
+            this.#content.seekSync(offset, SeekMode.Current);
+        }
+        if (this.#content.readSync(buffer)) {
+            this.#content.seekSync(cursor, SeekMode.Start);
+            return this.#decoder.decode(buffer);
+        }
+        throw new Deno.errors.UnexpectedEof();
+    }
+    read(bytes = 1) {
+        const buffer = new Uint8Array(bytes);
+        if (this.#content.readSync(buffer)) {
+            return buffer;
+        }
+        throw new Deno.errors.UnexpectedEof();
+    }
+    capture({ until , bytes , trim =true , length =bytes  }) {
+        if (trim) {
+            this.trim();
+        }
+        const buffer = [];
+        while(!until.test(this.peek(bytes))){
+            buffer.push(this.read(1)[0]);
+        }
+        if (bytes !== length) {
+            buffer.push(...this.read(bytes - length));
+        }
+        if (trim) {
+            this.trim();
+        }
+        return this.#decoder.decode(Uint8Array.from(buffer));
+    }
+    consume({ content , trim =true  }) {
+        if (trim) {
+            this.trim();
+        }
+        const bytes = this.#encoder.encode(content).length;
+        if (content === this.peek(bytes)) {
+            this.read(bytes);
+            if (trim) {
+                this.trim();
+            }
+            return;
+        }
+        throw new SyntaxError(`Expected next sequence to be "${content}", got "${this.peek(bytes)}" instead`);
+    }
+    trim() {
+        try {
+            while(/\s/.test(this.peek())){
+                this.read(1);
+            }
+        } catch (error) {
+            if (error instanceof Deno.errors.UnexpectedEof) {
+                return;
+            }
+            throw error;
+        }
+    }
+}
+class Streamable {
+    constructor(string){
+        this.#buffer = new TextEncoder().encode(string);
+    }
+    #buffer;
+    #cursor = 0;
+    readSync(buffer) {
+        const bytes = this.#buffer.slice(this.#cursor, this.#cursor + buffer.length);
+        buffer.set(bytes);
+        this.#cursor = Math.min(this.#cursor + bytes.length, this.#buffer.length);
+        return bytes.length || null;
+    }
+    seekSync(offset, whence) {
+        switch(whence){
+            case SeekMode.Start:
+                this.#cursor = offset;
+                break;
+            case SeekMode.Current:
+                this.#cursor += offset;
+                break;
+            case SeekMode.End:
+                this.#cursor = this.#buffer.length + offset;
+                break;
+        }
+        return this.#cursor;
+    }
+}
+function parse9(content, options) {
+    if (typeof content === "string") {
+        content = new Streamable(content);
+    }
+    return new Parser1(new Stream(content), options).parse();
+}
+class S3FileAdapterBase {
+    basePath;
+    bucketName;
+    aws4ProxyAdapter;
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+        this.aws4ProxyAdapter = null;
+        this.basePath = props.rootPath;
+        this.bucketName = props.bucketName;
+    }
+    async ensureProxyAdapter() {
+        this.aws4ProxyAdapter = await this.context.getAdapter("./adapter/AWS4ProxyAdapter.ts", {
+            service: "s3",
+            region: this.props.region,
+            secretAccessKey: this.props.secretAccessKey,
+            accessKeyId: this.props.accessKeyId,
+            urlPattern: `https://${this.bucketName}.s3.amazonaws.com/$P*`,
+            ec2IamRole: this.props.ec2IamRole
+        });
+    }
+    async processForAws(msg) {
+        await this.ensureProxyAdapter();
+        const msgOut = await this.aws4ProxyAdapter.buildMessage(msg);
+        return msgOut;
+    }
+    canonicalisePath(path) {
+        return path.replace(/[^0-9a-zA-Z!_.*'()/-]/g, (match)=>match === '~' ? '%7E' : encodeURIComponent(match));
+    }
+    queryCanonicalisePath(path) {
+        return path;
+    }
+    decanonicalisePath(path) {
+        return decodeURIComponent(path.replace('%7E', '~'));
+    }
+    getPathParts(reqPath, extensions, forDir, forQuery) {
+        reqPath = reqPath.split('?')[0];
+        let fullPath = pathCombine(this.basePath, decodeURI(reqPath));
+        if (fullPath.startsWith('/')) fullPath = fullPath.substr(1);
+        if (fullPath.endsWith('/')) {
+            forDir = true;
+            fullPath = fullPath.slice(0, -1);
+        }
+        const transPath = forQuery ? this.queryCanonicalisePath(fullPath) : this.canonicalisePath(fullPath);
+        const pathParts = transPath.split('/');
+        if (this.props.tenantDirectories) pathParts.unshift(this.context.tenant);
+        let ext = '';
+        if (!forDir) {
+            const dotParts = last(pathParts).split('.');
+            extensions = extensions || [];
+            if (extensions.length && (dotParts.length === 1 || extensions.indexOf(last(dotParts)) < 0)) {
+                ext = extensions[0];
+            } else if (dotParts.length > 1) {
+                ext = dotParts.pop();
+                pathParts[pathParts.length - 1] = dotParts.join('.');
+            }
+        }
+        let filePath = pathParts.join('/');
+        if (filePath === '.') filePath = '';
+        return [
+            filePath,
+            ext
+        ];
+    }
+    getPath(reqPath, extensions, forDir, forQuery) {
+        const [filePath, ext] = this.getPathParts(reqPath, extensions, forDir, forQuery);
+        return filePath + (ext ? '.' + ext : '');
+    }
+    async read(readPath, extensions, startByte, endByte) {
+        const getParams = {
+            bucket: this.bucketName,
+            key: this.getPath(readPath, extensions)
+        };
+        const s3Msg = new Message(getParams.key, this.context.tenant, "GET");
+        if (startByte || endByte) {
+            const range = `bytes=${startByte ?? ''}-${endByte ?? ''}`;
+            s3Msg.setHeader('Range', range);
+        }
+        const msgSend = await this.processForAws(s3Msg);
+        const msgOut = await this.context.makeRequest(msgSend);
+        msgOut.data.statusCode = msgOut.status;
+        return msgOut.data;
+    }
+    async write(path, data, extensions) {
+        const key = this.getPath(path, extensions);
+        const s3Msg = new Message(key, this.context.tenant, "PUT");
+        s3Msg.data = data;
+        await s3Msg.data.ensureDataIsArrayBuffer();
+        const msgSend = await this.processForAws(s3Msg);
+        try {
+            const msgOut = await this.context.makeRequest(msgSend);
+            if (!msgOut.ok) {
+                this.context.logger.error('write error: ' + await msgOut.data?.asString());
+            }
+            if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
+            return msgOut.status || 500;
+        } catch (err) {
+            this.context.logger.error(err);
+            return 500;
+        }
+    }
+    async delete(path, extensions) {
+        const deleteParams = {
+            bucket: this.bucketName,
+            key: this.getPath(path, extensions)
+        };
+        const metadata = await this.check(path, extensions);
+        if (metadata.status === "none") return 404;
+        const s3Msg = new Message(deleteParams.key, this.context.tenant, "DELETE");
+        const msgSend = await this.processForAws(s3Msg);
+        try {
+            const msgOut = await this.context.makeRequest(msgSend);
+            if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
+            return msgOut.ok ? 200 : msgOut.status;
+        } catch (err) {
+            console.log(err);
+            return 500;
+        }
+    }
+    async *listPrefixed(filePath, maxKeys) {
+        const url = new Url("/?list-type=2");
+        if (maxKeys) url.query['max-keys'] = [
+            maxKeys.toString()
+        ];
+        if (filePath) url.query['prefix'] = [
+            filePath
+        ];
+        try {
+            url.query["delimiter"] = [
+                "/"
+            ];
+            const s3Msg = new Message(url, this.context.tenant, "GET");
+            const sendMsg = await this.processForAws(s3Msg);
+            const msgOut = await this.context.makeRequest(sendMsg);
+            if (!msgOut.ok) console.log(await msgOut.data.asString());
+            const status = msgOut.status;
+            if (status && status !== 200) return status;
+            const text = await msgOut.data.asString();
+            const output = parse9(text);
+            const contents = output?.['ListBucketResult']?.['Contents'];
+            for (const item of arrayify(contents)){
+                yield {
+                    key: this.decanonicalisePath(item.Key || ''),
+                    name: this.decanonicalisePath(last((item.Key || '').split('/'))),
+                    lastModified: new Date(item.LastModified),
+                    size: item.Size
+                };
+            }
+            const commonPrefixes = output?.['ListBucketResult']?.['CommonPrefixes'];
+            for (const item1 of arrayify(commonPrefixes)){
+                yield {
+                    key: this.decanonicalisePath(item1.Prefix || ''),
+                    name: this.decanonicalisePath((item1.Prefix || '').split('/').slice(-2, -1)[0] + '/'),
+                    lastModified: undefined,
+                    size: undefined
+                };
+            }
+        } catch (err) {
+            console.log(err);
+            return 500;
+        }
+    }
+    async *jsonStreamPrefixed(filePath, maxKeys) {
+        yield '[';
+        let first = true;
+        for await (const item of this.listPrefixed(filePath, maxKeys)){
+            let modifiedStr = '';
+            if (item.name.endsWith('/') && item.lastModified) {
+                modifiedStr = "," + item.lastModified.getTime().toString();
+            }
+            yield `${first ? '' : ','} [ "${item.name}"${modifiedStr} ]`;
+            first = false;
+        }
+        yield ']';
+    }
+    readDirectory(readPath, getUpdateTime = false) {
+        const filePath = this.getPath(readPath, undefined, true, true) + '/';
+        const blockIter = toBlockChunks(this.jsonStreamPrefixed(filePath));
+        return Promise.resolve(new MessageBody(readableStreamFromIterable(blockIter), 'text/plain').setIsDirectory());
+    }
+    async deleteDirectory(path, deleteableFileSuffix = '') {
+        const filePath = this.getPath(path, undefined, true);
+        const files = this.listPrefixed(filePath);
+        let file = await files.next();
+        if (file.done) return 200;
+        if (deleteableFileSuffix !== '*') {
+            while(!file.done){
+                if (file.value.name.includes('/') || !(deleteableFileSuffix && file.value.name.endsWith(deleteableFileSuffix))) return 400;
+                file = await files.next();
+            }
+        }
+        return 200;
+    }
+    async check(path, extensions) {
+        const fullPath = this.getPath(path, extensions, undefined, true);
+        const files = this.listPrefixed(fullPath, 1);
+        const file = await files.next();
+        const item = file.done ? null : file.value;
+        const deFullPath = this.decanonicalisePath(fullPath);
+        let status = "none";
+        if (item != null) {
+            if (item.key === deFullPath) {
+                status = "file";
+            } else if (path.endsWith('/') && item.key !== deFullPath || deFullPath + '/' === item.key) {
+                status = "directory";
+            } else {
+                status = "none";
+            }
+        } else {
+            return {
+                status: "none"
+            };
+        }
+        switch(status){
+            case "none":
+                return {
+                    status
+                };
+            case "directory":
+                return {
+                    status,
+                    dateModified: item.lastModified
+                };
+            case "file":
+                return {
+                    status,
+                    size: item.size,
+                    dateModified: item.lastModified
+                };
+        }
+    }
+    context;
+    props;
+}
+const __default11 = dataToSchemaAdapter(fileToDataAdapter(S3FileAdapterBase));
+const __default12 = {
+    "name": "S3 File Adapter",
+    "description": "Reads and writes files on the AWS S3",
+    "moduleUrl": "./adapter/S3FileAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "rootPath": {
+                "type": "string"
+            },
+            "bucketName": {
+                "type": "string"
+            },
+            "region": {
+                "type": "string"
+            },
+            "tenantDirectories": {
+                "type": "boolean"
+            },
+            "secretAccessKey": {
+                "type": "string"
+            },
+            "ec2IamRole": {
+                "type": "string",
+                "description": "If running on EC2 with an associated IAM role, this can be provided instead of account keys"
+            },
+            "accessKeyId": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "rootPath",
+            "bucketName",
+            "region"
+        ]
+    },
+    "adapterInterfaces": [
+        "IFileAdapter",
+        "IDataAdapter"
+    ]
+};
 const __default13 = {
     "name": "Nunjucks Template Adapter",
     "description": "Supplies Nunjucks template processing",
@@ -37762,7 +37758,7 @@ class RotatingFileHandler extends FileHandler {
         for(let i = this.#maxBackupCount - 1; i >= 0; i--){
             const source = this._filename + (i === 0 ? "" : "." + i);
             const dest = this._filename + "." + (i + 1);
-            if (existsSync(source)) {
+            if (existsSync1(source)) {
                 Deno.renameSync(source, dest);
             }
         }
@@ -37904,6 +37900,121 @@ const schemaIServiceManifest = {
     ]
 };
 var TokenVerification;
+class RestspaceLoader {
+    async;
+    constructor(context){
+        this.context = context;
+        this.async = true;
+    }
+    getSource(name, cb) {
+        const msg = new Message(name, this.context.tenant, "GET");
+        this.context.makeRequest(msg).then((res)=>{
+            if (!res.ok) {
+                res.data?.asString().then((s)=>cb(new Error(`${res.status} ${s}`), null));
+            } else {
+                res.data?.asString().then((s)=>cb(null, {
+                        src: s || '',
+                        path: name
+                    }));
+            }
+        });
+    }
+    context;
+}
+class AuthUser {
+    token = '';
+    tokenExpiry;
+    email = '';
+    originalEmail = '';
+    roles = '';
+    password = '';
+    exp;
+    get rolesArray() {
+        return this.roles.split(' ').filter((r)=>!!r).map((r)=>r.trim());
+    }
+    constructor(userObj){
+        userObj && Object.assign(this, userObj);
+    }
+    getJwtPayload() {
+        return {
+            email: this.email,
+            roles: this.roles
+        };
+    }
+    hasRole(role) {
+        return this.rolesArray.indexOf(role) >= 0;
+    }
+    addRole(role) {
+        if (!this.rolesArray.includes(role)) {
+            this.roles += (this.roles ? " " : "") + role;
+        }
+        return this;
+    }
+    authorizedForInner(reqRoles, path) {
+        if (reqRoles.includes('all')) return true;
+        if (!this.roles) return false;
+        let userRoles = this.rolesArray;
+        let authorized = reqRoles.some((reqRole)=>userRoles.includes(reqRole));
+        if (path) {
+            const pathMatches = reqRoles.filter((r)=>r.startsWith('{') && r.endsWith('}')).map((r)=>this[r.slice(1, -1)].toString()).filter((m)=>!!m);
+            userRoles = userRoles.filter((r)=>!r.startsWith('{'));
+            const pathEls = slashTrim(path).split('/');
+            authorized = authorized || pathMatches.some((pathMatch)=>pathEls.includes(pathMatch));
+        }
+        return authorized;
+    }
+    authorizedFor(roleSpec, servicePath) {
+        if (servicePath && !servicePath.startsWith('/')) servicePath = '/' + servicePath;
+        let specParts = roleSpec.trim().split(' ');
+        let specPath = '/';
+        let rootReqRoles = [];
+        while(specParts.length){
+            const nextUrlIdx = specParts.findIndex((s)=>s.startsWith('/'));
+            const reqRoles = nextUrlIdx < 0 ? specParts : specParts.slice(0, nextUrlIdx);
+            if (specPath === '/') {
+                rootReqRoles = reqRoles;
+            } else if (servicePath && servicePath.startsWith(specPath)) {
+                return this.authorizedForInner(reqRoles, servicePath);
+            }
+            if (reqRoles.length < specParts.length) {
+                specPath = specParts[reqRoles.length];
+                specParts = specParts.slice(reqRoles.length + 1);
+            } else {
+                specParts = [];
+            }
+        }
+        return this.authorizedForInner(rootReqRoles, servicePath);
+    }
+    isAnon() {
+        return userIsAnon(this);
+    }
+    async hashPassword() {
+        this.password = await hash(this.password);
+    }
+    async matchPassword(pw) {
+        return await compare(pw, this.password);
+    }
+    generateToken(expirySeconds) {
+        const auth = config.authoriser;
+        this.token = auth.generateToken();
+        this.tokenExpiry = new Date();
+        this.tokenExpiry.setSeconds(this.tokenExpiry.getSeconds() + expirySeconds);
+        return this.token;
+    }
+    verifyToken(token) {
+        const auth = config.authoriser;
+        return auth.verifyToken(token, this);
+    }
+    passwordMask() {
+        return this.password ? AuthUser.passwordMask : AuthUser.noPasswordMask;
+    }
+    passwordIsMaskOrEmpty() {
+        return this.password === AuthUser.passwordMask || this.password === AuthUser.noPasswordMask || !this.password;
+    }
+    static passwordMask = '<hidden>';
+    static noPasswordMask = '<no password>';
+    static anon = new AuthUser({});
+}
 let catalogue = null;
 const baseChord = {
     id: 'sys.base',
@@ -38178,9 +38289,12 @@ class ServiceWrapper {
                 config.logger.warning(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`);
             }
             newMsg.setHeader('X-Restspace-Service', serviceConfig.name);
-            if (newMsg.data) {
+            if (newMsg.data && !newMsg.data.wasMimeHandled) {
                 const handler = mimeHandlers[newMsg.data.mimeType];
-                if (handler) newMsg = await handler(newMsg, msg.url, (innerMsg)=>this.internal(innerMsg, context, serviceConfig));
+                if (handler) {
+                    newMsg = await handler(newMsg, msg.url, (innerMsg)=>this.internal(innerMsg, context, serviceConfig));
+                    if (newMsg.data) newMsg.data.wasMimeHandled = true;
+                }
             }
             return newMsg;
         };
@@ -38310,100 +38424,6 @@ class ServiceWrapper {
 }
 var PipelineElementType;
 const tenantLoads = {};
-class AuthUser {
-    token = '';
-    tokenExpiry;
-    email = '';
-    originalEmail = '';
-    roles = '';
-    password = '';
-    exp;
-    get rolesArray() {
-        return this.roles.split(' ').filter((r)=>!!r).map((r)=>r.trim());
-    }
-    constructor(userObj){
-        userObj && Object.assign(this, userObj);
-    }
-    getJwtPayload() {
-        return {
-            email: this.email,
-            roles: this.roles
-        };
-    }
-    hasRole(role) {
-        return this.rolesArray.indexOf(role) >= 0;
-    }
-    addRole(role) {
-        if (!this.rolesArray.includes(role)) {
-            this.roles += (this.roles ? " " : "") + role;
-        }
-        return this;
-    }
-    authorizedForInner(reqRoles, path) {
-        if (reqRoles.includes('all')) return true;
-        if (!this.roles) return false;
-        let userRoles = this.rolesArray;
-        let authorized = reqRoles.some((reqRole)=>userRoles.includes(reqRole));
-        if (path) {
-            const pathMatches = reqRoles.filter((r)=>r.startsWith('{') && r.endsWith('}')).map((r)=>this[r.slice(1, -1)].toString()).filter((m)=>!!m);
-            userRoles = userRoles.filter((r)=>!r.startsWith('{'));
-            const pathEls = slashTrim(path).split('/');
-            authorized = authorized || pathMatches.some((pathMatch)=>pathEls.includes(pathMatch));
-        }
-        return authorized;
-    }
-    authorizedFor(roleSpec, servicePath) {
-        if (servicePath && !servicePath.startsWith('/')) servicePath = '/' + servicePath;
-        let specParts = roleSpec.trim().split(' ');
-        let specPath = '/';
-        let rootReqRoles = [];
-        while(specParts.length){
-            const nextUrlIdx = specParts.findIndex((s)=>s.startsWith('/'));
-            const reqRoles = nextUrlIdx < 0 ? specParts : specParts.slice(0, nextUrlIdx);
-            if (specPath === '/') {
-                rootReqRoles = reqRoles;
-            } else if (servicePath && servicePath.startsWith(specPath)) {
-                return this.authorizedForInner(reqRoles, servicePath);
-            }
-            if (reqRoles.length < specParts.length) {
-                specPath = specParts[reqRoles.length];
-                specParts = specParts.slice(reqRoles.length + 1);
-            } else {
-                specParts = [];
-            }
-        }
-        return this.authorizedForInner(rootReqRoles, servicePath);
-    }
-    isAnon() {
-        return userIsAnon(this);
-    }
-    async hashPassword() {
-        this.password = await hash(this.password);
-    }
-    async matchPassword(pw) {
-        return await compare(pw, this.password);
-    }
-    generateToken(expirySeconds) {
-        const auth = config.authoriser;
-        this.token = auth.generateToken();
-        this.tokenExpiry = new Date();
-        this.tokenExpiry.setSeconds(this.tokenExpiry.getSeconds() + expirySeconds);
-        return this.token;
-    }
-    verifyToken(token) {
-        const auth = config.authoriser;
-        return auth.verifyToken(token, this);
-    }
-    passwordMask() {
-        return this.password ? AuthUser.passwordMask : AuthUser.noPasswordMask;
-    }
-    passwordIsMaskOrEmpty() {
-        return this.password === AuthUser.passwordMask || this.password === AuthUser.noPasswordMask || !this.password;
-    }
-    static passwordMask = '<hidden>';
-    static noPasswordMask = '<no password>';
-    static anon = new AuthUser({});
-}
 function makeServiceContext(tenantName, state, prePost) {
     const context = {
         tenant: tenantName,
@@ -38460,6 +38480,35 @@ const ajv2 = new __pika_web_default_export_for_treeshaking__1({
     strictSchema: false,
     allowUnionTypes: true
 });
+class NunjucksTemplateAdapter {
+    env;
+    constructor(context){
+        this.context = context;
+        this.env = new __default8.Environment(new RestspaceLoader(context));
+        this.env.addGlobal('$this', function() {
+            return this.ctx;
+        });
+        this.env.addFilter("dateFormat", (dateStr, format)=>{
+            if (dateStr === undefined || dateStr === null) return '';
+            return dayjs_min(dateStr).format(format);
+        });
+        this.env.addFilter("authorizedFor", (user, roles)=>{
+            return new AuthUser(user).authorizedFor(roles);
+        });
+    }
+    fillTemplate(data, template) {
+        return new Promise((resolve)=>{
+            this.env.renderString(template, data, (err, res)=>{
+                if (err) {
+                    resolve('error');
+                } else {
+                    resolve(res);
+                }
+            });
+        });
+    }
+    context;
+}
 const deleteManifestProperties = [
     'exposedConfigProperties'
 ];
@@ -38531,15 +38580,15 @@ class Modules {
         this.validateServiceManifest = ajv.compile(schemaIServiceManifest);
         this.validateAdapterManifest = ajv.compile(schemaIAdapterManifest);
         this.adapterConstructors = {
-            "./adapter/LocalFileAdapter.ts": __default1,
-            "./adapter/S3FileAdapter.ts": __default3,
+            "./adapter/LocalFileAdapter.ts": __default9,
+            "./adapter/S3FileAdapter.ts": __default11,
             "./adapter/NunjucksTemplateAdapter.ts": NunjucksTemplateAdapter,
             "./adapter/SimpleProxyAdapter.ts": SimpleProxyAdapter,
             "./adapter/AWS4ProxyAdapter.ts": AWS4ProxyAdapter
         };
         this.adapterManifests = {
-            "./adapter/LocalFileAdapter.ram.json": __default2,
-            "./adapter/S3FileAdapter.ram.json": __default4,
+            "./adapter/LocalFileAdapter.ram.json": __default10,
+            "./adapter/S3FileAdapter.ram.json": __default12,
             "./adapter/NunjucksTemplateAdapter.ram.json": __default13,
             "./adapter/SimpleProxyAdapter.ram.json": __default14,
             "./adapter/AWS4ProxyAdapter.ram.json": __default15
@@ -39742,7 +39791,7 @@ service10.all(async (msg, context)=>{
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
     const msgPipelineSpec = await context.makeRequest(getFromStore);
-    if (!msgPipelineSpec.ok) return msgPipelineSpec;
+    if (msg.url.isDirectory || !msgPipelineSpec.ok) return msgPipelineSpec;
     let pipelineSpec = await msgPipelineSpec.data.asJson();
     if (msg.url.query["$to-step"]) {
         const toStep = parseInt(msg.url.query["$to-step"][0]);

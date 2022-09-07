@@ -10,7 +10,8 @@ service.all(async (msg, context) => {
 
 	const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
 	const msgPipelineSpec = await context.makeRequest(getFromStore);
-	if (!msgPipelineSpec.ok) return msgPipelineSpec;
+	if (msg.url.isDirectory || !msgPipelineSpec.ok) return msgPipelineSpec;
+	
 	let pipelineSpec = await msgPipelineSpec.data!.asJson() as PipelineSpec;
 	if (msg.url.query["$to-step"]) {
 		const toStep = parseInt(msg.url.query["$to-step"][0]);

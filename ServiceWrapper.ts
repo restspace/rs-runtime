@@ -48,6 +48,7 @@ export class ServiceWrapper {
         }
         newMsg.setHeader('X-Restspace-Service', serviceConfig.name);
 
+        // avoid running a mime handler twice - wasMimeHandled is cleared when the message data is changed
         if (newMsg.data && !newMsg.data.wasMimeHandled) {
             const handler = mimeHandlers[newMsg.data.mimeType];
             if (handler) {

@@ -29,6 +29,7 @@ mockHandler.getString('/test/def', "def result");
 mockHandler.getString('/test/ghi', "ghi result");
 mockHandler.getError('/test/missingFile', 404, 'Not found');
 mockHandler.getJson("/test/list", [ "abc", "xyz" ]);
+mockHandler.getJson("/test/list-repeats", [ "abc", "abd", "abc" ]);
 mockHandler.getJson("/test/timing-list", [ 100, 80, 50 ]);
 mockHandler.getJson("/test/object", { val1: "aaa", val2: "bbb" });
 
@@ -218,6 +219,16 @@ Deno.test('transform list 2', async function () {
     const output = await msgOut.data?.asJson();
     assert(Array.isArray(output));
     assertStrictEquals(output[0].x, 111);
+});
+Deno.test('transform list unique', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson([ "abc", "abd", "abc" ]), [
+        {
+            "$this": "unique($this)"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assert(Array.isArray(output));
+    assertStrictEquals(output.length, 2);
 });
 Deno.test('list form function', async function () {
     const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson([
