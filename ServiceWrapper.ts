@@ -10,6 +10,7 @@ import { handleOutgoingRequestFromPrivateServices } from "./handleRequest.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { AuthUser } from "./auth/AuthUser.ts";
 import { ServiceContext } from "../rs-core/ServiceContext.ts";
+import { upTo } from "../rs-core/utility/utility.ts";
 
 export class ServiceWrapper {
     constructor(public service: Service) {
@@ -50,7 +51,7 @@ export class ServiceWrapper {
 
         // avoid running a mime handler twice - wasMimeHandled is cleared when the message data is changed
         if (newMsg.data && !newMsg.data.wasMimeHandled) {
-            const handler = mimeHandlers[newMsg.data.mimeType];
+            const handler = mimeHandlers[upTo(newMsg.data.mimeType, ';')];
             if (handler) {
                 newMsg = await handler(newMsg, msg.url, (innerMsg: Message) => this.internal(innerMsg, context, serviceConfig));
                 if (newMsg.data) newMsg.data.wasMimeHandled = true;

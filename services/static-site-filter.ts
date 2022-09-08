@@ -30,12 +30,16 @@ const processGet = async (msg: Message, { adapter, logger }: ServiceContext<IFil
 service.get(processGet);
 
 service.getDirectory(async (msg, context, config) => {
-	if (config.defaultResource && !msg.isManageRequest) {
+	if (config.defaultResource && !msg.isManageRequest) { // get the default resource for the directory
 		msg.url.resourceName = config.defaultResource;
 		const msgOut = await processGet(msg, context, config);
 		msgOut.setServiceRedirect(msgOut.url.servicePath);
 		return msgOut;
 	} else {
+		if (config.divertMissingToDefault && config.defaultResource) { // divert to the SPA
+			msg.setServiceRedirect(config.defaultResource);
+			context.logger.debug(`static-site-filter diverting ${msg.url} to ${config.defaultResource}`);
+		} 
 		return msg;
 	}
 });

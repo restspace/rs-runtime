@@ -16,7 +16,7 @@ GET http://localhost:3100/admin/?$list=recursive,all,nodirs
 X-Restspace-Request-Mode: manage
 
 ###
-GET http://localhost:3100/user-bypass/jamesej@outlook.com
+GET http://localhost:3100/user-bypass/jamesej@outlook.com?$fragment=roles
 
 ### Login
 POST http://localhost:3100/auth/login
@@ -28,7 +28,7 @@ Content-Type: application/json
 }
 
 ###
-GET http://localhost:3100/.well-known/restspace/services
+GET http://localhost:3100/.well-known/restspace/services?$fragment=/data/ds
 
 ###
 GET http://localhost:3100/.well-known/restspace/catalogue

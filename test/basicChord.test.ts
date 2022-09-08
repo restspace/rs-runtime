@@ -1,5 +1,5 @@
 import { assert, assertStrictEquals } from "std/testing/asserts.ts";
-import { Message } from "rs-core/Message.ts";
+import { Message, MessageMethod } from "rs-core/Message.ts";
 import { config } from "../config.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
 import { testServicesConfig } from "./TestConfigFileAdapter.ts";
@@ -122,7 +122,7 @@ testServicesConfig['basicChord'] = JSON.parse(`{
     }
 }`);
 
-function testMessage(url: string, method: string, token?: string) {
+function testMessage(url: string, method: MessageMethod, token?: string) {
     const msgUrl = new Url(url);
     msgUrl.scheme = "http://";
     msgUrl.domain = "basicChord.restspace.local:3100";
@@ -222,6 +222,18 @@ Deno.test('writes and reads data', async () => {
     const str = msgOut.data ? await msgOut.data.asString() : '';
     assertStrictEquals(msgOut.data?.mimeType, 'application/json; schema="http://basicChord.restspace.local:3100/data/set1/.schema.json"');
     assertStrictEquals(str, '{"thing":"def"}', `reads wrong body: ${str}`);
+
+    msg = testMessage("/data/set1/abc.json#thing", "PUT")
+        .setData('"ghi"', 'application/json');
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to write fragment");
+
+    msg = testMessage("/data/set1/abc.json#thing", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to read fragment");
+    const str2 = msgOut.data ? await msgOut.data.asString() : '';
+    assertStrictEquals(msgOut.data?.mimeType, 'application/json; schema="http://basicChord.restspace.local:3100/data/set1/.schema.json"');
+    assertStrictEquals(str2, '"ghi"', `reads wrong body: ${str2}`);
 
     msg = testMessage("/data/set1/.schema.json", "GET");
     msgOut = await handleIncomingRequest(msg);

@@ -1,10 +1,13 @@
 import { Message } from "rs-core/Message.ts";
 import { Url } from "rs-core/Url.ts";
-import { DirDescriptor } from "../rs-core/DirDescriptor.ts";
-import { last, slashTrimLeft } from "../rs-core/utility/utility.ts";
+import { DirDescriptor } from "rs-core/DirDescriptor.ts";
+import { getProp, last, slashTrimLeft } from "rs-core/utility/utility.ts";
+import { makeKeywordArgs } from "https://deno.land/x/nunjucks@3.2.3/src/runtime.js";
+
+type MimeHandler = (msg: Message, url: Url, requestInternal: (req: Message) => Promise<Message>) => Promise<Message>;
 
 const generatePaths = async function* (msg: Message, requestInternal?: (req: Message) => Promise<Message>): AsyncGenerator<[ Message, DirDescriptor ]> {
-    let dir = (await msg.data!.asJson() as DirDescriptor | DirDescriptor[]) || [];
+    let dir = ((await msg.data!.asJson()) || []) as DirDescriptor | DirDescriptor[];
     if (Array.isArray(dir)) dir = dir[0];
     yield [ msg, { ...dir } ];
     if (requestInternal) {
@@ -39,7 +42,17 @@ const final = (s: string) => {
     return last(words) === '' ? words.slice(-2)[0] + '/' : last(words);
 };
 
-export const mimeHandlers: { [ mimeType: string ]: (msg: Message, url: Url, requestInternal: (req: Message) => Promise<Message>) => Promise<Message> } = {
+const extractFragment: MimeHandler = async (msg, url) => {
+    console.log(`>> url: ${url} hasData: ${!!msg.data}`);
+    if (url.fragment && msg.data) {
+        await msg.data.extractPathIfJson(url.fragment);
+    }
+    return msg;
+}
+
+export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
+    "application/json": extractFragment,
+    "application/schema+json": extractFragment,
     "inode/directory+json": async (msg, url, requestInternal) => {
         const listFlags = (url.query['$list'] || []).join(',') as string;
         let isRecursive = listFlags.includes('recursive');

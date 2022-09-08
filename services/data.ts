@@ -6,6 +6,7 @@ import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { IReadOnlySchemaAdapter, ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
 import { ServiceContext } from "../../rs-core/ServiceContext.ts";
+import { deleteProp, getProp, setProp } from "../../rs-core/utility/utility.ts";
 
 const service = new Service<IDataAdapter>();
 
@@ -137,10 +138,26 @@ const write = async (msg: Message, adapter: IDataAdapter) => {
         const isDirectory = (details.status === "directory" || (details.status === "none" && msg.url.isDirectory));
         if (isDirectory) {
             msg.data = undefined;
-            return msg.setStatus(403, "Forbidden: can't over.writeKey directory");
+            return msg.setStatus(403, "Forbidden: can't overwrite directory");
         } 
+
+        let resCode = 0;
         // msg.data.copy() tees the stream
-        const resCode = await adapter.writeKey(dataset, key, msg.data!.copy());
+        if (msg.url.fragment) {
+            let val = await adapter.readKey(dataset, key);
+            if (typeof val === 'number') {
+                if (val === 404) {
+                    val = {};
+                } else {
+                    return msg.setStatus(val, 'Was reading full value to write back fragment');
+                }
+            }
+            const d = await msg.data?.asJson();
+            setProp(val, msg.url.fragment, d);
+            resCode = await adapter.writeKey(dataset, key, MessageBody.fromObject(val));
+        } else {
+            resCode = await adapter.writeKey(dataset, key, msg.data!.copy());
+        }
         msg.data = undefined;
         if (resCode !== 200) return msg.setStatus(resCode);
     
@@ -161,7 +178,22 @@ service.delete(async (msg, { adapter }) => {
 
     const [ dataset, key ] = msg.url.servicePathElements;
 
-    const res = await adapter.deleteKey(dataset, key);
+    let res = 0;
+    if (msg.url.fragment) {
+        const val = await adapter.readKey(dataset, key);
+        if (typeof val === 'number') {
+            return msg.setStatus(val, 'Was reading full value to write back fragment');
+        }
+        try {
+            deleteProp(val, msg.url.fragment);
+        } catch {
+            return msg.setStatus(400, 'Cannot delete this fragment path');
+        }
+        res = await adapter.writeKey(dataset, key, MessageBody.fromObject(val));
+    } else {
+        res = await adapter.deleteKey(dataset, key);
+    }
+
     if (res === 404) {
         return msg.setStatus(404, 'Not found');
     } else if (res === 500) {
