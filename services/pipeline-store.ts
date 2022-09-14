@@ -1,5 +1,6 @@
 import { Service } from "rs-core/Service.ts";
 import { PipelineSpec } from "../../rs-core/PipelineSpec.ts";
+import { Url } from "../../rs-core/Url.ts";
 import { pipeline } from "../pipeline/pipeline.ts";
 
 const service = new Service();
@@ -19,7 +20,12 @@ service.all(async (msg, context) => {
 			pipelineSpec = pipelineSpec.slice(0, toStep + 1);
 		} 
 	}
-	return pipeline(msg, pipelineSpec, msg.url, false, msg => context.makeRequest(msg));
+
+	// find the applicable url
+	const pipelineUrl: Url = msg.url.copy();
+	pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location'));
+	
+	return pipeline(msg, pipelineSpec, pipelineUrl, false, msg => context.makeRequest(msg));
 })
 
 export default service;

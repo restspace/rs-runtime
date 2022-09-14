@@ -43,6 +43,7 @@ service.get(async (msg: Message, context: ServiceContext<IFileAdapter>, config: 
             const [ parentUrl, parentDetails ] = await findParent(msg.url, context, config);
             if (parentUrl !== null && parentDetails !== null) {
                 msg.setUrl(parentUrl);
+                msg.setHeader('Location', parentUrl.toString());
                 details = parentDetails;
             }
         }

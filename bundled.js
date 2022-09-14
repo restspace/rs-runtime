@@ -33971,7 +33971,7 @@ service5.post(async (msg, context, config)=>{
     const msgTemplate = await context.makeRequest(reqTemplate);
     if (!msgTemplate.ok) return msgTemplate;
     const template = await msgTemplate.data.asString();
-    const output = await context.adapter.fillTemplate(data, template || "");
+    const output = await context.adapter.fillTemplate(data, template || "", msg.url);
     return msg.setData(output, config.outputMime);
 });
 const __default28 = {
@@ -34008,6 +34008,10 @@ const __default28 = {
                     "extension": {
                         "type": "string",
                         "description": "Extension for template files"
+                    },
+                    "parentIfMissing": {
+                        "type": "boolean",
+                        "description": "Optional flag which for a pipeline on a path, sends all subpaths to that pipeline as well. Default true"
                     }
                 }
             }
@@ -34032,7 +34036,8 @@ const __default28 = {
             "adapterSource": "store.adapterSource",
             "infraName": "store.infraName",
             "adapterConfig": "store.adapterConfig",
-            "extensions": "[ store.extension ]"
+            "extensions": "[ store.extension ]",
+            "parentIfMissing": "store.parentIfMissing === false ? false : true"
         }
     }
 };
@@ -38686,6 +38691,7 @@ class NunjucksTemplateAdapter {
         this.context = context;
         this.env = new __default8.Environment(new RestspaceLoader(context));
         this.env.addGlobal('$this', function() {
+            delete this.ctx['$url'];
             return this.ctx;
         });
         this.env.addFilter("dateFormat", (dateStr, format)=>{
@@ -38695,12 +38701,18 @@ class NunjucksTemplateAdapter {
         this.env.addFilter("authorizedFor", (user, roles)=>{
             return new AuthUser(user).authorizedFor(roles);
         });
+        this.env.addFilter("pathPattern", function(pattern) {
+            return resolvePathPatternWithUrl(pattern, this.ctx._url);
+        });
     }
-    fillTemplate(data, template) {
+    fillTemplate(data, template, url) {
         return new Promise((resolve)=>{
-            this.env.renderString(template, data, (err, res)=>{
+            this.env.renderString(template, {
+                ...data,
+                _url: url
+            }, (err, res)=>{
                 if (err) {
-                    resolve('error');
+                    resolve(`template error: ${err}`);
                 } else {
                     resolve(res);
                 }

@@ -43,7 +43,6 @@ const final = (s: string) => {
 };
 
 const extractFragment: MimeHandler = async (msg, url) => {
-    console.log(`>> url: ${url} hasData: ${!!msg.data}`);
     if (url.fragment && msg.data) {
         await msg.data.extractPathIfJson(url.fragment);
     }
