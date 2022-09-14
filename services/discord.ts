@@ -13,8 +13,8 @@ import { sendTrigger } from "./discord/sendTrigger.ts";
 const service = new Service<IDataAdapter, IDiscordConfig>();
 
 service.initializer(async (context, config) => {
-	const state = await context.state(DiscordState, context, config);
-	await state.load(context, config);
+	await context.state(DiscordState, context, config);
+	//await state.load(context, config);
 });
 
 const commandSchema = {

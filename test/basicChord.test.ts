@@ -26,6 +26,17 @@ testServicesConfig['basicChord'] = JSON.parse(`{
                 "basePath": "/files"
             }
         },
+        "/files2": {
+            "name": "Files2",
+            "source": "./services/file.rsm.json",
+            "infraName": "localStore",
+            "access": { "readRoles": "all", "writeRoles": "all" },
+            "parentIfMissing": true,
+            "extensions": [ "json" ],
+            "adapterConfig": {
+                "basePath": "/files2"
+            }
+        },
         "/data": {
             "name": "Data",
             "source": "./services/data.rsm.json",
@@ -158,6 +169,7 @@ async function logIn(email: string) {
     return token;
 }
 
+/*
 Deno.test('writes and reads file', async () => {
     let msg = testMessage("/files/abc.json", "PUT")
         .setData('{ "thing": "def" }', 'application/json');
@@ -187,6 +199,32 @@ Deno.test('writes and reads file', async () => {
     await deleteUrl("/files/abc.json");
 });
 
+*/
+
+Deno.test('writes and reads file parentIfMissing', async () => {
+    let msg = testMessage("/files2/abc", "PUT")
+        .setData('{ "thing": "def" }', 'application/json');
+    let msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, 'failed to write file');
+
+    msg = testMessage("/files2/abc", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to read file");
+    let str = msgOut.data ? await msgOut.data.asString() : '';
+    assertStrictEquals(msgOut.data?.mimeType, 'application/json');
+    assertStrictEquals(str, '{ "thing": "def" }', 'reads wrong body');
+
+    msg = testMessage("/files2/abc/def", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to read file (parent if missing)");
+    str = msgOut.data ? await msgOut.data.asString() : '';
+    assertStrictEquals(msgOut.data?.mimeType, 'application/json');
+    assertStrictEquals(str, '{ "thing": "def" }', 'reads wrong body (parent if missing)');
+
+    await deleteUrl("/files2/abc.json");
+});
+
+/*
 Deno.test('writes and reads data', async () => {
     const schema = {
         type: "object",
@@ -409,3 +447,5 @@ Deno.test("authenticated access", async () => {
     await deleteUrl("/user-bypass/jamesej2@outlook.com.json", tokenEditor);
     await deleteUrl("/user-bypass/jamesej3@outlook.com.json", tokenUser);
 });
+
+*/

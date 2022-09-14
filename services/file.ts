@@ -8,19 +8,48 @@ import { IServiceConfig } from "../../rs-core/IServiceConfig.ts";
 import { getType, isZip } from "../../rs-core/mimeType.ts";
 import { ServiceContext } from "../../rs-core/ServiceContext.ts";
 import { unzip } from "../pipeline/unzipSplitter.ts";
-import { contextOrFrameLookup } from "https://deno.land/x/nunjucks@3.2.3/src/runtime.js";
+import { Url } from "../../rs-core/Url.ts";
 
 interface IFileServiceConfig extends IServiceConfig {
     extensions?: string[];
+    parentIfMissing?: boolean;
+}
+
+const findParent = async (url: Url,
+        context: ServiceContext<IFileAdapter>,
+        config: IFileServiceConfig): Promise<[ Url | null, ItemFile | null ]> => {
+    const testUrl = url.copy();
+    const servicePathLen = url.servicePathElements.length;
+    if (servicePathLen <= 1) return [ null, null ];
+    testUrl.servicePath = '';
+    let idx = 0;
+    testUrl.pathElements.push(url.servicePathElements[idx]);
+    while ((await context.adapter.check(testUrl.servicePath, config.extensions)).status === "directory"
+            && idx < servicePathLen) {
+        idx++;
+        testUrl.pathElements.push(url.servicePathElements[idx]);
+    }
+    if (idx === servicePathLen) return [ null, null ];
+    const details = await context.adapter.check(testUrl.servicePath, config.extensions);
+    return details.status === "file" ? [ testUrl, details as ItemFile ] : [ null, null ];
 }
 
 const service = new Service<IFileAdapter>();
 
-service.get(async (msg: Message, { adapter }: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
-    const details = await adapter.check(msg.url.servicePath, config.extensions);
+service.get(async (msg: Message, context: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
+    let details = await context.adapter.check(msg.url.servicePath, config.extensions);
     if (details.status === "none") {
-        msg.data = undefined;
-        return msg.setStatus(404, 'Not found');
+        if (config.parentIfMissing) {
+            const [ parentUrl, parentDetails ] = await findParent(msg.url, context, config);
+            if (parentUrl !== null && parentDetails !== null) {
+                msg.setUrl(parentUrl);
+                details = parentDetails;
+            }
+        }
+        if (details.status === "none") {
+            msg.data = undefined;
+            return msg.setStatus(404, 'Not found');
+        }
     }
     const fileDetails = details as ItemFile;
 
@@ -39,7 +68,7 @@ service.get(async (msg: Message, { adapter }: ServiceContext<IFileAdapter>, conf
     }
 
     if (msg.method !== 'HEAD') {
-        msg.data = await adapter.read(msg.url.servicePath, config.extensions, start, end);
+        msg.data = await context.adapter.read(msg.url.servicePath, config.extensions, start, end);
     }
     msg.data!.size = start !== undefined && end !== undefined ? end - start + 1 : fileDetails.size;
     msg.data!.dateModified = details.dateModified;

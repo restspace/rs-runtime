@@ -42,7 +42,7 @@ Restspace is intended to be used with Typescript, so this will assume use of Typ
 
 Essentially, we create a `Service` object, attach handlers to it, then return it as the default export. This example returns a text response with 'hello world' for a GET request to any sub path of the base path on which it is configured.
 
-Handlers are functions with this signature:
+Handlers (whose type is `ServiceFunction`) are functions with this signature:
 
     (msg: Message, context: SimpleServiceContext, config: IServiceConfig) => Promise<Message>
 
@@ -61,3 +61,46 @@ Handlers are functions with this signature:
 |getAdapter|<T extends IAdapter>(url: string, config: unknown) => Promise<T>|Loads the adapter whose manifest is at the supplied `url` and uses the given `config` to construct the adapter class and return it|
 |makeProxyRequest|(msg: Message) => Promise<Message>|Makes a request given the request message using the Proxy Adapter specified in this service's manifest to preprocess it|
 |state|<T extends BaseStateClass>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => Promise<T>|see managing state below|
+
+In the example, a handler is configured for a get request to the service. Methods on Service class for configuring handlers are as follows:
+
+|Method|Type|Use|
+|---|---|---|
+|get|(ServiceFunction) => this|Configure a handler for all get requests|
+|getPath|(string, ServiceFunction) => this|Configure a handler for get requests with a specific service path|
+|getDirectory|(ServiceFunction) => this|Configure a handler for get requests to any directory (path ends '/')|
+|getDirectoryPath|(string, ServiceFunction) => this|Configure a handler for get requests to a directory with a specific service path|
+|post|(ServiceFunction) => this|Configure a handler for all post requests|
+|postPath|(string, ServiceFunction) => this|Configure a handler for post requests with a specific service path|
+|postDirectory|(ServiceFunction) => this|Configure a handler for post requests to any directory (path ends '/')|
+|postDirectoryPath|(string, ServiceFunction) => this|Configure a handler for post requests to a directory with a specific service path|
+|put|(ServiceFunction) => this|Configure a handler for all put requests|
+|putPath|(string, ServiceFunction) => this|Configure a handler for put requests with a specific service path|
+|putDirectory|(ServiceFunction) => this|Configure a handler for put requests to any directory (path ends '/')|
+|putDirectoryPath|(string, ServiceFunction) => this|Configure a handler for put requests to a directory with a specific service path|
+|delete|(ServiceFunction) => this|Configure a handler for all delete requests|
+|deletePath|(string, ServiceFunction) => this|Configure a handler for delete requests with a specific service path|
+|deleteDirectory|(ServiceFunction) => this|Configure a handler for delete requests to any directory (path ends '/')|
+|deleteDirectoryPath|(string, ServiceFunction) => this|Configure a handler for delete requests to a directory with a specific service path|
+|patch|(ServiceFunction) => this|Configure a handler for all patch requests|
+|patchPath|(string, ServiceFunction) => this|Configure a handler for patch requests with a specific service path|
+|all|(ServiceFunction) => this|Configure a handler for all requests|
+|allPath|(string, ServiceFunction) => this|Configure a handler for all requests with a specific service path|
+|initializer|(ServiceContext<TAdapter>, ServiceConfig) => Promise<void>|Configure a handler to run when the service is first configured|
+
+
+## Managing State
+
+Services are essentially stateless and functional, although they may link to stateful services via adapters. Restspace provides an explicit mechanism for services to have state.
+
+To add state to a service, first define a class which implements BaseStateClass to provide two methods, load() and unload() both async methods returning a Promise<void>. load() is called by the runtime when the state is first accessed by each configured instance of a service. The runtime passes in the context and config for that service instance. unload() is called by the runtime when the services for a tenant are changed, before load() is called again with the new configuration.
+
+Then choose how to load the service. To eager load it when the service is first configured, do this:
+
+    service.initializer(async (context, config) => {
+	    await context.state(DiscordState, context, config);
+    });
+
+`context.state` is a function on a ServiceContext which given the constructor for the state class and the current context and config, returns an instance of the state class, creating one if one does not already exist.
+
+So to lazy load the state, simply call context.state where appropriate and the first invocation will create the state class instance.

@@ -7,7 +7,8 @@ export default {
     "configSchema": {
         "type": "object",
         "properties": {
-            "extensions": { "type": "array", "items": { "type": "string" }, "description": "Optional list of the file extensions allowed to be stored" }
+            "extensions": { "type": "array", "items": { "type": "string" }, "description": "Optional list of the file extensions allowed to be stored" },
+            "parentIfMissing": { "type": "boolean", "description": "Optional flag which if set, when a missing file is requested, will substitute the nearest parent file on the path tree if one exists" }
         }
     }
 }

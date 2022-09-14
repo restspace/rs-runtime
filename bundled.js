@@ -1213,6 +1213,18 @@ function getProp(object, path, defaultVal) {
     }
     return getProp(object[path.shift()], path, defaultVal);
 }
+function deleteProp(object, path) {
+    if (!path.length) return;
+    const parent = getProp(object, path.slice(0, -1));
+    if (parent === undefined) return;
+    delete parent[path.slice(-1)[0]];
+}
+const setProp = (obj, path, value)=>{
+    if (Object(obj) !== obj) return obj;
+    if (!Array.isArray(path)) path = path.toString().match(/[^.[\]]+/g) || [];
+    path.slice(0, -1).reduce((a, c, i)=>Object(a[c]) === a[c] ? a[c] : a[c] = /^\+?(0|[1-9]\d*)$/.test(path[i + 1]) ? [] : {}, obj)[path[path.length - 1]] = value;
+    return obj;
+};
 const scanFirst = (str, start, searches)=>{
     const matches = [];
     for(let idx = start; idx < str.length; idx++){
@@ -1416,8 +1428,14 @@ function resolvePathPatternWithObject(pathPattern, sourceObject, sourcePath, cur
 class Url {
     scheme = '';
     domain = '';
-    fragment = '';
     isRelative = false;
+    _fragment = '';
+    get fragment() {
+        return this._fragment || this.query['$fragment']?.[0] || '';
+    }
+    set fragment(val) {
+        this._fragment = val;
+    }
     get path() {
         return (this.isRelative ? '' : '/') + this.pathElements.join('/') + (this.isDirectory && this.pathElements.length > 0 ? '/' : '');
     }
@@ -1528,8 +1546,8 @@ class Url {
         this._isDirectory = this.path.endsWith('/');
         const qs = urlParse[5];
         this.queryString = qs ? decodeURI(qs.substr(1)) : '';
-        this.fragment = urlParse[6];
-        this.fragment = this.fragment ? this.fragment.substr(1) : '';
+        const frag = urlParse[6];
+        this.fragment = frag ? frag.substr(1) : '';
     }
     hasBase(base) {
         return this.path.startsWith(base === '/' ? base : base + '/') || this.path === base;
@@ -11972,6 +11990,11 @@ class MessageBody {
             return str;
         }
     }
+    async extractPathIfJson(path) {
+        if (!isJson(this.mimeType)) return;
+        const val = await this.asJson();
+        this.data = str2ab(JSON.stringify(getProp(val, path)));
+    }
     isTextual() {
         return isJson(this.mimeType) || isText(this.mimeType);
     }
@@ -12642,7 +12665,8 @@ class Message {
         return headers;
     }
     responseHeadersOnly(headers) {
-        return Object.fromEntries(Object.entries(headers).filter(([k, v])=>sendHeaders.indexOf(k.toLowerCase()) >= 0 && (k.toLowerCase() !== 'content-disposition' || Array.isArray(v) || v.startsWith('form-data'))));
+        const isContentDispositionFormData = (k, v)=>k.toLowerCase() === 'content-disposition' && !Array.isArray(v) && v.startsWith('form-data');
+        return Object.fromEntries(Object.entries(headers).filter(([k, v])=>sendHeaders.indexOf(k.toLowerCase()) >= 0 && !isContentDispositionFormData(k, v)));
     }
     responsify() {
         this.method = "";
@@ -22727,7 +22751,7 @@ const arrayToFunction = (arr, transformHelper)=>{
     }
     return `${functionName}(${args.join(', ')})`;
 };
-const transformation = (transformObject, data, url)=>{
+const transformation = (transformObject, data, url = new Url('/'))=>{
     const transformHelper = {
         Math: Math,
         transformMap: (list, transformObject)=>!list ? [] : Array.from(list, (item)=>transformation(transformObject, Object.assign({}, data, item), url)),
@@ -22787,9 +22811,97 @@ const transformation = (transformObject, data, url)=>{
         }
         for(const key in transformObject){
             if (key === '.' || key === '$this') continue;
-            transformed[key] = transformation(transformObject[key], data, url);
+            doTransformKey(key, 0, data, transformed, url, transformObject[key]);
         }
-        return transformed;
+        return rectifyObject(transformed);
+    }
+};
+const rectifyObject = (obj)=>{
+    let newObj = obj;
+    if ('length' in obj && !Array.isArray(obj)) {
+        newObj = Array.from(obj);
+    }
+    return newObj;
+};
+const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
+    let [match, newKeyStart] = scanFirst(key, keyStart, [
+        '.',
+        '[',
+        '{'
+    ]);
+    console.log(`match: ${match}, start: ${newKeyStart}`);
+    if (newKeyStart < 0) {
+        const effectiveKey = key.slice(keyStart);
+        output[effectiveKey] = transformation(subTransform, input, url);
+    } else if (match === '.') {
+        const keyPart = key.slice(keyStart, newKeyStart - 1).trim();
+        if (!(keyPart in input)) return;
+        if (!(keyPart in output)) output[keyPart] = {};
+        console.log(`recursing path, new start: ${newKeyStart}, new output: ${JSON.stringify(output[keyPart])}`);
+        doTransformKey(key, newKeyStart, input, output[keyPart], url, subTransform);
+    } else if (match === '[' || match === '{') {
+        const keyPart1 = key.slice(keyStart, newKeyStart - 1).trim();
+        let newOutput = output;
+        if (keyPart1) {
+            if (!(keyPart1 in output)) output[keyPart1] = match === '[' ? [] : {};
+            newOutput = output[keyPart1];
+        }
+        let indexName = upTo(key, match === "[" ? "]" : "}", newKeyStart);
+        newKeyStart += indexName.length + 1;
+        indexName = indexName.trim();
+        const remainingKey = key.slice(newKeyStart);
+        const transformOrRecurse = (input, index)=>{
+            if (remainingKey) {
+                doTransformKey(remainingKey, 0, input, newOutput[indexName], url, subTransform);
+            } else {
+                newOutput[index] = transformation(subTransform, input, url);
+            }
+        };
+        if (match === '[' && '0' <= indexName[0] && indexName[0] <= '9') {
+            transformOrRecurse(input, parseInt(indexName));
+        } else if (match === '[') {
+            let list = newOutput;
+            if (!Array.isArray(newOutput)) {
+                list = Object.entries(newOutput).map(([k, v])=>typeof v === 'object' ? {
+                        ...v,
+                        "$key": k
+                    } : v);
+                for(const k in newOutput)delete newOutput[k];
+            }
+            list.forEach((item, idx)=>{
+                const newInput = {
+                    ...item,
+                    outer: input.outer || input,
+                    [indexName]: {
+                        value: item,
+                        index: idx
+                    }
+                };
+                transformOrRecurse(newInput, idx);
+            });
+            if (!('length' in newOutput)) newOutput.length = list.length;
+            if (!remainingKey) {
+                for(let i = newOutput.length - 1; i >= 0; i--){
+                    if (newOutput[i] === undefined) newOutput.splice(i, 1);
+                }
+            }
+        } else if (match === '{') {
+            Object.entries(newOutput).forEach(([key, value])=>{
+                const newInput = {
+                    ...value,
+                    "$key": key,
+                    outer: input.outer || input,
+                    [indexName]: {
+                        key,
+                        value
+                    }
+                };
+                transformOrRecurse(newInput, key);
+            });
+            if (!remainingKey) {
+                newOutput = Object.fromEntries(Object.entries(newOutput).filter(([_, v])=>v !== undefined));
+            }
+        }
     }
 };
 class PipelineTransform {
@@ -22849,7 +22961,16 @@ const __final = (s)=>{
     const words = s.split('/');
     return last(words) === '' ? words.slice(-2)[0] + '/' : last(words);
 };
+const extractFragment = async (msg, url)=>{
+    console.log(`>> url: ${url} hasData: ${!!msg.data}`);
+    if (url.fragment && msg.data) {
+        await msg.data.extractPathIfJson(url.fragment);
+    }
+    return msg;
+};
 const mimeHandlers = {
+    "application/json": extractFragment,
+    "application/schema+json": extractFragment,
     "inode/directory+json": async (msg, url, requestInternal)=>{
         const listFlags = (url.query['$list'] || []).join(',');
         let isRecursive = listFlags.includes('recursive');
@@ -33010,9 +33131,24 @@ const write1 = async (msg, adapter)=>{
         const isDirectory = details.status === "directory" || details.status === "none" && msg.url.isDirectory;
         if (isDirectory) {
             msg.data = undefined;
-            return msg.setStatus(403, "Forbidden: can't over.writeKey directory");
+            return msg.setStatus(403, "Forbidden: can't overwrite directory");
         }
-        const resCode = await adapter.writeKey(dataset, key, msg.data.copy());
+        let resCode = 0;
+        if (msg.url.fragment) {
+            let val = await adapter.readKey(dataset, key);
+            if (typeof val === 'number') {
+                if (val === 404) {
+                    val = {};
+                } else {
+                    return msg.setStatus(val, 'Was reading full value to write back fragment');
+                }
+            }
+            const d = await msg.data?.asJson();
+            setProp(val, msg.url.fragment, d);
+            resCode = await adapter.writeKey(dataset, key, MessageBody.fromObject(val));
+        } else {
+            resCode = await adapter.writeKey(dataset, key, msg.data.copy());
+        }
         msg.data = undefined;
         if (resCode !== 200) return msg.setStatus(resCode);
         return msg.setDateModified(details.dateModified).setHeader('Location', msg.url.toString()).setStatus(details.status === "none" ? 201 : 200, details.status === "none" ? "Created" : "OK");
@@ -33025,7 +33161,21 @@ service.delete(async (msg, { adapter  })=>{
         return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>');
     }
     const [dataset, key] = msg.url.servicePathElements;
-    const res = await adapter.deleteKey(dataset, key);
+    let res = 0;
+    if (msg.url.fragment) {
+        const val = await adapter.readKey(dataset, key);
+        if (typeof val === 'number') {
+            return msg.setStatus(val, 'Was reading full value to write back fragment');
+        }
+        try {
+            deleteProp(val, msg.url.fragment);
+        } catch  {
+            return msg.setStatus(400, 'Cannot delete this fragment path');
+        }
+        res = await adapter.writeKey(dataset, key, MessageBody.fromObject(val));
+    } else {
+        res = await adapter.deleteKey(dataset, key);
+    }
     if (res === 404) {
         return msg.setStatus(404, 'Not found');
     } else if (res === 500) {
@@ -33666,6 +33816,10 @@ service4.getDirectory(async (msg, context, config)=>{
         msgOut.setServiceRedirect(msgOut.url.servicePath);
         return msgOut;
     } else {
+        if (config.divertMissingToDefault && config.defaultResource) {
+            msg.setServiceRedirect(config.defaultResource);
+            context.logger.debug(`static-site-filter diverting ${msg.url} to ${config.defaultResource}`);
+        }
         return msg;
     }
 });
@@ -38290,7 +38444,7 @@ class ServiceWrapper {
             }
             newMsg.setHeader('X-Restspace-Service', serviceConfig.name);
             if (newMsg.data && !newMsg.data.wasMimeHandled) {
-                const handler = mimeHandlers[newMsg.data.mimeType];
+                const handler = mimeHandlers[upTo(newMsg.data.mimeType, ';')];
                 if (handler) {
                     newMsg = await handler(newMsg, msg.url, (innerMsg)=>this.internal(innerMsg, context, serviceConfig));
                     if (newMsg.data) newMsg.data.wasMimeHandled = true;
