@@ -13,13 +13,14 @@ export default {
                 "properties": {
                     "adapterSource": { "type": "string", "description": "Source url for adapter for pipeline store" },
                     "infraName": { "type": "string", "description": "Infra name for pipeline store" },
-                    "adapterConfig": { "type": "object", "properties": {} }
+                    "adapterConfig": { "type": "object", "properties": {} },
+                    "parentIfMissing": { "type": "boolean", "description": "Optional flag which for a pipeline on a path, sends all subpaths to that pipeline as well. Default true" }
                 },
             }
         },
         "required": [ "store" ]
     },
-    "postPipeline": [ "if (isManage && method !== 'POST') $METHOD store/$P*" ],
+    "postPipeline": [ "if (isManage && method !== 'POST') $METHOD store/$*" ],
     "privateServices": {
         "store": {
             "name": "'Pipeline Store'",
@@ -29,7 +30,8 @@ export default {
             "adapterSource": "store.adapterSource",
             "infraName": "store.infraName",
             "adapterConfig": "store.adapterConfig",
-            "extensions": "[ 'json' ]"
+            "extensions": "[ 'json' ]",
+            "parentIfMissing": "store.parentIfMissing === false ? false : true"
         }
     }
 }

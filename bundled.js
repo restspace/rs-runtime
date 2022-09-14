@@ -1096,6 +1096,9 @@ function slashTrim(s) {
 function slashTrimLeft(s) {
     return s.startsWith('/') ? s.substr(1) : s;
 }
+function pathToArray(path) {
+    return slashTrim(path).split('/').filter((s)=>!!s);
+}
 function pathCombine(...args) {
     const stripped = args.filter((a)=>!!a);
     if (stripped.length === 0) return '';
@@ -1510,7 +1513,7 @@ class Url {
     set servicePath(path) {
         this.pathElements = [
             ...this.basePathElements,
-            ...slashTrim(path).split('/')
+            ...pathToArray(path)
         ];
         this._isDirectory = path.endsWith('/') || this.pathElements.length === 0 && path === '';
     }
@@ -33420,12 +33423,48 @@ const __default19 = {
         "schema"
     ]
 };
+const findParent = async (url, context, config)=>{
+    const testUrl = url.copy();
+    const servicePathLen = url.servicePathElements.length;
+    if (servicePathLen <= 1) return [
+        null,
+        null
+    ];
+    testUrl.servicePath = '';
+    let idx = 0;
+    testUrl.pathElements.push(url.servicePathElements[idx]);
+    while((await context.adapter.check(testUrl.servicePath, config.extensions)).status === "directory" && idx < servicePathLen){
+        idx++;
+        testUrl.pathElements.push(url.servicePathElements[idx]);
+    }
+    if (idx === servicePathLen) return [
+        null,
+        null
+    ];
+    const details = await context.adapter.check(testUrl.servicePath, config.extensions);
+    return details.status === "file" ? [
+        testUrl,
+        details
+    ] : [
+        null,
+        null
+    ];
+};
 const service2 = new Service();
-service2.get(async (msg, { adapter  }, config)=>{
-    const details = await adapter.check(msg.url.servicePath, config.extensions);
+service2.get(async (msg, context, config)=>{
+    let details = await context.adapter.check(msg.url.servicePath, config.extensions);
     if (details.status === "none") {
-        msg.data = undefined;
-        return msg.setStatus(404, 'Not found');
+        if (config.parentIfMissing) {
+            const [parentUrl, parentDetails] = await findParent(msg.url, context, config);
+            if (parentUrl !== null && parentDetails !== null) {
+                msg.setUrl(parentUrl);
+                details = parentDetails;
+            }
+        }
+        if (details.status === "none") {
+            msg.data = undefined;
+            return msg.setStatus(404, 'Not found');
+        }
     }
     const fileDetails = details;
     let start, end;
@@ -33441,7 +33480,7 @@ service2.get(async (msg, { adapter  }, config)=>{
         end = Math.min(range[0].end, fileDetails.size - 1);
     }
     if (msg.method !== 'HEAD') {
-        msg.data = await adapter.read(msg.url.servicePath, config.extensions, start, end);
+        msg.data = await context.adapter.read(msg.url.servicePath, config.extensions, start, end);
     }
     msg.data.size = start !== undefined && end !== undefined ? end - start + 1 : fileDetails.size;
     msg.data.dateModified = details.dateModified;
@@ -33541,6 +33580,10 @@ const __default20 = {
                     "type": "string"
                 },
                 "description": "Optional list of the file extensions allowed to be stored"
+            },
+            "parentIfMissing": {
+                "type": "boolean",
+                "description": "Optional flag which if set, when a missing file is requested, will substitute the nearest parent file on the path tree if one exists"
             }
         }
     }
@@ -37236,8 +37279,7 @@ class DiscordState extends BaseStateClass {
 }
 const service8 = new Service();
 service8.initializer(async (context, config)=>{
-    const state = await context.state(DiscordState, context, config);
-    await state.load(context, config);
+    await context.state(DiscordState, context, config);
 });
 const commandSchema = {
     type: "object",

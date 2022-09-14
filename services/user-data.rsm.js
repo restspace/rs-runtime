@@ -4,8 +4,8 @@ export default {
     "moduleUrl": "./services/dataset.ts",
     "apis": [ "store", "data.set" ],
     "adapterInterface": "IDataAdapter",
-    "prePipeline": [ "$METHOD userFilter/$P*" ],
-    "postPipeline": [ "$METHOD userFilter/$P*" ],
+    "prePipeline": [ "$METHOD userFilter/$*" ],
+    "postPipeline": [ "$METHOD userFilter/$*" ],
     "privateServices": {
         "userFilter": {
             "name": "'User filter'",

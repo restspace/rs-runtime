@@ -22,7 +22,7 @@ export default {
         },
         "required": [ "outputMime", "store" ]
     },
-    "postPipeline": [ "if (method !== 'POST') $METHOD store/$P*" ],
+    "postPipeline": [ "if (method !== 'POST') $METHOD store/$*" ],
     "privateServices": {
         "store": {
             "name": "'Template Store'",

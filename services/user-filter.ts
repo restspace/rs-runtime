@@ -1,6 +1,5 @@
 import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
-import { Source } from "rs-core/Source.ts";
 import { SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
 
