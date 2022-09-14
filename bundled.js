@@ -22832,7 +22832,6 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
         '[',
         '{'
     ]);
-    console.log(`match: ${match}, start: ${newKeyStart}`);
     if (newKeyStart < 0) {
         const effectiveKey = key.slice(keyStart);
         output[effectiveKey] = transformation(subTransform, input, url);
@@ -33809,6 +33808,10 @@ const __default23 = {
                     "adapterConfig": {
                         "type": "object",
                         "properties": {}
+                    },
+                    "parentIfMissing": {
+                        "type": "boolean",
+                        "description": "Optional flag which for a pipeline on a path, sends all subpaths to that pipeline as well. Default true"
                     }
                 }
             }
@@ -33818,7 +33821,7 @@ const __default23 = {
         ]
     },
     "postPipeline": [
-        "if (isManage && method !== 'POST') $METHOD store/$P*"
+        "if (isManage && method !== 'POST') $METHOD store/$*"
     ],
     "privateServices": {
         "store": {
@@ -33832,7 +33835,8 @@ const __default23 = {
             "adapterSource": "store.adapterSource",
             "infraName": "store.infraName",
             "adapterConfig": "store.adapterConfig",
-            "extensions": "[ 'json' ]"
+            "extensions": "[ 'json' ]",
+            "parentIfMissing": "store.parentIfMissing === false ? false : true"
         }
     }
 };
@@ -33937,10 +33941,10 @@ const __default26 = {
     ],
     "adapterInterface": "IDataAdapter",
     "prePipeline": [
-        "$METHOD userFilter/$P*"
+        "$METHOD userFilter/$*"
     ],
     "postPipeline": [
-        "$METHOD userFilter/$P*"
+        "$METHOD userFilter/$*"
     ],
     "privateServices": {
         "userFilter": {
@@ -34014,7 +34018,7 @@ const __default28 = {
         ]
     },
     "postPipeline": [
-        "if (method !== 'POST') $METHOD store/$P*"
+        "if (method !== 'POST') $METHOD store/$*"
     ],
     "privateServices": {
         "store": {

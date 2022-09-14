@@ -6,6 +6,8 @@ import { Message } from "../../rs-core/Message.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
 import { IAuthUser } from "../../rs-core/user/IAuthUser.ts";
 import dayjs from "https://cdn.skypack.dev/dayjs@1.10.4";
+import { resolvePathPatternWithUrl } from "../../rs-core/PathPattern.ts";
+import { Url } from "../../rs-core/Url.ts";
 
 interface LoaderRes {
     src: string;
@@ -42,7 +44,10 @@ class NunjucksTemplateAdapter implements ITemplateAdapter {
 
     constructor(public context: AdapterContext) {
         this.env = new nunjucks.Environment(new RestspaceLoader(context));
-        this.env.addGlobal('$this', function(this: any) { return this.ctx; });
+        this.env.addGlobal('$this', function(this: any) {
+            delete this.ctx['$url'];
+            return this.ctx;
+        });
         this.env.addFilter("dateFormat", (dateStr: string, format: string) => {
             if (dateStr === undefined || dateStr === null) return '';
             return dayjs(dateStr).format(format)
@@ -50,17 +55,26 @@ class NunjucksTemplateAdapter implements ITemplateAdapter {
         this.env.addFilter("authorizedFor", (user: IAuthUser, roles: string) => {
             return new AuthUser(user).authorizedFor(roles);
         });
+        this.env.addFilter("pathPattern", function(this: any, pattern: string) {
+            return resolvePathPatternWithUrl(pattern, this.ctx._url as Url);
+        });
     }
 
-    fillTemplate(data: any, template: string): Promise<string> {
+    fillTemplate(data: any, template: string, url: Url): Promise<string> {
         return new Promise<string>((resolve) => {
-            this.env.renderString(template, data, (err: Error, res: string) => {
-                if (err) {
-                    resolve('error');
-                } else {
-                    resolve(res);
+            this.env.renderString(template,
+                {
+                    ...data,
+                    _url: url
+                },
+                (err: Error, res: string) => {
+                    if (err) {
+                        resolve(`template error: ${err}`);
+                    } else {
+                        resolve(res);
+                    }
                 }
-            });
+            );
         });
     }
 }

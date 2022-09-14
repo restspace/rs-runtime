@@ -16,7 +16,8 @@ export default {
                     "adapterSource": { "type": "string", "description": "Source url for adapter for template store" },
                     "infraName": { "type": "string", "description": "Infra name for template store" },
                     "adapterConfig": { "type": "object", "properties": {} },
-                    "extension": { "type": "string", "description": "Extension for template files" }
+                    "extension": { "type": "string", "description": "Extension for template files" },
+                    "parentIfMissing": { "type": "boolean", "description": "Optional flag which for a pipeline on a path, sends all subpaths to that pipeline as well. Default true" }
                 },
             }
         },
@@ -32,7 +33,8 @@ export default {
             "adapterSource": "store.adapterSource",
             "infraName": "store.infraName",
             "adapterConfig": "store.adapterConfig",
-            "extensions": "[ store.extension ]"
+            "extensions": "[ store.extension ]",
+            "parentIfMissing": "store.parentIfMissing === false ? false : true"
         }
     }
 }
