@@ -158,6 +158,31 @@ Deno.test('conditional mime type subpipelines', async function () {
     const output = await msgOut.data?.asString();
     assertStrictEquals(output, 'def result');
 });
+Deno.test('conditional path subpipelines', async function () {
+    const msg = testMessage('/abc/def', 'GET');
+    msg.url.basePathElementCount = 1;
+    const msgOut = await pipeline(msg, [
+        "GET /test/xyz",
+        "try GET /test/list",
+        [ "if (subpath.length === 1) GET /test/abc" ],
+        [ "if (subpath.length === 0) GET /test/xyz" ]
+    ]);
+    const output = await msgOut.data?.asString();
+    assertStrictEquals(output, 'abc result');
+});
+Deno.test('conditional subpath subpipelines', async function () {
+    const msg = testMessage('/abc/def', 'GET');
+    msg.url.basePathElementCount = 1;
+    msg.url.subPathElementCount = 1;
+    const msgOut = await pipeline(msg, [
+        "GET /test/xyz",
+        "try GET /test/list",
+        [ "if (subpath.length === 1) GET /test/abc" ],
+        [ "if (subpath.length === 0) GET /test/xyz" ]
+    ]);
+    const output = await msgOut.data?.asString();
+    assertStrictEquals(output, 'abc result');
+});
 // Deno.test('target host', async function () {
 //     let domainCount = 0;
 //     domainRequestHandlers["test1.com"] = async (msg: Message) => {

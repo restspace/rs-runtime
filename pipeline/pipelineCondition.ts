@@ -22,6 +22,7 @@ export class PipelineCondition {
         const isJson = mimeType.isJson(mime);
         const isText = mimeType.isText(mime);
         const isManage = msg.getHeader('X-Restspace-Request-Mode') === 'manage';
+        const callerUrl = context?.callerUrl;
         const msgValues = {
             name: msg.name,
             mime,
@@ -32,6 +33,7 @@ export class PipelineCondition {
             status,
             ok: status === 200 || status === 0,
             method: context.callerMethod?.toUpperCase(),
+            subpath: callerUrl && (callerUrl.subPathElementCount === null ? callerUrl.servicePathElements : callerUrl.subPathElements),
             header: (hdr: string) => msg.getHeader(hdr),
         }
         return !!evaluate(this.exp, msgValues);

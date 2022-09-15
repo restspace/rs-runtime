@@ -1369,13 +1369,13 @@ function resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl
     };
     const result = pathPattern.replace('$*', currentPath + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$$', encodeURIComponent(fullUrl || '')).replace('$P*', fullPathParts.join('/') + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$N*', name || '').replace(/\$([BSNP])?([<>]\d+)([<>]\d+)?(:\((.+?)\)|:\$([BSNP])?([<>]\d+)([<>]\d+)?)?/g, (_match, p1, p2, p3, p4, p5, p6, p7, p8)=>{
         const partsMatch = getPartsMatch(p1, p2, p3);
-        if (partsMatch || !p4) return partsMatch;
+        if (partsMatch || !p4) return partsMatch || '$$';
         if (p4.startsWith(':(')) return p5;
-        return getPartsMatch(p6, p7, p8);
+        return getPartsMatch(p6, p7, p8) || '$$';
     }).replace(/\$\?(\*|\((.+?)\))/g, (_match, p1, p2)=>{
         if (p1 === '*') return queryString(query);
-        return (query || {})[p2] === [] ? '' : ((query || {})[p2] || []).join(',') || '';
-    });
+        return (query || {})[p2] === [] ? '$$' : ((query || {})[p2] || []).join(',') || '$$';
+    }).replace('/$$', '').replace('$$', '');
     return result;
 }
 function resolvePathPatternWithUrl(pathPattern, url, obj, name) {
@@ -1525,7 +1525,7 @@ class Url {
     }
     subPathElementCount = 0;
     get subPathElements() {
-        return this.pathElements.slice(-this.subPathElementCount);
+        return this.subPathElementCount <= 0 ? [] : this.pathElements.slice(-this.subPathElementCount);
     }
     set subPathElements(els) {
         if (els.length <= this.pathElements.length && arrayEqual(els, this.pathElements.slice(-els.length))) this.subPathElementCount = els.length;
@@ -1573,6 +1573,14 @@ class Url {
     }
     baseUrl() {
         return `${this.scheme || ''}${this.domain || ''}/${this.basePathElements.join('/')}`;
+    }
+    setSubpathFromUrl(servicePathUrl) {
+        if (servicePathUrl === undefined) return;
+        if (typeof servicePathUrl === 'string') {
+            servicePathUrl = new Url(servicePathUrl);
+        }
+        this.subPathElementCount = this.pathElements.length - servicePathUrl.pathElements.length;
+        return this;
     }
     follow(relativeUrl) {
         const newUrl = this.copy();
@@ -22964,7 +22972,6 @@ const __final = (s)=>{
     return last(words) === '' ? words.slice(-2)[0] + '/' : last(words);
 };
 const extractFragment = async (msg, url)=>{
-    console.log(`>> url: ${url} hasData: ${!!msg.data}`);
     if (url.fragment && msg.data) {
         await msg.data.extractPathIfJson(url.fragment);
     }
@@ -33457,6 +33464,7 @@ service2.get(async (msg, context, config)=>{
             const [parentUrl, parentDetails] = await findParent(msg.url, context, config);
             if (parentUrl !== null && parentDetails !== null) {
                 msg.setUrl(parentUrl);
+                msg.setHeader('Location', parentUrl.toString());
                 details = parentDetails;
             }
         }
@@ -33971,7 +33979,9 @@ service5.post(async (msg, context, config)=>{
     const msgTemplate = await context.makeRequest(reqTemplate);
     if (!msgTemplate.ok) return msgTemplate;
     const template = await msgTemplate.data.asString();
-    const output = await context.adapter.fillTemplate(data, template || "", msg.url);
+    const contextUrl = msg.url.copy();
+    contextUrl.setSubpathFromUrl(msgTemplate.getHeader('location'));
+    const output = await context.adapter.fillTemplate(data, template || "", contextUrl);
     return msg.setData(output, config.outputMime);
 });
 const __default28 = {
@@ -40011,7 +40021,9 @@ service10.all(async (msg, context)=>{
             pipelineSpec = pipelineSpec.slice(0, toStep + 1);
         }
     }
-    return pipeline(msg, pipelineSpec, msg.url, false, (msg)=>context.makeRequest(msg));
+    const pipelineUrl = msg.url.copy();
+    pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location'));
+    return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
 service14.get(async (msg, context)=>{
     if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
