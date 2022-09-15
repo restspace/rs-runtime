@@ -1523,16 +1523,16 @@ class Url {
     get servicePathElements() {
         return this.pathElements.slice(this.basePathElementCount);
     }
-    subPathElementCount = 0;
+    subPathElementCount = null;
     get subPathElements() {
-        return this.subPathElementCount <= 0 ? [] : this.pathElements.slice(-this.subPathElementCount);
+        return this.subPathElementCount === null || this.subPathElementCount <= 0 ? [] : this.pathElements.slice(-this.subPathElementCount);
     }
     set subPathElements(els) {
-        if (els.length <= this.pathElements.length && arrayEqual(els, this.pathElements.slice(-els.length))) this.subPathElementCount = els.length;
-        else this.subPathElementCount = 0;
+        if (els.length <= this.pathElements.length && arrayEqual(els, els.length === 0 ? [] : this.pathElements.slice(-els.length))) this.subPathElementCount = els.length;
+        else this.subPathElementCount = null;
     }
     get mainPathElementCount() {
-        return this.pathElements.length - this.basePathElementCount - this.subPathElementCount;
+        return this.pathElements.length - this.basePathElementCount - (this.subPathElementCount || 0);
     }
     set mainPathElementCount(count) {
         this.subPathElementCount = this.pathElements.length - this.basePathElementCount - count;
@@ -21470,6 +21470,7 @@ class PipelineCondition {
         const isJson1 = isJson(mime);
         const isText1 = isText(mime);
         const isManage = msg.getHeader('X-Restspace-Request-Mode') === 'manage';
+        const callerUrl = context?.callerUrl;
         const msgValues = {
             name: msg.name,
             mime,
@@ -21480,6 +21481,7 @@ class PipelineCondition {
             status,
             ok: status === 200 || status === 0,
             method: context.callerMethod?.toUpperCase(),
+            subpath: callerUrl && (callerUrl.subPathElementCount === null ? callerUrl.servicePathElements : callerUrl.subPathElements),
             header: (hdr)=>msg.getHeader(hdr)
         };
         return !!evaluate(this.exp, msgValues);

@@ -6,7 +6,7 @@ import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { IReadOnlySchemaAdapter, ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
 import { ServiceContext } from "../../rs-core/ServiceContext.ts";
-import { deleteProp, getProp, setProp } from "../../rs-core/utility/utility.ts";
+import { deleteProp, getProp, mergeDeep, setProp } from "../../rs-core/utility/utility.ts";
 
 const service = new Service<IDataAdapter>();
 
@@ -119,7 +119,7 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
     return msg.setDirectoryJson(dirDesc);
 });
 
-const write = async (msg: Message, adapter: IDataAdapter) => {
+const write = async (msg: Message, adapter: IDataAdapter, isPatch: boolean) => {
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data write request should have a service path like <dataset>/<key>');
     }
@@ -142,8 +142,9 @@ const write = async (msg: Message, adapter: IDataAdapter) => {
         } 
 
         let resCode = 0;
-        // msg.data.copy() tees the stream
-        if (msg.url.fragment) {
+
+        if (isPatch || msg.url.fragment) {
+            // TO DO this operation should be atomic somehow - maybe readKeySync or adapter.writeLockKey
             let val = await adapter.readKey(dataset, key);
             if (typeof val === 'number') {
                 if (val === 404) {
@@ -153,9 +154,14 @@ const write = async (msg: Message, adapter: IDataAdapter) => {
                 }
             }
             const d = await msg.data?.asJson();
-            setProp(val, msg.url.fragment, d);
+            if (isPatch) {
+                mergeDeep(val, d);
+            } else {
+                setProp(val, msg.url.fragment, d);
+            }
             resCode = await adapter.writeKey(dataset, key, MessageBody.fromObject(val));
         } else {
+            // msg.data.copy() tees the stream
             resCode = await adapter.writeKey(dataset, key, msg.data!.copy());
         }
         msg.data = undefined;
@@ -168,8 +174,9 @@ const write = async (msg: Message, adapter: IDataAdapter) => {
     }
 }
 
-service.post((msg, { adapter }) => write(msg, adapter));
-service.put((msg, { adapter }) => write(msg, adapter));
+service.post((msg, { adapter }) => write(msg, adapter, false));
+service.put((msg, { adapter }) => write(msg, adapter, false));
+service.patch((msg, { adapter }) => write(msg, adapter, true));
 
 service.delete(async (msg, { adapter }) => {
     if (msg.url.servicePathElements.length !== 2) {

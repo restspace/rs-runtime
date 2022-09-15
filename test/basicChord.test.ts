@@ -224,7 +224,6 @@ Deno.test('writes and reads file parentIfMissing', async () => {
     await deleteUrl("/files2/abc.json");
 });
 
-/*
 Deno.test('writes and reads data', async () => {
     const schema = {
         type: "object",
@@ -273,6 +272,18 @@ Deno.test('writes and reads data', async () => {
     assertStrictEquals(msgOut.data?.mimeType, 'application/json; schema="http://basicChord.restspace.local:3100/data/set1/.schema.json"');
     assertStrictEquals(str2, '"ghi"', `reads wrong body: ${str2}`);
 
+    msg = testMessage("/data/set1/abc.json", "PATCH")
+        .setData('{ "stuff": "abc" }', 'application/json');
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to write patch");
+
+    msg = testMessage("/data/set1/abc.json", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to read patched");
+    const str3 = msgOut.data ? await msgOut.data.asString() : '';
+    assertStrictEquals(msgOut.data?.mimeType, 'application/json; schema="http://basicChord.restspace.local:3100/data/set1/.schema.json"');
+    assertStrictEquals(str3, '{"thing":"ghi","stuff":"abc"}');
+
     msg = testMessage("/data/set1/.schema.json", "GET");
     msgOut = await handleIncomingRequest(msg);
     assert(msgOut.ok, "failed to read scheam");
@@ -296,6 +307,8 @@ Deno.test('writes and reads data', async () => {
     // should be able to delete a dir with just a .schema.json in it
     await deleteUrl("/data/set1/");
 });
+
+/*
 
 Deno.test('writes and reads dataset', async () => {
     const schema = {
