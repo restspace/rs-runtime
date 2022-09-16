@@ -116,7 +116,7 @@ export class Tenant {
         const defaults = this.serviceFactory.serviceManifestsBySource[service.source].defaults;
         if (!defaults) return service;
         // defaults is by reference, create a new copy to avoid overwriting original 
-        const defaultedService = JSON.parse(JSON.stringify(defaults));
+        const defaultedService = structuredClone(defaults);
         mergeDeep(defaultedService, service);
         return defaultedService;
     }

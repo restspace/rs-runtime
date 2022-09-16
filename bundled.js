@@ -22882,6 +22882,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
             }
             list.forEach((item, idx)=>{
                 const newInput = {
+                    ...input,
                     ...item,
                     outer: input.outer || input,
                     [indexName]: {
@@ -22900,6 +22901,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
         } else if (match === '{') {
             Object.entries(newOutput).forEach(([key, value])=>{
                 const newInput = {
+                    ...input,
                     ...value,
                     "$key": key,
                     outer: input.outer || input,
