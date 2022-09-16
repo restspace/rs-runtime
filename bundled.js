@@ -22930,6 +22930,21 @@ class PipelineTransform {
     }
     transform;
 }
+function jsonSplit(msg) {
+    const queue = new AsyncQueue();
+    if (!msg.data) return queue;
+    msg.data.asJson().then((obj)=>{
+        if (Array.isArray(obj)) {
+            obj.forEach((item, i)=>queue.enqueue(msg.copy().setName(i.toString()).setDataJson(item)));
+        } else if (typeof obj === 'object') {
+            Object.entries(obj).forEach(([key, value])=>queue.enqueue(msg.copy().setName(key).setDataJson(value)));
+        } else {
+            queue.enqueue(msg);
+        }
+        queue.close();
+    });
+    return queue;
+}
 const generatePaths = async function*(msg, requestInternal) {
     let dir = await msg.data.asJson() || [];
     if (Array.isArray(dir)) dir = dir[0];
@@ -33125,7 +33140,7 @@ service.getDirectory(async (msg, { adapter  })=>{
     };
     return msg.setDirectoryJson(dirDesc);
 });
-const write1 = async (msg, adapter)=>{
+const write1 = async (msg, adapter, logger, isPatch)=>{
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data write request should have a service path like <dataset>/<key>');
     }
@@ -33145,7 +33160,8 @@ const write1 = async (msg, adapter)=>{
             return msg.setStatus(403, "Forbidden: can't overwrite directory");
         }
         let resCode = 0;
-        if (msg.url.fragment) {
+        logger.info(`isPatch: ${isPatch || msg.url.fragment}`);
+        if (isPatch || msg.url.fragment) {
             let val = await adapter.readKey(dataset, key);
             if (typeof val === 'number') {
                 if (val === 404) {
@@ -33155,7 +33171,13 @@ const write1 = async (msg, adapter)=>{
                 }
             }
             const d = await msg.data?.asJson();
-            setProp(val, msg.url.fragment, d);
+            logger.info(`patch data ${JSON.stringify(d)}`);
+            if (isPatch) {
+                mergeDeep(val, d);
+                logger.info(`merge result ${JSON.stringify(val)}`);
+            } else {
+                setProp(val, msg.url.fragment, d);
+            }
             resCode = await adapter.writeKey(dataset, key, MessageBody.fromObject(val));
         } else {
             resCode = await adapter.writeKey(dataset, key, msg.data.copy());
@@ -33165,8 +33187,9 @@ const write1 = async (msg, adapter)=>{
         return msg.setDateModified(details.dateModified).setHeader('Location', msg.url.toString()).setStatus(details.status === "none" ? 201 : 200, details.status === "none" ? "Created" : "OK");
     }
 };
-service.post((msg, { adapter  })=>write1(msg, adapter));
-service.put((msg, { adapter  })=>write1(msg, adapter));
+service.post((msg, { adapter , logger  })=>write1(msg, adapter, logger, false));
+service.put((msg, { adapter , logger  })=>write1(msg, adapter, logger, false));
+service.patch((msg, { adapter , logger  })=>write1(msg, adapter, logger, true));
 service.delete(async (msg, { adapter  })=>{
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>');
@@ -39604,6 +39627,9 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                         switch(op){
                             case PipelineParallelizer.unzip:
                                 msgs = msgs.flatMap((msg)=>unzip(msg));
+                                break;
+                            case PipelineParallelizer.jsonSplit:
+                                msgs = msgs.flatMap((msg)=>jsonSplit(msg));
                                 break;
                         }
                         break;

@@ -17,6 +17,7 @@ import { Url } from "rs-core/Url.ts";
 import { PipelineContext } from "./pipelineContext.ts";
 import { handleOutgoingRequest } from "../handleRequest.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
+import { jsonSplit } from "./jsonSplitSplitter.ts";
 
 type PipelineElement = PipelineSpec | PipelineOperator | PipelineStep | PipelineMode | PipelineTransform;
 
@@ -186,9 +187,9 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                     //     case PipelineParallelizer.split:
                     //         msgs = msgs.flatMap(msg => multipartSplit(msg));
                     //         break;
-                    //     case PipelineParallelizer.jsonSplit:
-                    //         msgs = msgs.flatMap(msg => jsonSplit(msg));
-                    //         break;
+                        case PipelineParallelizer.jsonSplit:
+                            msgs = msgs.flatMap(msg => jsonSplit(msg));
+                            break;
                     }
                     break;
                 }

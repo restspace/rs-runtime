@@ -6,7 +6,8 @@ import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { IReadOnlySchemaAdapter, ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
 import { ServiceContext } from "../../rs-core/ServiceContext.ts";
-import { deleteProp, getProp, mergeDeep, setProp } from "../../rs-core/utility/utility.ts";
+import { deleteProp, mergeDeep, setProp } from "../../rs-core/utility/utility.ts";
+import * as log from "std/log/mod.ts";
 
 const service = new Service<IDataAdapter>();
 
@@ -119,7 +120,7 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
     return msg.setDirectoryJson(dirDesc);
 });
 
-const write = async (msg: Message, adapter: IDataAdapter, isPatch: boolean) => {
+const write = async (msg: Message, adapter: IDataAdapter, logger: log.Logger, isPatch: boolean) => {
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data write request should have a service path like <dataset>/<key>');
     }
@@ -143,6 +144,7 @@ const write = async (msg: Message, adapter: IDataAdapter, isPatch: boolean) => {
 
         let resCode = 0;
 
+        logger.info(`isPatch: ${isPatch || msg.url.fragment}`);
         if (isPatch || msg.url.fragment) {
             // TO DO this operation should be atomic somehow - maybe readKeySync or adapter.writeLockKey
             let val = await adapter.readKey(dataset, key);
@@ -154,8 +156,10 @@ const write = async (msg: Message, adapter: IDataAdapter, isPatch: boolean) => {
                 }
             }
             const d = await msg.data?.asJson();
+            logger.info(`patch data ${JSON.stringify(d)}`);
             if (isPatch) {
                 mergeDeep(val, d);
+                logger.info(`merge result ${JSON.stringify(val)}`);
             } else {
                 setProp(val, msg.url.fragment, d);
             }
@@ -174,9 +178,9 @@ const write = async (msg: Message, adapter: IDataAdapter, isPatch: boolean) => {
     }
 }
 
-service.post((msg, { adapter }) => write(msg, adapter, false));
-service.put((msg, { adapter }) => write(msg, adapter, false));
-service.patch((msg, { adapter }) => write(msg, adapter, true));
+service.post((msg, { adapter, logger }) => write(msg, adapter, logger, false));
+service.put((msg, { adapter, logger }) => write(msg, adapter, logger, false));
+service.patch((msg, { adapter, logger }) => write(msg, adapter, logger, true));
 
 service.delete(async (msg, { adapter }) => {
     if (msg.url.servicePathElements.length !== 2) {
