@@ -191,8 +191,8 @@ export class ServiceFactory {
         const sourceServiceFunc = source === Source.External ? serviceWrapper.external : serviceWrapper.internal;
 
         // protect data sent to func against modification within it
-        serviceContext.manifest = structuredClone(serviceContext.manifest));
-        const copyServiceConfig = structuredClone(serviceConfig));
+        serviceContext.manifest = structuredClone(serviceContext.manifest);
+        const copyServiceConfig = structuredClone(serviceConfig);
 
         return (msg: Message) => sourceServiceFunc(msg, serviceContext, copyServiceConfig);
     }
