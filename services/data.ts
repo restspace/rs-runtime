@@ -6,7 +6,7 @@ import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { IReadOnlySchemaAdapter, ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
 import { ServiceContext } from "../../rs-core/ServiceContext.ts";
-import { deleteProp, mergeDeep, setProp } from "../../rs-core/utility/utility.ts";
+import { deleteProp, patch, setProp } from "../../rs-core/utility/utility.ts";
 import * as log from "std/log/mod.ts";
 
 const service = new Service<IDataAdapter>();
@@ -158,8 +158,8 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: log.Logger, is
             const d = await msg.data?.asJson();
             logger.info(`patch data ${JSON.stringify(d)}`);
             if (isPatch) {
-                mergeDeep(val, d);
-                logger.info(`merge result ${JSON.stringify(val)}`);
+                val = patch(val, d);
+                logger.info(`patch result ${JSON.stringify(val)}`);
             } else {
                 setProp(val, msg.url.fragment, d);
             }

@@ -8,7 +8,15 @@ export class PipelineTransform {
 
     async execute(msg: Message, context: PipelineContext): Promise<Message> {
         const jsonIn = msg.data ? await msg.data.asJson() : {};
-        const transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url);
+        let transJson: any = null;
+        try {
+            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url);
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                const errx = err as SyntaxError & { filename: string };
+                return msg.setStatus(400, `${errx.message} at: ${errx.filename} cause: ${errx.cause}`);
+            }
+        }
         return msg.setDataJson(transJson);
     }
 

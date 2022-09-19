@@ -1209,6 +1209,15 @@ function deepEqualIfPresent(objSuper, objSub) {
 function isPrimitive(obj) {
     return obj !== Object(obj);
 }
+function shallowCopy(value) {
+    if (Array.isArray(value)) return [
+        ...value
+    ];
+    if (typeof value === 'object') return {
+        ...value
+    };
+    return value;
+}
 function getProp(object, path, defaultVal) {
     if (!Array.isArray(path)) path = path.toString().match(/[^.[\]]+/g) || [];
     if (!path.length) {
@@ -22820,7 +22829,7 @@ const transformation = (transformObject, data, url = new Url('/'))=>{
         let transformed = {};
         const selfObject = transformObject['$this'] || transformObject['.'];
         if (selfObject) {
-            transformed = transformation(selfObject, data, url);
+            transformed = shallowCopy(transformation(selfObject, data, url));
         }
         for(const key in transformObject){
             if (key === '.' || key === '$this') continue;
@@ -22844,18 +22853,26 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
     ]);
     if (newKeyStart < 0) {
         const effectiveKey = key.slice(keyStart);
-        output[effectiveKey] = transformation(subTransform, input, url);
+        output[effectiveKey] = shallowCopy(transformation(subTransform, input, url));
     } else if (match === '.') {
         const keyPart = key.slice(keyStart, newKeyStart - 1).trim();
         if (!(keyPart in input)) return;
-        if (!(keyPart in output)) output[keyPart] = {};
+        if (!(keyPart in output)) {
+            output[keyPart] = {};
+        } else {
+            output[keyPart] = shallowCopy(output[keyPart]);
+        }
         console.log(`recursing path, new start: ${newKeyStart}, new output: ${JSON.stringify(output[keyPart])}`);
         doTransformKey(key, newKeyStart, input, output[keyPart], url, subTransform);
     } else if (match === '[' || match === '{') {
         const keyPart1 = key.slice(keyStart, newKeyStart - 1).trim();
         let newOutput = output;
         if (keyPart1) {
-            if (!(keyPart1 in output)) output[keyPart1] = match === '[' ? [] : {};
+            if (!(keyPart1 in output)) {
+                output[keyPart1] = match === '[' ? [] : {};
+            } else {
+                output[keyPart1] = shallowCopy(output[keyPart1]);
+            }
             newOutput = output[keyPart1];
         }
         let indexName = upTo(key, match === "[" ? "]" : "}", newKeyStart);
@@ -22866,7 +22883,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
             if (remainingKey) {
                 doTransformKey(remainingKey, 0, input, newOutput[indexName], url, subTransform);
             } else {
-                newOutput[index] = transformation(subTransform, input, url);
+                newOutput[index] = shallowCopy(transformation(subTransform, input, url));
             }
         };
         if (match === '[' && '0' <= indexName[0] && indexName[0] <= '9') {
@@ -38451,8 +38468,8 @@ class ServiceFactory {
         }
         const serviceWrapper = new ServiceWrapper(service);
         const sourceServiceFunc = source === Source.External ? serviceWrapper.external : serviceWrapper.internal;
-        serviceContext.manifest = JSON.parse(JSON.stringify(serviceContext.manifest));
-        const copyServiceConfig = JSON.parse(JSON.stringify(serviceConfig));
+        serviceContext.manifest = structuredClone(serviceContext.manifest);
+        const copyServiceConfig = structuredClone(serviceConfig);
         return (msg)=>sourceServiceFunc(msg, serviceContext, copyServiceConfig);
     }
     attachFilter(url, func, context) {
@@ -39216,7 +39233,7 @@ class Tenant {
     applyDefaults(service) {
         const defaults = this.serviceFactory.serviceManifestsBySource[service.source].defaults;
         if (!defaults) return service;
-        const defaultedService = JSON.parse(JSON.stringify(defaults));
+        const defaultedService = structuredClone(defaults);
         mergeDeep(defaultedService, service);
         return defaultedService;
     }
