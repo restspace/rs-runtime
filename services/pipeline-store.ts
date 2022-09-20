@@ -23,7 +23,7 @@ service.all(async (msg, context) => {
 
 	// find the applicable url
 	const pipelineUrl: Url = msg.url.copy();
-	pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location'));
+	pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
 	
 	return pipeline(msg, pipelineSpec, pipelineUrl, false, msg => context.makeRequest(msg));
 })

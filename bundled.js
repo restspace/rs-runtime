@@ -1197,6 +1197,104 @@ function mergeDeep(target, ...sources) {
     }
     return mergeDeep(target, ...sources);
 }
+function patch(target, patchData) {
+    if (Array.isArray(patchData)) {
+        if (!Array.isArray(target)) return patchData;
+        let strategy = "positional";
+        let id = "";
+        if (patchData[0]) {
+            const strategies = [
+                'replace',
+                'append',
+                'prepend',
+                'positional',
+                'id-replace',
+                'id-patch'
+            ];
+            let config = null;
+            if (typeof patchData[0] === 'object' && '$strategy' in patchData[0] && strategies.includes(patchData[0].$strategy)) {
+                strategy = patchData[0].$strategy;
+                config = patchData.shift();
+            }
+            if (config && '$id' in config && strategy.startsWith('id-')) {
+                id = config.$id;
+            }
+        }
+        switch(strategy){
+            case 'positional':
+                for(let idx = 0; idx < patchData.length; idx++){
+                    if (idx < target.length) {
+                        target[idx] = patch(target[idx], patchData[idx]);
+                    } else {
+                        target.push(patch(target[idx], patchData[idx]));
+                    }
+                }
+                return target;
+            case 'replace':
+                return [
+                    ...patchData
+                ];
+            case 'append':
+                patchData.forEach((val)=>target.push(val));
+                return target;
+            case 'prepend':
+                {
+                    for(let idx1 = patchData.length - 1; idx1 >= 0; idx1--){
+                        target.unshift(patchData[idx1]);
+                    }
+                    return target;
+                }
+            case 'id-replace':
+                {
+                    const newList = [];
+                    patchData.forEach((val)=>{
+                        if (val[id]) {
+                            const targetItem = target.find((ti)=>ti[id] === val[id]);
+                            if (targetItem) {
+                                newList.push(patch(targetItem, val));
+                            } else {
+                                newList.push(val);
+                            }
+                        }
+                    });
+                    return newList;
+                }
+            case 'id-patch':
+                {
+                    const newList1 = [
+                        ...target
+                    ];
+                    patchData.forEach((val)=>{
+                        if (val[id]) {
+                            const targetIdx = newList1.findIndex((nl)=>nl[id] === val[id]);
+                            if (targetIdx >= 0) {
+                                newList1[targetIdx] = patch(newList1[targetIdx], val);
+                            } else {
+                                newList1.push(val);
+                            }
+                        }
+                    });
+                    return newList1;
+                }
+        }
+    } else if (typeof patchData === "object") {
+        if (Array.isArray(target) || !(typeof target === "object")) return patchData;
+        for(const prop in patchData){
+            if (target[prop]) {
+                if (patchData[prop] === undefined) {
+                    delete target[prop];
+                } else {
+                    target[prop] = patch(target[prop], patchData[prop]);
+                }
+            } else {
+                target[prop] = patchData[prop];
+            }
+        }
+        return target;
+    } else {
+        return patchData;
+    }
+}
 function deepEqualIfPresent(objSuper, objSub) {
     if (objSuper === objSub) return true;
     if (isPrimitive(objSuper) && isPrimitive(objSub)) return objSuper === objSub;
@@ -22773,30 +22871,40 @@ const arrayToFunction = (arr, transformHelper)=>{
     }
     return `${functionName}(${args.join(', ')})`;
 };
+const doEvaluate = (expression, context, helper)=>{
+    try {
+        return evaluate(expression, context, helper);
+    } catch (err) {
+        throw SyntaxError('Transform failed', {
+            cause: err,
+            fileName: expression
+        });
+    }
+};
 const transformation = (transformObject, data, url = new Url('/'))=>{
     const transformHelper = {
         Math: Math,
         transformMap: (list, transformObject)=>!list ? [] : Array.from(list, (item)=>transformation(transformObject, Object.assign({}, data, item), url)),
-        expressionReduce: (list, init, expression)=>!list ? init : Array.from(list).reduce((partial, item)=>evaluate(expression, partial, Object.assign({}, transformHelper, data, item)), init),
+        expressionReduce: (list, init, expression)=>!list ? init : Array.from(list).reduce((partial, item)=>doEvaluate(expression, partial, Object.assign({}, transformHelper, data, item)), init),
         expressionReduce_expArgs: [
             2
         ],
-        expressionMap: (list, expression)=>!list ? [] : Array.from(list).map((item)=>evaluate(expression, item, Object.assign({}, transformHelper, data))),
+        expressionMap: (list, expression)=>!list ? [] : Array.from(list).map((item)=>doEvaluate(expression, item, Object.assign({}, transformHelper, data))),
         expressionMap_expArgs: [
             1
         ],
-        expressionFilter: (list, expression)=>!list ? [] : Array.from(list).filter((item)=>evaluate(expression, item, Object.assign({}, transformHelper, data))),
+        expressionFilter: (list, expression)=>!list ? [] : Array.from(list).filter((item)=>doEvaluate(expression, item, Object.assign({}, transformHelper, data))),
         expressionFilter_expArgs: [
             1
         ],
-        expressionFind: (list, expression)=>!list ? null : Array.from(list).find((item)=>evaluate(expression, item, Object.assign({}, transformHelper, data))),
+        expressionFind: (list, expression)=>!list ? null : Array.from(list).find((item)=>doEvaluate(expression, item, Object.assign({}, transformHelper, data))),
         expressionFind_expArgs: [
             1
         ],
         expressionSort: (list, expression, dir)=>!list ? null : Array.from(list).sort((a, b)=>{
                 const ctx = Object.assign({}, transformHelper, data);
-                const expA = evaluate(expression, a, ctx);
-                const expB = evaluate(expression, b, ctx);
+                const expA = doEvaluate(expression, a, ctx);
+                const expB = doEvaluate(expression, b, ctx);
                 const res = expA == expB ? 0 : expA < expB ? -1 : 1;
                 return dir === 'desc' ? -res : res;
             }),
@@ -22816,14 +22924,14 @@ const transformation = (transformObject, data, url = new Url('/'))=>{
             })
     };
     if (typeof transformObject === 'string') {
-        return evaluate(transformObject, data, transformHelper);
+        return doEvaluate(transformObject, data, transformHelper);
     } else if (Array.isArray(transformObject)) {
         if (transformObject.length === 0 || typeof transformObject[0] !== 'string' || !transformObject[0].endsWith("()")) {
             return transformObject.map((item)=>transformation(item, data, url));
         }
         const expr = arrayToFunction(transformObject, transformHelper);
         console.log('expr ' + expr);
-        const arrResult = evaluate(expr, data, transformHelper);
+        const arrResult = doEvaluate(expr, data, transformHelper);
         return arrResult;
     } else {
         let transformed = {};
@@ -22941,7 +23049,15 @@ class PipelineTransform {
     }
     async execute(msg, context) {
         const jsonIn = msg.data ? await msg.data.asJson() : {};
-        const transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url);
+        let transJson = null;
+        try {
+            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url);
+        } catch (err) {
+            if (err instanceof SyntaxError) {
+                const errx = err;
+                return msg.setStatus(400, `${errx.message} at: ${errx.filename} cause: ${errx.cause}`);
+            }
+        }
         return msg.setDataJson(transJson);
     }
     static isValid(item) {
@@ -33192,8 +33308,8 @@ const write1 = async (msg, adapter, logger, isPatch)=>{
             const d = await msg.data?.asJson();
             logger.info(`patch data ${JSON.stringify(d)}`);
             if (isPatch) {
-                mergeDeep(val, d);
-                logger.info(`merge result ${JSON.stringify(val)}`);
+                val = patch(val, d);
+                logger.info(`patch result ${JSON.stringify(val)}`);
             } else {
                 setProp(val, msg.url.fragment, d);
             }
@@ -36995,11 +37111,18 @@ const applyTransform = async (transform, resp, config)=>{
         if (typeof transform == "function") {
             return transform(json, resp, config);
         } else {
-            return transformation(transform, {
-                json,
-                config,
-                resp
-            }, resp.url);
+            try {
+                return transformation(transform, {
+                    json,
+                    config,
+                    resp
+                }, resp.url);
+            } catch (err) {
+                if (err instanceof SyntaxError) {
+                    const errx = err;
+                    return resp.setStatus(400, `${errx.message} at: ${errx.filename} cause: ${errx.cause}`);
+                }
+            }
         }
     } else {
         return await resp.data.asJson();

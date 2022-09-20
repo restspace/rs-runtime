@@ -20,7 +20,7 @@ service.post(async (msg: Message, context: ServiceContext<ITemplateAdapter>, con
 
 	// find the applicable url
 	const contextUrl: Url = msg.url.copy();
-	contextUrl.setSubpathFromUrl(msgTemplate.getHeader('location'));
+	contextUrl.setSubpathFromUrl(msgTemplate.getHeader('location') || '');
 
 	const output = await context.adapter.fillTemplate(data, template || "", contextUrl);
 	return msg.setData(output, config.outputMime);
