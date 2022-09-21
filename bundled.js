@@ -1684,7 +1684,7 @@ class Url {
     setSubpathFromUrl(servicePathUrl) {
         if (servicePathUrl === undefined) return;
         if (typeof servicePathUrl === 'string') {
-            servicePathUrl = new Url(servicePathUrl);
+            servicePathUrl = servicePathUrl ? new Url(servicePathUrl) : this;
         }
         this.subPathElementCount = this.pathElements.length - servicePathUrl.pathElements.length;
         return this;
@@ -34140,7 +34140,7 @@ service5.post(async (msg, context, config)=>{
     if (!msgTemplate.ok) return msgTemplate;
     const template = await msgTemplate.data.asString();
     const contextUrl = msg.url.copy();
-    contextUrl.setSubpathFromUrl(msgTemplate.getHeader('location'));
+    contextUrl.setSubpathFromUrl(msgTemplate.getHeader('location') || '');
     const output = await context.adapter.fillTemplate(data, template || "", contextUrl);
     return msg.setData(output, config.outputMime);
 });
@@ -40192,7 +40192,7 @@ service10.all(async (msg, context)=>{
         }
     }
     const pipelineUrl = msg.url.copy();
-    pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location'));
+    pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
     return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
 service14.get(async (msg, context)=>{

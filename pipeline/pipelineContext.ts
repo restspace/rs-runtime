@@ -10,4 +10,14 @@ export interface PipelineContext {
     targetHeaders?: Record<string, unknown>;
     outputHeaders?: Record<string, unknown>;
     external?: boolean;
+    trace?: boolean;
+    traceOutputs?: Record<string, any>;
+    path: number[];
+}
+
+export const copyPipelineContext = (context: PipelineContext) => {
+    return {
+        ...context,
+        path: [ ...context.path ]
+    };
 }

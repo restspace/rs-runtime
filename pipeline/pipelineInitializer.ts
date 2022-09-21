@@ -12,6 +12,9 @@ export function pipelineInitializerIntoContext(step: string): Partial<PipelineCo
             const targetHost = new Url(host);
             return { targetHost };
         }
+        case "trace": {
+            return { trace: true, traceOutputs: {} };
+        }
         default: {
             return null;
         }

@@ -6,6 +6,7 @@ import { config } from "../config.ts";
 import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
 import { matchFirst, scanFirst, upTo } from "rs-core/utility/utility.ts";
 import { PipelineMode } from "./pipelineMode.ts";
+import { isJson } from "../../rs-core/mimeType.ts";
 
 export enum Externality { External, Outer, Internal }
 
@@ -88,6 +89,11 @@ export class PipelineStep {
                 }
                 if (this.tryMode) {
                     outMsg.enterConditionalMode();
+                }
+                if (context.trace) {
+                    if (outMsg.data && isJson(outMsg.data.mimeType)) {
+                        context.traceOutputs![context.path.join('.')] = await outMsg.data.asJson();
+                    }
                 }
                 return outMsg;
             } catch (err) {

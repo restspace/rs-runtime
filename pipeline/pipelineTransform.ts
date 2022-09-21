@@ -17,6 +17,9 @@ export class PipelineTransform {
                 return msg.setStatus(400, `${errx.message} at: ${errx.filename} cause: ${errx.cause}`);
             }
         }
+        if (context.trace) {
+            context.traceOutputs![context.path.join('.')] = transJson;
+        }
         return msg.setDataJson(transJson);
     }
 

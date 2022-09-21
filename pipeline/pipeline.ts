@@ -14,7 +14,7 @@ import { PipelineAction, PipelineMode } from "./pipelineMode.ts";
 import { pipelineInitializerIntoContext } from "./pipelineInitializer.ts";
 import { PipelineTransform } from "./pipelineTransform.ts";
 import { Url } from "rs-core/Url.ts";
-import { PipelineContext } from "./pipelineContext.ts";
+import { copyPipelineContext, PipelineContext } from "./pipelineContext.ts";
 import { handleOutgoingRequest } from "../handleRequest.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { jsonSplit } from "./jsonSplitSplitter.ts";
@@ -57,6 +57,8 @@ function parsePipelineElement(el: string | Record<string, unknown> | PipelineSpe
     }
 }
 
+// To test a pipeline, we look for the first pipeline element which is a Step and use the test on that
+// step to decide whether to start the pipeline
 function testPipeline(pipeline: PipelineSpec, msg: Message, mode: PipelineMode, context: PipelineContext): boolean {
     if (pipeline.length === 0) return false;
     for (const item of pipeline) {
@@ -127,8 +129,10 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
     let pos = 0;
     let msgs = new AsyncQueue<Message>(1).enqueue(msg);
     const endedMsgs: Message[] = [];
+    let depth = context.path.length;
 
     while (pos < pipeline.length) {
+        context.path[depth] = pos;
         try {
             const [ elType, el ] = parsePipelineElement(pipeline[pos]);
             let succeeded = false;
@@ -142,11 +146,12 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                 case PipelineElementType.step: {
                     const step = el as PipelineStep;
                     const fixedMode = mode;
+                    const contextCopy = copyPipelineContext(context);
                     msgs = msgs.flatMap(msg => {
                         if (endedMsgs.includes(msg)) return msg;
-                        succeeded = step.test(msg, fixedMode, context);
+                        succeeded = step.test(msg, fixedMode, contextCopy);
                         if (succeeded) {
-                            const stepResult = step.execute(msg, context);
+                            const stepResult = step.execute(msg, contextCopy);
                             if (!stepResult) return null;
                             return processStepSucceeded(fixedMode, endedMsgs, stepResult);
                         } else {
@@ -160,7 +165,8 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                 }
                 case PipelineElementType.transform: {
                     const transform = el as PipelineTransform;
-                    msgs = msgs.flatMap(msg => transform.execute(msg, context));
+                    const contextCopy = copyPipelineContext(context);
+                    msgs = msgs.flatMap(msg => transform.execute(msg, contextCopy));
                     break;
                 }
                 case PipelineElementType.subpipeline: {
@@ -211,12 +217,13 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
             }
         } catch (err) {
             config.logger.error(`pipeline error stage = '${pipeline[pos]}': ${err}`);
-
+            context.path.pop();
             return msgs.flatMap(() => err as Error);
         }
         //if (!currMsg.ok) return currMsg;
         pos++;
     }
+    context.path.pop();
     return msgs.flatMap(msg =>
         msg.exitConditionalMode()); // at end of pipeline, any messages in test mode should return to normal
 }
@@ -224,7 +231,9 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
 function runDistributePipelineOne(pipeline: PipelineSpec, msg: Message, context: PipelineContext): AsyncQueue<Message> {
     let pos = 0;
     const msgs = new AsyncQueue<Message>(pipeline.length);
+    const depth = context.path.length;
     while (pos < pipeline.length) {
+        context.path[depth] = pos;
         try {
             const [ elType, el ] = parsePipelineElement(pipeline[pos]);
             const newMsg = msg.copyWithData();
@@ -261,12 +270,14 @@ function runDistributePipelineOne(pipeline: PipelineSpec, msg: Message, context:
                     throw new Error('No operators allowed in parallel sub pipeline');
             }
         } catch (err) {
+            context.path.pop()
             msgs.close();
             config.logger.error(`pipeline error stage = '${pipeline[pos]}' ${err}`);
             return new AsyncQueue<Message>(1).enqueue(err as Error);
         }
         pos++;
     }
+    context.path.pop();
     return msgs;
 }
 
@@ -275,7 +286,8 @@ function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, 
         handler,
         callerUrl: contextUrl || callerMsg.url,
         callerMethod: callerMsg.method,
-        external
+        external,
+        path: []
     } as PipelineContext;
     let stepIdx = 0;
     for (; stepIdx < pipeline.length; stepIdx++) {
@@ -306,5 +318,8 @@ export async function pipeline(msg: Message, pipeline: PipelineSpec, contextUrl?
     const outMsg = (await asq.next()).value;
     outMsg.url = msg.url;
     Object.assign(outMsg.headers, context.outputHeaders || {});
+    if (context.trace) {
+        outMsg.setDataJson(context.traceOutputs);
+    }
     return outMsg || msg.copy().setStatus(204, '');
 }
