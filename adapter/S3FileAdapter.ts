@@ -53,14 +53,16 @@ class S3FileAdapterBase implements IFileAdapter {
     }
 
 	async ensureProxyAdapter() {
-		this.aws4ProxyAdapter = await this.context.getAdapter<IProxyAdapter>("./adapter/AWS4ProxyAdapter.ts", {
-			service: "s3",
-			region: this.props.region,
-			secretAccessKey: this.props.secretAccessKey,
-			accessKeyId: this.props.accessKeyId,
-			urlPattern: `https://${this.bucketName}.s3.amazonaws.com/$P*`,
-            ec2IamRole: this.props.ec2IamRole
-		});
+        if (this.aws4ProxyAdapter === null) {
+            this.aws4ProxyAdapter = await this.context.getAdapter<IProxyAdapter>("./adapter/AWS4ProxyAdapter.ts", {
+                service: "s3",
+                region: this.props.region,
+                secretAccessKey: this.props.secretAccessKey,
+                accessKeyId: this.props.accessKeyId,
+                urlPattern: `https://${this.bucketName}.s3.amazonaws.com/$P*`,
+                ec2IamRole: this.props.ec2IamRole
+            });
+        }
 	}
 
 	async processForAws(msg: Message): Promise<Message> {

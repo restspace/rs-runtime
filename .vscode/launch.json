@@ -16,7 +16,8 @@
                 "--unstable",
                 "--inspect-brk",
                 "--allow-all",
-                "--import-map=importMap.json"
+                "--import-map=importMap.json",
+                "--unsafely-ignore-certificate-errors=localhost"
             ],
             "env": { "DENO_DIR": "C:\\Users\\james\\AppData\\Local\\deno" },
             "args": [ "./serverConfig.json"],

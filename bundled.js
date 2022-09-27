@@ -22538,6 +22538,13 @@ function pipelineInitializerIntoContext(step) {
                     targetHost
                 };
             }
+        case "trace":
+            {
+                return {
+                    trace: true,
+                    traceOutputs: {}
+                };
+            }
         default:
             {
                 return null;
@@ -22921,7 +22928,11 @@ const transformation = (transformObject, data, url = new Url('/'))=>{
         propsToList: (obj, keyProp)=>Object.entries(obj).map(([key, val])=>{
                 val[keyProp || '$key'] = key;
                 return val;
-            })
+            }),
+        literal: (obj)=>obj,
+        merge: (val0, val1)=>{
+            return Object.assign({}, val0, val1);
+        }
     };
     if (typeof transformObject === 'string') {
         return doEvaluate(transformObject, data, transformHelper);
@@ -23058,6 +23069,9 @@ class PipelineTransform {
                 return msg.setStatus(400, `${errx.message} at: ${errx.filename} cause: ${errx.cause}`);
             }
         }
+        if (context.trace) {
+            context.traceOutputs[context.path.join('.')] = transJson;
+        }
         return msg.setDataJson(transJson);
     }
     static isValid(item) {
@@ -23065,6 +23079,14 @@ class PipelineTransform {
     }
     transform;
 }
+const copyPipelineContext = (context)=>{
+    return {
+        ...context,
+        path: [
+            ...context.path
+        ]
+    };
+};
 function jsonSplit(msg) {
     const queue = new AsyncQueue();
     if (!msg.data) return queue;
@@ -39710,7 +39732,9 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
     let pos = 0;
     let msgs = new AsyncQueue(1).enqueue(msg);
     const endedMsgs = [];
+    let depth = context.path.length;
     while(pos < pipeline.length){
+        context.path[depth] = pos;
         try {
             const [elType1, el1] = parsePipelineElement(pipeline[pos]);
             let succeeded = false;
@@ -39726,11 +39750,12 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                     {
                         const step = el1;
                         const fixedMode = mode;
+                        const contextCopy = copyPipelineContext(context);
                         msgs = msgs.flatMap((msg)=>{
                             if (endedMsgs.includes(msg)) return msg;
-                            succeeded = step.test(msg, fixedMode, context);
+                            succeeded = step.test(msg, fixedMode, contextCopy);
                             if (succeeded) {
-                                const stepResult = step.execute(msg, context);
+                                const stepResult = step.execute(msg, contextCopy);
                                 if (!stepResult) return null;
                                 return processStepSucceeded(fixedMode, endedMsgs, stepResult);
                             } else {
@@ -39745,7 +39770,8 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                 case PipelineElementType.transform:
                     {
                         const transform = el1;
-                        msgs = msgs.flatMap((msg)=>transform.execute(msg, context));
+                        const contextCopy1 = copyPipelineContext(context);
+                        msgs = msgs.flatMap((msg)=>transform.execute(msg, contextCopy1));
                         break;
                     }
                 case PipelineElementType.subpipeline:
@@ -39791,16 +39817,20 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
             }
         } catch (err) {
             config.logger.error(`pipeline error stage = '${pipeline[pos]}': ${err}`);
+            context.path.pop();
             return msgs.flatMap(()=>err);
         }
         pos++;
     }
+    context.path.pop();
     return msgs.flatMap((msg)=>msg.exitConditionalMode());
 }
 function runDistributePipelineOne(pipeline, msg, context) {
     let pos = 0;
     const msgs = new AsyncQueue(pipeline.length);
+    const depth = context.path.length;
     while(pos < pipeline.length){
+        context.path[depth] = pos;
         try {
             const [elType, el] = parsePipelineElement(pipeline[pos]);
             const newMsg = msg.copyWithData();
@@ -39837,12 +39867,14 @@ function runDistributePipelineOne(pipeline, msg, context) {
                     throw new Error('No operators allowed in parallel sub pipeline');
             }
         } catch (err) {
+            context.path.pop();
             msgs.close();
             config.logger.error(`pipeline error stage = '${pipeline[pos]}' ${err}`);
             return new AsyncQueue(1).enqueue(err);
         }
         pos++;
     }
+    context.path.pop();
     return msgs;
 }
 function createInitialContext(pipeline, handler, callerMsg, contextUrl, external) {
@@ -39850,7 +39882,8 @@ function createInitialContext(pipeline, handler, callerMsg, contextUrl, external
         handler,
         callerUrl: contextUrl || callerMsg.url,
         callerMethod: callerMsg.method,
-        external
+        external,
+        path: []
     };
     let stepIdx = 0;
     for(; stepIdx < pipeline.length; stepIdx++){
@@ -39879,6 +39912,9 @@ async function pipeline(msg, pipeline, contextUrl, external, handler = handleOut
     const outMsg = (await asq.next()).value;
     outMsg.url = msg.url;
     Object.assign(outMsg.headers, context.outputHeaders || {});
+    if (context.trace) {
+        outMsg.setDataJson(context.traceOutputs);
+    }
     return outMsg || msg.copy().setStatus(204, '');
 }
 class PipelineStep {
@@ -39963,6 +39999,11 @@ class PipelineStep {
                 }
                 if (this.tryMode) {
                     outMsg.enterConditionalMode();
+                }
+                if (context.trace) {
+                    if (outMsg.data && isJson(outMsg.data.mimeType)) {
+                        context.traceOutputs[context.path.join('.')] = await outMsg.data.asJson();
+                    }
                 }
                 return outMsg;
             } catch (err) {
