@@ -117,3 +117,18 @@ https://restspace.local:3131/files/tulips.png
 
 ###
 https://ademchic2.restspace.io/project-list
+
+###
+POST https://localhost:9200/customer/_doc/1
+Content-Type: application/json
+Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
+
+{
+	"firstname": "Jennifer",
+	"lastname": "Walters"
+}
+###
+GET https://localhost:9200/abc
+Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
+###
+POST https://restspace.local:3131/query/test/one
