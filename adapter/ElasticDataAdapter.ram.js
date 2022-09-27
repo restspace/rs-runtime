@@ -7,8 +7,9 @@ export default {
         "properties": {
             "username": { "type": "string" },
             "password": { "type": "string" },
-            "domainAndPort": { "type": "string" }
-        }
+            "host": { "type": "string" }
+        },
+        "required": [ "host" ]
     },
     "adapterInterfaces": [ "IDataAdapter" ]
 }

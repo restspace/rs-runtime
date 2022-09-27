@@ -11485,7 +11485,7 @@ class Buffer {
         this.#reslice(0);
         this.#off = 0;
     }
-     #tryGrowByReslice(n) {
+    #tryGrowByReslice(n) {
         const l = this.#buf.byteLength;
         if (n <= this.capacity - l) {
             this.#reslice(l + n);
@@ -11493,7 +11493,7 @@ class Buffer {
         }
         return -1;
     }
-     #reslice(len) {
+    #reslice(len) {
         assert(len <= this.#buf.buffer.byteLength);
         this.#buf = new Uint8Array(this.#buf.buffer, 0, len);
     }
@@ -11521,7 +11521,7 @@ class Buffer {
         const n = this.writeSync(p);
         return Promise.resolve(n);
     }
-     #grow(n1) {
+    #grow(n1) {
         const m = this.length;
         if (m === 0 && this.#off !== 0) {
             this.reset();
@@ -11582,272 +11582,8 @@ class Buffer {
         }
     }
 }
-const MIN_BUF_SIZE = 16;
-const CR = "\r".charCodeAt(0);
-const LF = "\n".charCodeAt(0);
-class BufferFullError extends Error {
-    name;
-    constructor(partial){
-        super("Buffer full");
-        this.partial = partial;
-        this.name = "BufferFullError";
-    }
-    partial;
-}
-class PartialReadError extends Error {
-    name = "PartialReadError";
-    partial;
-    constructor(){
-        super("Encountered UnexpectedEof, data only partially read");
-    }
-}
-class BufReader {
-    #buf;
-    #rd;
-    #r = 0;
-    #w = 0;
-    #eof = false;
-    static create(r, size = 4096) {
-        return r instanceof BufReader ? r : new BufReader(r, size);
-    }
-    constructor(rd, size = 4096){
-        if (size < 16) {
-            size = MIN_BUF_SIZE;
-        }
-        this.#reset(new Uint8Array(size), rd);
-    }
-    size() {
-        return this.#buf.byteLength;
-    }
-    buffered() {
-        return this.#w - this.#r;
-    }
-    #fill = async ()=>{
-        if (this.#r > 0) {
-            this.#buf.copyWithin(0, this.#r, this.#w);
-            this.#w -= this.#r;
-            this.#r = 0;
-        }
-        if (this.#w >= this.#buf.byteLength) {
-            throw Error("bufio: tried to fill full buffer");
-        }
-        for(let i = 100; i > 0; i--){
-            const rr = await this.#rd.read(this.#buf.subarray(this.#w));
-            if (rr === null) {
-                this.#eof = true;
-                return;
-            }
-            assert(rr >= 0, "negative read");
-            this.#w += rr;
-            if (rr > 0) {
-                return;
-            }
-        }
-        throw new Error(`No progress after ${100} read() calls`);
-    };
-    reset(r) {
-        this.#reset(this.#buf, r);
-    }
-    #reset = (buf, rd)=>{
-        this.#buf = buf;
-        this.#rd = rd;
-        this.#eof = false;
-    };
-    async read(p) {
-        let rr = p.byteLength;
-        if (p.byteLength === 0) return rr;
-        if (this.#r === this.#w) {
-            if (p.byteLength >= this.#buf.byteLength) {
-                const rr1 = await this.#rd.read(p);
-                const nread = rr1 ?? 0;
-                assert(nread >= 0, "negative read");
-                return rr1;
-            }
-            this.#r = 0;
-            this.#w = 0;
-            rr = await this.#rd.read(this.#buf);
-            if (rr === 0 || rr === null) return rr;
-            assert(rr >= 0, "negative read");
-            this.#w += rr;
-        }
-        const copied = copy(this.#buf.subarray(this.#r, this.#w), p, 0);
-        this.#r += copied;
-        return copied;
-    }
-    async readFull(p) {
-        let bytesRead = 0;
-        while(bytesRead < p.length){
-            try {
-                const rr = await this.read(p.subarray(bytesRead));
-                if (rr === null) {
-                    if (bytesRead === 0) {
-                        return null;
-                    } else {
-                        throw new PartialReadError();
-                    }
-                }
-                bytesRead += rr;
-            } catch (err) {
-                if (err instanceof PartialReadError) {
-                    err.partial = p.subarray(0, bytesRead);
-                } else if (err instanceof Error) {
-                    const e = new PartialReadError();
-                    e.partial = p.subarray(0, bytesRead);
-                    e.stack = err.stack;
-                    e.message = err.message;
-                    e.cause = err.cause;
-                    throw err;
-                }
-                throw err;
-            }
-        }
-        return p;
-    }
-    async readByte() {
-        while(this.#r === this.#w){
-            if (this.#eof) return null;
-            await this.#fill();
-        }
-        const c = this.#buf[this.#r];
-        this.#r++;
-        return c;
-    }
-    async readString(delim) {
-        if (delim.length !== 1) {
-            throw new Error("Delimiter should be a single character");
-        }
-        const buffer = await this.readSlice(delim.charCodeAt(0));
-        if (buffer === null) return null;
-        return new TextDecoder().decode(buffer);
-    }
-    async readLine() {
-        let line = null;
-        try {
-            line = await this.readSlice(LF);
-        } catch (err) {
-            if (err instanceof Deno.errors.BadResource) {
-                throw err;
-            }
-            let partial;
-            if (err instanceof PartialReadError) {
-                partial = err.partial;
-                assert(partial instanceof Uint8Array, "bufio: caught error from `readSlice()` without `partial` property");
-            }
-            if (!(err instanceof BufferFullError)) {
-                throw err;
-            }
-            partial = err.partial;
-            if (!this.#eof && partial && partial.byteLength > 0 && partial[partial.byteLength - 1] === CR) {
-                assert(this.#r > 0, "bufio: tried to rewind past start of buffer");
-                this.#r--;
-                partial = partial.subarray(0, partial.byteLength - 1);
-            }
-            if (partial) {
-                return {
-                    line: partial,
-                    more: !this.#eof
-                };
-            }
-        }
-        if (line === null) {
-            return null;
-        }
-        if (line.byteLength === 0) {
-            return {
-                line,
-                more: false
-            };
-        }
-        if (line[line.byteLength - 1] == LF) {
-            let drop = 1;
-            if (line.byteLength > 1 && line[line.byteLength - 2] === CR) {
-                drop = 2;
-            }
-            line = line.subarray(0, line.byteLength - drop);
-        }
-        return {
-            line,
-            more: false
-        };
-    }
-    async readSlice(delim) {
-        let s = 0;
-        let slice;
-        while(true){
-            let i = this.#buf.subarray(this.#r + s, this.#w).indexOf(delim);
-            if (i >= 0) {
-                i += s;
-                slice = this.#buf.subarray(this.#r, this.#r + i + 1);
-                this.#r += i + 1;
-                break;
-            }
-            if (this.#eof) {
-                if (this.#r === this.#w) {
-                    return null;
-                }
-                slice = this.#buf.subarray(this.#r, this.#w);
-                this.#r = this.#w;
-                break;
-            }
-            if (this.buffered() >= this.#buf.byteLength) {
-                this.#r = this.#w;
-                const oldbuf = this.#buf;
-                const newbuf = this.#buf.slice(0);
-                this.#buf = newbuf;
-                throw new BufferFullError(oldbuf);
-            }
-            s = this.#w - this.#r;
-            try {
-                await this.#fill();
-            } catch (err) {
-                if (err instanceof PartialReadError) {
-                    err.partial = slice;
-                } else if (err instanceof Error) {
-                    const e = new PartialReadError();
-                    e.partial = slice;
-                    e.stack = err.stack;
-                    e.message = err.message;
-                    e.cause = err.cause;
-                    throw err;
-                }
-                throw err;
-            }
-        }
-        return slice;
-    }
-    async peek(n) {
-        if (n < 0) {
-            throw Error("negative count");
-        }
-        let avail = this.#w - this.#r;
-        while(avail < n && avail < this.#buf.byteLength && !this.#eof){
-            try {
-                await this.#fill();
-            } catch (err) {
-                if (err instanceof PartialReadError) {
-                    err.partial = this.#buf.subarray(this.#r, this.#w);
-                } else if (err instanceof Error) {
-                    const e = new PartialReadError();
-                    e.partial = this.#buf.subarray(this.#r, this.#w);
-                    e.stack = err.stack;
-                    e.message = err.message;
-                    e.cause = err.cause;
-                    throw err;
-                }
-                throw err;
-            }
-            avail = this.#w - this.#r;
-        }
-        if (avail === 0 && this.#eof) {
-            return null;
-        } else if (avail < n && this.#eof) {
-            return this.#buf.subarray(this.#r, this.#r + avail);
-        } else if (avail < n) {
-            throw new BufferFullError(this.#buf.subarray(this.#r, this.#w));
-        }
-        return this.#buf.subarray(this.#r, this.#r + n);
-    }
-}
+"\r".charCodeAt(0);
+"\n".charCodeAt(0);
 class AbstractBufBase {
     buf;
     usedBufferBytes = 0;
@@ -11863,67 +11599,6 @@ class AbstractBufBase {
     }
     buffered() {
         return this.usedBufferBytes;
-    }
-}
-class BufWriter extends AbstractBufBase {
-    #writer;
-    static create(writer, size = 4096) {
-        return writer instanceof BufWriter ? writer : new BufWriter(writer, size);
-    }
-    constructor(writer, size = 4096){
-        super(new Uint8Array(size <= 0 ? 4096 : size));
-        this.#writer = writer;
-    }
-    reset(w) {
-        this.err = null;
-        this.usedBufferBytes = 0;
-        this.#writer = w;
-    }
-    async flush() {
-        if (this.err !== null) throw this.err;
-        if (this.usedBufferBytes === 0) return;
-        try {
-            const p = this.buf.subarray(0, this.usedBufferBytes);
-            let nwritten = 0;
-            while(nwritten < p.length){
-                nwritten += await this.#writer.write(p.subarray(nwritten));
-            }
-        } catch (e) {
-            if (e instanceof Error) {
-                this.err = e;
-            }
-            throw e;
-        }
-        this.buf = new Uint8Array(this.buf.length);
-        this.usedBufferBytes = 0;
-    }
-    async write(data) {
-        if (this.err !== null) throw this.err;
-        if (data.length === 0) return 0;
-        let totalBytesWritten = 0;
-        let numBytesWritten = 0;
-        while(data.byteLength > this.available()){
-            if (this.buffered() === 0) {
-                try {
-                    numBytesWritten = await this.#writer.write(data);
-                } catch (e) {
-                    if (e instanceof Error) {
-                        this.err = e;
-                    }
-                    throw e;
-                }
-            } else {
-                numBytesWritten = copy(data, this.buf, this.usedBufferBytes);
-                this.usedBufferBytes += numBytesWritten;
-                await this.flush();
-            }
-            totalBytesWritten += numBytesWritten;
-            data = data.subarray(numBytesWritten);
-        }
-        numBytesWritten = copy(data, this.buf, this.usedBufferBytes);
-        this.usedBufferBytes += numBytesWritten;
-        totalBytesWritten += numBytesWritten;
-        return totalBytesWritten;
     }
 }
 class BufWriterSync extends AbstractBufBase {
@@ -13209,7 +12884,7 @@ var fastDeepEqual = function equal(a, b) {
         if (Array.isArray(a)) {
             length = a.length;
             if (length != b.length) return false;
-            for(i = length; (i--) !== 0;)if (!equal(a[i], b[i])) return false;
+            for(i = length; i-- !== 0;)if (!equal(a[i], b[i])) return false;
             return true;
         }
         if (a.constructor === RegExp) return a.source === b.source && a.flags === b.flags;
@@ -13218,8 +12893,8 @@ var fastDeepEqual = function equal(a, b) {
         keys = Object.keys(a);
         length = keys.length;
         if (length !== Object.keys(b).length) return false;
-        for(i = length; (i--) !== 0;)if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false;
-        for(i = length; (i--) !== 0;){
+        for(i = length; i-- !== 0;)if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false;
+        for(i = length; i-- !== 0;){
             var key = keys[i];
             if (!equal(a[key], b[key])) return false;
         }
@@ -20747,7 +20422,7 @@ var dist = createCommonjsModule3(function(module) {
                 _proto8.evaluate = function evaluate3(t2) {
                     var e2 = t2.overrideContext;
                     var i2 = this.ancestor;
-                    while((i2--) && e2){
+                    while(i2-- && e2){
                         e2 = e2.parentOverrideContext;
                     }
                     return i2 < 1 && e2 ? e2.bindingContext : void 0;
@@ -21843,6 +21518,46 @@ function crc32(arr) {
         crc = crc >>> 8 ^ temp;
     }
     return numberToHex(crc ^ -1);
+}
+class Crc32Stream {
+    bytes = [];
+    poly = 0xEDB88320;
+    crc = 0 ^ -1;
+    encoder = new TextEncoder();
+    #crc32 = "";
+    constructor(){
+        this.reset();
+    }
+    get crc32() {
+        return this.#crc32;
+    }
+    reset() {
+        this.#crc32 = "";
+        this.crc = 0 ^ -1;
+        for(let n = 0; n < 256; n += 1){
+            let c = n;
+            for(let k = 0; k < 8; k += 1){
+                if (c & 1) {
+                    c = this.poly ^ c >>> 1;
+                } else {
+                    c = c >>> 1;
+                }
+            }
+            this.bytes[n] = c >>> 0;
+        }
+    }
+    append(arr) {
+        if (typeof arr === "string") {
+            arr = this.encoder.encode(arr);
+        }
+        let crc = this.crc;
+        for(let i = 0, l = arr.length; i < l; i += 1){
+            crc = crc >>> 8 ^ this.bytes[(crc ^ arr[i]) & 0xff];
+        }
+        this.crc = crc;
+        this.#crc32 = numberToHex(crc ^ -1);
+        return this.#crc32;
+    }
 }
 function numberToHex(n) {
     return (n >>> 0).toString(16).padStart(8, "0");
@@ -32046,12 +31761,12 @@ class Parser1 {
         return this.#document();
     }
     #options;
-     #debug(path6, string2) {
+    #debug(path6, string2) {
         if (this.#options.debug) {
             console.debug(`${path6.map((node)=>node[$XML].name).join(" > ")} | ${string2}`.trim());
         }
     }
-     #document() {
+    #document() {
         const document = {};
         const path11 = [];
         const comments = [];
@@ -32111,7 +31826,7 @@ class Parser1 {
             throw error;
         }
     }
-     #node({ path: path21  }) {
+    #node({ path: path21  }) {
         if (this.#options.progress) {
             this.#options.progress(this.#stream.cursor);
         }
@@ -32126,7 +31841,7 @@ class Parser1 {
             path: path21
         });
     }
-     #prolog({ path: path31  }) {
+    #prolog({ path: path31  }) {
         this.#debug(path31, "parsing prolog");
         const prolog = this.#make.node({
             name: "xml",
@@ -32146,7 +31861,7 @@ class Parser1 {
             xml: prolog
         };
     }
-     #doctype({ path: path41  }) {
+    #doctype({ path: path41  }) {
         this.#debug(path41, "parsing doctype");
         const doctype = this.#make.node({
             name: "doctype",
@@ -32179,7 +31894,7 @@ class Parser1 {
             doctype
         };
     }
-     #doctypeElement({ path: path51  }) {
+    #doctypeElement({ path: path51  }) {
         this.#debug(path51, "parsing doctype element");
         this.#consume(tokens.doctype.element.start);
         const element = Object.keys(this.#property({
@@ -32195,7 +31910,7 @@ class Parser1 {
             [element]: value
         };
     }
-     #tag({ path: path61  }) {
+    #tag({ path: path61  }) {
         this.#debug(path61, "parsing tag");
         const tag = this.#make.node({
             path: path61
@@ -32301,7 +32016,7 @@ class Parser1 {
             [name]: tag
         };
     }
-     #attribute({ path: path7  }) {
+    #attribute({ path: path7  }) {
         this.#debug(path7, "parsing attribute");
         const attribute = this.#capture(tokens.tag.attribute.regex.name);
         this.#debug(path7, `found attribute "${attribute}"`);
@@ -32322,7 +32037,7 @@ class Parser1 {
             })
         };
     }
-     #property({ path: path8  }) {
+    #property({ path: path8  }) {
         this.#debug(path8, "parsing property");
         const quote1 = this.#stream.peek();
         const delimiter9 = /["']/.test(quote1) ? quote1 : " ";
@@ -32341,7 +32056,7 @@ class Parser1 {
             [`${schema.property.prefix}${property}`]: true
         };
     }
-     #text({ close , path: path9  }) {
+    #text({ close , path: path9  }) {
         this.#debug(path9, "parsing text");
         const tag1 = this.#make.node({
             name: schema.text,
@@ -32399,21 +32114,21 @@ class Parser1 {
         });
         return tag1;
     }
-     #cdata({ path: path10  }) {
+    #cdata({ path: path10  }) {
         this.#debug(path10, "parsing cdata");
         this.#consume(tokens.cdata.start);
         const data = this.#capture(tokens.cdata.regex.end);
         this.#consume(tokens.cdata.end);
         return data;
     }
-     #comment({ path: path111  }) {
+    #comment({ path: path111  }) {
         this.#debug(path111, "parsing comment");
         this.#consume(tokens.comment.start);
         const comment = this.#capture(tokens.comment.regex.end).trim();
         this.#consume(tokens.comment.end);
         return comment;
     }
-     #revive({ key: key2 , value: value3 , tag: tag2  }) {
+    #revive({ key: key2 , value: value3 , tag: tag2  }) {
         return this.#options.reviver.call(tag2, {
             key: key2,
             tag: tag2[$XML].name,
@@ -32459,10 +32174,10 @@ class Parser1 {
         }
     };
     #stream;
-     #peek(token1) {
+    #peek(token1) {
         return this.#stream.peek(token1.length) === token1;
     }
-     #peeks(tokens1) {
+    #peeks(tokens1) {
         let offset = 0;
         for(let i1 = 0; i1 < tokens1.length; i1++){
             const token11 = tokens1[i1];
@@ -32480,15 +32195,15 @@ class Parser1 {
         }
         return true;
     }
-     #consume(token2) {
+    #consume(token2) {
         return this.#stream.consume({
             content: token2
         });
     }
-     #capture(token3) {
+    #capture(token3) {
         return this.#stream.capture(token3);
     }
-     #trim() {
+    #trim() {
         return this.#stream.trim();
     }
 }
@@ -32609,14 +32324,16 @@ class S3FileAdapterBase {
         this.bucketName = props.bucketName;
     }
     async ensureProxyAdapter() {
-        this.aws4ProxyAdapter = await this.context.getAdapter("./adapter/AWS4ProxyAdapter.ts", {
-            service: "s3",
-            region: this.props.region,
-            secretAccessKey: this.props.secretAccessKey,
-            accessKeyId: this.props.accessKeyId,
-            urlPattern: `https://${this.bucketName}.s3.amazonaws.com/$P*`,
-            ec2IamRole: this.props.ec2IamRole
-        });
+        if (this.aws4ProxyAdapter === null) {
+            this.aws4ProxyAdapter = await this.context.getAdapter("./adapter/AWS4ProxyAdapter.ts", {
+                service: "s3",
+                region: this.props.region,
+                secretAccessKey: this.props.secretAccessKey,
+                accessKeyId: this.props.accessKeyId,
+                urlPattern: `https://${this.bucketName}.s3.amazonaws.com/$P*`,
+                ec2IamRole: this.props.ec2IamRole
+            });
+        }
     }
     async processForAws(msg) {
         await this.ensureProxyAdapter();
@@ -32736,7 +32453,7 @@ class S3FileAdapterBase {
             if (status && status !== 200) return status;
             const text = await msgOut.data.asString();
             const output = parse9(text);
-            const contents = output?.['ListBucketResult']?.['Contents'];
+            const contents = (output?.['ListBucketResult'])?.['Contents'];
             for (const item of arrayify(contents)){
                 yield {
                     key: this.decanonicalisePath(item.Key || ''),
@@ -32745,7 +32462,7 @@ class S3FileAdapterBase {
                     size: item.Size
                 };
             }
-            const commonPrefixes = output?.['ListBucketResult']?.['CommonPrefixes'];
+            const commonPrefixes = (output?.['ListBucketResult'])?.['CommonPrefixes'];
             for (const item1 of arrayify(commonPrefixes)){
                 yield {
                     key: this.decanonicalisePath(item1.Prefix || ''),
@@ -33157,7 +32874,373 @@ const __default15 = {
         "IProxyAdapter"
     ]
 };
+class ElasticProxyAdapter {
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+        if (!(props.username && props.password && props.domainAndPort)) {
+            throw new Error('Must supply username, password and domain/port for Elastic');
+        }
+    }
+    buildMessage(msg) {
+        const token = btoa(`${this.props.username}:${this.props.password}`);
+        const newUrl = msg.url.copy();
+        newUrl.domain = this.props.domainAndPort;
+        newUrl.scheme = "https://";
+        return Promise.resolve(msg.setUrl(newUrl).setHeader('Authorization', `Basic ${token}`));
+    }
+    context;
+    props;
+}
 const __default16 = {
+    "name": "Elasticsearch Proxy Adapter",
+    "description": "Forwards a request to a configured elasticsearch node using provided user and password",
+    "moduleUrl": "./adapter/ElasticProxyAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "username": {
+                "type": "string",
+                "description": "Elastic account username"
+            },
+            "password": {
+                "type": "string",
+                "description": "Elastic account password"
+            },
+            "domainAndPort": {
+                "type": "string",
+                "description": "Elastic node domain and port (without initial https://)"
+            }
+        },
+        "required": [
+            "urlPattern"
+        ]
+    },
+    "adapterInterfaces": [
+        "IProxyAdapter"
+    ]
+};
+const schemaToMapping = (schema)=>{
+    switch(schema.type){
+        case "string":
+            return schema.search === 'textual' ? {
+                type: "text"
+            } : [
+                'date',
+                'date-time'
+            ].includes(schema.format || 'zzz') ? {
+                type: "date"
+            } : {
+                type: "keyword"
+            };
+        case "number":
+            return {
+                type: "double"
+            };
+        case "boolean":
+            return {
+                type: "boolean"
+            };
+        case "object":
+            return {
+                properties: Object.fromEntries(Object.entries(schema.properties).map(([k, subschema])=>[
+                        k,
+                        schemaToMapping(subschema)
+                    ]))
+            };
+        case "array":
+            if (schema.items.type !== "object") {
+                return schemaToMapping(schema.items);
+            } else {
+                return {
+                    type: "nested",
+                    properties: Object.fromEntries(Object.entries(schema.items.properties).map(([k, subschema])=>[
+                            k,
+                            schemaToMapping(subschema)
+                        ]))
+                };
+            }
+    }
+};
+class ElasticDataAdapter {
+    elasticProxyAdapter;
+    delayMs;
+    schemasIndexChecked;
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+        this.elasticProxyAdapter = null;
+        this.delayMs = 1500;
+        this.schemasIndexChecked = false;
+    }
+    delay(ms) {
+        return new Promise((res)=>setInterval(()=>res(), ms));
+    }
+    async ensureProxyAdapter() {
+        if (this.elasticProxyAdapter === null) {
+            this.elasticProxyAdapter = await this.context.getAdapter("./adapter/ElasticProxyAdapter.ts", {
+                username: this.props.username,
+                password: this.props.password,
+                domainAndPort: this.props.domainAndPort
+            });
+        }
+    }
+    async requestElastic(msg) {
+        await this.ensureProxyAdapter();
+        const sendMsg = await this.elasticProxyAdapter.buildMessage(msg);
+        return await this.context.makeRequest(sendMsg);
+    }
+    async readKey(dataset, key) {
+        const msg = new Message(`/${dataset}/_source/${key}`, this.context.tenant, "GET");
+        const msgOut = await this.requestElastic(msg);
+        if (!msgOut.ok) {
+            return msgOut.status;
+        } else {
+            const data = await msgOut.data?.asJson();
+            return data;
+        }
+    }
+    async listDataset(dataset) {
+        if (dataset === '') {
+            const msg = new Message("/_aliases", this.context.tenant, "GET");
+            const msgOut = await this.requestElastic(msg);
+            if (!msgOut.ok) {
+                return msgOut.status;
+            } else {
+                const data = await msgOut.data?.asJson();
+                const listing = Object.keys(data).filter((k)=>k !== "_schemas").map((k)=>[
+                        k + '/'
+                    ]);
+                return listing;
+            }
+        } else {
+            const msg1 = new Message(`/${dataset}/_search`, this.context.tenant, "POST");
+            msg1.setDataJson({
+                query: {
+                    match_all: {}
+                },
+                "fields": [
+                    "_id",
+                    "_timestamp"
+                ]
+            });
+            const msgOut1 = await this.requestElastic(msg1);
+            if (msgOut1.status === 404) {
+                return [];
+            } else if (!msgOut1.ok) {
+                return msgOut1.status;
+            } else {
+                const data1 = await msgOut1.data?.asJson();
+                const listing1 = data1.hits.hits.map((h)=>h.fields._timestamp ? [
+                        h._id,
+                        h._source._timestamp
+                    ] : [
+                        h._id
+                    ]);
+                listing1.push([
+                    '.schema.json'
+                ]);
+                return listing1;
+            }
+        }
+    }
+    async writeKey(dataset, key, data) {
+        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "PUT");
+        const writeData = await data.asJson();
+        writeData._timestamp = new Date().getTime();
+        msg.setDataJson(writeData);
+        const msgOut = await this.requestElastic(msg);
+        if (!msgOut.ok) {
+            return msgOut.status;
+        } else {
+            const data1 = await msgOut.data?.asJson();
+            await this.delay(this.delayMs);
+            return data1.result === "created" ? 201 : 200;
+        }
+    }
+    async deleteKey(dataset, key) {
+        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "DELETE");
+        const msgOut = await this.requestElastic(msg);
+        await this.delay(this.delayMs);
+        return msgOut.status;
+    }
+    async deleteDataset(dataset) {
+        const msg = new Message(`/${dataset}`, this.context.tenant, "DELETE");
+        const msgOut = await this.requestElastic(msg);
+        await this.delay(this.delayMs);
+        return msgOut.status;
+    }
+    async checkKey(dataset, key) {
+        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "GET");
+        const msgOut = await this.requestElastic(msg);
+        let status = "none";
+        if (!msgOut.ok) {
+            return {
+                status
+            };
+        } else {
+            const data = await msgOut.data?.asJson();
+            if (!data.found) {
+                return {
+                    status
+                };
+            }
+            status = "file";
+            return {
+                status,
+                dateModified: new Date(data._source._timestamp),
+                size: JSON.stringify(data._source).length
+            };
+        }
+    }
+    async ensureSchemasIndex() {
+        if (!this.schemasIndexChecked) {
+            const msg = new Message(`/.schemas`, this.context.tenant, "GET");
+            const msgCheck = await this.requestElastic(msg);
+            if (!msgCheck.ok) {
+                const createMappingMsg = new Message('/.schemas', this.context.tenant, "PUT");
+                createMappingMsg.setDataJson({
+                    settings: {
+                        index: {
+                            hidden: true
+                        }
+                    }
+                });
+                const msgCreated = await this.requestElastic(createMappingMsg);
+                if (!msgCreated.ok) {
+                    this.context.logger.error(`Failed to create .schemas index on ${this.props.domainAndPort}, request status ${msgCreated.status}`);
+                }
+            }
+            this.schemasIndexChecked = true;
+        }
+    }
+    async writeSchema(dataset, schema) {
+        const mapping = schemaToMapping(schema);
+        const msg = new Message(`/${dataset}`, this.context.tenant, "GET");
+        const msgCheck = await this.requestElastic(msg);
+        const setMappingMsg = new Message(`/${dataset}/_mapping`, this.context.tenant, "PUT");
+        let resCode = 200;
+        setMappingMsg.setDataJson(mapping);
+        if (!msgCheck.ok) {
+            setMappingMsg.setUrl(`/${dataset}`).setMethod("PUT");
+            setMappingMsg.setDataJson({
+                mappings: mapping
+            });
+            resCode = 201;
+        }
+        const msgOut = await this.requestElastic(setMappingMsg);
+        if (!msgOut.ok) {
+            return msgOut.status;
+        }
+        await this.ensureSchemasIndex();
+        const storeRes = await this.writeKey('.schemas', dataset, MessageBody.fromObject({
+            schema: JSON.stringify(schema)
+        }));
+        if (storeRes >= 300) {
+            return storeRes;
+        }
+        return resCode;
+    }
+    async readSchema(dataset) {
+        const schemaStore = await this.readKey('.schemas', dataset);
+        if (typeof schemaStore === 'number') return schemaStore;
+        return JSON.parse(schemaStore.schema);
+    }
+    async checkSchema(dataset) {
+        return await this.checkKey('.schemas', dataset);
+    }
+    instanceContentType(dataset, baseUrl) {
+        const url = [
+            baseUrl,
+            dataset,
+            '.schema.json'
+        ].filter((s)=>s !== '').join('/');
+        return Promise.resolve(`application/json; schema="${url}"`);
+    }
+    context;
+    props;
+}
+const __default17 = {
+    "name": "Elasticsearch Data Adapter",
+    "description": "Reads and writes data to Elasticsearch",
+    "moduleUrl": "./adapter/ElasticDataAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "username": {
+                "type": "string"
+            },
+            "password": {
+                "type": "string"
+            },
+            "domainAndPort": {
+                "type": "string"
+            }
+        }
+    },
+    "adapterInterfaces": [
+        "IDataAdapter"
+    ]
+};
+class ElasticQueryAdapter {
+    elasticProxyAdapter;
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+        this.elasticProxyAdapter = null;
+    }
+    async ensureProxyAdapter() {
+        if (this.elasticProxyAdapter === null) {
+            this.elasticProxyAdapter = await this.context.getAdapter("./adapter/ElasticProxyAdapter.ts", {
+                username: this.props.username,
+                password: this.props.password,
+                domainAndPort: this.props.domainAndPort
+            });
+        }
+    }
+    async requestElastic(msg) {
+        await this.ensureProxyAdapter();
+        const sendMsg = await this.elasticProxyAdapter.buildMessage(msg);
+        return await this.context.makeRequest(sendMsg);
+    }
+    async runQuery(query) {
+        await this.ensureProxyAdapter();
+        const msg = new Message('/_search', this.context.tenant, "POST");
+        msg.setData(query, "application/json");
+        const res = await this.requestElastic(msg);
+        if (!res.ok) return res.status;
+        const data = await res.data?.asJson();
+        return data.hits.hits;
+    }
+    quoteString(s) {
+        return '"' + s.replace('"', '\\"') + '"';
+    }
+    context;
+    props;
+}
+const __default18 = {
+    "name": "Elasticsearch Query Adapter",
+    "description": "Stores and runs Elasticsearch queries",
+    "moduleUrl": "./adapter/ElasticQueryAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "username": {
+                "type": "string"
+            },
+            "password": {
+                "type": "string"
+            },
+            "domainAndPort": {
+                "type": "string"
+            }
+        }
+    },
+    "adapterInterfaces": [
+        "IQueryAdapter"
+    ]
+};
+const __default19 = {
     "name": "Services Service",
     "description": "Provides discovery of configured services and service catalogue",
     "moduleUrl": "./services/services.ts",
@@ -33165,7 +33248,7 @@ const __default16 = {
         "services"
     ]
 };
-const __default17 = {
+const __default20 = {
     "name": "Authentication Service",
     "description": "Provides simple JWT authentication",
     "moduleUrl": "./services/auth.ts",
@@ -33394,7 +33477,7 @@ service.deleteDirectory(async (msg, { adapter  })=>{
     }
     return msg;
 });
-const __default18 = {
+const __default21 = {
     "name": "Data Service",
     "description": "Reads and writes data from urls with the pattern datasource/key",
     "moduleUrl": "./services/data.ts",
@@ -33577,7 +33660,7 @@ service1.delete(async (msg, { adapter  })=>{
 service1.deleteDirectory((msg)=>{
     return Promise.resolve(msg.setStatus(400, 'Cannot delete the underlying dataset of a dataset service'));
 });
-const __default19 = {
+const __default22 = {
     "name": "Dataset Service",
     "description": "Reads and writes data with configured schema from urls by key",
     "moduleUrl": "./services/dataset.ts",
@@ -33751,7 +33834,7 @@ service2.deleteDirectory(async (msg, { adapter  })=>{
     }
     return msg;
 });
-const __default20 = {
+const __default23 = {
     "name": "File Service",
     "description": "GET files from urls and PUT files to urls",
     "moduleUrl": "./services/file.ts",
@@ -33902,7 +33985,7 @@ service3.postPath('/selector-schema', async (msg)=>{
     };
     return msg.setDataJson(schema, "application/schema+json");
 });
-const __default21 = {
+const __default24 = {
     "name": "Library functions",
     "description": "A range of simple utility web functions",
     "moduleUrl": "./services/lib.ts",
@@ -33910,7 +33993,7 @@ const __default21 = {
         "sys.lib"
     ]
 };
-const __default22 = {
+const __default25 = {
     "name": "Pipeline",
     "description": "A pipeline of urls acting as request processors in parallel or serial",
     "moduleUrl": "./services/pipeline.ts",
@@ -33972,7 +34055,7 @@ const __default22 = {
         }
     }
 };
-const __default23 = {
+const __default26 = {
     "name": "Pipeline store",
     "description": "Run a pipeline whose specification is stored at the request url",
     "moduleUrl": "./services/pipeline-store.ts",
@@ -34060,7 +34143,7 @@ service4.getDirectory(async (msg, context, config)=>{
         return msg;
     }
 });
-const __default24 = {
+const __default27 = {
     "name": "Static site filter",
     "description": "Provide static site behaviour with options suitable for hosting SPAs",
     "moduleUrl": "./services/static-site-filter.ts",
@@ -34080,7 +34163,7 @@ const __default24 = {
         }
     }
 };
-const __default25 = {
+const __default28 = {
     "name": "Static site service",
     "description": "Hosts a static site with options suitable for SPA routing",
     "moduleUrl": "./services/file.ts",
@@ -34121,7 +34204,7 @@ const __default25 = {
         }
     }
 };
-const __default26 = {
+const __default29 = {
     "name": "User data service",
     "description": "Manages access to and stores user data",
     "moduleUrl": "./services/dataset.ts",
@@ -34147,7 +34230,7 @@ const __default26 = {
         }
     }
 };
-const __default27 = {
+const __default30 = {
     "name": "User filter",
     "description": "Manage passwords and restrict illegal operations to users",
     "moduleUrl": "./services/user-filter.ts",
@@ -34166,7 +34249,7 @@ service5.post(async (msg, context, config)=>{
     const output = await context.adapter.fillTemplate(data, template || "", contextUrl);
     return msg.setData(output, config.outputMime);
 });
-const __default28 = {
+const __default31 = {
     "name": "Template",
     "description": "Fill a template with data from the request",
     "moduleUrl": "./services/template.ts",
@@ -34238,7 +34321,7 @@ service6.all(async (msg, { adapter , makeRequest  })=>{
     const sendMsg = await adapter.buildMessage(msg);
     return makeRequest(sendMsg);
 });
-const __default29 = {
+const __default32 = {
     "name": "Proxy Service",
     "description": "Forwards requests with server defined authentication or urls",
     "moduleUrl": "./services/proxy.ts",
@@ -34264,7 +34347,7 @@ class SMTPWorker {
     #noCon = true;
     #config;
     #resolver = new Map();
-     #startup() {
+    #startup() {
         this.#w = new Worker(new URL("./worker-file.ts", importMeta1.url), {
             type: "module",
             deno: {
@@ -34307,7 +34390,7 @@ class SMTPWorker {
         });
         this.#noCon = false;
     }
-     #startIdle() {
+    #startIdle() {
         console.log("started idle");
         if (this.#idleTO) {
             return;
@@ -34320,14 +34403,14 @@ class SMTPWorker {
             });
         }, this.#timeout);
     }
-     #stopIdle() {
+    #stopIdle() {
         if (this.#idleTO) {
             clearTimeout(this.#idleTO);
         }
         this.#idleMode2 = false;
         this.#idleTO = null;
     }
-     #cleanup() {
+    #cleanup() {
         console.log("killed");
         this.#w.terminate();
         this.#stopIdle();
@@ -34406,10 +34489,10 @@ function copy1(src, dst, off = 0) {
     dst.set(src, off);
     return src.byteLength;
 }
-const MIN_BUF_SIZE1 = 16;
-const CR1 = "\r".charCodeAt(0);
-const LF1 = "\n".charCodeAt(0);
-class BufferFullError1 extends Error {
+const MIN_BUF_SIZE = 16;
+const CR = "\r".charCodeAt(0);
+const LF = "\n".charCodeAt(0);
+class BufferFullError extends Error {
     name;
     constructor(partial){
         super("Buffer full");
@@ -34418,25 +34501,25 @@ class BufferFullError1 extends Error {
     }
     partial;
 }
-class PartialReadError1 extends Error {
+class PartialReadError extends Error {
     name = "PartialReadError";
     partial;
     constructor(){
         super("Encountered UnexpectedEof, data only partially read");
     }
 }
-class BufReader1 {
+class BufReader {
     #buf;
     #rd;
     #r = 0;
     #w = 0;
     #eof = false;
     static create(r, size = 4096) {
-        return r instanceof BufReader1 ? r : new BufReader1(r, size);
+        return r instanceof BufReader ? r : new BufReader(r, size);
     }
     constructor(rd, size = 4096){
         if (size < 16) {
-            size = MIN_BUF_SIZE1;
+            size = MIN_BUF_SIZE;
         }
         this.#reset(new Uint8Array(size), rd);
     }
@@ -34507,15 +34590,15 @@ class BufReader1 {
                     if (bytesRead === 0) {
                         return null;
                     } else {
-                        throw new PartialReadError1();
+                        throw new PartialReadError();
                     }
                 }
                 bytesRead += rr;
             } catch (err) {
-                if (err instanceof PartialReadError1) {
+                if (err instanceof PartialReadError) {
                     err.partial = p.subarray(0, bytesRead);
                 } else if (err instanceof Error) {
-                    const e = new PartialReadError1();
+                    const e = new PartialReadError();
                     e.partial = p.subarray(0, bytesRead);
                     e.stack = err.stack;
                     e.message = err.message;
@@ -34547,21 +34630,21 @@ class BufReader1 {
     async readLine() {
         let line = null;
         try {
-            line = await this.readSlice(LF1);
+            line = await this.readSlice(LF);
         } catch (err) {
             if (err instanceof Deno.errors.BadResource) {
                 throw err;
             }
             let partial;
-            if (err instanceof PartialReadError1) {
+            if (err instanceof PartialReadError) {
                 partial = err.partial;
                 assert3(partial instanceof Uint8Array, "bufio: caught error from `readSlice()` without `partial` property");
             }
-            if (!(err instanceof BufferFullError1)) {
+            if (!(err instanceof BufferFullError)) {
                 throw err;
             }
             partial = err.partial;
-            if (!this.#eof && partial && partial.byteLength > 0 && partial[partial.byteLength - 1] === CR1) {
+            if (!this.#eof && partial && partial.byteLength > 0 && partial[partial.byteLength - 1] === CR) {
                 assert3(this.#r > 0, "bufio: tried to rewind past start of buffer");
                 this.#r--;
                 partial = partial.subarray(0, partial.byteLength - 1);
@@ -34582,9 +34665,9 @@ class BufReader1 {
                 more: false
             };
         }
-        if (line[line.byteLength - 1] == LF1) {
+        if (line[line.byteLength - 1] == LF) {
             let drop = 1;
-            if (line.byteLength > 1 && line[line.byteLength - 2] === CR1) {
+            if (line.byteLength > 1 && line[line.byteLength - 2] === CR) {
                 drop = 2;
             }
             line = line.subarray(0, line.byteLength - drop);
@@ -34618,16 +34701,16 @@ class BufReader1 {
                 const oldbuf = this.#buf;
                 const newbuf = this.#buf.slice(0);
                 this.#buf = newbuf;
-                throw new BufferFullError1(oldbuf);
+                throw new BufferFullError(oldbuf);
             }
             s = this.#w - this.#r;
             try {
                 await this.#fill();
             } catch (err) {
-                if (err instanceof PartialReadError1) {
+                if (err instanceof PartialReadError) {
                     err.partial = slice;
                 } else if (err instanceof Error) {
-                    const e = new PartialReadError1();
+                    const e = new PartialReadError();
                     e.partial = slice;
                     e.stack = err.stack;
                     e.message = err.message;
@@ -34648,10 +34731,10 @@ class BufReader1 {
             try {
                 await this.#fill();
             } catch (err) {
-                if (err instanceof PartialReadError1) {
+                if (err instanceof PartialReadError) {
                     err.partial = this.#buf.subarray(this.#r, this.#w);
                 } else if (err instanceof Error) {
-                    const e = new PartialReadError1();
+                    const e = new PartialReadError();
                     e.partial = this.#buf.subarray(this.#r, this.#w);
                     e.stack = err.stack;
                     e.message = err.message;
@@ -34667,7 +34750,7 @@ class BufReader1 {
         } else if (avail < n && this.#eof) {
             return this.#buf.subarray(this.#r, this.#r + avail);
         } else if (avail < n) {
-            throw new BufferFullError1(this.#buf.subarray(this.#r, this.#w));
+            throw new BufferFullError(this.#buf.subarray(this.#r, this.#w));
         }
         return this.#buf.subarray(this.#r, this.#r + n);
     }
@@ -34689,10 +34772,10 @@ class AbstractBufBase1 {
         return this.usedBufferBytes;
     }
 }
-class BufWriter1 extends AbstractBufBase1 {
+class BufWriter extends AbstractBufBase1 {
     #writer;
     static create(writer, size = 4096) {
-        return writer instanceof BufWriter1 ? writer : new BufWriter1(writer, size);
+        return writer instanceof BufWriter ? writer : new BufWriter(writer, size);
     }
     constructor(writer, size = 4096){
         super(new Uint8Array(size <= 0 ? 4096 : size));
@@ -34740,67 +34823,6 @@ class BufWriter1 extends AbstractBufBase1 {
                 numBytesWritten = copy1(data, this.buf, this.usedBufferBytes);
                 this.usedBufferBytes += numBytesWritten;
                 await this.flush();
-            }
-            totalBytesWritten += numBytesWritten;
-            data = data.subarray(numBytesWritten);
-        }
-        numBytesWritten = copy1(data, this.buf, this.usedBufferBytes);
-        this.usedBufferBytes += numBytesWritten;
-        totalBytesWritten += numBytesWritten;
-        return totalBytesWritten;
-    }
-}
-class BufWriterSync1 extends AbstractBufBase1 {
-    #writer;
-    static create(writer, size = 4096) {
-        return writer instanceof BufWriterSync1 ? writer : new BufWriterSync1(writer, size);
-    }
-    constructor(writer, size = 4096){
-        super(new Uint8Array(size <= 0 ? 4096 : size));
-        this.#writer = writer;
-    }
-    reset(w) {
-        this.err = null;
-        this.usedBufferBytes = 0;
-        this.#writer = w;
-    }
-    flush() {
-        if (this.err !== null) throw this.err;
-        if (this.usedBufferBytes === 0) return;
-        try {
-            const p = this.buf.subarray(0, this.usedBufferBytes);
-            let nwritten = 0;
-            while(nwritten < p.length){
-                nwritten += this.#writer.writeSync(p.subarray(nwritten));
-            }
-        } catch (e) {
-            if (e instanceof Error) {
-                this.err = e;
-            }
-            throw e;
-        }
-        this.buf = new Uint8Array(this.buf.length);
-        this.usedBufferBytes = 0;
-    }
-    writeSync(data) {
-        if (this.err !== null) throw this.err;
-        if (data.length === 0) return 0;
-        let totalBytesWritten = 0;
-        let numBytesWritten = 0;
-        while(data.byteLength > this.available()){
-            if (this.buffered() === 0) {
-                try {
-                    numBytesWritten = this.#writer.writeSync(data);
-                } catch (e) {
-                    if (e instanceof Error) {
-                        this.err = e;
-                    }
-                    throw e;
-                }
-            } else {
-                numBytesWritten = copy1(data, this.buf, this.usedBufferBytes);
-                this.usedBufferBytes += numBytesWritten;
-                this.flush();
             }
             totalBytesWritten += numBytesWritten;
             data = data.subarray(numBytesWritten);
@@ -35003,8 +35025,8 @@ class SMTPConnection {
     }
     setupConnection(conn) {
         this.conn = conn;
-        const reader = new BufReader1(this.conn);
-        this.#writer = new BufWriter1(this.conn);
+        const reader = new BufReader(this.conn);
+        this.#writer = new BufWriter(this.conn);
         this.#reader = new TextProtoReader(reader);
     }
     async #connect() {
@@ -35630,7 +35652,7 @@ service7.post(async (msg, _context, config)=>{
     }
     return msg.setData(null, "").setStatus(201);
 });
-const __default30 = {
+const __default33 = {
     "name": "Email Service",
     "description": "Send an email optionally with attachments",
     "moduleUrl": "./services/email.ts",
@@ -35670,7 +35692,7 @@ const __default30 = {
         ]
     }
 };
-const __default31 = {
+const __default34 = {
     "name": "Account Service",
     "description": "Provides password reset and email verification",
     "moduleUrl": "./services/account.ts",
@@ -37746,7 +37768,7 @@ service8.getDirectoryPath("/command/.", (msg, _, config)=>{
     msg.data = MessageBody.fromObject(dir).setIsDirectory();
     return Promise.resolve(msg);
 });
-const __default32 = {
+const __default35 = {
     "name": "Discord Service",
     "description": "Manages command creation for Discord",
     "moduleUrl": "./services/discord.ts",
@@ -37827,7 +37849,7 @@ const __default32 = {
     },
     "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts"
 };
-const __default33 = {
+const __default36 = {
     "name": "Temporary access service",
     "description": "Generates a token for temporary access to resources and then gives access",
     "moduleUrl": "./services/temporary-access.ts",
@@ -37845,6 +37867,108 @@ const __default33 = {
                 "type": "number",
                 "description": "Number of seconds for which the token is valid"
             }
+        }
+    }
+};
+const service9 = new Service();
+const quoteStrings = (obj, adapter)=>{
+    if (typeof obj === 'string') {
+        return adapter.quoteString(obj);
+    } else if (Array.isArray(obj)) {
+        return obj.map((item)=>quoteStrings(item, adapter));
+    } else if (typeof obj === 'object') {
+        return Object.fromEntries(Object.entries(obj).map(([k, v])=>[
+                k,
+                quoteStrings(v, adapter)
+            ]));
+    } else {
+        return obj;
+    }
+};
+service9.post(async (msg, context)=>{
+    let params = await msg.data?.asJson() ?? {};
+    const reqQuery = msg.copy().setMethod("GET");
+    const msgQuery = await context.makeRequest(reqQuery);
+    if (!msgQuery.ok) return msgQuery;
+    let query = await msgQuery.data.asString();
+    if (!query) return msg.setStatus(400, 'No query');
+    const contextUrl = msg.url.copy();
+    contextUrl.setSubpathFromUrl(msgQuery.getHeader('location') || '');
+    params = quoteStrings(params, context.adapter);
+    query = query.replace(/\$\{([^}]*)\}/gi, (_, p1)=>getProp(params, p1.split('.')) || '');
+    query = query.replace(/\$([0-9]+)/gi, (_, p1)=>{
+        const idx = parseInt(p1);
+        return idx < (contextUrl.subPathElementCount || 0) ? context.adapter.quoteString(contextUrl.subPathElements[idx]) : '';
+    });
+    const result = await context.adapter.runQuery(query);
+    if (typeof result === 'number') return msg.setStatus(result);
+    msg.setDataJson(result);
+    return msg;
+});
+const __default37 = {
+    "name": "Query",
+    "description": "Stores queries as text files and runs the query in the file parameterised with a POST body to produce the response",
+    "moduleUrl": "./services/query.ts",
+    "apis": [
+        "store-transform"
+    ],
+    "adapterInterface": "IQueryAdapter",
+    "isFilter": true,
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "outputMime": {
+                "type": "string"
+            },
+            "store": {
+                "type": "object",
+                "description": "Configuration for the template store",
+                "properties": {
+                    "adapterSource": {
+                        "type": "string",
+                        "description": "Source url for adapter for query store"
+                    },
+                    "infraName": {
+                        "type": "string",
+                        "description": "Infra name for query store"
+                    },
+                    "adapterConfig": {
+                        "type": "object",
+                        "properties": {}
+                    },
+                    "extension": {
+                        "type": "string",
+                        "description": "Extension for query files"
+                    },
+                    "parentIfMissing": {
+                        "type": "boolean",
+                        "description": "Optional flag which for a pipeline on a path, sends all subpaths to that pipeline as well. Default true"
+                    }
+                }
+            }
+        },
+        "required": [
+            "outputMime",
+            "store"
+        ]
+    },
+    "postPipeline": [
+        "if (method !== 'POST') $METHOD store/$*"
+    ],
+    "privateServices": {
+        "store": {
+            "name": "'Query Store'",
+            "source": "./services/file.rsm.json",
+            "access": {
+                "readRoles": "access.readRoles",
+                "writeRoles": "access.writeRoles"
+            },
+            "adapterInterface": "IFileAdapter",
+            "adapterSource": "store.adapterSource",
+            "infraName": "store.infraName",
+            "adapterConfig": "store.adapterConfig",
+            "extensions": "[ store.extension ]",
+            "parentIfMissing": "store.parentIfMissing === false ? false : true"
         }
     }
 };
@@ -37947,7 +38071,7 @@ class Logger {
     get handlers() {
         return this.#handlers;
     }
-     #_log(level, msg, ...args) {
+    #_log(level, msg, ...args) {
         if (this.level > level) {
             return msg instanceof Function ? undefined : msg;
         }
@@ -38844,8 +38968,8 @@ function makeServiceContext(tenantName, state, prePost) {
     };
     return context;
 }
-const service9 = new Service();
 const service10 = new Service();
+const service11 = new Service();
 function mapLegalChanges(msg, oldValues, newUser) {
     const currentUserObj = msg.user || AuthUser.anon;
     const current = new AuthUser(currentUserObj);
@@ -38874,7 +38998,7 @@ function mapLegalChanges(msg, oldValues, newUser) {
     }
     return 'not an allowable change';
 }
-const service11 = new Service();
+const service12 = new Service();
 class TemporaryAccessState extends BaseStateClass {
     validTokenExpiries = [];
     tokenBaseUrls = {};
@@ -38923,8 +39047,8 @@ class NunjucksTemplateAdapter {
 const deleteManifestProperties = [
     'exposedConfigProperties'
 ];
-const service12 = new Service();
-const service13 = new AuthService();
+const service13 = new Service();
+const service14 = new AuthService();
 async function validateChange(msg, context) {
     if (!msg.ok || msg.method !== 'DELETE' && !msg.data || context.prePost !== "pre" || msg.internalPrivilege || msg.url.isDirectory) {
         msg.internalPrivilege = false;
@@ -38969,8 +39093,8 @@ async function validateChange(msg, context) {
     msg.setDataJson(updatedUser);
     return msg;
 }
-const service14 = new Service();
 const service15 = new Service();
+const service16 = new Service();
 class Modules {
     adapterConstructors;
     serviceManifests;
@@ -38995,56 +39119,64 @@ class Modules {
             "./adapter/S3FileAdapter.ts": __default11,
             "./adapter/NunjucksTemplateAdapter.ts": NunjucksTemplateAdapter,
             "./adapter/SimpleProxyAdapter.ts": SimpleProxyAdapter,
-            "./adapter/AWS4ProxyAdapter.ts": AWS4ProxyAdapter
+            "./adapter/AWS4ProxyAdapter.ts": AWS4ProxyAdapter,
+            "./adapter/ElasticProxyAdapter.ts": ElasticProxyAdapter,
+            "./adapter/ElasticDataAdapter.ts": ElasticDataAdapter,
+            "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter
         };
         this.adapterManifests = {
             "./adapter/LocalFileAdapter.ram.json": __default10,
             "./adapter/S3FileAdapter.ram.json": __default12,
             "./adapter/NunjucksTemplateAdapter.ram.json": __default13,
             "./adapter/SimpleProxyAdapter.ram.json": __default14,
-            "./adapter/AWS4ProxyAdapter.ram.json": __default15
+            "./adapter/AWS4ProxyAdapter.ram.json": __default15,
+            "./adapter/ElasticProxyAdapter.ram.json": __default16,
+            "./adapter/ElasticDataAdapter.ram.json": __default17,
+            "./adapter/ElasticQueryAdapter.ram.json": __default18
         };
         Object.entries(this.adapterManifests).forEach(([url, v])=>{
             v.source = url;
             this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
         });
         this.services = {
-            "./services/services.ts": service12,
-            "./services/auth.ts": service13,
+            "./services/services.ts": service13,
+            "./services/auth.ts": service14,
             "./services/data.ts": service,
             "./services/dataset.ts": service1,
             "./services/file.ts": service2,
             "./services/lib.ts": service3,
-            "./services/pipeline.ts": service9,
-            "./services/pipeline-store.ts": service10,
+            "./services/pipeline.ts": service10,
+            "./services/pipeline-store.ts": service11,
             "./services/static-site-filter.ts": service4,
-            "./services/user-filter.ts": service14,
+            "./services/user-filter.ts": service15,
             "./services/template.ts": service5,
             "./services/proxy.ts": service6,
             "./services/email.ts": service7,
-            "./services/account.ts": service11,
+            "./services/account.ts": service12,
             "./services/discord.ts": service8,
-            "./services/temporary-access.ts": service15
+            "./services/temporary-access.ts": service16,
+            "./services/query.ts": service9
         };
         this.serviceManifests = {
-            "./services/services.rsm.json": __default16,
-            "./services/auth.rsm.json": __default17,
-            "./services/data.rsm.json": __default18,
-            "./services/dataset.rsm.json": __default19,
-            "./services/file.rsm.json": __default20,
-            "./services/lib.rsm.json": __default21,
-            "./services/pipeline.rsm.json": __default22,
-            "./services/pipeline-store.rsm.json": __default23,
-            "./services/static-site-filter.rsm.json": __default24,
-            "./services/static-site.rsm.json": __default25,
-            "./services/user-data.rsm.json": __default26,
-            "./services/user-filter.rsm.json": __default27,
-            "./services/template.rsm.json": __default28,
-            "./services/proxy.rsm.json": __default29,
-            "./services/email.rsm.json": __default30,
-            "./services/account.rsm.json": __default31,
-            "./services/discord.rsm.json": __default32,
-            "./services/temporary-access.rsm.json": __default33
+            "./services/services.rsm.json": __default19,
+            "./services/auth.rsm.json": __default20,
+            "./services/data.rsm.json": __default21,
+            "./services/dataset.rsm.json": __default22,
+            "./services/file.rsm.json": __default23,
+            "./services/lib.rsm.json": __default24,
+            "./services/pipeline.rsm.json": __default25,
+            "./services/pipeline-store.rsm.json": __default26,
+            "./services/static-site-filter.rsm.json": __default27,
+            "./services/static-site.rsm.json": __default28,
+            "./services/user-data.rsm.json": __default29,
+            "./services/user-filter.rsm.json": __default30,
+            "./services/template.rsm.json": __default31,
+            "./services/proxy.rsm.json": __default32,
+            "./services/email.rsm.json": __default33,
+            "./services/account.rsm.json": __default34,
+            "./services/discord.rsm.json": __default35,
+            "./services/temporary-access.rsm.json": __default36,
+            "./services/query.rsm.json": __default37
         };
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
             v.source = url;
@@ -39473,7 +39605,7 @@ const getTenant = async (requestTenant)=>{
     }
     return config.tenants[requestTenant];
 };
-service12.getPath('catalogue', (msg)=>{
+service13.getPath('catalogue', (msg)=>{
     if (catalogue === null) {
         catalogue = {
             services: {},
@@ -39507,7 +39639,7 @@ service12.getPath('catalogue', (msg)=>{
         catalogue
     }));
 });
-service12.getPath('services', async (msg, context)=>{
+service13.getPath('services', async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
@@ -39534,8 +39666,8 @@ const getRaw = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
 };
-service12.getPath('raw', getRaw);
-service12.getPath('raw.json', getRaw);
+service13.getPath('raw', getRaw);
+service13.getPath('raw.json', getRaw);
 const rebuildConfig = async (rawServicesConfig, tenant)=>{
     let newTenant;
     try {
@@ -39572,8 +39704,8 @@ const putRaw = async (msg, context)=>{
     if (status) return msg.setStatus(status, message);
     return msg.setStatus(200);
 };
-service12.putPath('raw', putRaw);
-service12.putPath('raw.json', putRaw);
+service13.putPath('raw', putRaw);
+service13.putPath('raw.json', putRaw);
 const putChords = async (msg, context)=>{
     const chords = await msg?.data?.asJson();
     if (typeof chords !== 'object') return msg.setStatus(400, 'Chords should be an object labelled by chord id');
@@ -39598,14 +39730,14 @@ const putChords = async (msg, context)=>{
     const [status, message] = await rebuildConfig(newRawConfig, context.tenant);
     return msg.setStatus(status || 200, message);
 };
-service12.putPath('chords', putChords);
-service12.putPath('chords.json', putChords);
+service13.putPath('chords', putChords);
+service13.putPath('chords.json', putChords);
 const getChordMap = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.chordMap));
 };
-service12.getPath('chord-map', getChordMap);
-service12.getPath('chord-map.json', getChordMap);
+service13.getPath('chord-map', getChordMap);
+service13.getPath('chord-map.json', getChordMap);
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
     PipelineElementType[PipelineElementType["serializer"] = 1] = "serializer";
@@ -40135,7 +40267,7 @@ function logout(msg) {
     msg.deleteCookie('rs-auth');
     return Promise.resolve(msg);
 }
-service13.postPath('login', async (msg, context, config)=>{
+service14.postPath('login', async (msg, context, config)=>{
     const newMsg = await login(msg, config.userUrlPattern, context);
     if (config.loginPage && msg.getHeader('referer')) {
         let redirUrl = msg.url.copy();
@@ -40170,8 +40302,8 @@ service13.postPath('login', async (msg, context, config)=>{
     }
     return newMsg;
 });
-service13.postPath('logout', (msg)=>logout(msg));
-service13.getPath('user', async (msg, context, config)=>{
+service14.postPath('logout', (msg)=>logout(msg));
+service14.getPath('user', async (msg, context, config)=>{
     if (!msg.user || userIsAnon(msg.user)) {
         return msg.setStatus(401, 'Unauthorized');
     }
@@ -40183,7 +40315,7 @@ service13.getPath('user', async (msg, context, config)=>{
         return msg.setStatus(404, "No such user");
     }
 });
-service13.setUser(async (msg)=>{
+service14.setUser(async (msg)=>{
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
     let authResult = '';
@@ -40209,7 +40341,7 @@ service13.setUser(async (msg)=>{
     }
     return msg;
 });
-service9.all((msg, context, config)=>{
+service10.all((msg, context, config)=>{
     let runPipeline = config.pipeline;
     if (msg.url.query["$to-step"]) {
         const toStep = parseInt(msg.url.query["$to-step"][0]);
@@ -40219,7 +40351,7 @@ service9.all((msg, context, config)=>{
     }
     return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg));
 });
-service10.all(async (msg, context)=>{
+service11.all(async (msg, context)=>{
     const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
@@ -40236,7 +40368,7 @@ service10.all(async (msg, context)=>{
     pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
     return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
-service14.get(async (msg, context)=>{
+service15.get(async (msg, context)=>{
     if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
     if (msg.url.query['test'] !== undefined) {
         msg.data = undefined;
@@ -40260,9 +40392,9 @@ service14.get(async (msg, context)=>{
     msg.data.mimeType = originalMime;
     return msg;
 });
-service14.put(validateChange);
-service14.post(validateChange);
-service14.delete(validateChange);
+service15.put(validateChange);
+service15.post(validateChange);
+service15.delete(validateChange);
 const sendTokenUrl = async (msg, context, serviceConfig, subservice)=>{
     if (msg.url.servicePathElements.length < 1) return msg.setStatus(400, 'Missing email');
     const user = await getUserFromEmail(context, serviceConfig.userUrlPattern, msg, msg.url.servicePathElements[0], true);
@@ -40342,11 +40474,11 @@ const tokenVerifySchema = {
         }
     }
 };
-service11.postPath('reset-password', (msg, context, config)=>{
+service12.postPath('reset-password', (msg, context, config)=>{
     if (!config.passwordReset) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.passwordReset);
 });
-service11.postPath('token-update-password', (msg, context, config)=>{
+service12.postPath('token-update-password', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, async (userData, posted)=>{
         const user = new AuthUser(userData);
         user.password = posted['password'];
@@ -40354,18 +40486,18 @@ service11.postPath('token-update-password', (msg, context, config)=>{
         return user;
     });
 }, tokenPasswordSchema);
-service11.postPath('verify-email', (msg, context, config)=>{
+service12.postPath('verify-email', (msg, context, config)=>{
     if (!config.emailConfirm) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.emailConfirm);
 });
-service11.postPath('confirm-email', (msg, context, config)=>{
+service12.postPath('confirm-email', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, (userData, _posted)=>{
         const user = new AuthUser(userData);
         user.emailVerified = new Date();
         return Promise.resolve(user);
     });
 }, tokenVerifySchema);
-service15.all(async (msg, context, config)=>{
+service16.all(async (msg, context, config)=>{
     const state = await context.state(TemporaryAccessState, context, config);
     const expireTokens = ()=>{
         const now = new Date();
