@@ -7,8 +7,9 @@ export default {
         "properties": {
             "username": { "type": "string" },
             "password": { "type": "string" },
-            "domainAndPort": { "type": "string" }
-        }
+            "host": { "type": "string", "description": "Elastic node host (starting http:// or https://)" }
+        },
+        "required": [ "host" ]
     },
     "adapterInterfaces": [ "IQueryAdapter" ]
 }

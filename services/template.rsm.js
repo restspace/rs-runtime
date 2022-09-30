@@ -19,6 +19,7 @@ export default {
                     "extension": { "type": "string", "description": "Extension for template files" },
                     "parentIfMissing": { "type": "boolean", "description": "Optional flag which for a pipeline on a path, sends all subpaths to that pipeline as well. Default true" }
                 },
+                "required": [ "extension" ]
             }
         },
         "required": [ "outputMime", "store" ]

@@ -10,7 +10,7 @@ import { AdapterContext } from "rs-core/ServiceContext.ts";
 export interface ElasticAdapterProps {
 	username: string;
 	password: string;
-	domainAndPort: string;
+	host: string;
 }
 
 export const schemaToMapping = (schema: any): any => {
@@ -63,7 +63,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 			this.elasticProxyAdapter = await this.context.getAdapter<IProxyAdapter>("./adapter/ElasticProxyAdapter.ts", {
 				username: this.props.username,
 				password: this.props.password,
-				domainAndPort: this.props.domainAndPort
+				host: this.props.host
 			});
 		}
 	}
@@ -181,7 +181,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 				createMappingMsg.setDataJson({ settings: { index: { hidden: true } } });
 				const msgCreated = await this.requestElastic(createMappingMsg);
 				if (!msgCreated.ok) {
-					this.context.logger.error(`Failed to create .schemas index on ${this.props.domainAndPort}, request status ${msgCreated.status}`);
+					this.context.logger.error(`Failed to create .schemas index on ${this.props.host}, request status ${msgCreated.status}`);
 				}
 			}
 			this.schemasIndexChecked = true;

@@ -32878,16 +32878,20 @@ class ElasticProxyAdapter {
     constructor(context, props){
         this.context = context;
         this.props = props;
-        if (!(props.username && props.password && props.domainAndPort)) {
-            throw new Error('Must supply username, password and domain/port for Elastic');
+        if (!props.host) {
+            throw new Error('Must supply host for Elastic');
         }
     }
     buildMessage(msg) {
-        const token = btoa(`${this.props.username}:${this.props.password}`);
+        if (this.props.username && this.props.password) {
+            const token = btoa(`${this.props.username}:${this.props.password}`);
+            msg.setHeader('Authorization', `Basic ${token}`);
+        }
         const newUrl = msg.url.copy();
-        newUrl.domain = this.props.domainAndPort;
-        newUrl.scheme = "https://";
-        return Promise.resolve(msg.setUrl(newUrl).setHeader('Authorization', `Basic ${token}`));
+        const hostUrl = new Url(this.props.host);
+        newUrl.domain = hostUrl.domain;
+        newUrl.scheme = hostUrl.scheme;
+        return Promise.resolve(msg.setUrl(newUrl));
     }
     context;
     props;
@@ -32907,13 +32911,13 @@ const __default16 = {
                 "type": "string",
                 "description": "Elastic account password"
             },
-            "domainAndPort": {
+            "host": {
                 "type": "string",
-                "description": "Elastic node domain and port (without initial https://)"
+                "description": "Elastic node host (starting http:// or https://)"
             }
         },
         "required": [
-            "urlPattern"
+            "host"
         ]
     },
     "adapterInterfaces": [
@@ -32981,7 +32985,7 @@ class ElasticDataAdapter {
             this.elasticProxyAdapter = await this.context.getAdapter("./adapter/ElasticProxyAdapter.ts", {
                 username: this.props.username,
                 password: this.props.password,
-                domainAndPort: this.props.domainAndPort
+                host: this.props.host
             });
         }
     }
@@ -33108,7 +33112,7 @@ class ElasticDataAdapter {
                 });
                 const msgCreated = await this.requestElastic(createMappingMsg);
                 if (!msgCreated.ok) {
-                    this.context.logger.error(`Failed to create .schemas index on ${this.props.domainAndPort}, request status ${msgCreated.status}`);
+                    this.context.logger.error(`Failed to create .schemas index on ${this.props.host}, request status ${msgCreated.status}`);
                 }
             }
             this.schemasIndexChecked = true;
@@ -33173,10 +33177,14 @@ const __default17 = {
             "password": {
                 "type": "string"
             },
-            "domainAndPort": {
-                "type": "string"
+            "host": {
+                "type": "string",
+                "description": "Elastic node host (starting http:// or https://)"
             }
-        }
+        },
+        "required": [
+            "host"
+        ]
     },
     "adapterInterfaces": [
         "IDataAdapter"
@@ -33194,7 +33202,7 @@ class ElasticQueryAdapter {
             this.elasticProxyAdapter = await this.context.getAdapter("./adapter/ElasticProxyAdapter.ts", {
                 username: this.props.username,
                 password: this.props.password,
-                domainAndPort: this.props.domainAndPort
+                host: this.props.host
             });
         }
     }
@@ -33231,10 +33239,14 @@ const __default18 = {
             "password": {
                 "type": "string"
             },
-            "domainAndPort": {
-                "type": "string"
+            "host": {
+                "type": "string",
+                "description": "Elastic node host (starting http:// or https://)"
             }
-        }
+        },
+        "required": [
+            "host"
+        ]
     },
     "adapterInterfaces": [
         "IQueryAdapter"
@@ -34288,7 +34300,10 @@ const __default31 = {
                         "type": "boolean",
                         "description": "Optional flag which for a pipeline on a path, sends all subpaths to that pipeline as well. Default true"
                     }
-                }
+                },
+                "required": [
+                    "extension"
+                ]
             }
         },
         "required": [
@@ -37944,7 +37959,10 @@ const __default37 = {
                         "type": "boolean",
                         "description": "Optional flag which for a pipeline on a path, sends all subpaths to that pipeline as well. Default true"
                     }
-                }
+                },
+                "required": [
+                    "extension"
+                ]
             }
         },
         "required": [

@@ -128,7 +128,18 @@ Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
 	"lastname": "Walters"
 }
 ###
-GET https://localhost:9200/abc
+POST https://localhost:9200/_search
+Content-Type: application/json
 Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
+
+{
+	"query": {
+		"match_all": {}
+	}
+}
+
 ###
 POST https://restspace.local:3131/query/test/one
+
+###
+POST https://ademchic2.restspace.io/backend/catitem-data/fittings/doors/Oak four panel door

@@ -6,7 +6,7 @@ import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
 export interface ElasticAdapterProps {
 	username: string;
 	password: string;
-	domainAndPort: string;
+	host: string;
 }
 
 export default class ElasticQueryAdapter implements IQueryAdapter {
@@ -20,7 +20,7 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			this.elasticProxyAdapter = await this.context.getAdapter<IProxyAdapter>("./adapter/ElasticProxyAdapter.ts", {
 				username: this.props.username,
 				password: this.props.password,
-				domainAndPort: this.props.domainAndPort
+				host: this.props.host
 			});
 		}
 	}
@@ -36,7 +36,10 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		const msg = new Message('/_search', this.context.tenant, "POST");
 		msg.setData(query, "application/json");
 		const res = await this.requestElastic(msg);
-		if (!res.ok) return res.status;
+		if (!res.ok) {
+			const report = await res.data?.asString();
+			throw new Error(`Elastic adapter error, query: ${report}`);
+		}
 		const data = await res.data?.asJson();
 		return data.hits.hits;
 	}
