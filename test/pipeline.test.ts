@@ -5,6 +5,7 @@ import { testServicesConfig } from "./TestConfigFileAdapter.ts";
 import { pipeline } from "../pipeline/pipeline.ts";
 import { mockHandler } from "../services/mock.ts";
 import { testServerConfig } from "./testServerConfig.ts";
+import { handleIncomingRequest } from "../handleRequest.ts";
 
 config.server = testServerConfig;
 
@@ -19,6 +20,23 @@ testServicesConfig['pipeline'] = JSON.parse(`{
             "name": "Lib",
             "source": "./services/lib.rsm.json",
             "access": { "readRoles": "all", "writeRoles": "all" }
+        },
+        "/data/ds": {
+            "name": "Dataset",
+            "source": "./services/dataset.rsm.json",
+            "infraName": "localStore",
+            "access": { "readRoles": "all", "writeRoles": "all" },
+            "adapterConfig": {
+                "basePath": "/data/ds"
+            },
+            "datasetName": "ds",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "email": { "type": "string" }
+                }
+            }
         }
     }
 }`);
@@ -39,6 +57,7 @@ function testMessage(url: string, method: MessageMethod) {
     return msg;
 }
 
+/*
 Deno.test('single item', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [ "GET /test/xyz" ]);
     const ds = await msgOut.data?.asString();
@@ -275,6 +294,27 @@ Deno.test('list form function', async function () {
     const output = await msgOut.data?.asJson();
     console.log(output);
     assertStrictEquals(output[0].q, 222);
+});
+
+*/
+
+Deno.test('tee', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
+        {
+            name: "Joe",
+            email: "joe@bloggs.com"
+        }
+    ), [
+        [ "tee", "POST $this /data/ds/test", "GET /test/abc" ]
+    ]);
+    const output = await msgOut.data?.asJson();
+    console.log(output);
+    await new Promise<void>(res => setTimeout(() => res(), 100)); // wait for teed pipeline to execute
+    assertStrictEquals(output.email, "joe@bloggs.com", `pipeline output: ${output.email}`);
+    const msgRead = testMessage('/data/ds/test', "GET"); // ensure teed pipeline wrote to /data/ds/test
+    const msgReadOut = await handleIncomingRequest(msgRead);
+    const check = await msgReadOut.data?.asJson();
+    assertStrictEquals(check.email, "joe@bloggs.com", `tee saved data output: ${output.email}`);
 });
 // Deno.test('simple post', async function () {
 //     let postedBody: any = {};

@@ -7,6 +7,8 @@ export class PipelineMode {
     fail: PipelineAction = PipelineAction.next;
     succeed: PipelineAction = PipelineAction.next;
     conditional = false;
+    tee = false;
+    teeWait = false;
 
     constructor(parentModeOrToken?: PipelineMode | string) {
         if (parentModeOrToken === undefined) return;
@@ -27,6 +29,15 @@ export class PipelineMode {
                     this.succeed = PipelineAction.end;
                     this.fail = PipelineAction.next;
                     this.conditional = true;
+                    return;
+                case "tee":
+                    this.mode = "serial";
+                    this.tee = true;
+                    return;
+                case "teeWait":
+                    this.mode = "serial";
+                    this.tee = true;
+                    this.teeWait = true;
                     return;
                 default:
                     this.mode = "serial";
@@ -61,7 +72,7 @@ export class PipelineMode {
     }
 
     static isValid(token: string) {
-        return [ "parallel", "serial", "conditional" ].includes(token.split(' ')[0]);
+        return [ "parallel", "serial", "conditional", "tee", "teeWait" ].includes(token.split(' ')[0]);
     }
 
     static parallel() {

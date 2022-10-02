@@ -22647,7 +22647,9 @@ const transformation = (transformObject, data, url = new Url('/'))=>{
         literal: (obj)=>obj,
         merge: (val0, val1)=>{
             return Object.assign({}, val0, val1);
-        }
+        },
+        parseInt: (s, radix)=>parseInt(s, radix),
+        parseFloat: (s)=>parseFloat(s)
     };
     if (typeof transformObject === 'string') {
         return doEvaluate(transformObject, data, transformHelper);
@@ -22731,15 +22733,15 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
                     } : v);
                 for(const k in newOutput)delete newOutput[k];
             }
+            const loopItem = {};
             list.forEach((item, idx)=>{
+                loopItem['value'] = item;
+                loopItem['index'] = idx;
                 const newInput = {
                     ...input,
                     ...item,
                     outer: input.outer || input,
-                    [indexName]: {
-                        value: item,
-                        index: idx
-                    }
+                    [indexName]: loopItem
                 };
                 transformOrRecurse(newInput, idx);
             });
@@ -33216,7 +33218,10 @@ class ElasticQueryAdapter {
         const msg = new Message('/_search', this.context.tenant, "POST");
         msg.setData(query, "application/json");
         const res = await this.requestElastic(msg);
-        if (!res.ok) return res.status;
+        if (!res.ok) {
+            const report = await res.data?.asString();
+            throw new Error(`Elastic adapter error, query: ${report}`);
+        }
         const data = await res.data?.asJson();
         return data.hits.hits;
     }

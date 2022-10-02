@@ -224,8 +224,24 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
         pos++;
     }
     context.path.pop();
-    return msgs.flatMap(msg =>
+    msgs = msgs.flatMap(msg =>
         msg.exitConditionalMode()); // at end of pipeline, any messages in test mode should return to normal
+    if (mode.tee) {
+        const runTeedPipeline = async () => {
+            for await (const _ of msgs) {
+                // ensure teed pipeline runs
+            }
+        };
+        if (mode.teeWait) {
+            const result = new AsyncQueue<Message>(1);
+            runTeedPipeline().then(() => result.enqueue(msg));
+            return result;
+        } else {
+            runTeedPipeline();
+            return new AsyncQueue<Message>(1).enqueue(msg); // return original message
+        }
+    }
+    return msgs;
 }
 
 function runDistributePipelineOne(pipeline: PipelineSpec, msg: Message, context: PipelineContext): AsyncQueue<Message> {
