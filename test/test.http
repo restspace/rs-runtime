@@ -139,7 +139,26 @@ Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
 }
 
 ###
+DELETE https://localhost:9200/customer/_doc/3.json
+Content-Type: application/json
+Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
+
+###
 POST https://restspace.local:3131/query/test/one
 
 ###
 POST https://ademchic2.restspace.io/backend/catitem-data/fittings/doors/Oak four panel door
+
+###
+PATCH https://restspace.local:3131/data/es/test/one
+Content-Type: application/json
+
+{
+	"b": "goodbye"
+}
+
+###
+GET https://restspace.local:3131/data/es/test/two.json
+
+###
+POST https://restspace.local:3131/query/test/123

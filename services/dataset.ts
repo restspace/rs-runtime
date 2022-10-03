@@ -21,6 +21,11 @@ const isSchema = (adapter: IDataAdapter): adapter is IDataAdapter & IReadOnlySch
 const isWriteSchema = (adapter: IDataAdapter): adapter is IDataAdapter & ISchemaAdapter =>
     (adapter as IDataAdapter & ISchemaAdapter).writeSchema !== undefined;
 
+const normaliseKey = (key: string) => {
+    if (key.endsWith('.json')) return key.slice(0, -5);
+    return key;
+}
+
 function configSchemaInstanceContentType(dataset: string, baseUrl: string): Promise<string> {
     const url = `${baseUrl}/.schema.json`;
     return Promise.resolve(`application/json; schema="${url}"`);
@@ -31,18 +36,19 @@ service.get(async (msg, { adapter }, config) => {
         return msg.setStatus(400, 'Dataset GET request should have a service path like <key>');
     }
 
-    const [ key ] = msg.url.servicePathElements;
+    let [ key ] = msg.url.servicePathElements;
+    key = normaliseKey(key);
 
     let schema: Record<string, unknown> | undefined = undefined;
 
-    if (isSchema(adapter) && !config.schema && key.endsWith('.schema.json')) {
+    if (isSchema(adapter) && !config.schema && key.endsWith('.schema')) {
         const schemaOut = await adapter.readSchema('');
         if (typeof schemaOut === 'number') {
             return msg.setStatus(schemaOut);
         } else {
             schema = schemaOut;
         }
-    } else if (key.endsWith('.schema.json')) {
+    } else if (key.endsWith('.schema')) {
         schema = config.schema;
     }
 
@@ -139,9 +145,10 @@ const write = async (
     }
     if (!msg.data) return msg.setStatus(400, "No data to write");
 
-    const [ key ] = msg.url.servicePathElements;
+    let [ key ] = msg.url.servicePathElements;
+    key = normaliseKey(key);
 
-    if (isWriteSchema(adapter) && key.endsWith('.schema.json')) {
+    if (isWriteSchema(adapter) && key.endsWith('.schema')) {
         if (config.schema) return msg.setStatus(400, "Can't write fixed schema");
 
         const schemaDetails = await adapter.checkSchema('');
@@ -176,7 +183,8 @@ service.delete(async (msg, { adapter }) => {
         return msg.setStatus(400, 'Dataset DELETE request should have a service path like <key>');
     }
 
-    const [ key ] = msg.url.servicePathElements;
+    let [ key ] = msg.url.servicePathElements;
+    key = normaliseKey(key);
 
     const res = await adapter.deleteKey('', key);
     if (res === 404) {

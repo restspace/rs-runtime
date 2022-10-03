@@ -17,15 +17,21 @@ const isSchema = (adapter: IDataAdapter): adapter is IDataAdapter & IReadOnlySch
 const isWriteSchema = (adapter: IDataAdapter): adapter is IDataAdapter & ISchemaAdapter =>
     (adapter as IDataAdapter & ISchemaAdapter).writeSchema !== undefined;
 
+const normaliseKey = (key: string) => {
+    if (key.endsWith('.json')) return key.slice(0, -5);
+    return key;
+}
+
 service.get(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>) => {
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data GET request should have a service path like <dataset>/<key>');
     }
 
-    const [ dataset, key ] = msg.url.servicePathElements;
+    let [ dataset, key ] = msg.url.servicePathElements;
+    key = normaliseKey(key);
 
     // fetching a schema
-    if (isSchema(adapter) && key.endsWith('.schema.json')) {
+    if (isSchema(adapter) && key.endsWith('.schema')) {
         const schema = await adapter.readSchema(dataset);
         if (typeof schema === 'number') {
             return msg.setStatus(schema);
@@ -126,9 +132,10 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: log.Logger, is
     }
     if (!msg.hasData()) return msg.setStatus(400, "No data to write");
 
-    const [ dataset, key ] = msg.url.servicePathElements;
+    let [ dataset, key ] = msg.url.servicePathElements;
+    key = normaliseKey(key);
 
-    if (isWriteSchema(adapter) && key.endsWith('.schema.json')) {
+    if (isWriteSchema(adapter) && key.endsWith('.schema')) {
         const schemaDetails = await adapter.checkSchema(dataset);
         const res = await adapter.writeSchema!(dataset, await msg.data!.asJson());
         msg.data!.mimeType = 'application/json-schema';
@@ -187,7 +194,8 @@ service.delete(async (msg, { adapter }) => {
         return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>');
     }
 
-    const [ dataset, key ] = msg.url.servicePathElements;
+    let [ dataset, key ] = msg.url.servicePathElements;
+    key = normaliseKey(key);
 
     let res = 0;
     if (msg.url.fragment) {
