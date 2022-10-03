@@ -20,7 +20,7 @@ export class PipelineTransform {
         if (context.trace) {
             context.traceOutputs![context.path.join('.')] = transJson;
         }
-        return msg.setDataJson(transJson);
+        return msg.copy().setDataJson(transJson);
     }
 
     static isValid(item: any): boolean {

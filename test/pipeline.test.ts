@@ -57,7 +57,7 @@ function testMessage(url: string, method: MessageMethod) {
     return msg;
 }
 
-/*
+
 Deno.test('single item', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [ "GET /test/xyz" ]);
     const ds = await msgOut.data?.asString();
@@ -296,8 +296,6 @@ Deno.test('list form function', async function () {
     assertStrictEquals(output[0].q, 222);
 });
 
-*/
-
 Deno.test('tee', async function () {
     const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
         {
@@ -315,6 +313,23 @@ Deno.test('tee', async function () {
     const msgReadOut = await handleIncomingRequest(msgRead);
     const check = await msgReadOut.data?.asJson();
     assertStrictEquals(check.email, "joe@bloggs.com", `tee saved data output: ${output.email}`);
+});
+
+Deno.test('tee transform', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
+        {
+            name: "Joe",
+            email: "joe@bloggs.com"
+        }
+    ), [
+        [ "teeWait", { "xname": "name" } ]
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertStrictEquals(output.name, "Joe", `pipeline output: ${JSON.stringify(output)}`);
+    const msgRead = testMessage("/data/ds/test2", "GET"); // ensure teed pipeline wrote to /data/ds/test
+    const msgReadOut = await handleIncomingRequest(msgRead);
+    const check = await msgReadOut.data?.asJson();
+    assertStrictEquals(check.xname, "Joe", `tee saved data output: ${JSON.stringify(check)}`);
 });
 // Deno.test('simple post', async function () {
 //     let postedBody: any = {};

@@ -12673,7 +12673,8 @@ class Message {
         }
         let obj = {};
         const hasData = (mimeType)=>isJson(mimeType) || mimeType === 'application/x-www-form-urlencoded';
-        if (this.data && this.data.mimeType && hasData(this.data.mimeType) && spec.indexOf('${') >= 0) {
+        const specHasObjectMacro = spec.indexOf('${') >= 0 || spec.indexOf(' $this') >= 0;
+        if (this.data && this.data.mimeType && hasData(this.data.mimeType) && specHasObjectMacro) {
             obj = await this.data.asJson();
         }
         const msgs = Message.fromSpec(spec, this.tenant, effectiveUrl || this.url, obj, defaultMethod, this.name, inheritMethod, headers);
@@ -22168,6 +22169,8 @@ class PipelineMode {
     fail = PipelineAction.next;
     succeed = PipelineAction.next;
     conditional = false;
+    tee = false;
+    teeWait = false;
     constructor(parentModeOrToken){
         if (parentModeOrToken === undefined) return;
         if (parentModeOrToken instanceof PipelineMode) {
@@ -22187,6 +22190,15 @@ class PipelineMode {
                     this.succeed = PipelineAction.end;
                     this.fail = PipelineAction.next;
                     this.conditional = true;
+                    return;
+                case "tee":
+                    this.mode = "serial";
+                    this.tee = true;
+                    return;
+                case "teeWait":
+                    this.mode = "serial";
+                    this.tee = true;
+                    this.teeWait = true;
                     return;
                 default:
                     this.mode = "serial";
@@ -22218,7 +22230,9 @@ class PipelineMode {
         return [
             "parallel",
             "serial",
-            "conditional"
+            "conditional",
+            "tee",
+            "teeWait"
         ].includes(token.split(' ')[0]);
     }
     static parallel() {
@@ -39978,7 +39992,21 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
         pos++;
     }
     context.path.pop();
-    return msgs.flatMap((msg)=>msg.exitConditionalMode());
+    msgs = msgs.flatMap((msg)=>msg.exitConditionalMode());
+    if (mode.tee) {
+        const runTeedPipeline = async ()=>{
+            for await (const _ of msgs){}
+        };
+        if (mode.teeWait) {
+            const result = new AsyncQueue(1);
+            runTeedPipeline().then(()=>result.enqueue(msg));
+            return result;
+        } else {
+            runTeedPipeline();
+            return new AsyncQueue(1).enqueue(msg);
+        }
+    }
+    return msgs;
 }
 function runDistributePipelineOne(pipeline, msg, context) {
     let pos = 0;
