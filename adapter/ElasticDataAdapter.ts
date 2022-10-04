@@ -7,35 +7,58 @@ import { Message } from "rs-core/Message.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 
+// designed for compatibility with Elasticsearch 8.4
+
 export interface ElasticAdapterProps {
 	username: string;
 	password: string;
 	host: string;
+	writeDelayMs?: number;
 }
 
 export const schemaToMapping = (schema: any): any => {
+	let submapping: any = {};
+	const esProps = [ 'type', 'fields', 'index', 'index_options', 'index_prefixes', 'index_phrases',
+		'norms', 'store', 'search_analyzer', 'search_quote_analyzer', 'similarity', 'term_vector',
+		'doc_values', 'eager_global_ordinals', 'ignore_above', 'null_value', 'normalizer',
+		'split_queries_on_whitespace', 'time_series_dimension', 'coerce', 'ignore_malformed', 'scaling_factor',
+		'format', 'locale', 'dynamic', 'enabled', 'subobjects', 'depth_limit', 'include_in_parent', 'include_in_root',
+		'metrics', 'default_metric', 'fielddata', 'fielddata_frequency_filter', 'position_increment_gap',
+		'preserve_separators', 'preserve_position_increments', 'max_input_length', 'max_shingle_size',
+		'dims', 'ignore_z_value', 'orientation' ];
 	switch (schema.type as string) {
-		case "string":
-			return schema.search === 'textual' ? { type: "text" }
+		case "string": {
+			submapping = schema.search === 'textual' ? { type: "text" }
 				: ['date', 'date-time'].includes(schema.format || 'zzz') ? { type: "date" }
 				: { type: "keyword" };
+			[ 'fields', 'index', 'index_options', 'index_prefixes', 'index_phrases', 'norms', 'store', 'search_analyzer', 'search_quote_analyzer', 'similarity', 'term_vector' ]
+				.forEach(k => {
+					if (schema['es_' + k]) {
+						submapping[k] = schema['es_' + k];
+					}
+				});
+			break;
+		}
 		case "number":
-			return { type: "double" };
+			submapping = { type: "double" };
+			break;
 		case "boolean":
-			return { type: "boolean" };
+			submapping = { type: "boolean" };
+			break;
 		case "object":
-			return {
+			submapping = {
 				properties: Object.fromEntries(
 					Object.entries(schema.properties)
 						.map(([k, subschema]) => [ k, schemaToMapping(subschema) ])
 				)
 			};
+			break;
 		case "array":
 			if (schema.items.type !== "object") {
 				// a primitive type can be single or an array in Elasticsearch
-				return schemaToMapping(schema.items);
+				submapping = schemaToMapping(schema.items);
 			} else {
-				return {
+				submapping = {
 					type: "nested",
 					properties: Object.fromEntries(
 						Object.entries(schema.items.properties)
@@ -44,18 +67,33 @@ export const schemaToMapping = (schema: any): any => {
 				}
 			}	
 	}
+	Object.keys(schema).filter(k => k.startsWith('es_'))
+		.forEach(k => {
+			const esKey = k.substring(3);
+			if (esProps.includes(esKey)) submapping[esKey] = schema[k];
+		});
+	return submapping;
 }
 
 export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter {
 	elasticProxyAdapter: IProxyAdapter | null = null;
-	delayMs = 1500;
 	schemasIndexChecked = false;
+	defaultWriteDelayMs = 1500;
 	
 	constructor(public context: AdapterContext, public props: ElasticAdapterProps) {
     }
 
-	delay(ms: number): Promise<void> {
-		return new Promise((res) => setInterval(() => res(), ms));
+	waitForWrite(): Promise<void> {
+		return new Promise((res) => setInterval(() => res(),
+			this.props.writeDelayMs || this.defaultWriteDelayMs));
+	}
+
+	normaliseIndexName(s: string) {
+		if (s === '.' || s === '..') throw new Error('Elastic does not allow index names . or ..');
+		return s.toLowerCase()
+			.replace(/[\\/*?"<>| ,#]/g, '')
+			.replace(/$[-_+]/, '')
+			.slice(0, 255);
 	}
 
 	async ensureProxyAdapter() {
@@ -75,6 +113,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 	}
 
 	async readKey(dataset: string, key: string): Promise<number | Record<string,unknown>> {
+		dataset = this.normaliseIndexName(dataset);
 		const msg = new Message(`/${dataset}/_source/${key}`, this.context.tenant, "GET");
 		const msgOut = await this.requestElastic(msg);
 		if (!msgOut.ok) {
@@ -99,6 +138,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 				return listing;
 			}
 		} else {
+			dataset = this.normaliseIndexName(dataset);
 			const msg = new Message(`/${dataset}/_search`, this.context.tenant, "POST");
 			msg.setDataJson({
 				query: {
@@ -124,6 +164,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 	}
 
 	async writeKey(dataset: string, key: string, data: MessageBody): Promise<number> {
+		dataset = this.normaliseIndexName(dataset);
 		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "PUT");
 		const writeData = await data.asJson();
 		writeData._timestamp = new Date().getTime();
@@ -133,26 +174,29 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 			return msgOut.status;
 		} else {
 			const data = await msgOut.data?.asJson();
-			await this.delay(this.delayMs);
+			await this.waitForWrite();
 			return data.result === "created" ? 201 : 200;
 		}
 	}
 
 	async deleteKey(dataset: string, key: string): Promise<number> {
+		dataset = this.normaliseIndexName(dataset);
 		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "DELETE");
 		const msgOut = await this.requestElastic(msg);
-		await this.delay(this.delayMs);
+		await this.waitForWrite();
 		return msgOut.status;
 	}
 
 	async deleteDataset(dataset: string): Promise<number> {
+		dataset = this.normaliseIndexName(dataset);
 		const msg = new Message(`/${dataset}`, this.context.tenant, "DELETE");
 		const msgOut = await this.requestElastic(msg);
-		await this.delay(this.delayMs);
+		await this.waitForWrite();
 		return msgOut.status;
 	}
 
 	async checkKey(dataset: string, key: string): Promise<ItemMetadata> {
+		dataset = this.normaliseIndexName(dataset);
 		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "GET");
 		const msgOut = await this.requestElastic(msg);
 		let status : "none" | "directory" | "file" = "none";
@@ -188,16 +232,20 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 		}
 	}
 
-	async writeSchema(dataset: string, schema: Record<string,unknown>): Promise<number> {
-		const mapping = schemaToMapping(schema);
+	async writeSchema(dataset: string, schema: Record<string, unknown>): Promise<number> {
+		dataset = this.normaliseIndexName(dataset);
+		const params: Record<string, unknown> = { mappings: schemaToMapping(schema) };
+		if (schema['es_settings']) {
+			params.es_settings = schema['es_settings'];
+		}
 		const msg = new Message(`/${dataset}`, this.context.tenant, "GET");
 		const msgCheck = await this.requestElastic(msg);
 		const setMappingMsg = new Message(`/${dataset}/_mapping`, this.context.tenant, "PUT");
 		let resCode = 200;
-		setMappingMsg.setDataJson(mapping);
+		setMappingMsg.setDataJson(params.mappings);
 		if (!msgCheck.ok) {
 			setMappingMsg.setUrl(`/${dataset}`).setMethod("PUT");
-			setMappingMsg.setDataJson({ mappings: mapping });
+			setMappingMsg.setDataJson(params);
 			resCode = 201;
 		}
 		const msgOut = await this.requestElastic(setMappingMsg);
@@ -214,12 +262,14 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 	}
 
 	async readSchema(dataset: string): Promise<number | Record<string,unknown>> {
+		dataset = this.normaliseIndexName(dataset);
 		const schemaStore = await this.readKey('.schemas', dataset);
 		if (typeof schemaStore === 'number') return schemaStore;
 		return JSON.parse(schemaStore.schema as string);
 	}
 
 	async checkSchema(dataset: string): Promise<ItemMetadata> {
+		dataset = this.normaliseIndexName(dataset);
 		return await this.checkKey('.schemas', dataset);
 	}
 

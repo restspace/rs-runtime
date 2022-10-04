@@ -12814,6 +12814,7 @@ class Message {
             "GET",
             "POST",
             "PUT",
+            "DELETE",
             "OPTIONS",
             "HEAD",
             "PATCH",
@@ -22803,7 +22804,7 @@ class PipelineTransform {
         if (context.trace) {
             context.traceOutputs[context.path.join('.')] = transJson;
         }
-        return msg.setDataJson(transJson);
+        return msg.copy().setDataJson(transJson);
     }
     static isValid(item) {
         return typeof item === 'object';
@@ -33306,12 +33307,17 @@ const __default20 = {
 const service = new Service();
 const isSchema = (adapter)=>adapter.checkSchema !== undefined;
 const isWriteSchema = (adapter)=>adapter.writeSchema !== undefined;
+const normaliseKey = (key)=>{
+    if (key.endsWith('.json')) return key.slice(0, -5);
+    return key;
+};
 service.get(async (msg, { adapter  })=>{
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data GET request should have a service path like <dataset>/<key>');
     }
-    const [dataset, key] = msg.url.servicePathElements;
-    if (isSchema(adapter) && key.endsWith('.schema.json')) {
+    let [dataset, key] = msg.url.servicePathElements;
+    key = normaliseKey(key);
+    if (isSchema(adapter) && key.endsWith('.schema')) {
         const schema = await adapter.readSchema(dataset);
         if (typeof schema === 'number') {
             return msg.setStatus(schema);
@@ -33416,8 +33422,9 @@ const write1 = async (msg, adapter, logger, isPatch)=>{
         return msg.setStatus(400, 'Data write request should have a service path like <dataset>/<key>');
     }
     if (!msg.hasData()) return msg.setStatus(400, "No data to write");
-    const [dataset, key] = msg.url.servicePathElements;
-    if (isWriteSchema(adapter) && key.endsWith('.schema.json')) {
+    let [dataset, key] = msg.url.servicePathElements;
+    key = normaliseKey(key);
+    if (isWriteSchema(adapter) && key.endsWith('.schema')) {
         const schemaDetails = await adapter.checkSchema(dataset);
         const res = await adapter.writeSchema(dataset, await msg.data.asJson());
         msg.data.mimeType = 'application/json-schema';
@@ -33465,7 +33472,8 @@ service.delete(async (msg, { adapter  })=>{
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>');
     }
-    const [dataset, key] = msg.url.servicePathElements;
+    let [dataset, key] = msg.url.servicePathElements;
+    key = normaliseKey(key);
     let res = 0;
     if (msg.url.fragment) {
         const val = await adapter.readKey(dataset, key);
@@ -33536,6 +33544,10 @@ const __default21 = {
 const service1 = new Service();
 const isSchema1 = (adapter)=>adapter.checkSchema !== undefined;
 const isWriteSchema1 = (adapter)=>adapter.writeSchema !== undefined;
+const normaliseKey1 = (key)=>{
+    if (key.endsWith('.json')) return key.slice(0, -5);
+    return key;
+};
 function configSchemaInstanceContentType(dataset, baseUrl) {
     const url = `${baseUrl}/.schema.json`;
     return Promise.resolve(`application/json; schema="${url}"`);
@@ -33544,16 +33556,17 @@ service1.get(async (msg, { adapter  }, config)=>{
     if (msg.url.servicePathElements.length !== 1) {
         return msg.setStatus(400, 'Dataset GET request should have a service path like <key>');
     }
-    const [key] = msg.url.servicePathElements;
+    let [key] = msg.url.servicePathElements;
+    key = normaliseKey1(key);
     let schema = undefined;
-    if (isSchema1(adapter) && !config.schema && key.endsWith('.schema.json')) {
+    if (isSchema1(adapter) && !config.schema && key.endsWith('.schema')) {
         const schemaOut = await adapter.readSchema('');
         if (typeof schemaOut === 'number') {
             return msg.setStatus(schemaOut);
         } else {
             schema = schemaOut;
         }
-    } else if (key.endsWith('.schema.json')) {
+    } else if (key.endsWith('.schema')) {
         schema = config.schema;
     }
     if (schema) {
@@ -33651,8 +33664,9 @@ const write2 = async (msg, adapter, config)=>{
         return msg.setStatus(400, 'Dataset write request should have a service path like <key>');
     }
     if (!msg.data) return msg.setStatus(400, "No data to write");
-    const [key] = msg.url.servicePathElements;
-    if (isWriteSchema1(adapter) && key.endsWith('.schema.json')) {
+    let [key] = msg.url.servicePathElements;
+    key = normaliseKey1(key);
+    if (isWriteSchema1(adapter) && key.endsWith('.schema')) {
         if (config.schema) return msg.setStatus(400, "Can't write fixed schema");
         const schemaDetails = await adapter.checkSchema('');
         const res = await adapter.writeSchema('', await msg.data.asJson());
@@ -33678,7 +33692,8 @@ service1.delete(async (msg, { adapter  })=>{
     if (msg.url.servicePathElements.length !== 1) {
         return msg.setStatus(400, 'Dataset DELETE request should have a service path like <key>');
     }
-    const [key] = msg.url.servicePathElements;
+    let [key] = msg.url.servicePathElements;
+    key = normaliseKey1(key);
     const res = await adapter.deleteKey('', key);
     if (res === 404) {
         return msg.setStatus(404, 'Not found');

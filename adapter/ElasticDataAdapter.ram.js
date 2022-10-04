@@ -7,7 +7,8 @@ export default {
         "properties": {
             "username": { "type": "string" },
             "password": { "type": "string" },
-            "host": { "type": "string", "description": "Elastic node host (starting http:// or https://)" }
+            "host": { "type": "string", "description": "Elastic node host (starting http:// or https://)" },
+            "writeDelayMs": { "type": "number" }
         },
         "required": [ "host" ]
     },
