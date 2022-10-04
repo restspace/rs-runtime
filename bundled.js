@@ -32942,38 +32942,106 @@ const __default16 = {
     ]
 };
 const schemaToMapping = (schema)=>{
+    let submapping = {};
+    const esProps = [
+        'type',
+        'fields',
+        'index',
+        'index_options',
+        'index_prefixes',
+        'index_phrases',
+        'norms',
+        'store',
+        'search_analyzer',
+        'search_quote_analyzer',
+        'similarity',
+        'term_vector',
+        'doc_values',
+        'eager_global_ordinals',
+        'ignore_above',
+        'null_value',
+        'normalizer',
+        'split_queries_on_whitespace',
+        'time_series_dimension',
+        'coerce',
+        'ignore_malformed',
+        'scaling_factor',
+        'format',
+        'locale',
+        'dynamic',
+        'enabled',
+        'subobjects',
+        'depth_limit',
+        'include_in_parent',
+        'include_in_root',
+        'metrics',
+        'default_metric',
+        'fielddata',
+        'fielddata_frequency_filter',
+        'position_increment_gap',
+        'preserve_separators',
+        'preserve_position_increments',
+        'max_input_length',
+        'max_shingle_size',
+        'dims',
+        'ignore_z_value',
+        'orientation'
+    ];
     switch(schema.type){
         case "string":
-            return schema.search === 'textual' ? {
-                type: "text"
-            } : [
-                'date',
-                'date-time'
-            ].includes(schema.format || 'zzz') ? {
-                type: "date"
-            } : {
-                type: "keyword"
-            };
+            {
+                submapping = schema.search === 'textual' ? {
+                    type: "text"
+                } : [
+                    'date',
+                    'date-time'
+                ].includes(schema.format || 'zzz') ? {
+                    type: "date"
+                } : {
+                    type: "keyword"
+                };
+                [
+                    'fields',
+                    'index',
+                    'index_options',
+                    'index_prefixes',
+                    'index_phrases',
+                    'norms',
+                    'store',
+                    'search_analyzer',
+                    'search_quote_analyzer',
+                    'similarity',
+                    'term_vector'
+                ].forEach((k)=>{
+                    if (schema['es_' + k]) {
+                        submapping[k] = schema['es_' + k];
+                    }
+                });
+                break;
+            }
         case "number":
-            return {
+            submapping = {
                 type: "double"
             };
+            break;
         case "boolean":
-            return {
+            submapping = {
                 type: "boolean"
             };
+            break;
         case "object":
-            return {
+            submapping = {
                 properties: Object.fromEntries(Object.entries(schema.properties).map(([k, subschema])=>[
                         k,
                         schemaToMapping(subschema)
                     ]))
             };
+            break;
         case "array":
             if (schema.items.type !== "object") {
-                return schemaToMapping(schema.items);
+                submapping = schemaToMapping(schema.items);
             } else {
-                return {
+                submapping = {
                     type: "nested",
                     properties: Object.fromEntries(Object.entries(schema.items.properties).map(([k, subschema])=>[
                             k,
@@ -32982,20 +33050,29 @@ const schemaToMapping = (schema)=>{
                 };
             }
     }
+    Object.keys(schema).filter((k)=>k.startsWith('es_')).forEach((k)=>{
+        const esKey = k.substring(3);
+        if (esProps.includes(esKey)) submapping[esKey] = schema[k];
+    });
+    return submapping;
 };
 class ElasticDataAdapter {
     elasticProxyAdapter;
-    delayMs;
     schemasIndexChecked;
+    defaultWriteDelayMs;
     constructor(context, props){
         this.context = context;
         this.props = props;
         this.elasticProxyAdapter = null;
-        this.delayMs = 1500;
         this.schemasIndexChecked = false;
+        this.defaultWriteDelayMs = 1500;
     }
-    delay(ms) {
-        return new Promise((res)=>setInterval(()=>res(), ms));
+    waitForWrite() {
+        return new Promise((res)=>setInterval(()=>res(), this.props.writeDelayMs || this.defaultWriteDelayMs));
+    }
+    normaliseIndexName(s) {
+        if (s === '.' || s === '..') throw new Error('Elastic does not allow index names . or ..');
+        return s.toLowerCase().replace(/[\\/*?"<>| ,#]/g, '').replace(/$[-_+]/, '').slice(0, 255);
     }
     async ensureProxyAdapter() {
         if (this.elasticProxyAdapter === null) {
@@ -33012,6 +33089,7 @@ class ElasticDataAdapter {
         return await this.context.makeRequest(sendMsg);
     }
     async readKey(dataset, key) {
+        dataset = this.normaliseIndexName(dataset);
         const msg = new Message(`/${dataset}/_source/${key}`, this.context.tenant, "GET");
         const msgOut = await this.requestElastic(msg);
         if (!msgOut.ok) {
@@ -33035,6 +33113,7 @@ class ElasticDataAdapter {
                 return listing;
             }
         } else {
+            dataset = this.normaliseIndexName(dataset);
             const msg1 = new Message(`/${dataset}/_search`, this.context.tenant, "POST");
             msg1.setDataJson({
                 query: {
@@ -33066,6 +33145,7 @@ class ElasticDataAdapter {
         }
     }
     async writeKey(dataset, key, data) {
+        dataset = this.normaliseIndexName(dataset);
         const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "PUT");
         const writeData = await data.asJson();
         writeData._timestamp = new Date().getTime();
@@ -33075,23 +33155,26 @@ class ElasticDataAdapter {
             return msgOut.status;
         } else {
             const data1 = await msgOut.data?.asJson();
-            await this.delay(this.delayMs);
+            await this.waitForWrite();
             return data1.result === "created" ? 201 : 200;
         }
     }
     async deleteKey(dataset, key) {
+        dataset = this.normaliseIndexName(dataset);
         const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "DELETE");
         const msgOut = await this.requestElastic(msg);
-        await this.delay(this.delayMs);
+        await this.waitForWrite();
         return msgOut.status;
     }
     async deleteDataset(dataset) {
+        dataset = this.normaliseIndexName(dataset);
         const msg = new Message(`/${dataset}`, this.context.tenant, "DELETE");
         const msgOut = await this.requestElastic(msg);
-        await this.delay(this.delayMs);
+        await this.waitForWrite();
         return msgOut.status;
     }
     async checkKey(dataset, key) {
+        dataset = this.normaliseIndexName(dataset);
         const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "GET");
         const msgOut = await this.requestElastic(msg);
         let status = "none";
@@ -33136,17 +33219,21 @@ class ElasticDataAdapter {
         }
     }
     async writeSchema(dataset, schema) {
-        const mapping = schemaToMapping(schema);
+        dataset = this.normaliseIndexName(dataset);
+        const params = {
+            mappings: schemaToMapping(schema)
+        };
+        if (schema['es_settings']) {
+            params.es_settings = schema['es_settings'];
+        }
         const msg = new Message(`/${dataset}`, this.context.tenant, "GET");
         const msgCheck = await this.requestElastic(msg);
         const setMappingMsg = new Message(`/${dataset}/_mapping`, this.context.tenant, "PUT");
         let resCode = 200;
-        setMappingMsg.setDataJson(mapping);
+        setMappingMsg.setDataJson(params.mappings);
         if (!msgCheck.ok) {
             setMappingMsg.setUrl(`/${dataset}`).setMethod("PUT");
-            setMappingMsg.setDataJson({
-                mappings: mapping
-            });
+            setMappingMsg.setDataJson(params);
             resCode = 201;
         }
         const msgOut = await this.requestElastic(setMappingMsg);
@@ -33163,11 +33250,13 @@ class ElasticDataAdapter {
         return resCode;
     }
     async readSchema(dataset) {
+        dataset = this.normaliseIndexName(dataset);
         const schemaStore = await this.readKey('.schemas', dataset);
         if (typeof schemaStore === 'number') return schemaStore;
         return JSON.parse(schemaStore.schema);
     }
     async checkSchema(dataset) {
+        dataset = this.normaliseIndexName(dataset);
         return await this.checkKey('.schemas', dataset);
     }
     instanceContentType(dataset, baseUrl) {
@@ -33197,6 +33286,9 @@ const __default17 = {
             "host": {
                 "type": "string",
                 "description": "Elastic node host (starting http:// or https://)"
+            },
+            "writeDelayMs": {
+                "type": "number"
             }
         },
         "required": [

@@ -2,6 +2,7 @@ import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import { Message } from "rs-core/Message.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
+import { AnyOfError } from "https://cdn.skypack.dev/-/ajv@v8.11.0-6F7JuaBGOwHo7L2fdKpW/dist=es2019,mode=types/dist/vocabularies/applicator/anyOf.d.ts";
 
 export interface ElasticAdapterProps {
 	username: string;
@@ -33,8 +34,19 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 
 	async runQuery(query: string): Promise<number | Record<string,unknown>[]> {
 		await this.ensureProxyAdapter();
-		const msg = new Message('/_search', this.context.tenant, "POST");
-		msg.setData(query, "application/json");
+		let index = '';
+		let queryObj = {} as any;
+		try {
+			queryObj = JSON.parse(query);
+		} catch {
+			return 400;
+		}
+		if (queryObj.index) {
+			index = '/' + queryObj.index;
+			delete queryObj.index;
+		}
+		const msg = new Message(index + '/_search', this.context.tenant, "POST");
+		msg.setDataJson(query);
 		const res = await this.requestElastic(msg);
 		if (!res.ok) {
 			const report = await res.data?.asString();
