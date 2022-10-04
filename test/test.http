@@ -144,10 +144,32 @@ Content-Type: application/json
 Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
 
 ###
+GET https://localhost:9200/testac/_search
+Content-Type: application/json
+Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
+
+{
+	"query": {
+		"multi_match": {
+			"query": "door red",
+			"type": "bool_prefix",
+			"fields": [
+				"search",
+				"search._2gram",
+				"serach._3gram"
+			]
+		}
+	}
+}
+
+###
 POST https://restspace.local:3131/query/test/one
 
 ###
-POST https://ademchic2.restspace.io/backend/catitem-data/fittings/doors/Oak four panel door
+POST https://ademchic2.restspace.io/backend/catitem-data/plumbing/taps/Matt black tap
+
+###
+POST https://ademchic2.restspace.io/query/groupsubgroup/plumbing/tap
 
 ###
 PATCH https://restspace.local:3131/data/es/test/one
@@ -161,4 +183,4 @@ Content-Type: application/json
 GET https://restspace.local:3131/data/es/test/two.json
 
 ###
-POST https://restspace.local:3131/query/test/123
+POST https://ademchic2.restspace.io/query/autocomplete/ta
