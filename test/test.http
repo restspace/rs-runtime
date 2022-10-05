@@ -163,13 +163,13 @@ Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
 }
 
 ###
-POST https://restspace.local:3131/query/test/one
+POST https://restspace.local:3131/query/test/6
 
 ###
 POST https://ademchic2.restspace.io/backend/catitem-data/plumbing/taps/Matt black tap
 
 ###
-POST https://ademchic2.restspace.io/query/groupsubgroup/plumbing/tap
+POST https://ademchic2.restspace.io/query/groupsubgroup/1/2
 
 ###
 PATCH https://restspace.local:3131/data/es/test/one

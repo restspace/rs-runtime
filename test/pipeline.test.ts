@@ -322,7 +322,7 @@ Deno.test('tee transform', async function () {
             email: "joe@bloggs.com"
         }
     ), [
-        [ "teeWait", { "xname": "name" } ]
+        [ "teeWait", { "xname": "name" }, "POST $this /data/ds/test2"  ]
     ]);
     const output = await msgOut.data?.asJson();
     assertStrictEquals(output.name, "Joe", `pipeline output: ${JSON.stringify(output)}`);

@@ -22729,10 +22729,10 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
         let indexName = upTo(key, match === "[" ? "]" : "}", newKeyStart);
         newKeyStart += indexName.length + 1;
         indexName = indexName.trim();
-        const remainingKey = key.slice(newKeyStart);
+        const remainingKey = key.slice(newKeyStart + 1);
         const transformOrRecurse = (input, index)=>{
             if (remainingKey) {
-                doTransformKey(remainingKey, 0, input, newOutput[indexName], url, subTransform);
+                doTransformKey(remainingKey, 0, input, newOutput[index], url, subTransform);
             } else {
                 newOutput[index] = shallowCopy(transformation(subTransform, input, url));
             }
@@ -33322,8 +33322,19 @@ class ElasticQueryAdapter {
     }
     async runQuery(query) {
         await this.ensureProxyAdapter();
-        const msg = new Message('/_search', this.context.tenant, "POST");
-        msg.setData(query, "application/json");
+        let index = '';
+        let queryObj = {};
+        try {
+            queryObj = JSON.parse(query);
+        } catch  {
+            return 400;
+        }
+        if (queryObj.index) {
+            index = '/' + queryObj.index;
+            delete queryObj.index;
+        }
+        const msg = new Message(index + '/_search', this.context.tenant, "POST");
+        msg.setDataJson(query);
         const res = await this.requestElastic(msg);
         if (!res.ok) {
             const report = await res.data?.asString();
