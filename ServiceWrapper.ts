@@ -7,7 +7,7 @@ import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { pipeline } from "./pipeline/pipeline.ts";
 import { handleOutgoingRequest } from "./handleRequest.ts";
 import { handleOutgoingRequestFromPrivateServices } from "./handleRequest.ts";
-import { PipelineSpec } from "rs-core/PipelineSpec.ts";
+import { pipelineConcat, PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { AuthUser } from "./auth/AuthUser.ts";
 import { ServiceContext } from "../rs-core/ServiceContext.ts";
 import { upTo } from "../rs-core/utility/utility.ts";
@@ -27,14 +27,16 @@ export class ServiceWrapper {
 
     /** return a ServiceFunction for an internal, preauthenticated call to a service */
     internal: ServiceFunction = async (msg: Message, context: ServiceContext<IAdapter>, serviceConfig: IServiceConfig) => {
-        msg.url.basePathElements = serviceConfig.basePath.split('/').filter(s => s !== '');
+        msg.url.basePathElements = serviceConfig.basePath.split('/').filter((s: string) => s !== '');
         let newMsg = msg.copy();
         try {
             const { manifestConfig } = serviceConfig;
-            newMsg = await this.prePostPipeline("pre", newMsg, manifestConfig?.prePipeline, manifestConfig?.privateServiceConfigs);
+            const prePipeline = pipelineConcat(manifestConfig?.prePipeline || serviceConfig?.prePipeline);
+            const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
+            newMsg = await this.prePostPipeline("pre", newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
             newMsg.applyServiceRedirect();
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
-            if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", newMsg, manifestConfig?.postPipeline, manifestConfig?.privateServiceConfigs);
+            if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
         } catch (err) {
             if (err.message === 'Not found') {
                 newMsg.setStatus(404, 'Not found');
@@ -79,6 +81,7 @@ export class ServiceWrapper {
                 isPublic = access.createRoles === 'all';
                 break;
             case AuthorizationType.none:
+            default:
                 roleSet = "all";
                 isPublic = true;
                 break;

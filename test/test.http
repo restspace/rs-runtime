@@ -169,7 +169,7 @@ POST https://restspace.local:3131/query/test/6
 POST https://ademchic2.restspace.io/backend/catitem-data/plumbing/taps/Matt black tap
 
 ###
-POST https://ademchic2.restspace.io/query/groupsubgroup/1/2
+POST https://ademchic2.restspace.io/query/filteredAutocomplete/1/2/ach
 
 ###
 PATCH https://restspace.local:3131/data/es/test/one

@@ -263,13 +263,20 @@ export class Modules {
 
     ensureServiceConfigValidator(url: string) {
         if (!this.validateServiceConfig[url]) {
-            let configSchema: Record<string, unknown> = schemaIServiceConfig;
-            const serviceManifest = this.serviceManifests[url];
-            if (serviceManifest.configSchema) {
-                configSchema = assignProperties(serviceManifest.configSchema, schemaIServiceConfig.properties, schemaIServiceConfig.required);
-            }
+            try {
+                let configSchema: Record<string, unknown> = schemaIServiceConfig;
+                const serviceManifest = this.serviceManifests[url];
+                if (serviceManifest.configSchema) {
+                    configSchema = assignProperties(serviceManifest.configSchema, schemaIServiceConfig);
+                    let resolvedUrl = url;
+                    if (resolvedUrl.startsWith('.')) resolvedUrl = 'https://restspace.io/builtin-services' + resolvedUrl.substring(1);
+                    configSchema.$id = resolvedUrl;
+                }
 
-            this.validateServiceConfig[url] = this.ajv.compile(configSchema);
+                this.validateServiceConfig[url] = this.ajv.compile(configSchema);
+            } catch (err) {
+                throw new Error(`Failed to compile service config validator for ${url}`, err);
+            }
         }
     }
 
