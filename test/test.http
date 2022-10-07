@@ -184,3 +184,10 @@ GET https://restspace.local:3131/data/es/test/two.json
 
 ###
 POST https://ademchic2.restspace.io/query/autocomplete/ta
+
+###
+POST https://restspace.local:3131/csv/ndjson
+Content-Type: text/csv
+
+hello, 1, true
+hello2, 4, false

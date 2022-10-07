@@ -62,6 +62,8 @@ import TemporaryAccess from "./services/temporary-access.ts";
 import TemporaryAccessManifest from "./services/temporary-access.rsm.js";
 import Query from "./services/query.ts";
 import QueryManifest from "./services/query.rsm.js";
+import CSVConverter from "./services/csvConverter.ts";
+import CSVConverterManifest from "./services/csvConverter.rsm.js";
 
 import { AdapterContext, nullState } from "../rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -178,7 +180,8 @@ export class Modules {
             "./services/account.ts": Account as unknown as Service<IAdapter, IServiceConfig>,
             "./services/discord.ts": Discord as unknown as Service<IAdapter, IServiceConfig>,
             "./services/temporary-access.ts": TemporaryAccess as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/query.ts": Query as unknown as Service<IAdapter, IServiceConfig>
+            "./services/query.ts": Query as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/csvConverter.ts": CSVConverter as unknown as Service<IAdapter, IServiceConfig>
         };
         this.serviceManifests = {
             "./services/services.rsm.json": ServicesManifest,
@@ -199,7 +202,8 @@ export class Modules {
             "./services/account.rsm.json": AccountManifest,
             "./services/discord.rsm.json": DiscordManifest,
             "./services/temporary-access.rsm.json": TemporaryAccessManifest,
-            "./services/query.rsm.json": QueryManifest as unknown as IServiceManifest
+            "./services/query.rsm.json": QueryManifest as unknown as IServiceManifest,
+            "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest
         };
         Object.entries(this.serviceManifests).forEach(([url, v]) => {
             (v as any).source = url;
