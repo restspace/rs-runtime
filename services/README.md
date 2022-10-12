@@ -54,7 +54,7 @@ Handlers (whose type is `ServiceFunction`) are functions with this signature:
 |---|---|---|
 |tenant|string|The tenant name of the current restspace tenant. For hosted Restspace instances, this will be the subdomain of https://restspace.io on which the site is hosted.|
 |prePost?|"pre" \| "post"|"pre" if we are in the prePipeline of a service, "post" if in the postPipeline|
-|makeRequest|(msg: Message, externality?: Externality) => Promise<Message>|Sends the message as a request using its url. Internal requests always have a site-relative url starting '/'. Internal requests are handled in code and do not use the network, so essentially have no latency. The default externality, `Externality.Internal` means no further authentication is done on internal requests. If `Externality.External` is specified, an internal request will be authenticated against the user attached to the request.|
+|makeRequest|(msg: Message, externality?: Source) => Promise<Message>|Sends the message as a request using its url. Internal requests always have a site-relative url starting '/'. Internal requests are handled in code and do not use the network, so essentially have no latency. The default source, `Source.Internal` means no further authentication is done on internal requests. If `Source.Outer` is specified, an internal request will be authenticated against the user attached to the request.|
 |runPipeline|(msg: Message, pipelineSpec: PipelineSpec, contextUrl? Url) => Promise<Message>|Runs a pipeline of requests as given. The contextUrl if supplied gives the url against which url patterns in the pipeline are matched.|
 |logger|Logger|Gives access to a logger as in std/log|
 |manifest|IServiceManifest|The manifest of the current service|
@@ -87,6 +87,14 @@ In the example, a handler is configured for a get request to the service. Method
 |all|(ServiceFunction) => this|Configure a handler for all requests|
 |allPath|(string, ServiceFunction) => this|Configure a handler for all requests with a specific service path|
 |initializer|(ServiceContext<TAdapter>, ServiceConfig) => Promise<void>|Configure a handler to run when the service is first configured|
+
+### Url segmentation
+Conventionally in Restspace a handler will handle all requests whose paths begin with a specific base path. Path segments after the base path can be viewed as parameters to a function. The runtime facilitates this by passing in information about what base path was matched. The `Url` class manages this information through the following properties:
+
+- basePathElements: string array of the segments which form the base path. This is the base path configured for the service concatenated with any path supplied to one of the handler configuring methods listed above.
+- servicePath: the part of the path after the base path (as a string with / delimiters, and no query string attached)
+- servicePathElements: string array of the segments of the service path
+- subPathElements: this is relevant where the service manages a store with files specifying functional definitions, otherwise it is null. Where it is present, the service path is the path under the base path to the file, and the sub path is the path following that which can be considered as parameters to the function expressed by the file. It contains the sub path as an array of segments.
 
 
 ## Managing State

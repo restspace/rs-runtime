@@ -31,14 +31,26 @@ service.postPath('/selector-schema', async msg => {
     };
     return msg.setDataJson(schema, "application/schema+json");
 });
-service.postPath('/redirect-on-unauthorized', msg => {
-    if (msg.status === 401 || msg.status === 403) {
-        const redirectUrl = new Url('/' + msg.url.servicePathElements.slice(1).join('/'));
-        redirectUrl.query.originalUrl = [ msg.url.toString() ];
-
-        msg.redirect(redirectUrl, true);
-    }
-    return Promise.resolve(msg);
+service.postPath('/redirect-permanent', msg => {
+    const location = '/' + msg.url.servicePath;
+    msg.exitConditionalMode();
+    return Promise.resolve(msg.setHeader('location', location).setStatus(301));
+});
+service.postPath('/redirect-temporary', msg => {
+    const location = '/' + msg.url.servicePath;
+    msg.exitConditionalMode();
+    return Promise.resolve(msg.setHeader('location', location).setStatus(307));
+});
+service.postPath('/see-other', msg => {
+    const location = '/' + msg.url.servicePath;
+    msg.exitConditionalMode();
+    return Promise.resolve(msg.setHeader('location', location).setStatus(303));
+});
+service.postPath('/reload-referer', msg => {
+    const location = msg.getHeader('referer');
+    if (!location) return Promise.resolve(msg);
+    msg.exitConditionalMode();
+    return Promise.resolve(msg.setHeader('location', location).setStatus(303));
 });
 
 export default service;

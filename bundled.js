@@ -12068,6 +12068,7 @@ class AsyncQueue {
         this.updateState();
     }
     updateState(closeRequested = false) {
+        if (this._qid == 9999) console.log(`state change qid ${this._qid} maxp ${this.maxPassed} starts ${this._state} nAwaiting ${this._nAwaiting} nPassed ${this._nPassed} nChild ${this._nActiveChildren} close req ${closeRequested}`);
         if (this._state === "running" && (this.maxPassed && this._nPassed >= this.maxPassed || closeRequested)) {
             this.emitter.emit('statechange', 'no-enqueue');
             this._state = "no-enqueue";
@@ -12095,6 +12096,7 @@ class AsyncQueue {
                 this.innerEnqueue(res, false, true);
                 this._nAwaiting--;
                 this.updateState();
+                if (this._qid == 9999) console.log(`enqueue promise qid ${this._qid} maxp ${this.maxPassed}, after nAwaiting: ${this._nAwaiting}, state: ${this._state}`);
             }).catch((reason)=>{
                 if (!(reason instanceof Error)) reason = new Error(reason.toString());
                 this.innerEnqueue(reason, false, true);
@@ -12108,14 +12110,18 @@ class AsyncQueue {
     }
     innerEnqueue(value, fromChild, fromPromise) {
         const allowedNoenqueue = this._state == "no-enqueue" && (fromChild || fromPromise);
+        if (allowedNoenqueue) {
+            if (this._qid == 9999) console.log(`Allowed no-enqueue, qid: ${this._qid} maxp: ${this.maxPassed} state: ${this._state}, fromChild: ${fromChild}, fromPromise: ${fromPromise} nChild ${this._nActiveChildren} nAwaiting ${this._nAwaiting}`);
+        }
         if (this._state !== "running" && !allowedNoenqueue) {
+            if (this._qid == 9999) console.log(`Illegal enqueue, qid: ${this._qid} maxp: ${this.maxPassed} state: ${this._state}, fromChild: ${fromChild}, fromPromise: ${fromPromise}`);
             throw new Error('Illegal internal enqueue after closed');
         }
         if (value instanceof AsyncQueue) {
             if (fromChild) return;
             this.attachSubqueue(value);
         } else {
-            if (value !== null) {
+            if (value !== null && value !== undefined) {
                 if (this._settlers.length > 0) {
                     if (this._values.length > 0) {
                         throw new Error('Illegal internal state');
@@ -19642,6 +19648,12 @@ class BaseStateClass {
 const nullState = (_cons)=>{
     throw new Error('State not set');
 };
+var Source;
+(function(Source) {
+    Source[Source["External"] = 0] = "External";
+    Source[Source["Internal"] = 1] = "Internal";
+    Source[Source["Outer"] = 2] = "Outer";
+})(Source || (Source = {}));
 async function getUserFromEmail(context, userUrlPattern, msg, email, internalPrivilege = false) {
     if (!email) return null;
     const userUrl = resolvePathPatternWithObject(userUrlPattern, {
@@ -19667,12 +19679,6 @@ async function saveUser(context, userUrlPattern, msg, user, internalPrivilege = 
 function userIsAnon(user) {
     return !user.email;
 }
-var Source;
-(function(Source) {
-    Source[Source["External"] = 0] = "External";
-    Source[Source["Internal"] = 1] = "Internal";
-    Source[Source["Outer"] = 2] = "Outer";
-})(Source || (Source = {}));
 var __dirname = "/tmp/cdn/_7L5tse9km4CJVhsMBees/node_modules/bcx-expression-evaluator/dist";
 function getDefaultExportFromCjs2(x) {
     return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
@@ -34262,6 +34268,16 @@ service3.postPath('/selector-schema', async (msg)=>{
     };
     return msg.setDataJson(schema, "application/schema+json");
 });
+service3.postPath('/redirect-on-unauthorized', (msg)=>{
+    if (msg.status === 401 || msg.status === 403) {
+        const redirectUrl = new Url('/' + msg.url.servicePathElements.slice(1).join('/'));
+        redirectUrl.query.originalUrl = [
+            msg.url.toString()
+        ];
+        msg.redirect(redirectUrl, true);
+    }
+    return Promise.resolve(msg);
+});
 const __default24 = {
     "name": "Library functions",
     "description": "A range of simple utility web functions",
@@ -34328,6 +34344,9 @@ const __default25 = {
                         "type": "object"
                     }
                 }
+            },
+            "reauthenticate": {
+                "type": "boolean"
             }
         }
     }
@@ -40266,12 +40285,6 @@ function applyServiceConfigTemplate(serviceConfig, configTemplate) {
     outputConfig.source = configTemplate.source;
     return outputConfig;
 }
-var Externality;
-(function(Externality) {
-    Externality[Externality["External"] = 0] = "External";
-    Externality[Externality["Outer"] = 1] = "Outer";
-    Externality[Externality["Internal"] = 2] = "Internal";
-})(Externality || (Externality = {}));
 class ServiceFactory {
     serviceManifestsBySource;
     adapterManifestsBySource;
@@ -40405,7 +40418,7 @@ class ServiceFactory {
             };
         }
         const serviceWrapper = new ServiceWrapper(service);
-        const sourceServiceFunc = source === Source.External ? serviceWrapper.external : serviceWrapper.internal;
+        const sourceServiceFunc = source === Source.External || source === Source.Outer ? serviceWrapper.external(source) : serviceWrapper.internal;
         serviceContext.manifest = structuredClone(serviceContext.manifest);
         const copyServiceConfig = structuredClone(serviceConfig);
         return (msg)=>sourceServiceFunc(msg, serviceContext, copyServiceConfig);
@@ -40417,7 +40430,7 @@ class ServiceFactory {
             const newFunc = async (msg)=>{
                 const msg2 = await func(msg);
                 msg2.setUrl(url1).setMethod('POST');
-                return context.makeRequest(msg2, Externality.Outer);
+                return context.makeRequest(msg2, Source.Outer);
             };
             return newFunc;
         } else {
@@ -40425,6 +40438,13 @@ class ServiceFactory {
         }
     }
     async getMessageFunctionByUrl(url, serviceContext, stateByBasePath, source) {
+        if (this.serviceConfigs['()'] && source === Source.External) {
+            const newServiceContext = {
+                ...serviceContext,
+                makeRequest: (msg)=>serviceContext.makeRequest(msg, Source.Outer)
+            };
+            return this.getMessageFunctionForService(this.serviceConfigs['()'], newServiceContext, source);
+        }
         const pathParts = [
             ...url.pathElements
         ];
@@ -40497,21 +40517,21 @@ class ServiceWrapper {
             }
             return newMsg;
         };
-        this.external = async (msg, context, serviceConfig)=>{
-            if (msg.authenticated) return this.internal(msg, context, serviceConfig);
-            const origin = msg.getHeader('origin');
-            const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
-            if (!isPermitted) {
-                config.logger.warning(`Unauthorized: ${msg.user?.email || 'anon'} for ${msg.url}`);
-                return this.setCors(msg, origin).setStatus(401, "Unauthorized");
-            }
-            msg.authenticated = true;
-            let msgOut = await this.internal(msg, context, serviceConfig);
-            msgOut = this.setCors(msgOut, origin);
-            msgOut = this.checkMatch(msgOut);
-            msgOut = this.setCache(msgOut, serviceConfig, isPublic);
-            return msgOut;
-        };
+        this.external = (source)=>async (msg, context, serviceConfig)=>{
+                const origin = msg.getHeader('origin');
+                const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
+                if (!isPermitted) {
+                    config.logger.warning(`Unauthorized: ${msg.user?.email || 'anon'} for ${msg.url}`);
+                    return this.setCors(msg, origin).setStatus(401, "Unauthorized");
+                }
+                msg.authenticated = true;
+                let msgOut = await this.internal(msg, context, serviceConfig);
+                if (source === Source.Outer) return msgOut;
+                msgOut = this.setCors(msgOut, origin);
+                msgOut = this.checkMatch(msgOut);
+                msgOut = this.setCache(msgOut, serviceConfig, isPublic);
+                return msgOut;
+            };
     }
     async prePostPipeline(prePost, msg, pipelineSpec, privateServiceConfigs) {
         if (pipelineSpec) {
@@ -40623,63 +40643,6 @@ class ServiceWrapper {
     service;
 }
 var PipelineElementType;
-const tenantLoads = {};
-function makeServiceContext(tenantName, state, prePost) {
-    const context = {
-        tenant: tenantName,
-        makeRequest: (msg, externality)=>externality === Externality.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg),
-        runPipeline: (msg, pipelineSpec, contextUrl)=>{
-            pipeline(msg, pipelineSpec, contextUrl);
-        },
-        prePost,
-        logger: config.logger,
-        getAdapter: (url, adapterConfig)=>{
-            return config.modules.getAdapter(url, context, adapterConfig);
-        },
-        state
-    };
-    return context;
-}
-const service11 = new Service();
-const service12 = new Service();
-function mapLegalChanges(msg, oldValues, newUser) {
-    const currentUserObj = msg.user || AuthUser.anon;
-    const current = new AuthUser(currentUserObj);
-    const isRegistration = !oldValues || oldValues.isAnon();
-    const isSelfChange = !isRegistration && oldValues.email === current.email;
-    if (newUser && newUser.passwordIsMaskOrEmpty()) newUser.password = oldValues.password;
-    if (msg.internalPrivilege || current.hasRole("A")) {
-        return newUser;
-    }
-    if (newUser === null) {
-        return isSelfChange ? newUser : "can't delete another user";
-    }
-    if (isSelfChange) {
-        if (newUser.roles !== oldValues.roles || newUser.email !== oldValues.email) {
-            return "user can't change their role or email";
-        } else {
-            return newUser;
-        }
-    }
-    if (isRegistration) {
-        if (newUser.roles !== 'U') {
-            return "registration must set role to U only";
-        } else {
-            return newUser;
-        }
-    }
-    return 'not an allowable change';
-}
-const service13 = new Service();
-class TemporaryAccessState extends BaseStateClass {
-    validTokenExpiries = [];
-    tokenBaseUrls = {};
-}
-const ajv2 = new __pika_web_default_export_for_treeshaking__1({
-    allErrors: true,
-    strictSchema: false,
-    allowUnionTypes: true
-});
 class NunjucksTemplateAdapter {
     env;
     constructor(context){
@@ -40719,8 +40682,38 @@ class NunjucksTemplateAdapter {
 const deleteManifestProperties = [
     'exposedConfigProperties'
 ];
+const service11 = new Service();
+const service12 = new AuthService();
+const service13 = new Service();
 const service14 = new Service();
-const service15 = new AuthService();
+function mapLegalChanges(msg, oldValues, newUser) {
+    const currentUserObj = msg.user || AuthUser.anon;
+    const current = new AuthUser(currentUserObj);
+    const isRegistration = !oldValues || oldValues.isAnon();
+    const isSelfChange = !isRegistration && oldValues.email === current.email;
+    if (newUser && newUser.passwordIsMaskOrEmpty()) newUser.password = oldValues.password;
+    if (msg.internalPrivilege || current.hasRole("A")) {
+        return newUser;
+    }
+    if (newUser === null) {
+        return isSelfChange ? newUser : "can't delete another user";
+    }
+    if (isSelfChange) {
+        if (newUser.roles !== oldValues.roles || newUser.email !== oldValues.email) {
+            return "user can't change their role or email";
+        } else {
+            return newUser;
+        }
+    }
+    if (isRegistration) {
+        if (newUser.roles !== 'U') {
+            return "registration must set role to U only";
+        } else {
+            return newUser;
+        }
+    }
+    return 'not an allowable change';
+}
 async function validateChange(msg, context) {
     if (!msg.ok || msg.method !== 'DELETE' && !msg.data || context.prePost !== "pre" || msg.internalPrivilege || msg.url.isDirectory) {
         msg.internalPrivilege = false;
@@ -40765,7 +40758,12 @@ async function validateChange(msg, context) {
     msg.setDataJson(updatedUser);
     return msg;
 }
+const service15 = new Service();
 const service16 = new Service();
+class TemporaryAccessState extends BaseStateClass {
+    validTokenExpiries = [];
+    tokenBaseUrls = {};
+}
 const service17 = new Service();
 class Modules {
     adapterConstructors;
@@ -40811,20 +40809,20 @@ class Modules {
             this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
         });
         this.services = {
-            "./services/services.ts": service14,
-            "./services/auth.ts": service15,
+            "./services/services.ts": service11,
+            "./services/auth.ts": service12,
             "./services/data.ts": service,
             "./services/dataset.ts": service1,
             "./services/file.ts": service2,
             "./services/lib.ts": service3,
-            "./services/pipeline.ts": service11,
-            "./services/pipeline-store.ts": service12,
+            "./services/pipeline.ts": service13,
+            "./services/pipeline-store.ts": service14,
             "./services/static-site-filter.ts": service4,
-            "./services/user-filter.ts": service16,
+            "./services/user-filter.ts": service15,
             "./services/template.ts": service5,
             "./services/proxy.ts": service6,
             "./services/email.ts": service7,
-            "./services/account.ts": service13,
+            "./services/account.ts": service16,
             "./services/discord.ts": service8,
             "./services/temporary-access.ts": service17,
             "./services/query.ts": service9,
@@ -41060,6 +41058,11 @@ class Authoriser {
         return payload;
     }
 }
+const ajv2 = new __pika_web_default_export_for_treeshaking__1({
+    allErrors: true,
+    strictSchema: false,
+    allowUnionTypes: true
+});
 const config = {
     server: {},
     modules: new Modules(ajv2),
@@ -41255,6 +41258,7 @@ class Tenant {
     rawServicesConfig;
     domains;
 }
+const tenantLoads = {};
 const getTenant = async (requestTenant)=>{
     const tenantLoad = tenantLoads[requestTenant];
     if (tenantLoad !== undefined) {
@@ -41286,7 +41290,7 @@ const getTenant = async (requestTenant)=>{
     }
     return config.tenants[requestTenant];
 };
-service14.getPath('catalogue', (msg)=>{
+service11.getPath('catalogue', (msg)=>{
     if (catalogue === null) {
         catalogue = {
             services: {},
@@ -41320,7 +41324,7 @@ service14.getPath('catalogue', (msg)=>{
         catalogue
     }));
 });
-service14.getPath('services', async (msg, context)=>{
+service11.getPath('services', async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
@@ -41347,8 +41351,8 @@ const getRaw = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
 };
-service14.getPath('raw', getRaw);
-service14.getPath('raw.json', getRaw);
+service11.getPath('raw', getRaw);
+service11.getPath('raw.json', getRaw);
 const rebuildConfig = async (rawServicesConfig, tenant)=>{
     let newTenant;
     try {
@@ -41379,14 +41383,128 @@ const rebuildConfig = async (rawServicesConfig, tenant)=>{
         ''
     ];
 };
+class PipelineStep {
+    condition;
+    spec;
+    rename;
+    tryMode;
+    method;
+    constructor(step){
+        this.step = step;
+        this.condition = null;
+        this.spec = '';
+        this.rename = '';
+        this.tryMode = false;
+        this.method = '';
+        let pos = 0;
+        step = step.trim();
+        let [match, posNew] = matchFirst(step, pos, [
+            "try"
+        ]);
+        if (match === "try") {
+            this.tryMode = true;
+            pos = posNew;
+        }
+        let conditionPart;
+        [conditionPart, posNew] = PipelineCondition.scan(step, pos);
+        this.condition = conditionPart;
+        if (posNew > 0) pos = posNew;
+        if (step[pos] === ':') {
+            [match, posNew] = [
+                " :",
+                pos + 1
+            ];
+        } else {
+            [match, posNew] = scanFirst(step, pos, [
+                " :"
+            ]);
+        }
+        if (match === " :") {
+            this.spec = step.substring(pos, posNew - 2).trim();
+            this.rename = upTo(step, " ", posNew);
+        } else {
+            this.spec = step.substring(pos).trim();
+        }
+    }
+    test(msg, mode, context) {
+        return !(this.condition && !this.condition.satisfies(msg, mode, context));
+    }
+    execute(msg, context) {
+        const sendMsg = (msg)=>{
+            if (context.targetHost && !msg.url.domain) {
+                msg.url.domain = context.targetHost.domain;
+                msg.url.scheme = context.targetHost.scheme;
+            }
+            if (context.targetHost && msg.url.domain === context.targetHost.domain) {
+                Object.assign(msg.headers, context.targetHeaders);
+            }
+            return context.handler(msg);
+        };
+        const innerExecute = async ()=>{
+            try {
+                let outMsg = msg;
+                if (this.spec) {
+                    const newMsg_s = await msg.divertToSpec(this.spec, "POST", context.callerUrl, context.callerMethod, msg.headers);
+                    if (Array.isArray(newMsg_s)) {
+                        const newMsgs = new AsyncQueue(newMsg_s.length);
+                        newMsg_s.forEach((msg, i)=>sendMsg(msg).then((outMsg)=>{
+                                if (this.rename) {
+                                    outMsg.name = resolvePathPatternWithUrl(this.rename, outMsg.url);
+                                } else {
+                                    outMsg.name = i.toString();
+                                }
+                                newMsgs.enqueue(outMsg);
+                            }));
+                        return newMsgs;
+                    } else {
+                        outMsg = await sendMsg(newMsg_s);
+                    }
+                }
+                if (this.rename) {
+                    outMsg.name = resolvePathPatternWithUrl(this.rename, outMsg.url);
+                }
+                if (this.tryMode) {
+                    outMsg.enterConditionalMode();
+                }
+                if (context.trace) {
+                    if (outMsg.data && isJson(outMsg.data.mimeType)) {
+                        context.traceOutputs[context.path.join('.')] = await outMsg.data.asJson();
+                    }
+                }
+                return outMsg;
+            } catch (err) {
+                config.logger.error(`error executing pipeline element: ${this.step}, ${err}`);
+                return msg.setStatus(500, 'Internal Server Error');
+            }
+        };
+        return innerExecute();
+    }
+    step;
+}
+function makeServiceContext(tenantName, state, prePost) {
+    const context = {
+        tenant: tenantName,
+        makeRequest: (msg, source)=>source === Source.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg, source),
+        runPipeline: (msg, pipelineSpec, contextUrl)=>{
+            pipeline(msg, pipelineSpec, contextUrl);
+        },
+        prePost,
+        logger: config.logger,
+        getAdapter: (url, adapterConfig)=>{
+            return config.modules.getAdapter(url, context, adapterConfig);
+        },
+        state
+    };
+    return context;
+}
 const putRaw = async (msg, context)=>{
     const rawServicesConfig = await msg?.data?.asJson();
     const [status, message] = await rebuildConfig(rawServicesConfig, context.tenant);
     if (status) return msg.setStatus(status, message);
     return msg.setStatus(200);
 };
-service14.putPath('raw', putRaw);
-service14.putPath('raw.json', putRaw);
+service11.putPath('raw', putRaw);
+service11.putPath('raw.json', putRaw);
 const putChords = async (msg, context)=>{
     const chords = await msg?.data?.asJson();
     if (typeof chords !== 'object') return msg.setStatus(400, 'Chords should be an object labelled by chord id');
@@ -41411,14 +41529,14 @@ const putChords = async (msg, context)=>{
     const [status, message] = await rebuildConfig(newRawConfig, context.tenant);
     return msg.setStatus(status || 200, message);
 };
-service14.putPath('chords', putChords);
-service14.putPath('chords.json', putChords);
+service11.putPath('chords', putChords);
+service11.putPath('chords.json', putChords);
 const getChordMap = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.chordMap));
 };
-service14.getPath('chord-map', getChordMap);
-service14.getPath('chord-map.json', getChordMap);
+service11.getPath('chord-map', getChordMap);
+service11.getPath('chord-map.json', getChordMap);
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
     PipelineElementType[PipelineElementType["serializer"] = 1] = "serializer";
@@ -41564,13 +41682,13 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                         const step = el1;
                         const fixedMode = mode;
                         const contextCopy = copyPipelineContext(context);
-                        msgs = msgs.flatMap((msg)=>{
+                        msgs = msgs.flatMap(async (msg)=>{
                             if (endedMsgs.includes(msg)) return msg;
                             succeeded = step.test(msg, fixedMode, contextCopy);
                             if (succeeded) {
                                 const stepResult = step.execute(msg, contextCopy);
                                 if (!stepResult) return null;
-                                return processStepSucceeded(fixedMode, endedMsgs, stepResult);
+                                return await processStepSucceeded(fixedMode, endedMsgs, stepResult);
                             } else {
                                 return processStepFailed(fixedMode, endedMsgs, msg);
                             }
@@ -41584,7 +41702,10 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                     {
                         const transform = el1;
                         const contextCopy1 = copyPipelineContext(context);
-                        msgs = msgs.flatMap((msg)=>transform.execute(msg, contextCopy1));
+                        msgs = msgs.flatMap((msg)=>{
+                            if (endedMsgs.includes(msg)) return msg;
+                            return transform.execute(msg, contextCopy1);
+                        });
                         break;
                     }
                 case PipelineElementType.subpipeline:
@@ -41607,10 +41728,16 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                         const op = el1;
                         switch(op){
                             case PipelineParallelizer.unzip:
-                                msgs = msgs.flatMap((msg)=>unzip(msg));
+                                msgs = msgs.flatMap((msg)=>{
+                                    if (endedMsgs.includes(msg)) return msg;
+                                    unzip(msg);
+                                });
                                 break;
                             case PipelineParallelizer.jsonSplit:
-                                msgs = msgs.flatMap((msg)=>jsonSplit(msg));
+                                msgs = msgs.flatMap((msg)=>{
+                                    if (endedMsgs.includes(msg)) return msg;
+                                    jsonSplit(msg);
+                                });
                                 break;
                         }
                         break;
@@ -41744,104 +41871,6 @@ async function pipeline(msg, pipeline, contextUrl, external, handler = handleOut
     }
     return outMsg || msg.copy().setStatus(204, '');
 }
-class PipelineStep {
-    condition;
-    spec;
-    rename;
-    tryMode;
-    method;
-    constructor(step){
-        this.step = step;
-        this.condition = null;
-        this.spec = '';
-        this.rename = '';
-        this.tryMode = false;
-        this.method = '';
-        let pos = 0;
-        step = step.trim();
-        let [match, posNew] = matchFirst(step, pos, [
-            "try"
-        ]);
-        if (match === "try") {
-            this.tryMode = true;
-            pos = posNew;
-        }
-        let conditionPart;
-        [conditionPart, posNew] = PipelineCondition.scan(step, pos);
-        this.condition = conditionPart;
-        if (posNew > 0) pos = posNew;
-        if (step[pos] === ':') {
-            [match, posNew] = [
-                " :",
-                pos + 1
-            ];
-        } else {
-            [match, posNew] = scanFirst(step, pos, [
-                " :"
-            ]);
-        }
-        if (match === " :") {
-            this.spec = step.substring(pos, posNew - 2).trim();
-            this.rename = upTo(step, " ", posNew);
-        } else {
-            this.spec = step.substring(pos).trim();
-        }
-    }
-    test(msg, mode, context) {
-        return !(this.condition && !this.condition.satisfies(msg, mode, context));
-    }
-    execute(msg, context) {
-        const sendMsg = (msg)=>{
-            if (context.targetHost && !msg.url.domain) {
-                msg.url.domain = context.targetHost.domain;
-                msg.url.scheme = context.targetHost.scheme;
-            }
-            if (context.targetHost && msg.url.domain === context.targetHost.domain) {
-                Object.assign(msg.headers, context.targetHeaders);
-            }
-            return context.handler(msg);
-        };
-        const innerExecute = async ()=>{
-            try {
-                let outMsg = msg;
-                if (this.spec) {
-                    const newMsg_s = await msg.divertToSpec(this.spec, "POST", context.callerUrl, context.callerMethod, msg.headers);
-                    if (Array.isArray(newMsg_s)) {
-                        const newMsgs = new AsyncQueue(newMsg_s.length);
-                        newMsg_s.forEach((msg, i)=>sendMsg(msg).then((outMsg)=>{
-                                if (this.rename) {
-                                    outMsg.name = resolvePathPatternWithUrl(this.rename, outMsg.url);
-                                } else {
-                                    outMsg.name = i.toString();
-                                }
-                                newMsgs.enqueue(outMsg);
-                            }));
-                        return newMsgs;
-                    } else {
-                        outMsg = await sendMsg(newMsg_s);
-                    }
-                }
-                if (this.rename) {
-                    outMsg.name = resolvePathPatternWithUrl(this.rename, outMsg.url);
-                }
-                if (this.tryMode) {
-                    outMsg.enterConditionalMode();
-                }
-                if (context.trace) {
-                    if (outMsg.data && isJson(outMsg.data.mimeType)) {
-                        context.traceOutputs[context.path.join('.')] = await outMsg.data.asJson();
-                    }
-                }
-                return outMsg;
-            } catch (err) {
-                config.logger.error(`error executing pipeline element: ${this.step}, ${err}`);
-                return msg.setStatus(500, 'Internal Server Error');
-            }
-        };
-        return innerExecute();
-    }
-    step;
-}
 const tenantFromHostname = (hostname)=>{
     const domainParts = hostname.split('.');
     if (config.server.tenancy === 'single') {
@@ -41866,9 +41895,11 @@ const handleIncomingRequest = async (msg)=>{
         const tenant = await getTenant(tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
-        config.logger.info(`Request (${tenantName}) by ${msg.user?.email || '?'} ${msg.method} ${msg.url}`);
+        config.logger.info(`${" ".repeat(msg.depth)}Request (${tenantName}) by ${msg.user?.email || '?'} ${msg.method} ${msg.url}`);
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
-        const msgOut = await messageFunction(msg);
+        const msgOut = await messageFunction(msg.callDown());
+        msgOut.depth = msg.depth;
+        msgOut.callUp();
         if (!msgOut.ok) {
             config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
         }
@@ -41878,7 +41909,7 @@ const handleIncomingRequest = async (msg)=>{
         return originalMethod === 'OPTIONS' ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
     }
 };
-const handleOutgoingRequest = async (msg)=>{
+const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
     const originalMethod = msg.method;
     let tenantName = '';
     try {
@@ -41891,10 +41922,12 @@ const handleOutgoingRequest = async (msg)=>{
         let msgOut;
         if (tenantName !== null) {
             const tenant = await getTenant(tenantName || 'main');
-            config.logger.info(`Request (${tenantName}) ${msg.method} ${msg.url}`);
+            config.logger.info(`${" ".repeat(msg.depth)}Request (${tenantName}) ${msg.method} ${msg.url}`);
             msg.tenant = tenantName;
-            const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.Internal);
-            msgOut = await messageFunction(msg);
+            const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
+            msgOut = await messageFunction(msg.callDown());
+            msgOut.depth = msg.depth;
+            msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`);
             msgOut = await config.requestExternal(msg);
@@ -41918,7 +41951,10 @@ const handleOutgoingRequestFromPrivateServices = (prePost, privateServices, tena
             ];
             const tenant = config.tenants[tenantName || 'main'];
             const messageFunction = await tenant.getMessageFunctionForService(serviceConfig, Source.Internal, prePost);
-            return await messageFunction(msg);
+            const msgOut = await messageFunction(msg.callDown());
+            msgOut.depth = msg.depth;
+            msgOut.callUp();
+            return msgOut;
         } else {
             return handleOutgoingRequest(msg);
         }
@@ -41962,7 +41998,7 @@ function logout(msg) {
     msg.deleteCookie('rs-auth');
     return Promise.resolve(msg);
 }
-service15.postPath('login', async (msg, context, config)=>{
+service12.postPath('login', async (msg, context, config)=>{
     const newMsg = await login(msg, config.userUrlPattern, context);
     if (config.loginPage && msg.getHeader('referer')) {
         let redirUrl = msg.url.copy();
@@ -41997,8 +42033,8 @@ service15.postPath('login', async (msg, context, config)=>{
     }
     return newMsg;
 });
-service15.postPath('logout', (msg)=>logout(msg));
-service15.getPath('user', async (msg, context, config)=>{
+service12.postPath('logout', (msg)=>logout(msg));
+service12.getPath('user', async (msg, context, config)=>{
     if (!msg.user || userIsAnon(msg.user)) {
         return msg.setStatus(401, 'Unauthorized');
     }
@@ -42010,7 +42046,7 @@ service15.getPath('user', async (msg, context, config)=>{
         return msg.setStatus(404, "No such user");
     }
 });
-service15.setUser(async (msg)=>{
+service12.setUser(async (msg)=>{
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
     let authResult = '';
@@ -42036,7 +42072,7 @@ service15.setUser(async (msg)=>{
     }
     return msg;
 });
-service11.all((msg, context, config)=>{
+service13.all((msg, context, config)=>{
     let runPipeline = config.pipeline;
     if (msg.url.query["$to-step"]) {
         const toStep = parseInt(msg.url.query["$to-step"][0]);
@@ -42044,9 +42080,9 @@ service11.all((msg, context, config)=>{
             runPipeline = config.pipeline.slice(0, toStep + 1);
         }
     }
-    return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg));
+    return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal));
 });
-service12.all(async (msg, context)=>{
+service14.all(async (msg, context)=>{
     const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
@@ -42063,7 +42099,7 @@ service12.all(async (msg, context)=>{
     pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
     return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
-service16.get(async (msg, context)=>{
+service15.get(async (msg, context)=>{
     if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
     if (msg.url.query['test'] !== undefined) {
         msg.data = undefined;
@@ -42087,9 +42123,9 @@ service16.get(async (msg, context)=>{
     msg.data.mimeType = originalMime;
     return msg;
 });
-service16.put(validateChange);
-service16.post(validateChange);
-service16.delete(validateChange);
+service15.put(validateChange);
+service15.post(validateChange);
+service15.delete(validateChange);
 const sendTokenUrl = async (msg, context, serviceConfig, subservice)=>{
     if (msg.url.servicePathElements.length < 1) return msg.setStatus(400, 'Missing email');
     const user = await getUserFromEmail(context, serviceConfig.userUrlPattern, msg, msg.url.servicePathElements[0], true);
@@ -42169,11 +42205,11 @@ const tokenVerifySchema = {
         }
     }
 };
-service13.postPath('reset-password', (msg, context, config)=>{
+service16.postPath('reset-password', (msg, context, config)=>{
     if (!config.passwordReset) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.passwordReset);
 });
-service13.postPath('token-update-password', (msg, context, config)=>{
+service16.postPath('token-update-password', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, async (userData, posted)=>{
         const user = new AuthUser(userData);
         user.password = posted['password'];
@@ -42181,11 +42217,11 @@ service13.postPath('token-update-password', (msg, context, config)=>{
         return user;
     });
 }, tokenPasswordSchema);
-service13.postPath('verify-email', (msg, context, config)=>{
+service16.postPath('verify-email', (msg, context, config)=>{
     if (!config.emailConfirm) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.emailConfirm);
 });
-service13.postPath('confirm-email', (msg, context, config)=>{
+service16.postPath('confirm-email', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, (userData, _posted)=>{
         const user = new AuthUser(userData);
         user.emailVerified = new Date();
@@ -42209,7 +42245,7 @@ service17.all(async (msg, context, config)=>{
             return msg.setStatus(403, "Attempt to access a url outside the base url for which this token is valid");
         }
         msg.user = new AuthUser(msg.user || AuthUser.anon).addRole(config.acquiredRole);
-        return context.makeRequest(msg, Externality.External);
+        return context.makeRequest(msg, Source.External);
     } else if (msg.method === 'GET') {
         if (!(msg.user && new AuthUser(msg.user).authorizedFor(config.acquiredRole))) {
             return msg.setStatus(401, "Cannot generate a temporary access token with an acquired role for which the user is not authorized");
