@@ -30,7 +30,8 @@ export default {
 					"responseMimeType": { "type": "string" },
 					"responseSchema": { "type": "object" }
 				}
-			}
+			},
+			"reauthenticate": { "type": "boolean" }
 		}
 	}
 }

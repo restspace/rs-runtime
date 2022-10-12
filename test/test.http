@@ -163,7 +163,15 @@ Authorization: Basic elastic 1RdRylip2LfwsWpkJWto
 }
 
 ###
-POST https://restspace.local:3131/query/test/6
+POST https://restspace.local:3131/query/test
+Content-Type: application/json
+
+{
+	"subgroup": "6"
+}
+
+###
+GET https://restspace.local:3131/test-pipeline
 
 ###
 POST https://ademchic2.restspace.io/backend/catitem-data/plumbing/taps/Matt black tap

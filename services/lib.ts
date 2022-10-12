@@ -1,5 +1,6 @@
 import { Service } from "rs-core/Service.ts";
 import { encode, decode } from "std/encoding/base64.ts"
+import { Url } from "rs-core/Url.ts";
 
 const service = new Service();
 
@@ -29,6 +30,15 @@ service.postPath('/selector-schema', async msg => {
         enum: items
     };
     return msg.setDataJson(schema, "application/schema+json");
+});
+service.postPath('/redirect-on-unauthorized', msg => {
+    if (msg.status === 401 || msg.status === 403) {
+        const redirectUrl = new Url('/' + msg.url.servicePathElements.slice(1).join('/'));
+        redirectUrl.query.originalUrl = [ msg.url.toString() ];
+
+        msg.redirect(redirectUrl, true);
+    }
+    return Promise.resolve(msg);
 });
 
 export default service;

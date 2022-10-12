@@ -7,9 +7,9 @@ export class MockHandler {
         const pathIdx = '/' + msg.url.servicePath;
         const subhandler = this.subhandlers[pathIdx];
         if (subhandler !== undefined) {
-            return this.subhandlers[pathIdx](msg);
+            return new Promise(res => setTimeout(() => res(this.subhandlers[pathIdx](msg)), 1));
         } else {
-            return Promise.resolve(msg.setStatus(404, 'Not found'));
+            return new Promise(res => setTimeout(() => res(msg.setStatus(404, 'Not found')), 2));
         }
     }
 

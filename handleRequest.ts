@@ -66,9 +66,11 @@ export const handleIncomingRequest = async (msg: Message) => {
         const tenant = await getTenant(tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
-        config.logger.info(`Request (${tenantName}) by ${msg.user?.email || '?'} ${msg.method} ${msg.url}`);
+        config.logger.info(`${" ".repeat(msg.depth)}Request (${tenantName}) by ${msg.user?.email || '?'} ${msg.method} ${msg.url}`);
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
-        const msgOut = await messageFunction(msg);
+        const msgOut = await messageFunction(msg.callDown());
+        msgOut.depth = msg.depth;
+        msgOut.callUp();
         if (!msgOut.ok) {
             config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
         }
@@ -81,7 +83,7 @@ export const handleIncomingRequest = async (msg: Message) => {
     }
 };
 
-export const handleOutgoingRequest = async (msg: Message) => {
+export const handleOutgoingRequest = async (msg: Message, source = Source.Internal) => {
     const originalMethod = msg.method;
     let tenantName: string | null = '';
     try {
@@ -95,10 +97,12 @@ export const handleOutgoingRequest = async (msg: Message) => {
         let msgOut: Message;
         if (tenantName !== null) {
             const tenant = await getTenant(tenantName || 'main');
-            config.logger.info(`Request (${tenantName}) ${msg.method} ${msg.url}`);
+            config.logger.info(`${" ".repeat(msg.depth)}Request (${tenantName}) ${msg.method} ${msg.url}`);
             msg.tenant = tenantName;
-            const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.Internal);
-            msgOut = await messageFunction(msg);
+            const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
+            msgOut = await messageFunction(msg.callDown());
+            msgOut.depth = msg.depth;
+            msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`);
             msgOut = await config.requestExternal(msg);
@@ -125,7 +129,10 @@ export const handleOutgoingRequestFromPrivateServices = (prePost: PrePost, priva
             msg.url.basePathElements = [ privateServiceName ]; // sets service path to path after service name
             const tenant = config.tenants[tenantName || 'main'];
             const messageFunction = await tenant.getMessageFunctionForService(serviceConfig, Source.Internal, prePost);
-            return await messageFunction(msg);
+            const msgOut = await messageFunction(msg.callDown());
+            msgOut.depth = msg.depth;
+            msgOut.callUp();
+            return msgOut;
         } else {
             return handleOutgoingRequest(msg);
         }

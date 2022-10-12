@@ -3,6 +3,7 @@ import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { pipeline } from "../pipeline/pipeline.ts";
+import { Source } from "rs-core/Source.ts";
 
 interface ManualMimeTypes {
 	requestMimeType: string;
@@ -14,6 +15,7 @@ interface ManualMimeTypes {
 interface PipelineConfig extends IServiceConfig {
     pipeline: PipelineSpec;
 	manualMimeTypes: ManualMimeTypes;
+	reauthenticate?: boolean;
 }
 
 const service = new Service<IAdapter, PipelineConfig>();
@@ -26,7 +28,7 @@ service.all((msg, context, config) => {
 			runPipeline = config.pipeline.slice(0, toStep + 1);
 		} 
 	}
-	return pipeline(msg, runPipeline, msg.url, false, msg => context.makeRequest(msg));
+	return pipeline(msg, runPipeline, msg.url, false, msg => context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal));
 })
 
 export default service;

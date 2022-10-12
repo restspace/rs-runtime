@@ -8,8 +8,6 @@ import { matchFirst, scanFirst, upTo } from "rs-core/utility/utility.ts";
 import { PipelineMode } from "./pipelineMode.ts";
 import { isJson } from "../../rs-core/mimeType.ts";
 
-export enum Externality { External, Outer, Internal }
-
 export class PipelineStep {
     condition: PipelineCondition | null = null;
     spec = '';

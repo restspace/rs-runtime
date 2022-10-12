@@ -4,7 +4,7 @@ import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 import { Url } from "rs-core/Url.ts";
 import { BaseStateClass } from "../../rs-core/ServiceContext.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
-import { Externality } from "../pipeline/pipelineStep.ts";
+import { Source } from "../../rs-core/Source.ts";
 
 interface ITemporaryAccessConfig extends IServiceConfig {
 	acquiredRole: string;
@@ -37,7 +37,7 @@ service.all(async (msg, context, config) => {
 			return msg.setStatus(403, "Attempt to access a url outside the base url for which this token is valid"); 
 		}
 		msg.user = new AuthUser(msg.user || AuthUser.anon).addRole(config.acquiredRole);
-		return context.makeRequest(msg, Externality.External); // requested service will check user's authorization
+		return context.makeRequest(msg, Source.External); // requested service will check user's authorization
 	} else if (msg.method === 'GET') {
 		if (!(msg.user && new AuthUser(msg.user).authorizedFor(config.acquiredRole))) {
 			return msg.setStatus(401, "Cannot generate a temporary access token with an acquired role for which the user is not authorized");

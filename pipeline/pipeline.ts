@@ -128,7 +128,12 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
 
     let pos = 0;
     let msgs = new AsyncQueue<Message>(1).enqueue(msg);
+
+    // a message on this list will be returned from the pipeline
+    // because it is an error status or the pipeline mode dictates it,
+    // so it should not be further processed
     const endedMsgs: Message[] = [];
+
     let depth = context.path.length;
 
     while (pos < pipeline.length) {
@@ -147,13 +152,13 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                     const step = el as PipelineStep;
                     const fixedMode = mode;
                     const contextCopy = copyPipelineContext(context);
-                    msgs = msgs.flatMap(msg => {
+                    msgs = msgs.flatMap(async msg => {
                         if (endedMsgs.includes(msg)) return msg;
                         succeeded = step.test(msg, fixedMode, contextCopy);
                         if (succeeded) {
                             const stepResult = step.execute(msg, contextCopy);
                             if (!stepResult) return null;
-                            return processStepSucceeded(fixedMode, endedMsgs, stepResult);
+                            return await processStepSucceeded(fixedMode, endedMsgs, stepResult);
                         } else {
                             return processStepFailed(fixedMode, endedMsgs, msg);
                         }
@@ -166,7 +171,10 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                 case PipelineElementType.transform: {
                     const transform = el as PipelineTransform;
                     const contextCopy = copyPipelineContext(context);
-                    msgs = msgs.flatMap(msg => transform.execute(msg, contextCopy));
+                    msgs = msgs.flatMap(msg => {
+                        if (endedMsgs.includes(msg)) return msg;
+                        return transform.execute(msg, contextCopy)
+                    });
                     break;
                 }
                 case PipelineElementType.subpipeline: {
@@ -188,13 +196,19 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                     const op = el as PipelineParallelizer;
                     switch (op) {
                         case PipelineParallelizer.unzip:
-                            msgs = msgs.flatMap(msg => unzip(msg));
+                            msgs = msgs.flatMap(msg => {
+                                if (endedMsgs.includes(msg)) return msg;
+                                unzip(msg);
+                            });
                             break;
                     //     case PipelineParallelizer.split:
                     //         msgs = msgs.flatMap(msg => multipartSplit(msg));
                     //         break;
                         case PipelineParallelizer.jsonSplit:
-                            msgs = msgs.flatMap(msg => jsonSplit(msg));
+                            msgs = msgs.flatMap(msg => {
+                                if (endedMsgs.includes(msg)) return msg;
+                                jsonSplit(msg);
+                            });
                             break;
                     }
                     break;

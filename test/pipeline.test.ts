@@ -119,6 +119,15 @@ Deno.test('error normal abort', async function () {
     ]);
     assertStrictEquals(msgOut.status, 404);
 });
+Deno.test('error then transform', async function () {
+    const msgOut = await pipeline(testMessage('/', 'GET'), [
+        "GET /test/missingFile",
+        {
+            "$this": "$this"
+        }
+    ]);
+    assertStrictEquals(msgOut.status, 404);
+});
 Deno.test('try mode message reverts', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [
         "try GET /test/missingFile"

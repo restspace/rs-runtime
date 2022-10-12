@@ -12048,6 +12048,7 @@ class AsyncQueue {
     _nPassed;
     _nActiveChildren;
     _state;
+    _nAwaiting;
     static queueCount = 0;
     _qid;
     emitter;
@@ -12059,6 +12060,7 @@ class AsyncQueue {
         this._nPassed = 0;
         this._nActiveChildren = 0;
         this._state = "running";
+        this._nAwaiting = 0;
         this.emitter = new EventEmitter();
         this._values = new ArrayQueue();
         this._settlers = new ArrayQueue();
@@ -12066,12 +12068,11 @@ class AsyncQueue {
         this.updateState();
     }
     updateState(closeRequested = false) {
-        this._state;
         if (this._state === "running" && (this.maxPassed && this._nPassed >= this.maxPassed || closeRequested)) {
             this.emitter.emit('statechange', 'no-enqueue');
             this._state = "no-enqueue";
         }
-        if (this._state === "no-enqueue" && this._nActiveChildren === 0) {
+        if (this._state === "no-enqueue" && this._nActiveChildren === 0 && this._nAwaiting === 0) {
             this.emitter.emit('statechange', 'all-enqueued');
             this._state = "all-enqueued";
         }
@@ -12089,17 +12090,25 @@ class AsyncQueue {
             throw new Error('Closed');
         }
         if (value instanceof Promise) {
-            value.then((res)=>this.innerEnqueue(res, false)).catch((reason)=>{
+            this._nAwaiting++;
+            value.then((res)=>{
+                this.innerEnqueue(res, false, true);
+                this._nAwaiting--;
+                this.updateState();
+            }).catch((reason)=>{
                 if (!(reason instanceof Error)) reason = new Error(reason.toString());
-                this.innerEnqueue(reason, false);
+                this.innerEnqueue(reason, false, true);
+                this._nAwaiting--;
+                this.updateState();
             });
         } else {
             this.innerEnqueue(value, false);
         }
         return this;
     }
-    innerEnqueue(value, fromChild) {
-        if (this._state !== "running" && !(this._state === 'no-enqueue' && fromChild)) {
+    innerEnqueue(value, fromChild, fromPromise) {
+        const allowedNoenqueue = this._state == "no-enqueue" && (fromChild || fromPromise);
+        if (this._state !== "running" && !allowedNoenqueue) {
             throw new Error('Illegal internal enqueue after closed');
         }
         if (value instanceof AsyncQueue) {
@@ -12194,12 +12203,7 @@ class AsyncQueue {
                     let res;
                     try {
                         res = mapper(item);
-                        if (res instanceof Promise) {
-                            res = await res;
-                        }
-                        if (res !== undefined) {
-                            newAsq.enqueue(res);
-                        }
+                        if (res !== undefined) newAsq.enqueue(res);
                     } catch (err) {
                         newAsq.enqueue(err);
                     }
@@ -22664,7 +22668,8 @@ const transformation = (transformObject, data, url = new Url('/'))=>{
             return Object.assign({}, val0, val1);
         },
         parseInt: (s, radix)=>parseInt(s, radix),
-        parseFloat: (s)=>parseFloat(s)
+        parseFloat: (s)=>parseFloat(s),
+        uuid: ()=>crypto.randomUUID()
     };
     if (typeof transformObject === 'string') {
         return doEvaluate(transformObject, data, transformHelper);
@@ -22707,7 +22712,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
         output[effectiveKey] = shallowCopy(transformation(subTransform, input, url));
     } else if (match === '.') {
         const keyPart = key.slice(keyStart, newKeyStart - 1).trim();
-        if (!(keyPart in input)) return;
+        if (keyStart === 0 && !(keyPart in input)) return;
         if (!(keyPart in output)) {
             output[keyPart] = {};
         } else {
@@ -22819,19 +22824,224 @@ const copyPipelineContext = (context)=>{
         ]
     };
 };
+const { Deno: Deno1  } = globalThis;
+const noColor = typeof Deno1?.noColor === "boolean" ? Deno1.noColor : true;
+let enabled = !noColor;
+function code1(open, close) {
+    return {
+        open: `\x1b[${open.join(";")}m`,
+        close: `\x1b[${close}m`,
+        regexp: new RegExp(`\\x1b\\[${close}m`, "g")
+    };
+}
+function run(str, code) {
+    return enabled ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
+}
+function bold(str) {
+    return run(str, code1([
+        1
+    ], 22));
+}
+function red(str) {
+    return run(str, code1([
+        31
+    ], 39));
+}
+function yellow(str) {
+    return run(str, code1([
+        33
+    ], 39));
+}
+function blue(str) {
+    return run(str, code1([
+        34
+    ], 39));
+}
+new RegExp([
+    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
+    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))", 
+].join("|"), "g");
+var DiffType;
+(function(DiffType) {
+    DiffType["removed"] = "removed";
+    DiffType["common"] = "common";
+    DiffType["added"] = "added";
+})(DiffType || (DiffType = {}));
+BigInt(Number.MAX_SAFE_INTEGER);
+function getFileInfoType(fileInfo) {
+    return fileInfo.isFile ? "file" : fileInfo.isDirectory ? "dir" : fileInfo.isSymlink ? "symlink" : undefined;
+}
+async function ensureDir(dir) {
+    try {
+        const fileInfo = await Deno.lstat(dir);
+        if (!fileInfo.isDirectory) {
+            throw new Error(`Ensure path exists, expected 'dir', got '${getFileInfoType(fileInfo)}'`);
+        }
+    } catch (err) {
+        if (err instanceof Deno.errors.NotFound) {
+            await Deno.mkdir(dir, {
+                recursive: true
+            });
+            return;
+        }
+        throw err;
+    }
+}
+const BUF_SIZE = 64 * 1024;
+async function* limitBytes(itbl, limit) {
+    let bytes = 0;
+    for await (let chunk of itbl){
+        bytes += chunk.byteLength;
+        if (bytes > limit) {
+            return chunk.slice(0, limit - bytes);
+        } else if (bytes === limit) {
+            return chunk;
+        } else {
+            yield chunk;
+        }
+    }
+}
+async function* toBlockChunks(stringItbl) {
+    const buffer = new Uint8Array(BUF_SIZE);
+    let pointer = 0;
+    const encoder = new TextEncoder();
+    for await (const stringChunk of stringItbl){
+        const bytes = encoder.encode(stringChunk);
+        let start = 0;
+        let bytesRemaining = bytes.length - start;
+        let bufferRemaining = BUF_SIZE - pointer;
+        while(bytesRemaining >= bufferRemaining){
+            buffer.set(bytes.slice(start, start + bufferRemaining), pointer);
+            yield buffer;
+            start += bufferRemaining;
+            bytesRemaining = bytes.length - start;
+            pointer = 0;
+            bufferRemaining = BUF_SIZE - pointer;
+        }
+        if (bytesRemaining > 0) {
+            buffer.set(bytes.slice(start), pointer);
+            pointer += bytesRemaining;
+        }
+    }
+    yield buffer.slice(0, pointer);
+}
+async function* toLines(stringItbl) {
+    const iterator = stringItbl[Symbol.asyncIterator]();
+    let { value: chunk , done: readerDone  } = await iterator.next();
+    const re = /\r\n|\n|\r/gm;
+    let startIndex = 0;
+    for(;;){
+        const result = re.exec(chunk);
+        if (!result) {
+            if (readerDone) {
+                break;
+            }
+            const remainder = chunk.substr(startIndex);
+            const nextResult = await iterator.next();
+            chunk = nextResult.value;
+            readerDone = nextResult.done;
+            chunk = remainder + (chunk || "");
+            startIndex = re.lastIndex = 0;
+            continue;
+        }
+        yield chunk.substring(startIndex, result.index);
+        startIndex = re.lastIndex;
+    }
+    if (startIndex < chunk.length) {
+        yield chunk.substr(startIndex);
+    }
+}
+async function* iterateReader(r, options) {
+    const bufSize = options?.bufSize ?? BUF_SIZE;
+    while(true){
+        const b = new Uint8Array(bufSize);
+        const result = await r.read(b);
+        if (result === null) {
+            break;
+        }
+        yield b.subarray(0, result);
+    }
+}
+async function readFileStream(path, startByte = 0, endByte = -1) {
+    const f = await Deno.open(path);
+    if (startByte > 0) {
+        await Deno.seek(f.rid, startByte, Deno.SeekMode.Start);
+    }
+    let itbl = iterateReader(f, {
+        bufSize: BUF_SIZE
+    });
+    if (endByte > -1) {
+        itbl = limitBytes(itbl, endByte - startByte);
+    }
+    const stream = new ReadableStream({
+        async pull (controller) {
+            try {
+                const { value , done  } = await itbl.next();
+                if (done) {
+                    controller.close();
+                    f.close();
+                } else {
+                    controller.enqueue(value);
+                }
+            } catch (err) {
+                controller.error(err);
+                console.log('stream error: ' + JSON.stringify(err));
+                f.close();
+            }
+        },
+        cancel () {
+            f.close();
+        }
+    });
+    return stream;
+}
+async function writeFileStream(path) {
+    await ensureDir(dirname2(path));
+    let f = await Deno.open(path, {
+        create: true,
+        write: true,
+        truncate: true
+    });
+    const stream = new WritableStream({
+        async write (chunk) {
+            await writeAll(f, chunk);
+        },
+        close () {
+            f.close();
+        },
+        abort (reason) {
+            console.error('Write abort: ', reason);
+            f.close();
+        }
+    });
+    return stream;
+}
 function jsonSplit(msg) {
     const queue = new AsyncQueue();
     if (!msg.data) return queue;
-    msg.data.asJson().then((obj)=>{
-        if (Array.isArray(obj)) {
-            obj.forEach((item, i)=>queue.enqueue(msg.copy().setName(i.toString()).setDataJson(item)));
-        } else if (typeof obj === 'object') {
-            Object.entries(obj).forEach(([key, value])=>queue.enqueue(msg.copy().setName(key).setDataJson(value)));
-        } else {
-            queue.enqueue(msg);
-        }
-        queue.close();
-    });
+    if (msg.getHeader('content-type') === 'application/x-ndjson') {
+        const rbl = msg.data.asReadable();
+        if (!rbl) return queue;
+        const processLines = async (rbl)=>{
+            let idx = 0;
+            for await (const line of toLines(rbl)){
+                queue.enqueue(msg.copy().setName(idx.toString()).setData(line, "application/json"));
+                idx++;
+            }
+        };
+        processLines(rbl);
+    } else {
+        msg.data.asJson().then((obj)=>{
+            if (Array.isArray(obj)) {
+                obj.forEach((item, i)=>queue.enqueue(msg.copy().setName(i.toString()).setDataJson(item)));
+            } else if (typeof obj === 'object') {
+                Object.entries(obj).forEach(([key, value])=>queue.enqueue(msg.copy().setName(key).setDataJson(value)));
+            } else {
+                queue.enqueue(msg);
+            }
+            queue.close();
+        });
+    }
     return queue;
 }
 const generatePaths = async function*(msg, requestInternal) {
@@ -22950,7 +23160,70 @@ const mimeHandlers = {
         return msg.setDirectoryJson(results);
     }
 };
+const pipelineSchema = {
+    type: "array",
+    items: {
+        type: [
+            "string",
+            "array"
+        ],
+        oneOf: [
+            {
+                title: "request",
+                type: "string"
+            },
+            {
+                title: "subpipeline",
+                "$ref": "#/definitions/pipeline"
+            }
+        ],
+        editor: "oneOfRadio"
+    }
+};
+new __pika_web_default_export_for_treeshaking__1({
+    strictSchema: false,
+    allowUnionTypes: true
+}).compile(Object.assign({
+    definitions: {
+        pipeline: pipelineSchema
+    }
+}, pipelineSchema));
+const pipelineConcat = (pipeline0, pipeline1)=>{
+    if (pipeline0 || pipeline1) {
+        return (pipeline0 || []).concat(pipeline1 || []);
+    } else {
+        return undefined;
+    }
+};
 const schemaIServiceConfig = {
+    "$id": "http://restspace.io/services/serviceConfig",
+    "definitions": {
+        "pipeline": {
+            "type": "array",
+            "items": {
+                "type": [
+                    "string",
+                    "array",
+                    "object"
+                ],
+                "oneOf": [
+                    {
+                        "title": "request",
+                        "type": "string"
+                    },
+                    {
+                        "title": "subpipeline",
+                        "$ref": "#/definitions/pipeline"
+                    },
+                    {
+                        "title": "transform",
+                        "type": "object"
+                    }
+                ],
+                "editor": "oneOfRadio"
+            }
+        }
+    },
     "type": "object",
     "properties": {
         "name": {
@@ -23011,6 +23284,17 @@ const schemaIServiceConfig = {
             "type": "object",
             "description": "Configuration for the adapter",
             "properties": {}
+        },
+        "proxyAdapterConfig": {
+            "type": "object",
+            "description": "Configuration for the proxy adapter",
+            "properties": {}
+        },
+        "prePipeline": {
+            "$ref": "#/definitions/pipeline"
+        },
+        "postPipeline": {
+            "$ref": "#/definitions/pipeline"
         }
     },
     "required": [
@@ -23021,7 +23305,11 @@ const schemaIServiceConfig = {
     ]
 };
 const schemaIChordServiceConfig = {
+    "$id": "https://restspace.io/chords/chordServiceConfig",
     "type": "object",
+    "definitions": {
+        ...schemaIServiceConfig.definitions
+    },
     "properties": {
         ...schemaIServiceConfig.properties
     },
@@ -23037,7 +23325,9 @@ const schemaIServiceConfigExposedProperties = [
     "basePath",
     "access",
     "caching",
-    "adapterSource"
+    "adapterSource",
+    "prePipeline",
+    "postPipeline"
 ];
 new TextEncoder();
 new TextDecoder();
@@ -31195,41 +31485,25 @@ async function create1(header, payload, key) {
 function getNumericDate(exp) {
     return Math.round((exp instanceof Date ? exp.getTime() : Date.now() + exp * 1000) / 1000);
 }
-const assignProperties = (schema, properties, required)=>{
+const assignProperties = (schema, schema2)=>{
     const newSchema = {
         ...schema,
         properties: {
             ...schema.properties,
-            ...properties
+            ...schema2.properties
         }
     };
-    if (required) {
+    if (schema2.required) {
         newSchema['required'] = [
             ...schema['required'] || [],
-            ...required
+            ...schema2.required
         ];
+    }
+    if (schema2.definitions) {
+        newSchema.definitions = Object.assign(newSchema.definitions || {}, schema2.definitions);
     }
     return newSchema;
 };
-function getFileInfoType(fileInfo) {
-    return fileInfo.isFile ? "file" : fileInfo.isDirectory ? "dir" : fileInfo.isSymlink ? "symlink" : undefined;
-}
-async function ensureDir(dir) {
-    try {
-        const fileInfo = await Deno.lstat(dir);
-        if (!fileInfo.isDirectory) {
-            throw new Error(`Ensure path exists, expected 'dir', got '${getFileInfoType(fileInfo)}'`);
-        }
-    } catch (err) {
-        if (err instanceof Deno.errors.NotFound) {
-            await Deno.mkdir(dir, {
-                recursive: true
-            });
-            return;
-        }
-        throw err;
-    }
-}
 async function exists(filePath) {
     try {
         await Deno.lstat(filePath);
@@ -31252,158 +31526,12 @@ function existsSync1(filePath) {
         throw err;
     }
 }
+new Deno.errors.AlreadyExists("dest already exists.");
 var EOL;
 (function(EOL) {
     EOL["LF"] = "\n";
     EOL["CRLF"] = "\r\n";
 })(EOL || (EOL = {}));
-const { Deno: Deno1  } = globalThis;
-const noColor = typeof Deno1?.noColor === "boolean" ? Deno1.noColor : true;
-let enabled = !noColor;
-function code1(open, close) {
-    return {
-        open: `\x1b[${open.join(";")}m`,
-        close: `\x1b[${close}m`,
-        regexp: new RegExp(`\\x1b\\[${close}m`, "g")
-    };
-}
-function run(str, code) {
-    return enabled ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
-}
-function bold(str) {
-    return run(str, code1([
-        1
-    ], 22));
-}
-function red(str) {
-    return run(str, code1([
-        31
-    ], 39));
-}
-function yellow(str) {
-    return run(str, code1([
-        33
-    ], 39));
-}
-function blue(str) {
-    return run(str, code1([
-        34
-    ], 39));
-}
-new RegExp([
-    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
-    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))", 
-].join("|"), "g");
-var DiffType;
-(function(DiffType) {
-    DiffType["removed"] = "removed";
-    DiffType["common"] = "common";
-    DiffType["added"] = "added";
-})(DiffType || (DiffType = {}));
-BigInt(Number.MAX_SAFE_INTEGER);
-const BUF_SIZE = 64 * 1024;
-async function* limitBytes(itbl, limit) {
-    let bytes = 0;
-    for await (let chunk of itbl){
-        bytes += chunk.byteLength;
-        if (bytes > limit) {
-            return chunk.slice(0, limit - bytes);
-        } else if (bytes === limit) {
-            return chunk;
-        } else {
-            yield chunk;
-        }
-    }
-}
-async function* toBlockChunks(stringItbl) {
-    const buffer = new Uint8Array(BUF_SIZE);
-    let pointer = 0;
-    const encoder = new TextEncoder();
-    for await (const stringChunk of stringItbl){
-        const bytes = encoder.encode(stringChunk);
-        let start = 0;
-        let bytesRemaining = bytes.length - start;
-        let bufferRemaining = BUF_SIZE - pointer;
-        while(bytesRemaining >= bufferRemaining){
-            buffer.set(bytes.slice(start, start + bufferRemaining), pointer);
-            yield buffer;
-            start += bufferRemaining;
-            bytesRemaining = bytes.length - start;
-            pointer = 0;
-            bufferRemaining = BUF_SIZE - pointer;
-        }
-        if (bytesRemaining > 0) {
-            buffer.set(bytes.slice(start), pointer);
-            pointer += bytesRemaining;
-        }
-    }
-    yield buffer.slice(0, pointer);
-}
-async function* iterateReader(r, options) {
-    const bufSize = options?.bufSize ?? BUF_SIZE;
-    while(true){
-        const b = new Uint8Array(bufSize);
-        const result = await r.read(b);
-        if (result === null) {
-            break;
-        }
-        yield b.subarray(0, result);
-    }
-}
-async function readFileStream(path, startByte = 0, endByte = -1) {
-    const f = await Deno.open(path);
-    if (startByte > 0) {
-        await Deno.seek(f.rid, startByte, Deno.SeekMode.Start);
-    }
-    let itbl = iterateReader(f, {
-        bufSize: BUF_SIZE
-    });
-    if (endByte > -1) {
-        itbl = limitBytes(itbl, endByte - startByte);
-    }
-    const stream = new ReadableStream({
-        async pull (controller) {
-            try {
-                const { value , done  } = await itbl.next();
-                if (done) {
-                    controller.close();
-                    f.close();
-                } else {
-                    controller.enqueue(value);
-                }
-            } catch (err) {
-                controller.error(err);
-                console.log('stream error: ' + JSON.stringify(err));
-                f.close();
-            }
-        },
-        cancel () {
-            f.close();
-        }
-    });
-    return stream;
-}
-async function writeFileStream(path) {
-    await ensureDir(dirname2(path));
-    let f = await Deno.open(path, {
-        create: true,
-        write: true,
-        truncate: true
-    });
-    const stream = new WritableStream({
-        async write (chunk) {
-            await writeAll(f, chunk);
-        },
-        close () {
-            f.close();
-        },
-        abort (reason) {
-            console.error('Write abort: ', reason);
-            f.close();
-        }
-    });
-    return stream;
-}
 function fileToDataAdapter(fileAdapter) {
     return class FileAsDataAdapter extends fileAdapter {
         readKey = async (dataset, key)=>{
@@ -38127,6 +38255,48 @@ const __default37 = {
         }
     }
 };
+function repeat1(source, count) {
+    if (count === 0) {
+        return new Uint8Array();
+    }
+    if (count < 0) {
+        throw new RangeError("bytes: negative repeat count");
+    } else if (source.length * count / count !== source.length) {
+        throw new Error("bytes: repeat count causes overflow");
+    }
+    const __int = Math.floor(count);
+    if (__int !== count) {
+        throw new Error("bytes: repeat count must be an integer");
+    }
+    const nb = new Uint8Array(source.length * count);
+    let bp = copy2(source, nb);
+    for(; bp < nb.length; bp *= 2){
+        copy2(nb.slice(0, bp), nb, bp);
+    }
+    return nb;
+}
+function concat1(...buf) {
+    let length = 0;
+    for (const b of buf){
+        length += b.length;
+    }
+    const output = new Uint8Array(length);
+    let index = 0;
+    for (const b1 of buf){
+        output.set(b1, index);
+        index += b1.length;
+    }
+    return output;
+}
+function copy2(src, dst, off = 0) {
+    off = Math.max(0, Math.min(off, dst.byteLength));
+    const dstBytesAvailable = dst.byteLength - off;
+    if (src.byteLength > dstBytesAvailable) {
+        src = src.subarray(0, dstBytesAvailable);
+    }
+    dst.set(src, off);
+    return src.byteLength;
+}
 var LogLevels;
 (function(LogLevels) {
     LogLevels[LogLevels["NOTSET"] = 0] = "NOTSET";
@@ -38277,6 +38447,134 @@ class Logger {
         return this.#_log(LogLevels.CRITICAL, msg, ...args);
     }
 }
+const { Deno: Deno2  } = globalThis;
+const noColor1 = typeof Deno2?.noColor === "boolean" ? Deno2.noColor : true;
+let enabled1 = !noColor1;
+function code2(open, close) {
+    return {
+        open: `\x1b[${open.join(";")}m`,
+        close: `\x1b[${close}m`,
+        regexp: new RegExp(`\\x1b\\[${close}m`, "g")
+    };
+}
+function run1(str, code) {
+    return enabled1 ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
+}
+function bold1(str) {
+    return run1(str, code2([
+        1
+    ], 22));
+}
+function red1(str) {
+    return run1(str, code2([
+        31
+    ], 39));
+}
+function yellow1(str) {
+    return run1(str, code2([
+        33
+    ], 39));
+}
+function blue1(str) {
+    return run1(str, code2([
+        34
+    ], 39));
+}
+new RegExp([
+    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
+    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))", 
+].join("|"), "g");
+class DenoStdInternalError4 extends Error {
+    constructor(message){
+        super(message);
+        this.name = "DenoStdInternalError";
+    }
+}
+function assert4(expr, msg = "") {
+    if (!expr) {
+        throw new DenoStdInternalError4(msg);
+    }
+}
+"\r".charCodeAt(0);
+"\n".charCodeAt(0);
+class AbstractBufBase2 {
+    buf;
+    usedBufferBytes = 0;
+    err = null;
+    constructor(buf){
+        this.buf = buf;
+    }
+    size() {
+        return this.buf.byteLength;
+    }
+    available() {
+        return this.buf.byteLength - this.usedBufferBytes;
+    }
+    buffered() {
+        return this.usedBufferBytes;
+    }
+}
+class BufWriterSync1 extends AbstractBufBase2 {
+    #writer;
+    static create(writer, size = 4096) {
+        return writer instanceof BufWriterSync1 ? writer : new BufWriterSync1(writer, size);
+    }
+    constructor(writer, size = 4096){
+        super(new Uint8Array(size <= 0 ? 4096 : size));
+        this.#writer = writer;
+    }
+    reset(w) {
+        this.err = null;
+        this.usedBufferBytes = 0;
+        this.#writer = w;
+    }
+    flush() {
+        if (this.err !== null) throw this.err;
+        if (this.usedBufferBytes === 0) return;
+        try {
+            const p = this.buf.subarray(0, this.usedBufferBytes);
+            let nwritten = 0;
+            while(nwritten < p.length){
+                nwritten += this.#writer.writeSync(p.subarray(nwritten));
+            }
+        } catch (e) {
+            if (e instanceof Error) {
+                this.err = e;
+            }
+            throw e;
+        }
+        this.buf = new Uint8Array(this.buf.length);
+        this.usedBufferBytes = 0;
+    }
+    writeSync(data) {
+        if (this.err !== null) throw this.err;
+        if (data.length === 0) return 0;
+        let totalBytesWritten = 0;
+        let numBytesWritten = 0;
+        while(data.byteLength > this.available()){
+            if (this.buffered() === 0) {
+                try {
+                    numBytesWritten = this.#writer.writeSync(data);
+                } catch (e) {
+                    if (e instanceof Error) {
+                        this.err = e;
+                    }
+                    throw e;
+                }
+            } else {
+                numBytesWritten = copy2(data, this.buf, this.usedBufferBytes);
+                this.usedBufferBytes += numBytesWritten;
+                this.flush();
+            }
+            totalBytesWritten += numBytesWritten;
+            data = data.subarray(numBytesWritten);
+        }
+        numBytesWritten = copy2(data, this.buf, this.usedBufferBytes);
+        this.usedBufferBytes += numBytesWritten;
+        totalBytesWritten += numBytesWritten;
+        return totalBytesWritten;
+    }
+}
 const DEFAULT_FORMATTER = "{levelName} {msg}";
 class BaseHandler {
     level;
@@ -38313,16 +38611,16 @@ class ConsoleHandler extends BaseHandler {
         let msg = super.format(logRecord);
         switch(logRecord.level){
             case LogLevels.INFO:
-                msg = blue(msg);
+                msg = blue1(msg);
                 break;
             case LogLevels.WARNING:
-                msg = yellow(msg);
+                msg = yellow1(msg);
                 break;
             case LogLevels.ERROR:
-                msg = red(msg);
+                msg = red1(msg);
                 break;
             case LogLevels.CRITICAL:
-                msg = bold(red(msg));
+                msg = bold1(red1(msg));
                 break;
             default:
                 break;
@@ -38362,7 +38660,7 @@ class FileHandler extends WriterHandler {
     async setup() {
         this._file = await Deno.open(this._filename, this._openOptions);
         this._writer = this._file;
-        this._buf = new BufWriterSync(this._file);
+        this._buf = new BufWriterSync1(this._file);
         addEventListener("unload", this.#unloadCallback);
     }
     handle(logRecord) {
@@ -38390,7 +38688,1223 @@ class FileHandler extends WriterHandler {
         return Promise.resolve();
     }
 }
-class RotatingFileHandler extends FileHandler {
+const DEFAULT_LEVEL = "INFO";
+const DEFAULT_CONFIG = {
+    handlers: {
+        default: new ConsoleHandler(DEFAULT_LEVEL)
+    },
+    loggers: {
+        default: {
+            level: DEFAULT_LEVEL,
+            handlers: [
+                "default"
+            ]
+        }
+    }
+};
+const state = {
+    handlers: new Map(),
+    loggers: new Map(),
+    config: DEFAULT_CONFIG
+};
+function getLogger(name) {
+    if (!name) {
+        const d = state.loggers.get("default");
+        assert4(d != null, `"default" logger must be set for getting logger without name`);
+        return d;
+    }
+    const result = state.loggers.get(name);
+    if (!result) {
+        const logger = new Logger(name, "NOTSET", {
+            handlers: []
+        });
+        state.loggers.set(name, logger);
+        return logger;
+    }
+    return result;
+}
+async function setup(config) {
+    state.config = {
+        handlers: {
+            ...DEFAULT_CONFIG.handlers,
+            ...config.handlers
+        },
+        loggers: {
+            ...DEFAULT_CONFIG.loggers,
+            ...config.loggers
+        }
+    };
+    state.handlers.forEach((handler)=>{
+        handler.destroy();
+    });
+    state.handlers.clear();
+    const handlers = state.config.handlers || {};
+    for(const handlerName in handlers){
+        const handler = handlers[handlerName];
+        await handler.setup();
+        state.handlers.set(handlerName, handler);
+    }
+    state.loggers.clear();
+    const loggers = state.config.loggers || {};
+    for(const loggerName in loggers){
+        const loggerConfig = loggers[loggerName];
+        const handlerNames = loggerConfig.handlers || [];
+        const handlers1 = [];
+        handlerNames.forEach((handlerName)=>{
+            const handler = state.handlers.get(handlerName);
+            if (handler) {
+                handlers1.push(handler);
+            }
+        });
+        const levelName = loggerConfig.level || DEFAULT_LEVEL;
+        const logger = new Logger(loggerName, levelName, {
+            handlers: handlers1
+        });
+        state.loggers.set(loggerName, logger);
+    }
+}
+await setup(DEFAULT_CONFIG);
+const DEFAULT_BUFFER_SIZE = 32 * 1024;
+async function* iterateReader1(r, options) {
+    const bufSize = options?.bufSize ?? DEFAULT_BUFFER_SIZE;
+    const b = new Uint8Array(bufSize);
+    while(true){
+        const result = await r.read(b);
+        if (result === null) {
+            break;
+        }
+        yield b.subarray(0, result);
+    }
+}
+var DiffType1;
+(function(DiffType) {
+    DiffType["removed"] = "removed";
+    DiffType["common"] = "common";
+    DiffType["added"] = "added";
+})(DiffType1 || (DiffType1 = {}));
+BigInt(Number.MAX_SAFE_INTEGER);
+const iter = iterateReader1;
+const enc = new TextEncoder();
+function getUint8Array(str) {
+    return str instanceof Uint8Array ? str : enc.encode(str);
+}
+function hasPrefixFrom(a, prefix, offset) {
+    for(let i = 0, max = prefix.length; i < max; i++){
+        if (a[i + offset] !== prefix[i]) return false;
+    }
+    return true;
+}
+function noop(a) {}
+const defaultCSVReaderOptions = {
+    columnSeparator: ",",
+    lineSeparator: "\n",
+    quote: '"',
+    onCell: noop,
+    onRowEnd: noop,
+    onEnd: noop,
+    onError: noop,
+    _readerIteratorBufferSize: 1024 * 1024,
+    _columnBufferMinStepSize: 1024,
+    _inputBufferIndexLimit: 1024,
+    _columnBufferReserve: 64,
+    _stats: {
+        reads: 0,
+        inputBufferShrinks: 0,
+        columnBufferExpands: 0
+    }
+};
+class CSVReader {
+    decoder;
+    onCell;
+    onRowEnd;
+    onEnd;
+    onError;
+    inputBufferIndexLimit;
+    stats;
+    columnSeparator;
+    lineSeparator;
+    quote;
+    doubleQuote;
+    minPossibleBufferReserve;
+    columnBufferReserve;
+    columnBufferStepSize;
+    readerIterator;
+    inputBuffer;
+    inputBufferIndex;
+    columnBuffer;
+    columnBufferIndex;
+    readerEmpty;
+    emptyLine;
+    inQuote;
+    inColumn;
+    inputBufferUnprocessed;
+    paused;
+    debug;
+    currentPos;
+    linesProcessed;
+    lastLineStartPos;
+    constructor(reader, options){
+        this.decoder = new TextDecoder(options?.encoding);
+        const mergedOptions = {
+            ...defaultCSVReaderOptions,
+            ...options
+        };
+        this.onCell = mergedOptions.onCell || noop;
+        this.onRowEnd = mergedOptions.onRowEnd || noop;
+        this.onEnd = mergedOptions.onEnd || noop;
+        this.onError = mergedOptions.onError || noop;
+        this.inputBufferIndexLimit = mergedOptions._inputBufferIndexLimit;
+        this.stats = mergedOptions._stats;
+        this.quote = getUint8Array(mergedOptions.quote);
+        this.columnSeparator = getUint8Array(mergedOptions.columnSeparator);
+        this.lineSeparator = getUint8Array(mergedOptions.lineSeparator);
+        this.doubleQuote = repeat1(this.quote, 2);
+        this.minPossibleBufferReserve = Math.max(this.columnSeparator.length, this.lineSeparator.length, this.doubleQuote.length, 1);
+        this.columnBufferStepSize = Math.max(mergedOptions._columnBufferMinStepSize, this.minPossibleBufferReserve);
+        this.columnBufferReserve = Math.max(mergedOptions._columnBufferReserve, this.minPossibleBufferReserve);
+        this.readerIterator = iter(reader, {
+            bufSize: mergedOptions._readerIteratorBufferSize
+        });
+        this.inputBuffer = new Uint8Array();
+        this.inputBufferIndex = 0;
+        this.columnBuffer = new Uint8Array(this.columnBufferStepSize);
+        this.columnBufferIndex = 0;
+        this.readerEmpty = false;
+        this.emptyLine = true;
+        this.inQuote = false;
+        this.inColumn = false;
+        this.inputBufferUnprocessed = 0;
+        this.paused = true;
+        this.currentPos = 0;
+        this.linesProcessed = 0;
+        this.lastLineStartPos = 0;
+        const logger = getLogger("csv");
+        if (logger.levelName === "DEBUG") {
+            this.debug = (msg)=>logger.debug(msg);
+        } else {
+            this.debug = noop;
+        }
+    }
+    read() {
+        if (this.paused) {
+            this.paused = false;
+            this.parseCycle();
+        }
+    }
+    pause() {
+        this.paused = true;
+    }
+    processColumn() {
+        const result = this.decoder.decode(this.columnBuffer.subarray(0, this.columnBufferIndex));
+        this.columnBufferIndex = 0;
+        this.onCell(result);
+    }
+    processRow() {
+        this.onRowEnd();
+    }
+    hasNext(chars) {
+        return hasPrefixFrom(this.inputBuffer, chars, this.inputBufferIndex);
+    }
+    skip(chars) {
+        this.debug(`skip: ${chars.length}`);
+        this.inputBufferIndex += chars.length;
+        this.inputBufferUnprocessed -= chars.length;
+        this.currentPos += chars.length;
+    }
+    shrinkInputBuffer() {
+        this.stats.inputBufferShrinks++;
+        this.debug("shrink input buffer");
+        this.inputBuffer = this.inputBuffer.slice(this.inputBufferIndex);
+        this.inputBufferIndex = 0;
+        this.inputBufferUnprocessed = this.inputBuffer.length;
+    }
+    readChars(n) {
+        this.columnBuffer.set(this.inputBuffer.subarray(this.inputBufferIndex, this.inputBufferIndex + n), this.columnBufferIndex);
+        this.columnBufferIndex += n;
+        this.inputBufferIndex += n;
+        this.inputBufferUnprocessed -= n;
+        this.currentPos += n;
+    }
+    async readMoreData() {
+        this.stats.reads++;
+        this.debug("read more data");
+        const { done , value  } = await this.readerIterator.next();
+        if (done) {
+            this.readerEmpty = true;
+        } else {
+            this.inputBuffer = concat1(this.inputBuffer, value);
+            this.inputBufferUnprocessed += value.length;
+        }
+    }
+    expandColumnBuffer() {
+        this.stats.columnBufferExpands++;
+        const newColumn = new Uint8Array(this.columnBuffer.length + this.columnBufferStepSize);
+        this.debug(`expand column buffer from ${this.columnBuffer.length} to ${newColumn.length}`);
+        newColumn.set(this.columnBuffer);
+        this.columnBuffer = newColumn;
+    }
+    countLine() {
+        this.countLines(1, this.currentPos);
+    }
+    countLines(newLines, lastLineStartPos) {
+        this.debug(`count lines: newLines=${newLines} lastLineStartPos=${lastLineStartPos}`);
+        this.linesProcessed += newLines;
+        this.lastLineStartPos = lastLineStartPos;
+    }
+    getCurrentPos() {
+        const line = this.linesProcessed + 1;
+        const ch = this.currentPos - this.lastLineStartPos + 1;
+        return `line ${line}, character ${ch}`;
+    }
+    async parseCycle() {
+        while(true){
+            if (this.paused) {
+                return;
+            }
+            if (!this.readerEmpty && this.inputBufferUnprocessed < this.minPossibleBufferReserve) {
+                await this.readMoreData();
+                continue;
+            }
+            if (this.inputBufferIndex >= this.inputBufferIndexLimit) {
+                this.shrinkInputBuffer();
+                continue;
+            }
+            if (this.columnBuffer.length - this.columnBufferIndex < this.columnBufferReserve) {
+                this.expandColumnBuffer();
+                continue;
+            }
+            if (!this.inColumn && this.inputBufferUnprocessed === 0) {
+                this.debug("eof");
+                if (!this.emptyLine) {
+                    this.processColumn();
+                    this.processRow();
+                }
+                this.onEnd();
+                return;
+            }
+            if (!this.inColumn && this.hasNext(this.lineSeparator)) {
+                this.debug("lineSeparator");
+                if (!this.emptyLine) {
+                    this.processColumn();
+                    this.processRow();
+                }
+                this.skip(this.lineSeparator);
+                this.countLine();
+                this.emptyLine = true;
+                continue;
+            }
+            if (!this.inColumn && this.hasNext(this.columnSeparator)) {
+                this.debug("columnSeparator");
+                this.processColumn();
+                this.skip(this.columnSeparator);
+                continue;
+            }
+            if (!this.inColumn) {
+                this.inColumn = true;
+                this.emptyLine = false;
+                if (this.hasNext(this.quote)) {
+                    this.debug("start quoted column");
+                    this.inQuote = true;
+                    this.skip(this.quote);
+                } else {
+                    this.debug("start unquoted column");
+                }
+                continue;
+            }
+            if (this.inColumn && this.inQuote && this.hasNext(this.doubleQuote)) {
+                this.debug("double quote");
+                this.columnBuffer.set(this.quote, this.columnBufferIndex);
+                this.columnBufferIndex += this.quote.length;
+                this.skip(this.doubleQuote);
+                continue;
+            }
+            if (this.inColumn && this.inQuote && this.hasNext(this.quote)) {
+                this.debug("end quoted column");
+                this.inQuote = false;
+                this.inColumn = false;
+                this.skip(this.quote);
+                if (this.inputBufferUnprocessed > 0 && !this.hasNext(this.lineSeparator) && !this.hasNext(this.columnSeparator)) {
+                    const charCode = this.inputBuffer[this.inputBufferIndex];
+                    const __char = charCode === 13 ? "\\r" : String.fromCharCode(charCode);
+                    let msg = `Expected EOF, COLUMN_SEPARATOR, LINE_SEPARATOR; received ${__char} (${this.getCurrentPos()})`;
+                    if (charCode === 13) {
+                        msg += '\nPerhaps you need to add the setting lineSeparator: "\\r\\n"\nhttps://git.io/JDTDS';
+                    }
+                    this.onError(new Error(msg));
+                    return;
+                }
+                continue;
+            }
+            if (this.inColumn && !this.inQuote && (this.inputBufferUnprocessed === 0 || this.hasNext(this.lineSeparator) || this.hasNext(this.columnSeparator))) {
+                this.debug("end unquoted column");
+                this.inColumn = false;
+                continue;
+            }
+            if (this.inColumn && this.inputBufferUnprocessed > 0) {
+                const slice = this.inputBuffer.subarray(this.inputBufferIndex);
+                const limit = Math.min(slice.length - this.minPossibleBufferReserve, this.columnBuffer.length - this.columnBufferIndex);
+                let readTillIndex = 1;
+                let newLines = 0;
+                let lastLineStartPos = -1;
+                if (limit > 1) {
+                    if (this.inQuote) {
+                        const { till , lineSeparatorsFound , lastLineSeparatorEndIndex  } = findReadTillIndexQuoted(slice, limit, this.quote, this.lineSeparator);
+                        readTillIndex = till;
+                        newLines = lineSeparatorsFound;
+                        lastLineStartPos = this.currentPos + lastLineSeparatorEndIndex;
+                    } else {
+                        const { till: till1 , type  } = findReadTillIndex(slice, limit, this.lineSeparator, this.columnSeparator, this.quote);
+                        if (till1 === 0 && type === FindReadTillIndexType.QUOTE) {
+                            this.onError(new Error(`Unexpected quote in unquoted field (${this.getCurrentPos()})`));
+                            return;
+                        }
+                        readTillIndex = till1;
+                    }
+                }
+                if (readTillIndex > 0) {
+                    this.debug(`read char: ${readTillIndex}`);
+                    this.readChars(readTillIndex);
+                }
+                if (newLines > 0) {
+                    this.countLines(newLines, lastLineStartPos);
+                }
+                continue;
+            }
+            if (this.inQuote && this.inputBufferUnprocessed === 0) {
+                this.onError(new Error(`Expected quote, received EOF (${this.getCurrentPos()})`));
+                return;
+            }
+            this.onError(new Error(`unexpected (${this.getCurrentPos()})`));
+            return;
+        }
+    }
+}
+class CSVStreamReader {
+    reader;
+    done;
+    buffer;
+    nextPromise;
+    nextPromiseResolve;
+    nextPromiseReject;
+    constructor(reader, options){
+        this.buffer = [];
+        this.done = false;
+        this.reader = new CSVReader(reader, {
+            ...options,
+            onCell: (value)=>this.onCell(value),
+            onRowEnd: ()=>this.onRowEnd(),
+            onEnd: ()=>this.onEnd(),
+            onError: (err)=>this.onError(err)
+        });
+    }
+    onCell(value) {
+        this.process({
+            done: false,
+            value
+        });
+    }
+    onRowEnd() {
+        this.process({
+            done: false,
+            value: newLine
+        });
+    }
+    onEnd() {
+        this.done = true;
+        this.process({
+            done: true,
+            value: undefined
+        });
+    }
+    onError(err) {
+        this.process(err);
+    }
+    process(result) {
+        const cb = result instanceof Error ? this.nextPromiseReject : this.nextPromiseResolve;
+        if (cb) {
+            this.nextPromise = undefined;
+            this.nextPromiseResolve = undefined;
+            this.nextPromiseReject = undefined;
+            cb(result);
+        } else {
+            this.buffer.push(result);
+        }
+        this.reader.pause();
+    }
+    next() {
+        if (this.done && this.buffer.length === 0) {
+            return Promise.resolve({
+                done: true,
+                value: undefined
+            });
+        }
+        let promise = this.nextPromise;
+        if (!promise) {
+            if (this.buffer.length > 0) {
+                const res = this.buffer.shift();
+                if (res instanceof Error) {
+                    return Promise.reject(res);
+                } else {
+                    return Promise.resolve(res);
+                }
+            }
+            promise = new Promise((resolve, reject)=>{
+                this.nextPromiseResolve = resolve;
+                this.nextPromiseReject = reject;
+                this.reader.read();
+            });
+        }
+        if (this.nextPromiseResolve) {
+            this.nextPromise = promise;
+        }
+        return promise;
+    }
+    [Symbol.asyncIterator]() {
+        return this;
+    }
+}
+const newLine = Symbol("newLine");
+class CSVRowReader {
+    reader;
+    done;
+    row;
+    buffer;
+    nextPromise;
+    nextPromiseResolve;
+    nextPromiseReject;
+    constructor(reader, options){
+        this.buffer = [];
+        this.done = false;
+        this.row = [];
+        this.reader = new CSVReader(reader, {
+            ...options,
+            onCell: (value)=>this.onCell(value),
+            onRowEnd: ()=>this.onRowEnd(),
+            onEnd: ()=>this.onEnd(),
+            onError: (err)=>this.process(err)
+        });
+    }
+    onCell(cell) {
+        this.row.push(cell);
+    }
+    onRowEnd() {
+        const row = this.row;
+        this.row = [];
+        this.process({
+            done: false,
+            value: row
+        });
+    }
+    onEnd() {
+        this.done = true;
+        this.process({
+            done: true,
+            value: undefined
+        });
+    }
+    process(result) {
+        const cb = result instanceof Error ? this.nextPromiseReject : this.nextPromiseResolve;
+        if (cb) {
+            this.nextPromise = undefined;
+            this.nextPromiseResolve = undefined;
+            this.nextPromiseReject = undefined;
+            cb(result);
+        } else {
+            this.buffer.push(result);
+        }
+        this.reader.pause();
+    }
+    next() {
+        if (this.done && this.buffer.length === 0) {
+            return Promise.resolve({
+                done: true,
+                value: undefined
+            });
+        }
+        let promise = this.nextPromise;
+        if (!promise) {
+            if (this.buffer.length > 0) {
+                const res = this.buffer.shift();
+                if (res instanceof Error) {
+                    return Promise.reject(res);
+                } else {
+                    return Promise.resolve(res);
+                }
+            }
+            promise = new Promise((resolve, reject)=>{
+                this.nextPromiseResolve = resolve;
+                this.nextPromiseReject = reject;
+                this.reader.read();
+            });
+        }
+        if (this.nextPromiseResolve) {
+            this.nextPromise = promise;
+        }
+        return promise;
+    }
+    [Symbol.asyncIterator]() {
+        return this;
+    }
+}
+class RowIterator {
+    onRequested;
+    done;
+    constructor(onRequested){
+        this.onRequested = onRequested;
+        this.done = false;
+    }
+    async readTillEnd() {
+        if (this.done) {
+            return;
+        }
+        for await (const _ of this){}
+    }
+    async next() {
+        if (this.done) {
+            return {
+                done: true,
+                value: null
+            };
+        }
+        const { done , value  } = await this.onRequested();
+        if (done || value === newLine) {
+            this.done = true;
+            return {
+                done: true,
+                value: null
+            };
+        } else {
+            return {
+                done: false,
+                value: value
+            };
+        }
+    }
+    [Symbol.asyncIterator]() {
+        return this;
+    }
+}
+class CSVRowIteratorReader {
+    reader;
+    done;
+    rowIterator;
+    buffer;
+    nextPromise;
+    nextPromiseResolve;
+    nextPromiseReject;
+    constructor(reader, options){
+        this.done = false;
+        this.buffer = [];
+        this.reader = new CSVReader(reader, {
+            ...options,
+            onCell: (value)=>this.onCell(value),
+            onRowEnd: ()=>this.onRowEnd(),
+            onEnd: ()=>this.onEnd(),
+            onError: (err)=>this.onError(err)
+        });
+    }
+    onCell(value) {
+        this.process({
+            done: false,
+            value
+        });
+    }
+    onRowEnd() {
+        this.process({
+            done: false,
+            value: newLine
+        });
+    }
+    onEnd() {
+        this.done = true;
+        this.process({
+            done: true,
+            value: undefined
+        });
+    }
+    onError(err) {
+        this.process(err);
+    }
+    process(result) {
+        const cb = result instanceof Error ? this.nextPromiseReject : this.nextPromiseResolve;
+        if (cb) {
+            this.nextPromise = undefined;
+            this.nextPromiseResolve = undefined;
+            this.nextPromiseReject = undefined;
+            cb(result);
+        } else {
+            this.buffer.push(result);
+        }
+        this.reader.pause();
+    }
+    onRequested() {
+        let promise = this.nextPromise;
+        if (!promise) {
+            if (this.buffer.length > 0) {
+                const res = this.buffer.shift();
+                if (res instanceof Error) {
+                    return Promise.reject(res);
+                } else {
+                    return Promise.resolve(res);
+                }
+            }
+            promise = new Promise((resolve, reject)=>{
+                this.nextPromiseResolve = resolve;
+                this.nextPromiseReject = reject;
+                this.reader.read();
+            });
+        }
+        if (this.nextPromiseResolve) {
+            this.nextPromise = promise;
+        }
+        return promise;
+    }
+    async next() {
+        if (this.rowIterator) {
+            await this.rowIterator.readTillEnd();
+            this.rowIterator = undefined;
+        }
+        if (this.done) {
+            return {
+                done: true,
+                value: undefined
+            };
+        }
+        this.rowIterator = new RowIterator(()=>this.onRequested());
+        return {
+            done: false,
+            value: this.rowIterator
+        };
+    }
+    [Symbol.asyncIterator]() {
+        return this;
+    }
+}
+function readCSV(reader, options) {
+    return new CSVRowIteratorReader(reader, options);
+}
+function findReadTillIndexQuoted(a, limit, quote, lineSeparator) {
+    const s1 = quote[0];
+    const s2 = lineSeparator[0];
+    let result = limit;
+    let lineSeparatorsFound = 0;
+    let lastLineSeparatorEndIndex = -1;
+    for(let i = 0; i < a.length; i++){
+        if (i >= limit) {
+            result = limit;
+            break;
+        }
+        if (a[i] === s1) {
+            let matched = 1;
+            let j = i;
+            while(matched < quote.length){
+                j++;
+                if (a[j] !== quote[j - i]) {
+                    break;
+                }
+                matched++;
+            }
+            if (matched === quote.length) {
+                result = i;
+                break;
+            }
+        }
+        if (a[i] === s2) {
+            let matched1 = 1;
+            let j1 = i;
+            while(matched1 < lineSeparator.length){
+                j1++;
+                if (a[j1] !== lineSeparator[j1 - i]) {
+                    break;
+                }
+                matched1++;
+            }
+            if (matched1 === lineSeparator.length) {
+                lineSeparatorsFound++;
+                lastLineSeparatorEndIndex = i + lineSeparator.length;
+                i += lineSeparator.length - 1;
+            }
+        }
+    }
+    return {
+        till: result,
+        lineSeparatorsFound,
+        lastLineSeparatorEndIndex
+    };
+}
+var FindReadTillIndexType;
+(function(FindReadTillIndexType) {
+    FindReadTillIndexType[FindReadTillIndexType["LIMIT"] = 0] = "LIMIT";
+    FindReadTillIndexType[FindReadTillIndexType["LINE_SEPARATOR"] = 1] = "LINE_SEPARATOR";
+    FindReadTillIndexType[FindReadTillIndexType["COLUMN_SEPARATOR"] = 2] = "COLUMN_SEPARATOR";
+    FindReadTillIndexType[FindReadTillIndexType["QUOTE"] = 3] = "QUOTE";
+})(FindReadTillIndexType || (FindReadTillIndexType = {}));
+function findReadTillIndex(a, limit, lineSeparator, columnSeparator, quote) {
+    const s1 = lineSeparator[0];
+    const s2 = columnSeparator[0];
+    const s3 = quote[0];
+    for(let i = 0; i < a.length; i++){
+        if (i >= limit) {
+            return {
+                till: limit,
+                type: FindReadTillIndexType.LIMIT
+            };
+        }
+        if (a[i] === s1) {
+            let matched = 1;
+            let j = i;
+            while(matched < lineSeparator.length){
+                j++;
+                if (a[j] !== lineSeparator[j - i]) {
+                    break;
+                }
+                matched++;
+            }
+            if (matched === lineSeparator.length) {
+                return {
+                    till: i,
+                    type: FindReadTillIndexType.LINE_SEPARATOR
+                };
+            }
+        }
+        if (a[i] === s2) {
+            let matched1 = 1;
+            let j1 = i;
+            while(matched1 < columnSeparator.length){
+                j1++;
+                if (a[j1] !== columnSeparator[j1 - i]) {
+                    break;
+                }
+                matched1++;
+            }
+            if (matched1 === columnSeparator.length) {
+                return {
+                    till: i,
+                    type: FindReadTillIndexType.COLUMN_SEPARATOR
+                };
+            }
+        }
+        if (a[i] === s3) {
+            let matched2 = 1;
+            let j2 = i;
+            while(matched2 < quote.length){
+                j2++;
+                if (a[j2] !== quote[j2 - i]) {
+                    break;
+                }
+                matched2++;
+            }
+            if (matched2 === quote.length) {
+                return {
+                    till: i,
+                    type: FindReadTillIndexType.QUOTE
+                };
+            }
+        }
+    }
+    return {
+        till: limit,
+        type: FindReadTillIndexType.LIMIT
+    };
+}
+const service10 = new Service();
+class CSVState extends BaseStateClass {
+    validate = null;
+    load(_context, config) {
+        const ajv = new __pika_web_default_export_for_treeshaking__1({
+            strictSchema: false,
+            allowUnionTypes: true
+        });
+        if (config.lineSchema) {
+            this.validate = ajv.compile(config.lineSchema);
+        }
+        return Promise.resolve();
+    }
+}
+const csvToJson = (mode)=>async (msg, context, config)=>{
+        if (msg.getHeader('content-type') !== "text/csv") {
+            return msg;
+        }
+        const readable = msg.data?.asReadable();
+        if (!readable) return msg.setStatus(400, 'No data');
+        const rdr = readerFromStreamReader(readable.getReader());
+        const properties = config.lineSchema.properties;
+        const rowProps = Object.keys(properties);
+        const errors = [];
+        const state = await context.state(CSVState, context, config);
+        const validate = state.validate;
+        let stream = null;
+        let writer = null;
+        let writeString = (_)=>{};
+        if (mode !== "validate") {
+            stream = new TransformStream();
+            writer = stream.writable.getWriter();
+            writeString = (data)=>writer.write(new TextEncoder().encode(data));
+        }
+        let rowIdx = 0;
+        const process1 = async ()=>{
+            try {
+                if (mode === "json") {
+                    writeString("[");
+                }
+                for await (const row of readCSV(rdr)){
+                    let idx = 0;
+                    let rowObj = {};
+                    for await (let cell of row){
+                        cell = cell.trim();
+                        const subschema = properties[rowProps[idx]];
+                        let val = null;
+                        switch(subschema.type){
+                            case "number":
+                                val = parseFloat(cell);
+                                if (isNaN(val)) {
+                                    rowObj = null;
+                                    errors.push(`row ${rowIdx} col ${idx}: ${cell} is not a number`);
+                                }
+                                break;
+                            case "integer":
+                                val = parseInt(cell);
+                                if (isNaN(val)) {
+                                    rowObj = null;
+                                    errors.push(`row ${rowIdx} col ${idx}: ${cell} is not an integer`);
+                                }
+                                break;
+                            case "boolean":
+                                val = cell.toLowerCase();
+                                if (val !== 'true' && val !== 'false') {
+                                    rowObj = null;
+                                    errors.push(`row ${rowIdx} col ${idx}: ${cell} is not true or false`);
+                                } else {
+                                    val = val === 'true';
+                                }
+                                break;
+                            default:
+                                val = cell;
+                        }
+                        if (rowObj == null) break;
+                        rowObj[rowProps[idx]] = val;
+                        idx++;
+                    }
+                    if (validate && rowObj && !validate(rowObj)) {
+                        const errorMsg = (validate.errors || []).map((e)=>e.message).join('; ');
+                        errors.push(`bad format line ${rowIdx}: ${errorMsg}`);
+                    } else if (rowObj && mode !== 'validate') {
+                        if (mode === "ndjson") {
+                            writeString(JSON.stringify(rowObj) + '\n');
+                        } else {
+                            writeString((rowIdx === 0 ? '' : ',') + JSON.stringify(rowObj));
+                        }
+                    }
+                    rowIdx++;
+                }
+                if (mode === "json") {
+                    writeString("]");
+                }
+            } catch (err) {
+                context.logger.error('Failure in CSV processing: ' + err.toString());
+            } finally{
+                writer?.close();
+            }
+        };
+        try {
+            if (mode === "validate") {
+                await process1();
+                return errors.length > 0 ? msg.setStatus(400, errors.join('\n')) : msg.setStatus(200, `OK, ${rowIdx} lines validated`);
+            } else {
+                process1();
+                return msg.setData(stream.readable, mode === "ndjson" ? "application/x-ndjson" : "application/json");
+            }
+        } catch (err) {
+            writer?.close();
+            return msg.setStatus(500, err.toString());
+        }
+    };
+service10.postPath("ndjson", csvToJson("ndjson"));
+service10.postPath("validate", csvToJson("validate"));
+service10.postPath("json", csvToJson("json"));
+const __default38 = {
+    "name": "CSV converter",
+    "description": "Convert CSV files to and from JSON or NDJSON",
+    "moduleUrl": "./services/csvConverter.ts",
+    "apis": [],
+    "isFilter": true,
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "lineSchema": {
+                "type": "object",
+                "description": "A JSON Schema for a line of the CSV file, object type specifying fieldnames as properties",
+                "properties": {}
+            }
+        }
+    },
+    "exposedConfigProperties": [
+        "lineSchema"
+    ]
+};
+var LogLevels1;
+(function(LogLevels) {
+    LogLevels[LogLevels["NOTSET"] = 0] = "NOTSET";
+    LogLevels[LogLevels["DEBUG"] = 10] = "DEBUG";
+    LogLevels[LogLevels["INFO"] = 20] = "INFO";
+    LogLevels[LogLevels["WARNING"] = 30] = "WARNING";
+    LogLevels[LogLevels["ERROR"] = 40] = "ERROR";
+    LogLevels[LogLevels["CRITICAL"] = 50] = "CRITICAL";
+})(LogLevels1 || (LogLevels1 = {}));
+Object.keys(LogLevels1).filter((key)=>isNaN(Number(key)));
+const byLevel1 = {
+    [String(LogLevels1.NOTSET)]: "NOTSET",
+    [String(LogLevels1.DEBUG)]: "DEBUG",
+    [String(LogLevels1.INFO)]: "INFO",
+    [String(LogLevels1.WARNING)]: "WARNING",
+    [String(LogLevels1.ERROR)]: "ERROR",
+    [String(LogLevels1.CRITICAL)]: "CRITICAL"
+};
+function getLevelByName1(name) {
+    switch(name){
+        case "NOTSET":
+            return LogLevels1.NOTSET;
+        case "DEBUG":
+            return LogLevels1.DEBUG;
+        case "INFO":
+            return LogLevels1.INFO;
+        case "WARNING":
+            return LogLevels1.WARNING;
+        case "ERROR":
+            return LogLevels1.ERROR;
+        case "CRITICAL":
+            return LogLevels1.CRITICAL;
+        default:
+            throw new Error(`no log level found for "${name}"`);
+    }
+}
+function getLevelName1(level) {
+    const levelName = byLevel1[level];
+    if (levelName) {
+        return levelName;
+    }
+    throw new Error(`no level name found for level: ${level}`);
+}
+class LogRecord1 {
+    msg;
+    #args;
+    #datetime;
+    level;
+    levelName;
+    loggerName;
+    constructor(options){
+        this.msg = options.msg;
+        this.#args = [
+            ...options.args
+        ];
+        this.level = options.level;
+        this.loggerName = options.loggerName;
+        this.#datetime = new Date();
+        this.levelName = getLevelName1(options.level);
+    }
+    get args() {
+        return [
+            ...this.#args
+        ];
+    }
+    get datetime() {
+        return new Date(this.#datetime.getTime());
+    }
+}
+class Logger1 {
+    #level;
+    #handlers;
+    #loggerName;
+    constructor(loggerName, levelName, options = {}){
+        this.#loggerName = loggerName;
+        this.#level = getLevelByName1(levelName);
+        this.#handlers = options.handlers || [];
+    }
+    get level() {
+        return this.#level;
+    }
+    set level(level) {
+        this.#level = level;
+    }
+    get levelName() {
+        return getLevelName1(this.#level);
+    }
+    set levelName(levelName) {
+        this.#level = getLevelByName1(levelName);
+    }
+    get loggerName() {
+        return this.#loggerName;
+    }
+    set handlers(hndls) {
+        this.#handlers = hndls;
+    }
+    get handlers() {
+        return this.#handlers;
+    }
+    #_log(level1, msg1, ...args1) {
+        if (this.level > level1) {
+            return msg1 instanceof Function ? undefined : msg1;
+        }
+        let fnResult1;
+        let logMessage1;
+        if (msg1 instanceof Function) {
+            fnResult1 = msg1();
+            logMessage1 = this.asString(fnResult1);
+        } else {
+            logMessage1 = this.asString(msg1);
+        }
+        const record1 = new LogRecord1({
+            msg: logMessage1,
+            args: args1,
+            level: level1,
+            loggerName: this.loggerName
+        });
+        this.#handlers.forEach((handler)=>{
+            handler.handle(record1);
+        });
+        return msg1 instanceof Function ? fnResult1 : msg1;
+    }
+    asString(data) {
+        if (typeof data === "string") {
+            return data;
+        } else if (data === null || typeof data === "number" || typeof data === "bigint" || typeof data === "boolean" || typeof data === "undefined" || typeof data === "symbol") {
+            return String(data);
+        } else if (data instanceof Error) {
+            return data.stack;
+        } else if (typeof data === "object") {
+            return JSON.stringify(data);
+        }
+        return "undefined";
+    }
+    debug(msg, ...args) {
+        return this.#_log(LogLevels1.DEBUG, msg, ...args);
+    }
+    info(msg, ...args) {
+        return this.#_log(LogLevels1.INFO, msg, ...args);
+    }
+    warning(msg, ...args) {
+        return this.#_log(LogLevels1.WARNING, msg, ...args);
+    }
+    error(msg, ...args) {
+        return this.#_log(LogLevels1.ERROR, msg, ...args);
+    }
+    critical(msg, ...args) {
+        return this.#_log(LogLevels1.CRITICAL, msg, ...args);
+    }
+}
+const DEFAULT_FORMATTER1 = "{levelName} {msg}";
+class BaseHandler1 {
+    level;
+    levelName;
+    formatter;
+    constructor(levelName, options = {}){
+        this.level = getLevelByName1(levelName);
+        this.levelName = levelName;
+        this.formatter = options.formatter || DEFAULT_FORMATTER1;
+    }
+    handle(logRecord) {
+        if (this.level > logRecord.level) return;
+        const msg = this.format(logRecord);
+        return this.log(msg);
+    }
+    format(logRecord) {
+        if (this.formatter instanceof Function) {
+            return this.formatter(logRecord);
+        }
+        return this.formatter.replace(/{([^\s}]+)}/g, (match, p1)=>{
+            const value = logRecord[p1];
+            if (value == null) {
+                return match;
+            }
+            return String(value);
+        });
+    }
+    log(_msg) {}
+    setup() {}
+    destroy() {}
+}
+class ConsoleHandler1 extends BaseHandler1 {
+    format(logRecord) {
+        let msg = super.format(logRecord);
+        switch(logRecord.level){
+            case LogLevels1.INFO:
+                msg = blue(msg);
+                break;
+            case LogLevels1.WARNING:
+                msg = yellow(msg);
+                break;
+            case LogLevels1.ERROR:
+                msg = red(msg);
+                break;
+            case LogLevels1.CRITICAL:
+                msg = bold(red(msg));
+                break;
+            default:
+                break;
+        }
+        return msg;
+    }
+    log(msg) {
+        console.log(msg);
+    }
+}
+class WriterHandler1 extends BaseHandler1 {
+    _writer;
+    #encoder = new TextEncoder();
+}
+class FileHandler1 extends WriterHandler1 {
+    _file;
+    _buf;
+    _filename;
+    _mode;
+    _openOptions;
+    _encoder = new TextEncoder();
+    #unloadCallback = (()=>{
+        this.destroy();
+    }).bind(this);
+    constructor(levelName, options){
+        super(levelName, options);
+        this._filename = options.filename;
+        this._mode = options.mode ? options.mode : "a";
+        this._openOptions = {
+            createNew: this._mode === "x",
+            create: this._mode !== "x",
+            append: this._mode === "a",
+            truncate: this._mode !== "a",
+            write: true
+        };
+    }
+    setup() {
+        this._file = Deno.openSync(this._filename, this._openOptions);
+        this._writer = this._file;
+        this._buf = new BufWriterSync(this._file);
+        addEventListener("unload", this.#unloadCallback);
+    }
+    handle(logRecord) {
+        super.handle(logRecord);
+        if (logRecord.level > LogLevels1.ERROR) {
+            this.flush();
+        }
+    }
+    log(msg) {
+        if (this._encoder.encode(msg).byteLength + 1 > this._buf.available()) {
+            this.flush();
+        }
+        this._buf.writeSync(this._encoder.encode(msg + "\n"));
+    }
+    flush() {
+        if (this._buf?.buffered() > 0) {
+            this._buf.flush();
+        }
+    }
+    destroy() {
+        this.flush();
+        this._file?.close();
+        this._file = undefined;
+        removeEventListener("unload", this.#unloadCallback);
+    }
+}
+class RotatingFileHandler extends FileHandler1 {
     #maxBytes;
     #maxBackupCount;
     #currentFileSize = 0;
@@ -38450,89 +39964,89 @@ class RotatingFileHandler extends FileHandler {
         this._buf = new BufWriterSync(this._file);
     }
 }
-const DEFAULT_LEVEL = "INFO";
-const DEFAULT_CONFIG = {
+const DEFAULT_LEVEL1 = "INFO";
+const DEFAULT_CONFIG1 = {
     handlers: {
-        default: new ConsoleHandler(DEFAULT_LEVEL)
+        default: new ConsoleHandler1(DEFAULT_LEVEL1)
     },
     loggers: {
         default: {
-            level: DEFAULT_LEVEL,
+            level: DEFAULT_LEVEL1,
             handlers: [
                 "default"
             ]
         }
     }
 };
-const state = {
+const state1 = {
     handlers: new Map(),
     loggers: new Map(),
-    config: DEFAULT_CONFIG
+    config: DEFAULT_CONFIG1
 };
 const handlers = {
-    BaseHandler,
-    ConsoleHandler,
-    WriterHandler,
-    FileHandler,
+    BaseHandler: BaseHandler1,
+    ConsoleHandler: ConsoleHandler1,
+    WriterHandler: WriterHandler1,
+    FileHandler: FileHandler1,
     RotatingFileHandler
 };
-function getLogger(name) {
+function getLogger1(name) {
     if (!name) {
-        const d = state.loggers.get("default");
+        const d = state1.loggers.get("default");
         assert(d != null, `"default" logger must be set for getting logger without name`);
         return d;
     }
-    const result = state.loggers.get(name);
+    const result = state1.loggers.get(name);
     if (!result) {
-        const logger = new Logger(name, "NOTSET", {
+        const logger = new Logger1(name, "NOTSET", {
             handlers: []
         });
-        state.loggers.set(name, logger);
+        state1.loggers.set(name, logger);
         return logger;
     }
     return result;
 }
-async function setup(config) {
-    state.config = {
+function setup1(config) {
+    state1.config = {
         handlers: {
-            ...DEFAULT_CONFIG.handlers,
+            ...DEFAULT_CONFIG1.handlers,
             ...config.handlers
         },
         loggers: {
-            ...DEFAULT_CONFIG.loggers,
+            ...DEFAULT_CONFIG1.loggers,
             ...config.loggers
         }
     };
-    state.handlers.forEach((handler)=>{
+    state1.handlers.forEach((handler)=>{
         handler.destroy();
     });
-    state.handlers.clear();
-    const handlers = state.config.handlers || {};
+    state1.handlers.clear();
+    const handlers = state1.config.handlers || {};
     for(const handlerName in handlers){
         const handler = handlers[handlerName];
-        await handler.setup();
-        state.handlers.set(handlerName, handler);
+        handler.setup();
+        state1.handlers.set(handlerName, handler);
     }
-    state.loggers.clear();
-    const loggers = state.config.loggers || {};
+    state1.loggers.clear();
+    const loggers = state1.config.loggers || {};
     for(const loggerName in loggers){
         const loggerConfig = loggers[loggerName];
         const handlerNames = loggerConfig.handlers || [];
         const handlers1 = [];
         handlerNames.forEach((handlerName)=>{
-            const handler = state.handlers.get(handlerName);
+            const handler = state1.handlers.get(handlerName);
             if (handler) {
                 handlers1.push(handler);
             }
         });
-        const levelName = loggerConfig.level || DEFAULT_LEVEL;
-        const logger = new Logger(loggerName, levelName, {
+        const levelName = loggerConfig.level || DEFAULT_LEVEL1;
+        const logger = new Logger1(loggerName, levelName, {
             handlers: handlers1
         });
-        state.loggers.set(loggerName, logger);
+        state1.loggers.set(loggerName, logger);
     }
 }
-await setup(DEFAULT_CONFIG);
+setup1(DEFAULT_CONFIG1);
 const formatter = (rec)=>{
     const dt = rec.datetime;
     const hr = dt.getHours().toString().padStart(2, '0');
@@ -38956,10 +40470,12 @@ class ServiceWrapper {
             let newMsg = msg.copy();
             try {
                 const { manifestConfig  } = serviceConfig;
-                newMsg = await this.prePostPipeline("pre", newMsg, manifestConfig?.prePipeline, manifestConfig?.privateServiceConfigs);
+                const prePipeline = pipelineConcat(manifestConfig?.prePipeline || serviceConfig?.prePipeline);
+                const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
+                newMsg = await this.prePostPipeline("pre", newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
                 newMsg.applyServiceRedirect();
                 if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
-                if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", newMsg, manifestConfig?.postPipeline, manifestConfig?.privateServiceConfigs);
+                if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
             } catch (err) {
                 if (err.message === 'Not found') {
                     newMsg.setStatus(404, 'Not found');
@@ -39027,6 +40543,7 @@ class ServiceWrapper {
                 isPublic = access.createRoles === 'all';
                 break;
             case AuthorizationType.none:
+            default:
                 roleSet = "all";
                 isPublic = true;
                 break;
@@ -39123,8 +40640,8 @@ function makeServiceContext(tenantName, state, prePost) {
     };
     return context;
 }
-const service10 = new Service();
 const service11 = new Service();
+const service12 = new Service();
 function mapLegalChanges(msg, oldValues, newUser) {
     const currentUserObj = msg.user || AuthUser.anon;
     const current = new AuthUser(currentUserObj);
@@ -39153,7 +40670,7 @@ function mapLegalChanges(msg, oldValues, newUser) {
     }
     return 'not an allowable change';
 }
-const service12 = new Service();
+const service13 = new Service();
 class TemporaryAccessState extends BaseStateClass {
     validTokenExpiries = [];
     tokenBaseUrls = {};
@@ -39202,8 +40719,8 @@ class NunjucksTemplateAdapter {
 const deleteManifestProperties = [
     'exposedConfigProperties'
 ];
-const service13 = new Service();
-const service14 = new AuthService();
+const service14 = new Service();
+const service15 = new AuthService();
 async function validateChange(msg, context) {
     if (!msg.ok || msg.method !== 'DELETE' && !msg.data || context.prePost !== "pre" || msg.internalPrivilege || msg.url.isDirectory) {
         msg.internalPrivilege = false;
@@ -39248,8 +40765,8 @@ async function validateChange(msg, context) {
     msg.setDataJson(updatedUser);
     return msg;
 }
-const service15 = new Service();
 const service16 = new Service();
+const service17 = new Service();
 class Modules {
     adapterConstructors;
     serviceManifests;
@@ -39294,23 +40811,24 @@ class Modules {
             this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
         });
         this.services = {
-            "./services/services.ts": service13,
-            "./services/auth.ts": service14,
+            "./services/services.ts": service14,
+            "./services/auth.ts": service15,
             "./services/data.ts": service,
             "./services/dataset.ts": service1,
             "./services/file.ts": service2,
             "./services/lib.ts": service3,
-            "./services/pipeline.ts": service10,
-            "./services/pipeline-store.ts": service11,
+            "./services/pipeline.ts": service11,
+            "./services/pipeline-store.ts": service12,
             "./services/static-site-filter.ts": service4,
-            "./services/user-filter.ts": service15,
+            "./services/user-filter.ts": service16,
             "./services/template.ts": service5,
             "./services/proxy.ts": service6,
             "./services/email.ts": service7,
-            "./services/account.ts": service12,
+            "./services/account.ts": service13,
             "./services/discord.ts": service8,
-            "./services/temporary-access.ts": service16,
-            "./services/query.ts": service9
+            "./services/temporary-access.ts": service17,
+            "./services/query.ts": service9,
+            "./services/csvConverter.ts": service10
         };
         this.serviceManifests = {
             "./services/services.rsm.json": __default19,
@@ -39331,7 +40849,8 @@ class Modules {
             "./services/account.rsm.json": __default34,
             "./services/discord.rsm.json": __default35,
             "./services/temporary-access.rsm.json": __default36,
-            "./services/query.rsm.json": __default37
+            "./services/query.rsm.json": __default37,
+            "./services/csvConverter.rsm.json": __default38
         };
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
             v.source = url;
@@ -39388,12 +40907,19 @@ class Modules {
     }
     ensureServiceConfigValidator(url) {
         if (!this.validateServiceConfig[url]) {
-            let configSchema = schemaIServiceConfig;
-            const serviceManifest = this.serviceManifests[url];
-            if (serviceManifest.configSchema) {
-                configSchema = assignProperties(serviceManifest.configSchema, schemaIServiceConfig.properties, schemaIServiceConfig.required);
+            try {
+                let configSchema = schemaIServiceConfig;
+                const serviceManifest = this.serviceManifests[url];
+                if (serviceManifest.configSchema) {
+                    configSchema = assignProperties(serviceManifest.configSchema, schemaIServiceConfig);
+                    let resolvedUrl = url;
+                    if (resolvedUrl.startsWith('.')) resolvedUrl = 'https://restspace.io/builtin-services' + resolvedUrl.substring(1);
+                    configSchema.$id = resolvedUrl;
+                }
+                this.validateServiceConfig[url] = this.ajv.compile(configSchema);
+            } catch (err) {
+                throw new Error(`Failed to compile service config validator for ${url}`, err);
             }
-            this.validateServiceConfig[url] = this.ajv.compile(configSchema);
         }
     }
     async getServiceManifest(url) {
@@ -39538,7 +41064,7 @@ const config = {
     server: {},
     modules: new Modules(ajv2),
     tenants: {},
-    logger: getLogger(),
+    logger: getLogger1(),
     fixRelativeToRoot: (pathUrl)=>pathUrl.startsWith('.') ? resolve2(pathUrl) : pathUrl,
     ajv: ajv2,
     jwtExpiryMins: 30,
@@ -39562,7 +41088,7 @@ const config = {
     requestExternal: (msg)=>msg.requestExternal()
 };
 const setupLogging = async (level)=>{
-    await setup({
+    await setup1({
         handlers: {
             console: new handlers.ConsoleHandler(level, {
                 formatter
@@ -39584,7 +41110,7 @@ const setupLogging = async (level)=>{
             }
         }
     });
-    config.logger = getLogger();
+    config.logger = getLogger1();
 };
 class Tenant {
     serviceFactory;
@@ -39760,7 +41286,7 @@ const getTenant = async (requestTenant)=>{
     }
     return config.tenants[requestTenant];
 };
-service13.getPath('catalogue', (msg)=>{
+service14.getPath('catalogue', (msg)=>{
     if (catalogue === null) {
         catalogue = {
             services: {},
@@ -39794,7 +41320,7 @@ service13.getPath('catalogue', (msg)=>{
         catalogue
     }));
 });
-service13.getPath('services', async (msg, context)=>{
+service14.getPath('services', async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
@@ -39821,8 +41347,8 @@ const getRaw = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
 };
-service13.getPath('raw', getRaw);
-service13.getPath('raw.json', getRaw);
+service14.getPath('raw', getRaw);
+service14.getPath('raw.json', getRaw);
 const rebuildConfig = async (rawServicesConfig, tenant)=>{
     let newTenant;
     try {
@@ -39859,8 +41385,8 @@ const putRaw = async (msg, context)=>{
     if (status) return msg.setStatus(status, message);
     return msg.setStatus(200);
 };
-service13.putPath('raw', putRaw);
-service13.putPath('raw.json', putRaw);
+service14.putPath('raw', putRaw);
+service14.putPath('raw.json', putRaw);
 const putChords = async (msg, context)=>{
     const chords = await msg?.data?.asJson();
     if (typeof chords !== 'object') return msg.setStatus(400, 'Chords should be an object labelled by chord id');
@@ -39885,14 +41411,14 @@ const putChords = async (msg, context)=>{
     const [status, message] = await rebuildConfig(newRawConfig, context.tenant);
     return msg.setStatus(status || 200, message);
 };
-service13.putPath('chords', putChords);
-service13.putPath('chords.json', putChords);
+service14.putPath('chords', putChords);
+service14.putPath('chords.json', putChords);
 const getChordMap = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.chordMap));
 };
-service13.getPath('chord-map', getChordMap);
-service13.getPath('chord-map.json', getChordMap);
+service14.getPath('chord-map', getChordMap);
+service14.getPath('chord-map.json', getChordMap);
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
     PipelineElementType[PipelineElementType["serializer"] = 1] = "serializer";
@@ -40436,7 +41962,7 @@ function logout(msg) {
     msg.deleteCookie('rs-auth');
     return Promise.resolve(msg);
 }
-service14.postPath('login', async (msg, context, config)=>{
+service15.postPath('login', async (msg, context, config)=>{
     const newMsg = await login(msg, config.userUrlPattern, context);
     if (config.loginPage && msg.getHeader('referer')) {
         let redirUrl = msg.url.copy();
@@ -40471,8 +41997,8 @@ service14.postPath('login', async (msg, context, config)=>{
     }
     return newMsg;
 });
-service14.postPath('logout', (msg)=>logout(msg));
-service14.getPath('user', async (msg, context, config)=>{
+service15.postPath('logout', (msg)=>logout(msg));
+service15.getPath('user', async (msg, context, config)=>{
     if (!msg.user || userIsAnon(msg.user)) {
         return msg.setStatus(401, 'Unauthorized');
     }
@@ -40484,7 +42010,7 @@ service14.getPath('user', async (msg, context, config)=>{
         return msg.setStatus(404, "No such user");
     }
 });
-service14.setUser(async (msg)=>{
+service15.setUser(async (msg)=>{
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
     let authResult = '';
@@ -40510,7 +42036,7 @@ service14.setUser(async (msg)=>{
     }
     return msg;
 });
-service10.all((msg, context, config)=>{
+service11.all((msg, context, config)=>{
     let runPipeline = config.pipeline;
     if (msg.url.query["$to-step"]) {
         const toStep = parseInt(msg.url.query["$to-step"][0]);
@@ -40520,7 +42046,7 @@ service10.all((msg, context, config)=>{
     }
     return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg));
 });
-service11.all(async (msg, context)=>{
+service12.all(async (msg, context)=>{
     const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
@@ -40537,7 +42063,7 @@ service11.all(async (msg, context)=>{
     pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
     return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
-service15.get(async (msg, context)=>{
+service16.get(async (msg, context)=>{
     if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
     if (msg.url.query['test'] !== undefined) {
         msg.data = undefined;
@@ -40561,9 +42087,9 @@ service15.get(async (msg, context)=>{
     msg.data.mimeType = originalMime;
     return msg;
 });
-service15.put(validateChange);
-service15.post(validateChange);
-service15.delete(validateChange);
+service16.put(validateChange);
+service16.post(validateChange);
+service16.delete(validateChange);
 const sendTokenUrl = async (msg, context, serviceConfig, subservice)=>{
     if (msg.url.servicePathElements.length < 1) return msg.setStatus(400, 'Missing email');
     const user = await getUserFromEmail(context, serviceConfig.userUrlPattern, msg, msg.url.servicePathElements[0], true);
@@ -40643,11 +42169,11 @@ const tokenVerifySchema = {
         }
     }
 };
-service12.postPath('reset-password', (msg, context, config)=>{
+service13.postPath('reset-password', (msg, context, config)=>{
     if (!config.passwordReset) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.passwordReset);
 });
-service12.postPath('token-update-password', (msg, context, config)=>{
+service13.postPath('token-update-password', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, async (userData, posted)=>{
         const user = new AuthUser(userData);
         user.password = posted['password'];
@@ -40655,18 +42181,18 @@ service12.postPath('token-update-password', (msg, context, config)=>{
         return user;
     });
 }, tokenPasswordSchema);
-service12.postPath('verify-email', (msg, context, config)=>{
+service13.postPath('verify-email', (msg, context, config)=>{
     if (!config.emailConfirm) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.emailConfirm);
 });
-service12.postPath('confirm-email', (msg, context, config)=>{
+service13.postPath('confirm-email', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, (userData, _posted)=>{
         const user = new AuthUser(userData);
         user.emailVerified = new Date();
         return Promise.resolve(user);
     });
 }, tokenVerifySchema);
-service16.all(async (msg, context, config)=>{
+service17.all(async (msg, context, config)=>{
     const state = await context.state(TemporaryAccessState, context, config);
     const expireTokens = ()=>{
         const now = new Date();

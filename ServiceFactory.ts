@@ -11,7 +11,6 @@ import { getErrors } from "rs-core/utility/errors.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
 import { ServiceContext, SimpleServiceContext } from "../rs-core/ServiceContext.ts";
 import { StateFunction } from "./tenant.ts";
-import { Externality } from "./pipeline/pipelineStep.ts";
 
 interface ITemplateConfigFromManifest {
     serviceConfigTemplates?: Record<string, IServiceConfigTemplate>;
@@ -188,7 +187,7 @@ export class ServiceFactory {
             serviceContext = { ...serviceContext, manifest };
         }
         const serviceWrapper = new ServiceWrapper(service);
-        const sourceServiceFunc = source === Source.External ? serviceWrapper.external : serviceWrapper.internal;
+        const sourceServiceFunc = source === Source.External || source === Source.Outer ? serviceWrapper.external(source) : serviceWrapper.internal;
 
         // protect data sent to func against modification within it
         serviceContext.manifest = structuredClone(serviceContext.manifest);
@@ -204,7 +203,7 @@ export class ServiceFactory {
             const newFunc: MessageFunction = async (msg: Message) => {
                 const msg2 = await func(msg);
                 msg2.setUrl(url).setMethod('POST');
-                return context.makeRequest(msg2, Externality.Outer);
+                return context.makeRequest(msg2, Source.Outer);
             };
             return newFunc;
         } else {
@@ -214,6 +213,17 @@ export class ServiceFactory {
 
     /** select service with longest path match */
     async getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => StateFunction, source: Source): Promise<MessageFunction> {
+        if (this.serviceConfigs!['()'] && source === Source.External) {
+            // the service with outer basePath (i.e. "()") can only make requests with Source.Outer.
+            // Source.External would cause it to recurse. This service should be accessible by anyone who
+            // can access the site: Source.Outer delegates auth checking to services it goes on to call.
+            const newServiceContext = {
+                ...serviceContext,
+                makeRequest: (msg: Message) => serviceContext.makeRequest(msg, Source.Outer)
+            } as ServiceContext<IAdapter>;
+            return this.getMessageFunctionForService(this.serviceConfigs!['()'], newServiceContext, source);
+        }
+
         const pathParts = [ ...url.pathElements ];
 
         let exactPath = '/' + pathParts.join('/') + '.';

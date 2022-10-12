@@ -11,6 +11,7 @@ import { pipelineConcat, PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { AuthUser } from "./auth/AuthUser.ts";
 import { ServiceContext } from "../rs-core/ServiceContext.ts";
 import { upTo } from "../rs-core/utility/utility.ts";
+import { Source } from "../rs-core/Source.ts";
 
 export class ServiceWrapper {
     constructor(public service: Service) {
@@ -168,12 +169,11 @@ export class ServiceWrapper {
     }
 
     /** Return a ServiceFunction for a call to a service coming from an inbound request to the runtime server */
-    external: ServiceFunction = async (msg: Message, context: ServiceContext<IAdapter>, serviceConfig: IServiceConfig) => {
-        if (msg.authenticated) return this.internal(msg, context, serviceConfig);
-
+    external: (source: Source) => ServiceFunction = (source: Source) => async (msg: Message, context: ServiceContext<IAdapter>, serviceConfig: IServiceConfig) => {
         const origin = msg.getHeader('origin');
 
         const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
+        
         if (!isPermitted) {
             config.logger.warning(`Unauthorized: ${msg.user?.email || 'anon'} for ${msg.url}`);
             return this.setCors(msg, origin).setStatus(401, "Unauthorized");
@@ -181,6 +181,8 @@ export class ServiceWrapper {
         msg.authenticated = true;
 
         let msgOut = await this.internal(msg, context, serviceConfig);
+
+        if (source === Source.Outer) return msgOut;
 
         msgOut = this.setCors(msgOut, origin);
 
