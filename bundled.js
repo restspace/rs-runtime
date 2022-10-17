@@ -12653,6 +12653,7 @@ class Message {
             if (err && err['_errorStatus'] !== undefined && err['_errorMessage'] !== undefined) {
                 this.setStatus(err['_errorStatus'], err['_errorMessage']);
             }
+            this.conditionalMode = false;
         }
         return this;
     }
@@ -34268,15 +34269,26 @@ service3.postPath('/selector-schema', async (msg)=>{
     };
     return msg.setDataJson(schema, "application/schema+json");
 });
-service3.postPath('/redirect-on-unauthorized', (msg)=>{
-    if (msg.status === 401 || msg.status === 403) {
-        const redirectUrl = new Url('/' + msg.url.servicePathElements.slice(1).join('/'));
-        redirectUrl.query.originalUrl = [
-            msg.url.toString()
-        ];
-        msg.redirect(redirectUrl, true);
-    }
-    return Promise.resolve(msg);
+service3.postPath('/redirect-permanent', (msg)=>{
+    const location = '/' + msg.url.servicePath;
+    msg.exitConditionalMode();
+    return Promise.resolve(msg.setHeader('location', location).setStatus(301));
+});
+service3.postPath('/redirect-temporary', (msg)=>{
+    const location = '/' + msg.url.servicePath;
+    msg.exitConditionalMode();
+    return Promise.resolve(msg.setHeader('location', location).setStatus(307));
+});
+service3.postPath('/see-other', (msg)=>{
+    const location = '/' + msg.url.servicePath;
+    msg.exitConditionalMode();
+    return Promise.resolve(msg.setHeader('location', location).setStatus(303));
+});
+service3.postPath('/reload-referer', (msg)=>{
+    const location = msg.getHeader('referer');
+    if (!location) return Promise.resolve(msg);
+    msg.exitConditionalMode();
+    return Promise.resolve(msg.setHeader('location', location).setStatus(303));
 });
 const __default24 = {
     "name": "Library functions",
@@ -39571,40 +39583,49 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
                     let rowObj = {};
                     for await (let cell of row){
                         cell = cell.trim();
-                        const subschema = properties[rowProps[idx]];
-                        let val = null;
-                        switch(subschema.type){
-                            case "number":
-                                val = parseFloat(cell);
-                                if (isNaN(val)) {
-                                    rowObj = null;
-                                    errors.push(`row ${rowIdx} col ${idx}: ${cell} is not a number`);
-                                }
-                                break;
-                            case "integer":
-                                val = parseInt(cell);
-                                if (isNaN(val)) {
-                                    rowObj = null;
-                                    errors.push(`row ${rowIdx} col ${idx}: ${cell} is not an integer`);
-                                }
-                                break;
-                            case "boolean":
-                                val = cell.toLowerCase();
-                                if (val !== 'true' && val !== 'false') {
-                                    rowObj = null;
-                                    errors.push(`row ${rowIdx} col ${idx}: ${cell} is not true or false`);
-                                } else {
-                                    val = val === 'true';
-                                }
-                                break;
-                            default:
-                                val = cell;
+                        if (idx < rowProps.length) {
+                            const subschema = properties[rowProps[idx]];
+                            let val = null;
+                            switch(subschema.type){
+                                case "number":
+                                    val = parseFloat(cell);
+                                    if (isNaN(val)) {
+                                        rowObj = null;
+                                        if (mode === "validate") {
+                                            errors.push(`row ${rowIdx} col ${idx}: ${cell} is not a number`);
+                                        }
+                                    }
+                                    break;
+                                case "integer":
+                                    val = parseInt(cell);
+                                    if (isNaN(val)) {
+                                        rowObj = null;
+                                        if (mode === "validate") {
+                                            errors.push(`row ${rowIdx} col ${idx}: ${cell} is not an integer`);
+                                        }
+                                    }
+                                    break;
+                                case "boolean":
+                                    val = cell.toLowerCase();
+                                    if (val !== 'true' && val !== 'false') {
+                                        rowObj = null;
+                                        if (mode === "validate") {
+                                            errors.push(`row ${rowIdx} col ${idx}: ${cell} is not true or false`);
+                                        }
+                                    } else {
+                                        val = val === 'true';
+                                    }
+                                    break;
+                                default:
+                                    val = cell;
+                            }
+                            if (rowObj) rowObj[rowProps[idx]] = val;
+                        } else if (mode === "validate" && idx === rowProps.length) {
+                            errors.push(`line ${rowIdx} too long (> ${rowProps.length} fields)`);
                         }
-                        if (rowObj == null) break;
-                        rowObj[rowProps[idx]] = val;
                         idx++;
                     }
-                    if (validate && rowObj && !validate(rowObj)) {
+                    if (mode === "validate" && validate && rowObj && !validate(rowObj)) {
                         const errorMsg = (validate.errors || []).map((e)=>e.message).join('; ');
                         errors.push(`bad format line ${rowIdx}: ${errorMsg}`);
                     } else if (rowObj && mode !== 'validate') {
@@ -39613,6 +39634,10 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
                         } else {
                             writeString((rowIdx === 0 ? '' : ',') + JSON.stringify(rowObj));
                         }
+                    }
+                    if (mode === "validate" && errors.length > 100) {
+                        errors.push('Aborted, over 100 errors');
+                        break;
                     }
                     rowIdx++;
                 }

@@ -8,6 +8,7 @@ import { MessageBody } from "rs-core/MessageBody.ts";
 import { IChord } from "../IChord.ts";
 import { getErrors } from "../../rs-core/utility/errors.ts";
 import { SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
+import { ApiPattern } from "../../rs-core/DirDescriptor.ts";
 
 type InfraDetails = Record<string, unknown> & Infra;
 
@@ -165,5 +166,99 @@ const getChordMap = (msg: Message, context: SimpleServiceContext) => {
 
 service.getPath('chord-map', getChordMap);
 service.getPath('chord-map.json', getChordMap);
+
+const openApi = async (msg: Message, context: SimpleServiceContext) => {
+    const tenant = config.tenants[context.tenant];
+
+    const spec = {
+        openApi: "3.0.3",
+        info: {
+            title: tenant.name,
+            description: 'Restspace API',
+            version: "1.0.0"
+        },
+        paths: {
+        } as Record<string, unknown>,
+        components: {
+        } as Record<string, unknown>,
+        externalDocs: {
+            description: "Services documentation",
+            url: "https://restspace.io/docs/services"
+        }
+    };
+
+    // pull additionExposedProperties for all services
+    const manifestData: Record<string, Partial<IServiceManifest>> = {};
+    for (const serv of Object.values(tenant.servicesConfig!.services)) {
+        if (!manifestData[serv.source]) {
+            const manifest = await config.modules.getServiceManifest(serv.source);
+            if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
+            let apiPattern: ApiPattern = "store";
+            if (manifest.apis?.includes('store-transform')) apiPattern = "storeTransform"
+            else if (manifest.apis?.includes('transform')) apiPattern = "transform"
+            else if (manifest.apis?.includes('view')) apiPattern = "view"
+            else if (manifest.apis?.includes('operation')) apiPattern = "operation"
+
+            switch (apiPattern) {
+                case "store":
+                    spec.paths[serv.basePath + '/{servicePath}'] = {
+                        description: manifest.description,
+                        get: {
+                            description: "read the item at this servicePath",
+                            responses: {
+                                "200": {
+                                    description: "returns the item"
+                                },
+                                "404": {
+                                    description: "there is no item at this servicePath"
+                                }
+                            }
+                        },
+                        post: {
+                            description: "write the item at this servicePath, and get the written item as a response",
+                            responses: {
+                                "200": {
+                                    description: "The item was updated successfully, response is the item as updated"
+                                },
+                                "201": {
+                                    description: "The item was created successfully, response is the item as created"
+                                }
+                            }
+                        },
+                        put: {
+                            description: "write the item at this servicePath, and get the written item as a response",
+                            responses: {
+                                "200": {
+                                    description: "The item was updated successfully, response is the item as updated"
+                                },
+                                "201": {
+                                    description: "The item was created successfully, response is the item as created"
+                                }
+                            }
+                        },
+                        parameters: {
+                            name: "servicePath",
+                            in: "path",
+                            description: "multi-segment folder path", 
+                            required: true,
+                            schema: {
+                                type: "array",
+                                items: {
+                                    type: "string"
+                                },
+                                style: "simple",
+                                "x-multiSegment": true
+                            }
+                        }
+                    };
+                    break;
+            }
+        }
+    }
+
+    return msg.setDataJson(spec);
+}
+
+service.getPath('openApi', openApi);
 
 export default service;

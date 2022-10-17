@@ -5,10 +5,10 @@ import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import Ajv, { ValidateFunction } from "https://cdn.skypack.dev/ajv?dts";
 import { BaseStateClass, SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
-import { QueryStringArgs } from "../../rs-core/Url.ts";
 
 export interface ICSVConverterConfig extends IServiceConfig {
 	lineSchema: Record<string, unknown>;
+	ignoreBlankLines?: boolean;
 }
 
 const service = new Service<IAdapter, ICSVConverterConfig>();
@@ -20,6 +20,7 @@ export class CSVState extends BaseStateClass {
         const ajv = new Ajv({ strictSchema: false, allowUnionTypes: true });
 		if (config.lineSchema) {
 			this.validate = ajv.compile(config.lineSchema);
+			_context.logger.info('TT Compiled validation func');
 		}
 		return Promise.resolve();
     }
@@ -36,11 +37,14 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 	if (!readable) return msg.setStatus(400, 'No data');
 	const rdr = readerFromStreamReader(readable.getReader());
 	const properties = config.lineSchema.properties as Record<string, Record<string, unknown>>;
+	const required = (config.lineSchema.required as string[]) || [];
 	const rowProps = Object.keys(properties);
 	const errors = [] as string[];
+	const warnings = [] as string[];
 
 	const state = await context.state(CSVState, context, config);
 	const validate = state.validate;
+	const ignoreBlank = config.ignoreBlankLines === undefined ? true : config.ignoreBlankLines;
 
 	let stream: TransformStream | null = null;
 	let writer: WritableStreamDefaultWriter<any> | null = null;
@@ -52,6 +56,7 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 	}
 
 	let rowIdx = 0;
+	let blanks = 0;
 
 	const process = async () => {
 		try {
@@ -64,50 +69,79 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 				let rowObj: Record<string, unknown> | null = {};
 				for await (let cell of row) {
 					cell = cell.trim();
-					const subschema = properties[rowProps[idx]];
-					let val: any = null;
-					switch (subschema.type) {
-						case "number":
-							val = parseFloat(cell);
-							if (isNaN(val)) {
-								rowObj = null;
-								errors.push(`row ${rowIdx} col ${idx}: ${cell} is not a number`);
-							}
-							break;
-						case "integer":
-							val = parseInt(cell);
-							if (isNaN(val)) {
-								rowObj = null;
-								errors.push(`row ${rowIdx} col ${idx}: ${cell} is not an integer`);
-							}
-							break;
-						case "boolean":
-							val = cell.toLowerCase();
-							if (val !== 'true' && val !== 'false') {
-								rowObj = null;
-								errors.push(`row ${rowIdx} col ${idx}: ${cell} is not true or false`);
-							} else {
-								val = (val === 'true');
-							}
-							break;
-						default:
-							val = cell;
+					if (idx < rowProps.length) {
+						const subschema = properties[rowProps[idx]];
+						let val: any = null;
+
+						const fieldRequired = required.includes(rowProps[idx]);
+						if (cell === '' && !fieldRequired) {
+							idx++;
+							continue;
+						}
+
+						switch (subschema.type) {
+							case "number":
+								val = parseFloat(cell);
+								if (isNaN(val)) {
+									rowObj = null;
+									if (mode === "validate") {
+										errors.push(`row ${rowIdx} col ${idx}: ${cell} is not a number`);
+									}
+								}
+								break;
+							case "integer":
+								val = parseInt(cell);
+								if (isNaN(val)) {
+									rowObj = null;
+									if (mode === "validate") {
+										errors.push(`row ${rowIdx} col ${idx}: ${cell} is not an integer`);
+									}
+								}
+								break;
+							case "boolean":
+								val = cell.toLowerCase();
+								if (val !== 'true' && val !== 'false') {
+									rowObj = null;
+									if (mode === "validate") {
+										errors.push(`row ${rowIdx} col ${idx}: ${cell} is not true or false`);
+									}
+								} else {
+									val = (val === 'true');
+								}
+								break;
+							default:
+								val = cell;
+						}
+
+						if (rowObj) rowObj[rowProps[idx]] = val;
+					} else if (mode === "validate" && idx === rowProps.length) {
+						warnings.push(`line ${rowIdx} too long (> ${rowProps.length} fields)`);
 					}
-
-					if (rowObj == null) break;
-
-					rowObj[rowProps[idx]] = val;
 					idx++;
 				}
-				if (validate && rowObj && !validate(rowObj)) {
-					const errorMsg = (validate.errors || []).map((e: any) => e.message).join('; ');
-					errors.push(`bad format line ${rowIdx}: ${errorMsg}`);
-				} else if (rowObj && mode !== 'validate') {
+
+				const isBlank = rowObj && Object.keys(rowObj).length === 0;
+				if (isBlank) blanks++;
+
+				if (mode === "validate") {
+					if (idx < rowProps.length) {
+						warnings.push(`line ${rowIdx} too short (< ${rowProps.length} fields)`);
+					}
+					if (validate && rowObj && !validate(rowObj)) {
+						const errorMsg = (validate.errors || []).map((e: any) => e.message).join('; ');
+						errors.push(`bad format line ${rowIdx}: ${errorMsg}`);
+					}
+				} else if (rowObj && !(ignoreBlank && isBlank)) {
 					if (mode === "ndjson") {
 						writeString(JSON.stringify(rowObj) + '\n');
 					} else {
 						writeString((rowIdx === 0 ? '' : ',') + JSON.stringify(rowObj));
 					}
+				}
+
+				if (mode === "validate" && errors.length > 100) {
+					errors.push('Aborted, over 100 errors');
+					break;
 				}
 				rowIdx++;
 			}
@@ -125,7 +159,17 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 	try {
 		if (mode === "validate") {
 			await process();
-			return errors.length > 0 ? msg.setStatus(400, errors.join('\n')) : msg.setStatus(200, `OK, ${rowIdx} lines validated`);
+			let report = ''
+			if (errors.length > 0) {
+				let report = errors.join('\n');
+				if (warnings.length) report += '\nWarnings:\n' + warnings.join('\n');
+				report += `${rowIdx} lines, ${errors.length} errors, ${warnings.length} warnings`;
+				return msg.setStatus(400, report);
+			} else {
+				report = `OK, ${rowIdx} lines validated`;
+				if (warnings.length) report += `, ${warnings.length} warnings\n` + warnings.join('\n');
+				return msg.setStatus(200, report);
+			}
 		} else {
 			process();
 			return msg.setData(stream!.readable,

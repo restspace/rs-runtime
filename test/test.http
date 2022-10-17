@@ -200,5 +200,16 @@ POST https://ademchic2.restspace.io/query/autocomplete/ta
 POST https://restspace.local:3131/csv/ndjson
 Content-Type: text/csv
 
-hello, 1, true
-hello2, 4, false
+< D:\Dev\ademchic-assets\catalogue.csv
+
+###
+POST https://ademchic2.restspace.io/catalogue-converter/ndjson
+Content-Type: text/csv
+
+< D:\Dev\ademchic-assets\catalogue.csv
+
+###
+POST https://ademchic2.restspace.io/catalogue-converter/json
+Content-Type: text/csv
+
+,P1,P-1,Paint,Wall Paint,Pure Brilliant White Matt Finish,S 0500-N,Pure Brilliant White,Matt finish ,,,Dulux,Contractor to quote,https://www.dulux.co.uk/en/colour-details/pure-brilliant-white,,,,,,,,,,,,,,,,,
