@@ -340,6 +340,24 @@ Deno.test('tee transform', async function () {
     const check = await msgReadOut.data?.asJson();
     assertStrictEquals(check.xname, "Joe", `tee saved data output: ${JSON.stringify(check)}`);
 });
+
+Deno.test('split patch', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
+        [
+            { 'a': 123 },
+            { 'b': 234 }
+        ]
+    ), [
+        "jsonSplit",
+        "PATCH /data/ds/test3"
+    ]);
+    const msgRead = testMessage("/data/ds/test3", "GET");
+    const msgReadOut = await handleIncomingRequest(msgRead);
+    const check = await msgReadOut.data?.asJson();
+    assertStrictEquals(msgReadOut.status, 404);
+    //when PATCH implemented for DataSet: assertStrictEquals(check, { a: 123, b: 234 });
+});
+
 // Deno.test('simple post', async function () {
 //     let postedBody: any = {};
 //     domainRequestHandlers["test2.com"] = async (msg: Message) => {

@@ -198,7 +198,7 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                         case PipelineParallelizer.unzip:
                             msgs = msgs.flatMap(msg => {
                                 if (endedMsgs.includes(msg)) return msg;
-                                unzip(msg);
+                                return unzip(msg);
                             });
                             break;
                     //     case PipelineParallelizer.split:
@@ -207,7 +207,7 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                         case PipelineParallelizer.jsonSplit:
                             msgs = msgs.flatMap(msg => {
                                 if (endedMsgs.includes(msg)) return msg;
-                                jsonSplit(msg);
+                                return jsonSplit(msg);
                             });
                             break;
                     }
@@ -345,11 +345,17 @@ export async function pipeline(msg: Message, pipeline: PipelineSpec, contextUrl?
     // const outMsg = !asq.nRemaining || asq.nRemaining <= 1
     //     ? (await asq.next()).value
     //     : (await multipart(asq));
-    const outMsg = (await asq.next()).value;
-    outMsg.url = msg.url;
-    Object.assign(outMsg.headers, context.outputHeaders || {});
-    if (context.trace) {
-        outMsg.setDataJson(context.traceOutputs);
+    let lastMsg = null as Message | null;
+    for await (const outMsg of asq) {
+        lastMsg = outMsg;
     }
-    return outMsg || msg.copy().setStatus(204, '');
+    if (lastMsg) {
+        lastMsg.url = msg.url;
+        Object.assign(lastMsg.headers, context.outputHeaders || {});
+        if (context.trace) {
+            lastMsg.setDataJson(context.traceOutputs);
+        }
+        return lastMsg;
+    }
+    return msg.copy().setStatus(204, '');
 }

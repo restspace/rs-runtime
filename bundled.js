@@ -1197,20 +1197,35 @@ function mergeDeep(target, ...sources) {
     }
     return mergeDeep(target, ...sources);
 }
+const strategies = [
+    'replace',
+    'append',
+    'prepend',
+    'positional',
+    'id-replace',
+    'id-patch'
+];
+function removePatchConfig(patchData) {
+    if (Array.isArray(patchData)) {
+        if (typeof patchData[0] === 'object' && '$strategy' in patchData[0] && strategies.includes(patchData[0].$strategy)) {
+            patchData.shift();
+        }
+        return patchData.map((item)=>removePatchConfig(item));
+    } else if (typeof patchData === 'object') {
+        return Object.fromEntries(Object.entries(patchData).map(([k, v])=>[
+                k,
+                removePatchConfig(v)
+            ]));
+    } else {
+        return patchData;
+    }
+}
 function patch(target, patchData) {
     if (Array.isArray(patchData)) {
-        if (!Array.isArray(target)) return patchData;
+        if (!Array.isArray(target)) return removePatchConfig(patchData);
         let strategy = "positional";
         let id = "";
         if (patchData[0]) {
-            const strategies = [
-                'replace',
-                'append',
-                'prepend',
-                'positional',
-                'id-replace',
-                'id-patch'
-            ];
             let config = null;
             if (typeof patchData[0] === 'object' && '$strategy' in patchData[0] && strategies.includes(patchData[0].$strategy)) {
                 strategy = patchData[0].$strategy;
@@ -1226,21 +1241,21 @@ function patch(target, patchData) {
                     if (idx < target.length) {
                         target[idx] = patch(target[idx], patchData[idx]);
                     } else {
-                        target.push(patch(target[idx], patchData[idx]));
+                        target.push(removePatchConfig(patchData[idx]));
                     }
                 }
                 return target;
             case 'replace':
                 return [
-                    ...patchData
+                    ...removePatchConfig(patchData)
                 ];
             case 'append':
-                patchData.forEach((val)=>target.push(val));
+                patchData.forEach((val)=>target.push(removePatchConfig(val)));
                 return target;
             case 'prepend':
                 {
                     for(let idx1 = patchData.length - 1; idx1 >= 0; idx1--){
-                        target.unshift(patchData[idx1]);
+                        target.unshift(removePatchConfig(patchData[idx1]));
                     }
                     return target;
                 }
@@ -1253,7 +1268,7 @@ function patch(target, patchData) {
                             if (targetItem) {
                                 newList.push(patch(targetItem, val));
                             } else {
-                                newList.push(val);
+                                newList.push(removePatchConfig(val));
                             }
                         }
                     });
@@ -1270,7 +1285,7 @@ function patch(target, patchData) {
                             if (targetIdx >= 0) {
                                 newList1[targetIdx] = patch(newList1[targetIdx], val);
                             } else {
-                                newList1.push(val);
+                                newList1.push(removePatchConfig(val));
                             }
                         }
                     });
@@ -1278,7 +1293,7 @@ function patch(target, patchData) {
                 }
         }
     } else if (typeof patchData === "object") {
-        if (Array.isArray(target) || !(typeof target === "object")) return patchData;
+        if (Array.isArray(target) || !(typeof target === "object")) return removePatchConfig(patchData);
         for(const prop in patchData){
             if (target[prop]) {
                 if (patchData[prop] === undefined) {
@@ -1287,12 +1302,12 @@ function patch(target, patchData) {
                     target[prop] = patch(target[prop], patchData[prop]);
                 }
             } else {
-                target[prop] = patchData[prop];
+                target[prop] = removePatchConfig(patchData[prop]);
             }
         }
         return target;
     } else {
-        return patchData;
+        return removePatchConfig(patchData);
     }
 }
 function deepEqualIfPresent(objSuper, objSub) {
@@ -22754,11 +22769,15 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform)=>{
         } else if (match === '[') {
             let list = newOutput;
             if (!Array.isArray(newOutput)) {
-                list = Object.entries(newOutput).map(([k, v])=>typeof v === 'object' ? {
-                        ...v,
-                        "$key": k
-                    } : v);
-                for(const k in newOutput)delete newOutput[k];
+                if (typeof newOutput === 'object') {
+                    list = Object.entries(newOutput).map(([k, v])=>typeof v === 'object' ? {
+                            ...v,
+                            "$key": k
+                        } : v);
+                    for(const k in newOutput)delete newOutput[k];
+                } else {
+                    return;
+                }
             }
             const loopItem = {};
             list.forEach((item, idx)=>{
@@ -39548,6 +39567,7 @@ class CSVState extends BaseStateClass {
         });
         if (config.lineSchema) {
             this.validate = ajv.compile(config.lineSchema);
+            _context.logger.info('TT Compiled validation func');
         }
         return Promise.resolve();
     }
@@ -39560,10 +39580,13 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
         if (!readable) return msg.setStatus(400, 'No data');
         const rdr = readerFromStreamReader(readable.getReader());
         const properties = config.lineSchema.properties;
+        const required = config.lineSchema.required || [];
         const rowProps = Object.keys(properties);
         const errors = [];
+        const warnings = [];
         const state = await context.state(CSVState, context, config);
         const validate = state.validate;
+        const ignoreBlank = config.ignoreBlankLines === undefined ? true : config.ignoreBlankLines;
         let stream = null;
         let writer = null;
         let writeString = (_)=>{};
@@ -39573,6 +39596,7 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
             writeString = (data)=>writer.write(new TextEncoder().encode(data));
         }
         let rowIdx = 0;
+        let blanks = 0;
         const process1 = async ()=>{
             try {
                 if (mode === "json") {
@@ -39586,6 +39610,11 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
                         if (idx < rowProps.length) {
                             const subschema = properties[rowProps[idx]];
                             let val = null;
+                            const fieldRequired = required.includes(rowProps[idx]);
+                            if (cell === '' && !fieldRequired) {
+                                idx++;
+                                continue;
+                            }
                             switch(subschema.type){
                                 case "number":
                                     val = parseFloat(cell);
@@ -39621,14 +39650,21 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
                             }
                             if (rowObj) rowObj[rowProps[idx]] = val;
                         } else if (mode === "validate" && idx === rowProps.length) {
-                            errors.push(`line ${rowIdx} too long (> ${rowProps.length} fields)`);
+                            warnings.push(`line ${rowIdx} too long (> ${rowProps.length} fields)`);
                         }
                         idx++;
                     }
-                    if (mode === "validate" && validate && rowObj && !validate(rowObj)) {
-                        const errorMsg = (validate.errors || []).map((e)=>e.message).join('; ');
-                        errors.push(`bad format line ${rowIdx}: ${errorMsg}`);
-                    } else if (rowObj && mode !== 'validate') {
+                    const isBlank = rowObj && Object.keys(rowObj).length === 0;
+                    if (isBlank) blanks++;
+                    if (mode === "validate") {
+                        if (idx < rowProps.length) {
+                            warnings.push(`line ${rowIdx} too short (< ${rowProps.length} fields)`);
+                        }
+                        if (validate && rowObj && !validate(rowObj)) {
+                            const errorMsg = (validate.errors || []).map((e)=>e.message).join('; ');
+                            errors.push(`bad format line ${rowIdx}: ${errorMsg}`);
+                        }
+                    } else if (rowObj && !(ignoreBlank && isBlank)) {
                         if (mode === "ndjson") {
                             writeString(JSON.stringify(rowObj) + '\n');
                         } else {
@@ -39653,7 +39689,17 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
         try {
             if (mode === "validate") {
                 await process1();
-                return errors.length > 0 ? msg.setStatus(400, errors.join('\n')) : msg.setStatus(200, `OK, ${rowIdx} lines validated`);
+                let report = '';
+                if (errors.length > 0) {
+                    let report1 = errors.join('\n');
+                    if (warnings.length) report1 += '\nWarnings:\n' + warnings.join('\n');
+                    report1 += `${rowIdx} lines, ${errors.length} errors, ${warnings.length} warnings`;
+                    return msg.setStatus(400, report1);
+                } else {
+                    report = `OK, ${rowIdx} lines validated`;
+                    if (warnings.length) report += `, ${warnings.length} warnings\n` + warnings.join('\n');
+                    return msg.setStatus(200, report);
+                }
             } else {
                 process1();
                 return msg.setData(stream.readable, mode === "ndjson" ? "application/x-ndjson" : "application/json");
@@ -39679,6 +39725,10 @@ const __default38 = {
                 "type": "object",
                 "description": "A JSON Schema for a line of the CSV file, object type specifying fieldnames as properties",
                 "properties": {}
+            },
+            "ignoreBlankLines": {
+                "type": "boolean",
+                "description": "Whether to skip output for lines which have empty values for all fields"
             }
         }
     },
@@ -40519,6 +40569,7 @@ class ServiceWrapper {
                 const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
                 newMsg = await this.prePostPipeline("pre", newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
                 newMsg.applyServiceRedirect();
+                context.metadataOnly = newMsg.url.isDirectory && newMsg.url.query.hasOwnProperty("$metadataOnly");
                 if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
                 if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
             } catch (err) {
@@ -41562,6 +41613,91 @@ const getChordMap = (msg, context)=>{
 };
 service11.getPath('chord-map', getChordMap);
 service11.getPath('chord-map.json', getChordMap);
+const openApi = async (msg, context)=>{
+    const tenant = config.tenants[context.tenant];
+    const spec = {
+        openApi: "3.0.3",
+        info: {
+            title: tenant.name,
+            description: 'Restspace API',
+            version: "1.0.0"
+        },
+        paths: {},
+        components: {},
+        externalDocs: {
+            description: "Services documentation",
+            url: "https://restspace.io/docs/services"
+        }
+    };
+    const manifestData = {};
+    for (const serv of Object.values(tenant.servicesConfig.services)){
+        if (!manifestData[serv.source]) {
+            const manifest = await config.modules.getServiceManifest(serv.source);
+            if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
+            let apiPattern = "store";
+            if (manifest.apis?.includes('store-transform')) apiPattern = "storeTransform";
+            else if (manifest.apis?.includes('transform')) apiPattern = "transform";
+            else if (manifest.apis?.includes('view')) apiPattern = "view";
+            else if (manifest.apis?.includes('operation')) apiPattern = "operation";
+            switch(apiPattern){
+                case "store":
+                    spec.paths[serv.basePath + '/{servicePath}'] = {
+                        description: manifest.description,
+                        get: {
+                            description: "read the item at this servicePath",
+                            responses: {
+                                "200": {
+                                    description: "returns the item"
+                                },
+                                "404": {
+                                    description: "there is no item at this servicePath"
+                                }
+                            }
+                        },
+                        post: {
+                            description: "write the item at this servicePath, and get the written item as a response",
+                            responses: {
+                                "200": {
+                                    description: "The item was updated successfully, response is the item as updated"
+                                },
+                                "201": {
+                                    description: "The item was created successfully, response is the item as created"
+                                }
+                            }
+                        },
+                        put: {
+                            description: "write the item at this servicePath, and get the written item as a response",
+                            responses: {
+                                "200": {
+                                    description: "The item was updated successfully, response is the item as updated"
+                                },
+                                "201": {
+                                    description: "The item was created successfully, response is the item as created"
+                                }
+                            }
+                        },
+                        parameters: {
+                            name: "servicePath",
+                            in: "path",
+                            description: "multi-segment folder path",
+                            required: true,
+                            schema: {
+                                type: "array",
+                                items: {
+                                    type: "string"
+                                },
+                                style: "simple",
+                                "x-multiSegment": true
+                            }
+                        }
+                    };
+                    break;
+            }
+        }
+    }
+    return msg.setDataJson(spec);
+};
+service11.getPath('openApi', openApi);
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
     PipelineElementType[PipelineElementType["serializer"] = 1] = "serializer";
