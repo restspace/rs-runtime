@@ -12068,7 +12068,7 @@ class AsyncQueue {
     _qid;
     emitter;
     get nRemaining() {
-        return this.maxPassed ? this.maxPassed - this._nPassed : 1;
+        return this.maxPassed !== undefined ? this.maxPassed - this._nPassed : 1;
     }
     constructor(maxPassed){
         this.maxPassed = maxPassed;
@@ -12084,7 +12084,7 @@ class AsyncQueue {
     }
     updateState(closeRequested = false) {
         if (this._qid == 9999) console.log(`state change qid ${this._qid} maxp ${this.maxPassed} starts ${this._state} nAwaiting ${this._nAwaiting} nPassed ${this._nPassed} nChild ${this._nActiveChildren} close req ${closeRequested}`);
-        if (this._state === "running" && (this.maxPassed && this._nPassed >= this.maxPassed || closeRequested)) {
+        if (this._state === "running" && (this.maxPassed !== undefined && this._nPassed >= this.maxPassed || closeRequested)) {
             this.emitter.emit('statechange', 'no-enqueue');
             this._state = "no-enqueue";
         }
@@ -12238,10 +12238,17 @@ class AsyncQueue {
         return newAsq;
     }
     static fromPromises(...promises) {
-        const asq = new AsyncQueue(promises.length);
+        const asq = new AsyncQueue();
+        let nUnresolved = promises.length;
         promises.forEach((promise)=>promise.then((val)=>{
                 if (val !== null && val !== undefined) asq.enqueue(val);
-            }).catch((reason)=>asq.enqueue(reason)));
+                nUnresolved--;
+                if (nUnresolved <= 0) asq.close();
+            }).catch((reason)=>{
+                asq.enqueue(reason);
+                nUnresolved--;
+                if (nUnresolved <= 0) asq.close();
+            }));
         return asq;
     }
     maxPassed;
@@ -41891,13 +41898,13 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                             case PipelineParallelizer.unzip:
                                 msgs = msgs.flatMap((msg)=>{
                                     if (endedMsgs.includes(msg)) return msg;
-                                    unzip(msg);
+                                    return unzip(msg);
                                 });
                                 break;
                             case PipelineParallelizer.jsonSplit:
                                 msgs = msgs.flatMap((msg)=>{
                                     if (endedMsgs.includes(msg)) return msg;
-                                    jsonSplit(msg);
+                                    return jsonSplit(msg);
                                 });
                                 break;
                         }
@@ -42024,13 +42031,19 @@ function createInitialContext(pipeline, handler, callerMsg, contextUrl, external
 async function pipeline(msg, pipeline, contextUrl, external, handler = handleOutgoingRequest) {
     const [context, mainPipeline] = createInitialContext(pipeline, handler, msg, contextUrl, external);
     const asq = runPipeline(mainPipeline, new AsyncQueue(1).enqueue(msg), new PipelineMode("parallel"), context);
-    const outMsg = (await asq.next()).value;
-    outMsg.url = msg.url;
-    Object.assign(outMsg.headers, context.outputHeaders || {});
-    if (context.trace) {
-        outMsg.setDataJson(context.traceOutputs);
+    let lastMsg = null;
+    for await (const outMsg of asq){
+        lastMsg = outMsg;
     }
-    return outMsg || msg.copy().setStatus(204, '');
+    if (lastMsg) {
+        lastMsg.url = msg.url;
+        Object.assign(lastMsg.headers, context.outputHeaders || {});
+        if (context.trace) {
+            lastMsg.setDataJson(context.traceOutputs);
+        }
+        return lastMsg;
+    }
+    return msg.copy().setStatus(204, '');
 }
 const tenantFromHostname = (hostname)=>{
     const domainParts = hostname.split('.');

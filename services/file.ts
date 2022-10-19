@@ -13,6 +13,7 @@ import { Url } from "../../rs-core/Url.ts";
 interface IFileServiceConfig extends IServiceConfig {
     extensions?: string[];
     parentIfMissing?: boolean;
+    defaultFile?: string;
 }
 
 const findParent = async (url: Url,
@@ -36,8 +37,42 @@ const findParent = async (url: Url,
 
 const service = new Service<IFileAdapter>();
 
+const getDirectory = async (msg: Message, { adapter }: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
+    // TODO manage as a stream as adapter can list directory files as a stream
+    const readDirPath = async (path: string) => {
+        const dirData = await adapter.readDirectory(path);
+
+        // convention is a non-existent directory is not a 404 but an empty list, because in some systems,
+        // a directory exists only by virtue of files existing on the path of the directory
+        const paths = dirData?.ok ? ((await dirData.asJson()) || []) : [];
+        return {
+            path: msg.url.servicePath,
+            paths,
+            spec: {
+                pattern: "store",
+                storeMimeTypes: (config.extensions || []).map(ext => getType(ext)),
+                createDirectory: true,
+                createFiles: true
+            } as StoreSpec
+        } as DirDescriptor;
+    }
+    const featureResult = await readDirPath(msg.url.servicePath);
+    return msg.setDirectoryJson(featureResult);
+};
+
+service.getDirectory(getDirectory);
+
 service.get(async (msg: Message, context: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
     let details = await context.adapter.check(msg.url.servicePath, config.extensions);
+    if (details.status === "directory") {
+        if (config.defaultFile) {
+            msg.url.pathElements.push(config.defaultFile);
+            details = await context.adapter.check(msg.url.servicePath, config.extensions);
+        } else {
+            return await getDirectory(msg, context, config);
+        }
+    }
+
     if (details.status === "none") {
         if (config.parentIfMissing) {
             const [ parentUrl, parentDetails ] = await findParent(msg.url, context, config);
@@ -75,29 +110,6 @@ service.get(async (msg: Message, context: ServiceContext<IFileAdapter>, config: 
     msg.data!.dateModified = details.dateModified;
 
     return msg;
-});
-
-service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
-    // TODO manage as a stream as adapter can list directory files as a stream
-    const readDirPath = async (path: string) => {
-        const dirData = await adapter.readDirectory(path);
-
-        // convention is a non-existent directory is not a 404 but an empty list, because in some systems,
-        // a directory exists only by virtue of files existing on the path of the directory
-        const paths = dirData?.ok ? ((await dirData.asJson()) || []) : [];
-        return {
-            path: msg.url.servicePath,
-            paths,
-            spec: {
-                pattern: "store",
-                storeMimeTypes: (config.extensions || []).map(ext => getType(ext)),
-                createDirectory: true,
-                createFiles: true
-            } as StoreSpec
-        } as DirDescriptor;
-    }
-    const featureResult = await readDirPath(msg.url.servicePath);
-    return msg.setDirectoryJson(featureResult);
 });
 
 const writeAction = (returnData: boolean) => async (msg: Message, context: ServiceContext<IFileAdapter>, config: IFileServiceConfig): Promise<Message> => {
