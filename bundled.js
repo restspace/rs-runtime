@@ -34032,8 +34032,41 @@ const findParent = async (url, context, config)=>{
     ];
 };
 const service2 = new Service();
-service2.get(async (msg, context, config)=>{
+const getDirectory = async (msg, { adapter  }, config)=>{
+    const readDirPath = async (path)=>{
+        const dirData = await adapter.readDirectory(path);
+        const paths = dirData?.ok ? await dirData.asJson() || [] : [];
+        return {
+            path: msg.url.servicePath,
+            paths,
+            spec: {
+                pattern: "store",
+                storeMimeTypes: (config.extensions || []).map((ext)=>getType(ext)),
+                createDirectory: true,
+                createFiles: true
+            }
+        };
+    };
+    const featureResult = await readDirPath(msg.url.servicePath);
+    return msg.setDirectoryJson(featureResult);
+};
+service2.getDirectory(async (msg, context, config)=>{
+    if (config.defaultResource && msg.url.servicePathElements.length === 0 && !msg.isManageRequest) {
+        msg.url.pathElements.push(config.defaultResource);
+        return await get(msg, context, config);
+    }
+    return await getDirectory(msg, context, config);
+});
+const get = async (msg, context, config)=>{
     let details = await context.adapter.check(msg.url.servicePath, config.extensions);
+    if (details.status === "directory") {
+        if (config.defaultResource) {
+            msg.url.pathElements.push(config.defaultResource);
+            details = await context.adapter.check(msg.url.servicePath, config.extensions);
+        } else {
+            return await getDirectory(msg, context, config);
+        }
+    }
     if (details.status === "none") {
         if (config.parentIfMissing) {
             const [parentUrl, parentDetails] = await findParent(msg.url, context, config);
@@ -34067,25 +34100,8 @@ service2.get(async (msg, context, config)=>{
     msg.data.size = start !== undefined && end !== undefined ? end - start + 1 : fileDetails.size;
     msg.data.dateModified = details.dateModified;
     return msg;
-});
-service2.getDirectory(async (msg, { adapter  }, config)=>{
-    const readDirPath = async (path)=>{
-        const dirData = await adapter.readDirectory(path);
-        const paths = dirData?.ok ? await dirData.asJson() || [] : [];
-        return {
-            path: msg.url.servicePath,
-            paths,
-            spec: {
-                pattern: "store",
-                storeMimeTypes: (config.extensions || []).map((ext)=>getType(ext)),
-                createDirectory: true,
-                createFiles: true
-            }
-        };
-    };
-    const featureResult = await readDirPath(msg.url.servicePath);
-    return msg.setDirectoryJson(featureResult);
-});
+};
+service2.get(get);
 const writeAction = (returnData)=>async (msg, context, config)=>{
         const { adapter  } = context;
         if (!msg.hasData()) return msg.setStatus(400, "No data to write");
@@ -34166,6 +34182,10 @@ const __default23 = {
             "parentIfMissing": {
                 "type": "boolean",
                 "description": "Optional flag which if set, when a missing file is requested, will substitute the nearest parent file on the path tree if one exists"
+            },
+            "defaultResource": {
+                "type": "string",
+                "description": "If a file which is a directory is requested, serve the file with this name in the directory instead"
             }
         }
     }
@@ -34451,32 +34471,13 @@ const service4 = new Service();
 const processGet = async (msg, { adapter , logger  }, config)=>{
     const targetPath = msg.url.servicePath || '/';
     const details = await adapter.check(targetPath);
-    if (details.status === "directory") {
-        const url = new Url(msg.url.query["outerUrl"][0] || '');
-        url.path += '/';
-        return msg.redirect(url);
-    }
-    if (config.divertMissingToDefault && config.defaultResource && details.status === 'none') {
-        msg.setServiceRedirect(config.defaultResource);
-        logger.debug(`static-site-filter diverting ${msg.url} to ${config.defaultResource}`);
+    if (config.divertMissingToDefault && details.status === 'none' && !msg.isManageRequest) {
+        msg.setServiceRedirect('/');
+        logger.debug(`static-site-filter diverting ${msg.url} to default`);
     }
     return msg;
 };
 service4.get(processGet);
-service4.getDirectory(async (msg, context, config)=>{
-    if (config.defaultResource && !msg.isManageRequest) {
-        msg.url.resourceName = config.defaultResource;
-        const msgOut = await processGet(msg, context, config);
-        msgOut.setServiceRedirect(msgOut.url.servicePath);
-        return msgOut;
-    } else {
-        if (config.divertMissingToDefault && config.defaultResource) {
-            msg.setServiceRedirect(config.defaultResource);
-            context.logger.debug(`static-site-filter diverting ${msg.url} to ${config.defaultResource}`);
-        }
-        return msg;
-    }
-});
 const __default27 = {
     "name": "Static site filter",
     "description": "Provide static site behaviour with options suitable for hosting SPAs",
@@ -34489,10 +34490,6 @@ const __default27 = {
             "divertMissingToDefault": {
                 "type": "boolean",
                 "description": "Divert a 404 Not Found to the default file, needed for JS routing"
-            },
-            "defaultResource": {
-                "type": "string",
-                "description": "Name of the resource served to /base-path/"
             }
         }
     }
@@ -34533,8 +34530,7 @@ const __default28 = {
             "infraName": "infraName",
             "adapterConfig": "adapterConfig",
             "adapterSource": "adapterSource",
-            "divertMissingToDefault": "divertMissingToDefault",
-            "defaultResource": "defaultResource"
+            "divertMissingToDefault": "divertMissingToDefault"
         }
     }
 };

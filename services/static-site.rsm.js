@@ -20,8 +20,7 @@ export default {
 			"infraName": "infraName",
 			"adapterConfig": "adapterConfig",
 			"adapterSource": "adapterSource",
-            "divertMissingToDefault": "divertMissingToDefault",
-            "defaultResource": "defaultResource"
+            "divertMissingToDefault": "divertMissingToDefault"
         }
     }
 }

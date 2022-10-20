@@ -9,7 +9,7 @@ export default {
         "properties": {
             "extensions": { "type": "array", "items": { "type": "string" }, "description": "Optional list of the file extensions allowed to be stored" },
             "parentIfMissing": { "type": "boolean", "description": "Optional flag which if set, when a missing file is requested, will substitute the nearest parent file on the path tree if one exists" },
-            "defaultFile": { "type": "string", "description": "If a file which is a directory is requested, serve the file with this name in the directory instead" }
+            "defaultResource": { "type": "string", "description": "If a file which is a directory is requested, serve the file with this name in the directory instead" }
         }
     }
 }

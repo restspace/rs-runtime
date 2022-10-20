@@ -7,8 +7,7 @@ export default {
     "configSchema": {
         "type": "object",
         "properties": {
-            "divertMissingToDefault": { "type": "boolean", "description": "Divert a 404 Not Found to the default file, needed for JS routing" },
-            "defaultResource": { "type": "string", "description": "Name of the resource served to /base-path/" }
+            "divertMissingToDefault": { "type": "boolean", "description": "Divert a 404 Not Found to the default file, needed for JS routing" }
         }
     }
 }

@@ -13,7 +13,7 @@ import { Url } from "../../rs-core/Url.ts";
 interface IFileServiceConfig extends IServiceConfig {
     extensions?: string[];
     parentIfMissing?: boolean;
-    defaultFile?: string;
+    defaultResource?: string;
 }
 
 const findParent = async (url: Url,
@@ -60,13 +60,20 @@ const getDirectory = async (msg: Message, { adapter }: ServiceContext<IFileAdapt
     return msg.setDirectoryJson(featureResult);
 };
 
-service.getDirectory(getDirectory);
+service.getDirectory(async (msg: Message, context: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
+    if (config.defaultResource && msg.url.servicePathElements.length === 0 && !msg.isManageRequest) {
+        // special case for root path which is always handled as a getDirectory
+        msg.url.pathElements.push(config.defaultResource);
+        return await get(msg, context, config);
+    }
+    return await getDirectory(msg, context, config);
+});
 
-service.get(async (msg: Message, context: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
+const get = async (msg: Message, context: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
     let details = await context.adapter.check(msg.url.servicePath, config.extensions);
     if (details.status === "directory") {
-        if (config.defaultFile) {
-            msg.url.pathElements.push(config.defaultFile);
+        if (config.defaultResource) {
+            msg.url.pathElements.push(config.defaultResource);
             details = await context.adapter.check(msg.url.servicePath, config.extensions);
         } else {
             return await getDirectory(msg, context, config);
@@ -110,7 +117,9 @@ service.get(async (msg: Message, context: ServiceContext<IFileAdapter>, config: 
     msg.data!.dateModified = details.dateModified;
 
     return msg;
-});
+};
+
+service.get(get);
 
 const writeAction = (returnData: boolean) => async (msg: Message, context: ServiceContext<IFileAdapter>, config: IFileServiceConfig): Promise<Message> => {
     const { adapter } = context;
