@@ -101,7 +101,7 @@ service.getPath('user', async (msg, context, config) => {
 });
 
 service.getPath('timeout', (msg, _context, config) =>
-    Promise.resolve(msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain")));
+    msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
 
 service.setUser(async (msg, _context, { sessionTimeoutMins }) => {
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');

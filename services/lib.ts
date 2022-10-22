@@ -4,9 +4,8 @@ import { Url } from "rs-core/Url.ts";
 
 const service = new Service();
 
-service.postPath('/bypass', msg => {
-    return Promise.resolve(msg);
-});
+service.postPath('/bypass', msg => msg);
+
 service.postPath('/to-b64', async msg => {
     if (!msg.data) return msg;
     const arry = new Uint8Array((await msg.data.asArrayBuffer())!);
@@ -34,23 +33,26 @@ service.postPath('/selector-schema', async msg => {
 service.postPath('/redirect-permanent', msg => {
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
-    return Promise.resolve(msg.setHeader('location', location).setStatus(301));
+    return msg.setHeader('location', location).setStatus(301);
 });
 service.postPath('/redirect-temporary', msg => {
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
-    return Promise.resolve(msg.setHeader('location', location).setStatus(307));
+    return msg.setHeader('location', location).setStatus(307);
 });
 service.postPath('/see-other', msg => {
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
-    return Promise.resolve(msg.setHeader('location', location).setStatus(303));
+    return msg.setHeader('location', location).setStatus(303);
 });
 service.postPath('/reload-referer', msg => {
     const location = msg.getHeader('referer');
     if (!location) return Promise.resolve(msg);
     msg.exitConditionalMode();
-    return Promise.resolve(msg.setHeader('location', location).setStatus(303));
+    return msg.setHeader('location', location).setStatus(303);
+});
+service.postPath('/log/body', msg => {
+    
 });
 
 export default service;
