@@ -13,6 +13,7 @@ export interface PipelineContext {
     trace?: boolean;
     traceOutputs?: Record<string, any>;
     path: number[];
+    callerLoggerArgs?: string[];
 }
 
 export const copyPipelineContext = (context: PipelineContext) => {

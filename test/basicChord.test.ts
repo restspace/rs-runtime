@@ -137,7 +137,7 @@ function testMessage(url: string, method: MessageMethod, token?: string) {
     const msgUrl = new Url(url);
     msgUrl.scheme = "http://";
     msgUrl.domain = "basicChord.restspace.local:3100";
-    const msg = new Message(msgUrl, 'basicChord', method)
+    const msg = new Message(msgUrl, 'basicChord', method, null)
         .setHeader('host', 'basicChord.restspace.local:3100');
     if (token) msg.cookies['rs-auth'] = token;
     return msg;

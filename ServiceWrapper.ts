@@ -43,13 +43,13 @@ export class ServiceWrapper {
             if (err.message === 'Not found') {
                 newMsg.setStatus(404, 'Not found');
             } else {
-                config.logger.error(`Tenant: ${context.tenant} Service: ${serviceConfig.name} error: ${err}`);
+                config.logger.error(`Service: ${serviceConfig.name} error: ${err}`, ...msg.loggerArgs());
                 newMsg.setStatus(500, 'Internal Server Error');
             }
         }
     
         if (newMsg && !newMsg.ok) {
-            config.logger.warning(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`);
+            config.logger.warning(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`, ...msg.loggerArgs());
         }
         newMsg.setHeader('X-Restspace-Service', serviceConfig.name);
 
@@ -176,7 +176,7 @@ export class ServiceWrapper {
         const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
         
         if (!isPermitted) {
-            config.logger.warning(`Unauthorized: ${msg.user?.email || 'anon'} for ${msg.url}`);
+            config.logger.warning(`Unauthorized for ${msg.url}`, ...msg.loggerArgs());
             return this.setCors(msg, origin).setStatus(401, "Unauthorized");
         }
         msg.authenticated = true;

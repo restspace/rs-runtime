@@ -230,7 +230,7 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                     throw new Error(`unrecognized pipeline element ${JSON.stringify(pipeline[pos])}`);
             }
         } catch (err) {
-            config.logger.error(`pipeline error stage = '${pipeline[pos]}': ${err}`);
+            config.logger.error(`pipeline error stage = '${pipeline[pos]}': ${err}`, ...(context.callerLoggerArgs || []));
             context.path.pop();
             return msgs.flatMap(() => err as Error);
         }
@@ -302,7 +302,7 @@ function runDistributePipelineOne(pipeline: PipelineSpec, msg: Message, context:
         } catch (err) {
             context.path.pop()
             msgs.close();
-            config.logger.error(`pipeline error stage = '${pipeline[pos]}' ${err}`);
+            config.logger.error(`pipeline error stage = '${pipeline[pos]}' ${err}`, ...(context.callerLoggerArgs || []));
             return new AsyncQueue<Message>(1).enqueue(err as Error);
         }
         pos++;
@@ -316,6 +316,7 @@ function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, 
         handler,
         callerUrl: contextUrl || callerMsg.url,
         callerMethod: callerMsg.method,
+        callerLoggerArgs: callerMsg.loggerArgs(),
         external,
         path: []
     } as PipelineContext;

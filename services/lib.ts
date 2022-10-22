@@ -51,8 +51,10 @@ service.postPath('/reload-referer', msg => {
     msg.exitConditionalMode();
     return msg.setHeader('location', location).setStatus(303);
 });
-service.postPath('/log/body', msg => {
-    
+service.postPath('/log/body', async (msg, context) => {
+    const json = await msg.data?.asJson();
+    context.logger.info('BODY ' + JSON.stringify(json || {}), ...msg.loggerArgs());
+    return msg;
 });
 
 export default service;

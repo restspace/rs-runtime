@@ -57,6 +57,8 @@ export class PipelineStep {
                 Object.assign(msg.headers, context.targetHeaders);
             }
 
+            msg.startSpan();
+
             //const externality = context.external ? Source.External : Source.Internal;
             
             return context.handler(msg);
@@ -95,7 +97,7 @@ export class PipelineStep {
                 }
                 return outMsg;
             } catch (err) {
-                config.logger.error(`error executing pipeline element: ${this.step}, ${err}`);
+                config.logger.error(`error executing pipeline element: ${this.step}, ${err}`, ...(context.callerLoggerArgs || []));
                 return msg.setStatus(500, 'Internal Server Error');
             }
         }

@@ -14,7 +14,7 @@ const getTenant = async (requestTenant: string) => {
 
     if (!config.tenants[requestTenant]) {
         try {
-            config.logger.debug(`Start -- load tenant ${requestTenant}`);
+            config.logger.debug(`Start -- load tenant ${requestTenant}`, requestTenant);
             let resolveLoad = null as (() => void) | null ;
             tenantLoads[requestTenant] = new Promise<void>(resolve => resolveLoad = resolve); // block reentry
             // get the spec for the adapter to access the store where we can find services.json(s)
@@ -29,10 +29,10 @@ const getTenant = async (requestTenant: string) => {
                 .map(([dom,]) => dom);
             config.tenants[requestTenant] = new Tenant(requestTenant, servicesConfig, tenantDomains);
             await config.tenants[requestTenant].init();
-            config.logger.info(`Loaded tenant ${requestTenant} successfully`);
+            config.logger.info(`Loaded tenant ${requestTenant} successfully`, requestTenant);
             if (resolveLoad) resolveLoad(); // allow reentry
         } catch (err) {
-            config.logger.error(`Failed to load services for tenant ${requestTenant}: ${err}`);
+            config.logger.error(`Failed to load services for tenant ${requestTenant}: ${err}`, requestTenant);
             config.tenants[requestTenant] = new Tenant(requestTenant, { services: {} }, []); // empty tenant
             throw err;
         }
@@ -66,17 +66,17 @@ export const handleIncomingRequest = async (msg: Message) => {
         const tenant = await getTenant(tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
-        config.logger.info(`${" ".repeat(msg.depth)}Request (${tenantName}) by ${msg.user?.email || '?'} ${msg.method} ${msg.url}`);
+        config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg.callDown());
         msgOut.depth = msg.depth;
         msgOut.callUp();
         if (!msgOut.ok) {
-            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`);
+        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS'
             ? config.server.setServerCors(msg).setStatus(204)
             : msg.setStatus(500, 'Server error');
@@ -97,23 +97,23 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         let msgOut: Message;
         if (tenantName !== null) {
             const tenant = await getTenant(tenantName || 'main');
-            config.logger.info(`${" ".repeat(msg.depth)}Request (${tenantName}) ${msg.method} ${msg.url}`);
+            config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msg.tenant = tenantName;
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
             msgOut.callUp();
         } else {
-            config.logger.info(`Request external ${msg.method} ${msg.url}`);
+            config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut = await config.requestExternal(msg);
         }
         
         if (!msgOut.ok) {
-            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`);
+        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS' && tenantName
             ? config.server.setServerCors(msg).setStatus(204)
             : msg.setStatus(500, 'Server error');

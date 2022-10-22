@@ -11,7 +11,7 @@ export const utilsForHost = (host: string) => ({
 		const msgUrl = new Url(url);
 		msgUrl.scheme = "http://";
 		msgUrl.domain = `${host}.restspace.local:3100`;
-		const msg = new Message(msgUrl, host, method)
+		const msg = new Message(msgUrl, host, method, null)
 			.setHeader('host', msgUrl.domain);
 		if (token) msg.cookies['rs-auth'] = token;
 		return msg;

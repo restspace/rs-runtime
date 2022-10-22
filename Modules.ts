@@ -25,6 +25,8 @@ import ElasticDataAdapter from "./adapter/ElasticDataAdapter.ts";
 import ElasticDataAdapterManifest from "./adapter/ElasticDataAdapter.ram.js";
 import ElasticQueryAdapter from "./adapter/ElasticQueryAdapter.ts";
 import ElasticQueryAdapterManifest from "./adapter/ElasticQueryAdapter.ram.js";
+import FileLogReaderAdapter from "./adapter/FileLogReaderAdapter.ts";
+import FileLogReaderAdapterManifest from "./adapter/FileLogReaderAdapter.ram.js";
 
 import Services from "./services/services.ts";
 import ServicesManifest from "./services/services.rsm.js";
@@ -64,6 +66,8 @@ import Query from "./services/query.ts";
 import QueryManifest from "./services/query.rsm.js";
 import CSVConverter from "./services/csvConverter.ts";
 import CSVConverterManifest from "./services/csvConverter.rsm.js";
+import LogReader from "./services/logReader.ts";
+import LogReaderManifest from "./services/logReader.rsm.js";
 
 import { AdapterContext, nullState } from "../rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -146,7 +150,8 @@ export class Modules {
             "./adapter/AWS4ProxyAdapter.ts": AWS4ProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/ElasticProxyAdapter.ts": ElasticProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/ElasticDataAdapter.ts": ElasticDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter
+            "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
+            "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter as new (context: AdapterContext, props: unknown) => IAdapter
         };
         this.adapterManifests = {
             "./adapter/LocalFileAdapter.ram.json": LocalFileAdapterManifest,
@@ -156,7 +161,8 @@ export class Modules {
             "./adapter/AWS4ProxyAdapter.ram.json": AWS4ProxyAdapterManifest,
             "./adapter/ElasticProxyAdapter.ram.json": ElasticProxyAdapterManifest,
             "./adapter/ElasticDataAdapter.ram.json": ElasticDataAdapterManifest,
-            "./adapter/ElasticQueryAdapter.ram.json": ElasticQueryAdapterManifest
+            "./adapter/ElasticQueryAdapter.ram.json": ElasticQueryAdapterManifest,
+            "./adapter/FileLogReaderAdapter.ram.json": FileLogReaderAdapterManifest
         };
         Object.entries(this.adapterManifests).forEach(([url, v]) => {
             (v as any).source = url;
@@ -181,7 +187,8 @@ export class Modules {
             "./services/discord.ts": Discord as unknown as Service<IAdapter, IServiceConfig>,
             "./services/temporary-access.ts": TemporaryAccess as unknown as Service<IAdapter, IServiceConfig>,
             "./services/query.ts": Query as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/csvConverter.ts": CSVConverter as unknown as Service<IAdapter, IServiceConfig>
+            "./services/csvConverter.ts": CSVConverter as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/logReader.ts": LogReader as unknown as Service<IAdapter, IServiceConfig>
         };
         this.serviceManifests = {
             "./services/services.rsm.json": ServicesManifest,
@@ -203,7 +210,8 @@ export class Modules {
             "./services/discord.rsm.json": DiscordManifest,
             "./services/temporary-access.rsm.json": TemporaryAccessManifest,
             "./services/query.rsm.json": QueryManifest as unknown as IServiceManifest,
-            "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest
+            "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest,
+            "./services/logReader.rsm.json": LogReaderManifest as unknown as IServiceManifest
         };
         Object.entries(this.serviceManifests).forEach(([url, v]) => {
             (v as any).source = url;

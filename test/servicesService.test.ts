@@ -1,5 +1,5 @@
 import { assert } from "std/testing/asserts.ts";
-import { Message } from "rs-core/Message.ts";
+import { Message, MessageMethod } from "rs-core/Message.ts";
 import { config } from "../config.ts";
 import { testServicesConfig } from "./TestConfigFileAdapter.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
@@ -83,7 +83,7 @@ testServicesConfig['servicesService'] = JSON.parse(`{
 }`);
 
 function testMessage(url: string, method: string) {
-    const msg = new Message(url, 'servicesService', method)
+    const msg = new Message(url, 'servicesService', method as MessageMethod, null)
         .setHeader('host', 'servicesService.restspace.local:3100');
     return msg;
 }

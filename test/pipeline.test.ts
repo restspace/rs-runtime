@@ -52,7 +52,7 @@ mockHandler.getJson("/test/timing-list", [ 100, 80, 50 ]);
 mockHandler.getJson("/test/object", { val1: "aaa", val2: "bbb" });
 
 function testMessage(url: string, method: MessageMethod) {
-    const msg = new Message(url, 'pipeline', method)
+    const msg = new Message(url, 'pipeline', method, null)
         .setHeader('host', 'pipeline.restspace.local:3100');
     return msg;
 }

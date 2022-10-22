@@ -31,7 +31,7 @@ export class ServiceFactory {
 
     /** loads all manifests required by serviceConfigs and resolves private services */
     async loadServiceManifests(serviceManifestSources: string[]) {
-        config.logger.debug(`Start -- loading manifests for ${this.tenant}`);
+        config.logger.debug(`Start -- loading manifests`, this.tenant);
         // get promises to get service manifests
         const uniqueServiceManifestSources = serviceManifestSources.filter((ms, i) => serviceManifestSources.indexOf(ms) === i);
         const getServiceManifestPromises = uniqueServiceManifestSources.map(source => config.modules.getServiceManifest(source));
@@ -82,7 +82,7 @@ export class ServiceFactory {
         uniqueAdapterManifestSources.forEach((source, i) => 
             this.adapterManifestsBySource[source] = adapterManifests[i] as IAdapterManifest);
 
-        config.logger.debug(`End -- loading manifests for ${this.tenant}`);
+        config.logger.debug(`End -- loading manifests`, this.tenant);
     }
 
     /** Get the manifests for all the private services of the given list of service manifests */

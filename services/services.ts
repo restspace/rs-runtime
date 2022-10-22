@@ -101,7 +101,7 @@ const rebuildConfig = async (rawServicesConfig: IRawServicesConfig, tenant: stri
     try {
         await config.tenants[tenant].unload();
     } catch (err) {
-        config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, err);
+        config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, tenant);
     }
     config.tenants[tenant] = newTenant;
 
@@ -111,7 +111,7 @@ const rebuildConfig = async (rawServicesConfig: IRawServicesConfig, tenant: stri
             const configAdapter = await config.modules.getConfigAdapter(tenant);
             await configAdapter.write('services.json', MessageBody.fromObject(rawServicesConfig));
         } catch (err) {
-            config.logger.error(`Failed to write back tenant config: ${tenant}`, err);
+            config.logger.error(`Failed to write back tenant config: ${tenant}`, tenant);
         }
     })();
 

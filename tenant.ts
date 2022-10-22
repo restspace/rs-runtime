@@ -160,7 +160,7 @@ export class Tenant {
                     throw new Error(`Service ${config.name} failed to initialize: ${reason}`);
                 });
         })).catch((reason) => {
-            config.logger.error(`Failed to init all services, ${reason}`);
+            config.logger.error(`Failed to init all services, ${reason}`, this.name);
             throw new Error(`${reason}`);
         });
 

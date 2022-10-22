@@ -25,12 +25,30 @@ export interface IServerConfig {
 }
 
 const formatter = (rec: LogRecord) => {
-    const dt = rec.datetime;
-    const hr = dt.getHours().toString().padStart(2, '0');
-    const mn = dt.getMinutes().toString().padStart(2, '0');
-    const sc = dt.getSeconds().toString().padStart(2, '0');
-    const ms = dt.getMilliseconds().toString().padStart(3, '0');
-    return `${hr}:${mn}:${sc}:${ms} ${rec.msg}`;
+    let severity = 'DEBUG';
+    switch (rec.levelName) {
+        case "NOTSET":
+            severity = "TRACE";
+            break;
+        case "INFO":
+            severity = "INFO ";
+            break;
+        case "WARNING":
+            severity = "WARN ";
+            break;
+        case "ERROR":
+            severity = "ERROR";
+            break;
+        case "CRITICAL":
+            severity = "FATAL";
+            break;
+    }
+    let [ tenant, username, traceId, spanId ] = rec.args;
+    if (!tenant) tenant = 'global';
+    if (!username) username = '?';
+    if (!traceId) traceId = 'x'.repeat(32);
+    if (!spanId) spanId = 'x'.repeat(16);
+    return `${severity} ${rec.datetime.toISOString()} ${traceId} ${spanId} ${tenant} ${username} ${rec.msg}`;
 }
 
 export type LogLevel = "NOTSET" | "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL";

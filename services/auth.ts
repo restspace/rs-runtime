@@ -129,7 +129,7 @@ service.setUser(async (msg, _context, { sessionTimeoutMins }) => {
             const timeToExpirySecs = await setJwt(msg, msg.user as AuthUser, sessionTimeoutMins || 30);
             const newExpiryTime = nowTime + timeToExpirySecs * 1000;
             msg.user.exp = newExpiryTime;
-            config.logger.info(`refreshed to ${new Date(newExpiryTime)}`);
+            config.logger.info(`refreshed to ${new Date(newExpiryTime)}`, ...msg.loggerArgs());
         }
     }
 

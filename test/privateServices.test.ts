@@ -1,5 +1,5 @@
 import { assert, assertStrictEquals } from "std/testing/asserts.ts";
-import { Message } from "rs-core/Message.ts";
+import { Message, MessageMethod } from "rs-core/Message.ts";
 import { config } from "../config.ts";
 import { testServicesConfig } from "./TestConfigFileAdapter.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
@@ -21,7 +21,7 @@ testServicesConfig['privateServices'] = JSON.parse(`{
 mockHandler.getJson("/ps/xyz", "xyz result");
 
 function testMessage(url: string, method: string) {
-    const msg = new Message(url, 'privateServices', method)
+    const msg = new Message(url, 'privateServices', method as MessageMethod, null)
         .setHeader('host', 'privateServices.restspace.local:3100');
     return msg;
 }
