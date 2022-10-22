@@ -67,6 +67,7 @@ class S3FileAdapterBase implements IFileAdapter {
 
 	async processForAws(msg: Message): Promise<Message> {
 		await this.ensureProxyAdapter();
+        msg.startSpan(this.context.traceparent, this.context.tracestate);
 		const msgOut = await this.aws4ProxyAdapter!.buildMessage(msg);
 		return msgOut;
 	}
@@ -122,7 +123,7 @@ class S3FileAdapterBase implements IFileAdapter {
             bucket: this.bucketName,
             key: this.getPath(readPath, extensions)
         };
-		const s3Msg = new Message(getParams.key, this.context.tenant, "GET");
+		const s3Msg = new Message(getParams.key, this.context.tenant, "GET", null);
 
         if (startByte || endByte) {
             const range = `bytes=${startByte ?? ''}-${endByte ?? ''}`;
@@ -137,7 +138,7 @@ class S3FileAdapterBase implements IFileAdapter {
 
     async write(path: string, data: MessageBody, extensions?: string[]) {
         const key = this.getPath(path, extensions);
-		const s3Msg = new Message(key, this.context.tenant, "PUT");
+		const s3Msg = new Message(key, this.context.tenant, "PUT", null);
 		s3Msg.data = data;
         this.context.logger.info(`AWS S3 write start ${path} at ${new Date().getTime()}`);
         await s3Msg.data.ensureDataIsArrayBuffer(); // processForAws only handles non-stream data atm
@@ -167,7 +168,7 @@ class S3FileAdapterBase implements IFileAdapter {
         const metadata = await this.check(path, extensions);
         if (metadata.status === "none") return 404;
 
-		const s3Msg = new Message(deleteParams.key, this.context.tenant, "DELETE");
+		const s3Msg = new Message(deleteParams.key, this.context.tenant, "DELETE", null);
 		const msgSend = await this.processForAws(s3Msg);
 
         try {
@@ -186,7 +187,7 @@ class S3FileAdapterBase implements IFileAdapter {
 		if (filePath) url.query['prefix'] = [ filePath ];
         try {
             url.query["delimiter"] = [ "/" ];
-			const s3Msg = new Message(url, this.context.tenant, "GET");
+			const s3Msg = new Message(url, this.context.tenant, "GET", null);
 			const sendMsg = await this.processForAws(s3Msg);
 
             const msgOut = await this.context.makeRequest(sendMsg);

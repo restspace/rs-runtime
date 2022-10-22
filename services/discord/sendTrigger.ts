@@ -29,10 +29,12 @@ export const sendTrigger = async (event: string, data: any, triggerUrl: string, 
 			.replace('${name}', data?.data?.name || '')
 			.replace('${event}', event);
 		context.logger.info(`Discord trigger to ${url} with data ${JSON.stringify(data)}`);
-		const reqMsg = new Message(url as string, context.tenant, "GET");
+		const reqMsg = new Message(url as string, context.tenant, "GET", null);
+		reqMsg.startSpan(context.traceparent, context.tracestate);
 		respMsg = await context.makeRequest(reqMsg);
 	} else {
-		respMsg = new Message('/', context.tenant, 'GET');
+		respMsg = new Message('/', context.tenant, 'GET', null);
+		respMsg.startSpan(context.traceparent, context.tracestate);
 		respMsg.setStatus(400, "Configuration error in bot: no processor");
 	}
 	return await messageToInteractionResponse(respMsg);

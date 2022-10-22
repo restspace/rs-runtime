@@ -45,7 +45,8 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			index = '/' + queryObj.index;
 			delete queryObj.index;
 		}
-		const msg = new Message(index + '/_search', this.context.tenant, "POST");
+		const msg = new Message(index + '/_search', this.context.tenant, "POST", null);
+		msg.startSpan(this.context.traceparent, this.context.tracestate);
 		msg.setDataJson(queryObj);
 		const res = await this.requestElastic(msg);
 		if (!res.ok) {

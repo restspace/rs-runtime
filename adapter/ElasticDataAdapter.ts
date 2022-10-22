@@ -107,6 +107,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 	}
 
 	async requestElastic(msg: Message) {
+		msg.startSpan(this.context.traceparent, this.context.tracestate);
 		await this.ensureProxyAdapter();
 		const sendMsg = await this.elasticProxyAdapter!.buildMessage(msg);
 		return await this.context.makeRequest(sendMsg);
@@ -114,7 +115,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 
 	async readKey(dataset: string, key: string): Promise<number | Record<string,unknown>> {
 		dataset = this.normaliseIndexName(dataset);
-		const msg = new Message(`/${dataset}/_source/${key}`, this.context.tenant, "GET");
+		const msg = new Message(`/${dataset}/_source/${key}`, this.context.tenant, "GET", null);
 		const msgOut = await this.requestElastic(msg);
 		if (!msgOut.ok) {
 			return msgOut.status;
@@ -126,7 +127,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 
 	async listDataset(dataset: string): Promise<number | PathInfo[]> {
 		if (dataset === '') {
-			const msg = new Message("/_aliases", this.context.tenant, "GET");
+			const msg = new Message("/_aliases", this.context.tenant, "GET", null);
 			const msgOut = await this.requestElastic(msg);
 			if (!msgOut.ok) {
 				return msgOut.status;
@@ -139,7 +140,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 			}
 		} else {
 			dataset = this.normaliseIndexName(dataset);
-			const msg = new Message(`/${dataset}/_search`, this.context.tenant, "POST");
+			const msg = new Message(`/${dataset}/_search`, this.context.tenant, "POST", null);
 			msg.setDataJson({
 				query: {
 					match_all: {}
@@ -165,7 +166,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 
 	async writeKey(dataset: string, key: string, data: MessageBody): Promise<number> {
 		dataset = this.normaliseIndexName(dataset);
-		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "PUT");
+		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "PUT", null);
 		const writeData = await data.asJson();
 		writeData._timestamp = new Date().getTime();
 		msg.setDataJson(writeData);
@@ -181,7 +182,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 
 	async deleteKey(dataset: string, key: string): Promise<number> {
 		dataset = this.normaliseIndexName(dataset);
-		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "DELETE");
+		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "DELETE", null);
 		const msgOut = await this.requestElastic(msg);
 		await this.waitForWrite();
 		return msgOut.status;
@@ -189,7 +190,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 
 	async deleteDataset(dataset: string): Promise<number> {
 		dataset = this.normaliseIndexName(dataset);
-		const msg = new Message(`/${dataset}`, this.context.tenant, "DELETE");
+		const msg = new Message(`/${dataset}`, this.context.tenant, "DELETE", null);
 		const msgOut = await this.requestElastic(msg);
 		await this.waitForWrite();
 		return msgOut.status;
@@ -197,7 +198,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 
 	async checkKey(dataset: string, key: string): Promise<ItemMetadata> {
 		dataset = this.normaliseIndexName(dataset);
-		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "GET");
+		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "GET", null);
 		const msgOut = await this.requestElastic(msg);
 		let status : "none" | "directory" | "file" = "none";
 		if (!msgOut.ok) {
@@ -218,10 +219,10 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 
 	async ensureSchemasIndex() {
 		if (!this.schemasIndexChecked) {
-			const msg = new Message(`/.schemas`, this.context.tenant, "GET");
+			const msg = new Message(`/.schemas`, this.context.tenant, "GET", null);
 			const msgCheck = await this.requestElastic(msg);
 			if (!msgCheck.ok) {
-				const createMappingMsg = new Message('/.schemas', this.context.tenant, "PUT");
+				const createMappingMsg = new Message('/.schemas', this.context.tenant, "PUT", null);
 				createMappingMsg.setDataJson({ settings: { index: { hidden: true } } });
 				const msgCreated = await this.requestElastic(createMappingMsg);
 				if (!msgCreated.ok) {
@@ -238,9 +239,9 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 		if (schema['es_settings']) {
 			params.es_settings = schema['es_settings'];
 		}
-		const msg = new Message(`/${dataset}`, this.context.tenant, "GET");
+		const msg = new Message(`/${dataset}`, this.context.tenant, "GET", null);
 		const msgCheck = await this.requestElastic(msg);
-		const setMappingMsg = new Message(`/${dataset}/_mapping`, this.context.tenant, "PUT");
+		const setMappingMsg = new Message(`/${dataset}/_mapping`, this.context.tenant, "PUT", null);
 		let resCode = 200;
 		setMappingMsg.setDataJson(params.mappings);
 		if (!msgCheck.ok) {

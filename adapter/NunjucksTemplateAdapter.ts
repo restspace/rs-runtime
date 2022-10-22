@@ -22,7 +22,8 @@ class RestspaceLoader {
     }
 
     getSource(name: string, cb: (err: Error | null, res: LoaderRes | null) => void) {
-        const msg = new Message(name, this.context.tenant, "GET");
+        const msg = new Message(name, this.context.tenant, "GET", null);
+        msg.startSpan(this.context.traceparent, this.context.tracestate);
         this.context.makeRequest(msg)
             .then(res => {
                 if (!res.ok) {
