@@ -193,7 +193,7 @@ export class ServiceFactory {
         serviceContext.manifest = structuredClone(serviceContext.manifest);
         const copyServiceConfig = structuredClone(serviceConfig);
 
-        return (msg: Message) => sourceServiceFunc(msg, serviceContext, copyServiceConfig);
+        return (msg: Message) => Promise.resolve(sourceServiceFunc(msg, serviceContext, copyServiceConfig));
     }
 
     attachFilter(url: Url, func: MessageFunction, context: ServiceContext<IAdapter>): MessageFunction {

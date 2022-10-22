@@ -15,15 +15,14 @@ interface AuthServiceConfig extends IServiceConfig {
     userUrlPattern: string;
     loginPage?: string;
     impersonateRoles?: string;
+    sessionTimeoutMins?: number;
 }
-
-const jwtExpiryMins = 30;
 
 const service = new AuthService<IAdapter, AuthServiceConfig>();
 
-async function setJwt(msg: Message, user: AuthUser) {
+async function setJwt(msg: Message, user: AuthUser, expiryMins: number) {
     const jwt = await config.authoriser.getJwt(user);
-    const timeToExpirySecs = jwtExpiryMins * 60;
+    const timeToExpirySecs = expiryMins * 60;
     const cookieOptions = new CookieOptions({ httpOnly: true, maxAge: timeToExpirySecs });
     if (msg.url.scheme === 'https://') {
         cookieOptions.sameSite = SameSiteValue.none;
@@ -33,7 +32,7 @@ async function setJwt(msg: Message, user: AuthUser) {
     return timeToExpirySecs;
 }
 
-async function login(msg: Message, userUrlPattern: string, context: SimpleServiceContext): Promise<Message> {
+async function login(msg: Message, userUrlPattern: string, context: SimpleServiceContext, config: AuthServiceConfig): Promise<Message> {
     const userSpec = await msg.data!.asJson();
     const fullUser = await getUserFromEmail(context, userUrlPattern, msg, userSpec.email, true);
     if (!fullUser) {
@@ -45,7 +44,7 @@ async function login(msg: Message, userUrlPattern: string, context: SimpleServic
         return msg.setStatus(400, 'bad password');
     }
     try {
-        const timeToExpirySecs = await setJwt(msg, user);
+        const timeToExpirySecs = await setJwt(msg, user, config.sessionTimeoutMins || 30);
         fullUser.password = user.passwordMask();
         fullUser.exp = (new Date().getTime()) + timeToExpirySecs * 1000;
         return msg.setDataJson(fullUser);
@@ -61,7 +60,7 @@ function logout(msg: Message): Promise<Message> {
 }
 
 service.postPath('login', async (msg, context, config) => {
-    const newMsg = await login(msg, config.userUrlPattern!, context);
+    const newMsg = await login(msg, config.userUrlPattern!, context, config);
     if (config.loginPage && msg.getHeader('referer')) {
         let redirUrl = msg.url.copy();
         try {
@@ -101,7 +100,10 @@ service.getPath('user', async (msg, context, config) => {
     }
 });
 
-service.setUser(async (msg) => {
+service.getPath('timeout', (msg, _context, config) =>
+    Promise.resolve(msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain")));
+
+service.setUser(async (msg, _context, { sessionTimeoutMins }) => {
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
 
@@ -121,10 +123,10 @@ service.setUser(async (msg) => {
         });
 
         // refresh jwt expiry if later than halfway through expiry
-        const refreshTime = (msg.user.exp || 0) - jwtExpiryMins * 60 * 1000 / 2;
+        const refreshTime = (msg.user.exp || 0) - (sessionTimeoutMins || 30) * 60 * 1000 / 2;
         const nowTime = new Date().getTime();
         if (nowTime > refreshTime) {
-            const timeToExpirySecs = await setJwt(msg, msg.user as AuthUser);
+            const timeToExpirySecs = await setJwt(msg, msg.user as AuthUser, sessionTimeoutMins || 30);
             const newExpiryTime = nowTime + timeToExpirySecs * 1000;
             msg.user.exp = newExpiryTime;
             config.logger.info(`refreshed to ${new Date(newExpiryTime)}`);

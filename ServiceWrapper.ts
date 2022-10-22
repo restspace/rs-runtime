@@ -57,7 +57,7 @@ export class ServiceWrapper {
         if (newMsg.data && !newMsg.data.wasMimeHandled) {
             const handler = mimeHandlers[upTo(newMsg.data.mimeType, ';')];
             if (handler) {
-                newMsg = await handler(newMsg, msg.url, (innerMsg: Message) => this.internal(innerMsg, context, serviceConfig));
+                newMsg = await handler(newMsg, msg.url, (innerMsg: Message) => Promise.resolve(this.internal(innerMsg, context, serviceConfig)));
                 if (newMsg.data) newMsg.data.wasMimeHandled = true;
             }
         }

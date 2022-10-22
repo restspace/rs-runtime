@@ -32579,14 +32579,17 @@ class S3FileAdapterBase {
         const key = this.getPath(path, extensions);
         const s3Msg = new Message(key, this.context.tenant, "PUT");
         s3Msg.data = data;
+        this.context.logger.info(`AWS S3 write start ${path} at ${new Date().getTime()}`);
         await s3Msg.data.ensureDataIsArrayBuffer();
         const msgSend = await this.processForAws(s3Msg);
         try {
+            this.context.logger.info(`AWS S3 begin request ${path} at ${new Date().getTime()}`);
             const msgOut = await this.context.makeRequest(msgSend);
             if (!msgOut.ok) {
-                this.context.logger.error('write error: ' + await msgOut.data?.asString());
+                this.context.logger.error('AWS S3 write error: ' + await msgOut.data?.asString());
             }
             if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
+            this.context.logger.info(`AWS S3 write done ${path} at ${new Date().getTime()}`);
             return msgOut.status || 500;
         } catch (err) {
             this.context.logger.error(err);
@@ -32698,9 +32701,11 @@ class S3FileAdapterBase {
             } else if (path.endsWith('/') && item.key !== deFullPath || deFullPath + '/' === item.key) {
                 status = "directory";
             } else {
+                this.context.logger.info(`AWS S3 list found ${path} wrong key ${item.key} at ${new Date().getTime()}`);
                 status = "none";
             }
         } else {
+            this.context.logger.info(`AWS S3 list can't find ${path} at ${new Date().getTime()}`);
             return {
                 status: "none"
             };
