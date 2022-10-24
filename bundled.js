@@ -12418,7 +12418,7 @@ class Message {
         const host = this.getHeader('Host');
         return host || '';
     }
-    constructor(url, tenant, method = "GET", headers, data){
+    constructor(url, tenant, method = "GET", parent, headers, data){
         this.tenant = tenant;
         this.method = method;
         this.cookies = {};
@@ -12446,6 +12446,18 @@ class Message {
         if (this.getHeader("x-forwarded-proto")) {
             this.url.scheme = this.getHeader("x-forwarded-proto") + '://';
         }
+        if (parent === null) {
+            const traceId = crypto.randomUUID().replace(/-/g, '');
+            const spanId = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+            this.setHeader('traceparent', `00-${traceId}-${spanId}-00`);
+        } else {
+            const traceparent = parent.getHeader('traceparent');
+            if (traceparent) {
+                this.setHeader('traceparent', traceparent);
+                const tracestate = parent.getHeader('tracestate');
+                if (tracestate) this.setHeader('tracestate', tracestate);
+            }
+        }
         const cookieStrings = (this.headers['cookie'] || '').split(';');
         this.cookies = cookieStrings ? cookieStrings.reduce((res, cookieString)=>{
             const parts = cookieString.trim().split('=');
@@ -12454,7 +12466,7 @@ class Message {
         }, {}) : {};
     }
     copy(withData = true) {
-        const msg = new Message(this.url.copy(), this.tenant, this.method, {
+        const msg = new Message(this.url.copy(), this.tenant, this.method, this, {
             ...this._headers
         }, withData ? this.data : undefined);
         msg.externalUrl = this.externalUrl ? this.externalUrl.copy() : null;
@@ -12687,6 +12699,32 @@ class Message {
         this.depth--;
         return this;
     }
+    startSpan(traceparent, tracestate) {
+        if (!traceparent) traceparent = this.getHeader('traceparent');
+        if (traceparent) {
+            const traceParts = traceparent.split('-');
+            const newSpanId = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+            this.setHeader('traceparent', `${traceParts[0]}-${traceParts[1]}-${newSpanId}-00`);
+            if (tracestate) this.setHeader('tracestate', tracestate);
+        }
+        return this;
+    }
+    loggerArgs() {
+        let traceId = 'x'.repeat(32);
+        let spanId = 'x'.repeat(16);
+        const traceparent = this.getHeader('traceparent');
+        if (traceparent) {
+            const parts = traceparent.split('-');
+            traceId = parts[1];
+            spanId = parts[2];
+        }
+        return [
+            this.tenant,
+            this.user?.email || '?',
+            traceId,
+            spanId
+        ];
+    }
     async requestExternal() {
         let resp;
         try {
@@ -12794,11 +12832,24 @@ class Message {
     }
     static fromRequest(req, tenant) {
         const url = new Url(req.url);
-        return new Message(url, tenant, req.method, req.headers, MessageBody.fromRequest(req) || undefined);
+        const msg = new Message(url, tenant, req.method, null, req.headers, MessageBody.fromRequest(req) || undefined);
+        const traceparent = req.headers.get('traceparent');
+        if (traceparent) {
+            msg.setHeader('traceparent', traceparent);
+            const tracestate = req.headers.get('tracestate');
+            if (tracestate) msg.setHeader('tracestate', tracestate);
+        }
+        return msg;
     }
     static fromResponse(resp, tenant) {
-        const msg = new Message(resp.url, tenant, "", resp.headers, resp.body ? new MessageBody(resp.body, resp.headers.get('content-type') || 'text/plain') : undefined);
+        const msg = new Message(resp.url, tenant, "", null, resp.headers, resp.body ? new MessageBody(resp.body, resp.headers.get('content-type') || 'text/plain') : undefined);
         msg.setStatus(resp.status);
+        const traceparent = resp.headers.get('traceparent');
+        if (traceparent) {
+            msg.setHeader('traceparent', traceparent);
+            const tracestate = resp.headers.get('tracestate');
+            if (tracestate) msg.setHeader('tracestate', tracestate);
+        }
         return msg;
     }
     static fromUint8Array(arr, tenant) {
@@ -12818,12 +12869,12 @@ class Message {
             const lastPart = after(line, ' ');
             const statusStr = upTo(lastPart, ' ');
             const statusMsg = after(lastPart, ' ');
-            msg = new Message("/", tenant, "");
+            msg = new Message("/", tenant, "", null);
             msg.setStatus(parseInt(statusStr), statusMsg || undefined);
         } else {
             const firstPart = upToLast(line, ' ');
             const url = after(firstPart, ' ');
-            msg = new Message(url, tenant, initial);
+            msg = new Message(url, tenant, initial, null);
         }
         while(line){
             [line, pos] = pullString(arr, pos);
@@ -12881,13 +12932,13 @@ class Message {
             const refUrl = referenceUrl || new Url('/');
             const urls = resolvePathPatternWithUrl(url, refUrl, data, name);
             if (Array.isArray(urls)) {
-                return urls.map((url)=>new Message(Url.inheritingBase(referenceUrl, url), tenant, method, {
+                return urls.map((url)=>new Message(Url.inheritingBase(referenceUrl, url), tenant, method, null, {
                         ...headers
                     }, postData ? MessageBody.fromObject(postData) : undefined));
             }
             url = urls;
         }
-        return new Message(Url.inheritingBase(referenceUrl, url), tenant, method, {
+        return new Message(Url.inheritingBase(referenceUrl, url), tenant, method, null, {
             ...headers
         }, postData ? MessageBody.fromObject(postData) : undefined);
     }
@@ -19533,7 +19584,7 @@ class Service {
             ];
         });
     }
-    enhanceContext(context, config) {
+    enhanceContext(context, config, msg) {
         const proxyAdapterSource = context.manifest.proxyAdapterSource;
         if (proxyAdapterSource) {
             context.makeProxyRequest = async (msg)=>{
@@ -19542,14 +19593,16 @@ class Service {
                 return await context.makeRequest(proxyMsg);
             };
         }
+        context.traceparent = msg?.getHeader('traceparent') || undefined;
+        context.tracestate = msg?.getHeader('tracestate') || undefined;
         return context;
     }
     func = (msg, context, config)=>{
         const method = msg.method.toLowerCase();
         const callMethodFunc = ([matchPathElements, methodFunc], msg, context, config)=>{
             msg.url.basePathElements = msg.url.basePathElements.concat(matchPathElements);
-            const enhancedContext = this.enhanceContext(context, config);
-            return methodFunc(msg, enhancedContext, config);
+            const enhancedContext = this.enhanceContext(context, config, msg);
+            return Promise.resolve(methodFunc(msg, enhancedContext, config));
         };
         if (method === 'options') return Promise.resolve(msg);
         if (msg.url.isDirectory) {
@@ -19683,6 +19736,7 @@ async function getUserFromEmail(context, userUrlPattern, msg, email, internalPri
         email
     }, [], '', '');
     const getUser = msg.copy().setMethod("GET").setUrl(userUrl);
+    getUser.startSpan();
     getUser.internalPrivilege = internalPrivilege;
     const fullUserMsg = await context.makeRequest(getUser);
     getUser.internalPrivilege = false;
@@ -32515,6 +32569,7 @@ class S3FileAdapterBase {
     }
     async processForAws(msg) {
         await this.ensureProxyAdapter();
+        msg.startSpan(this.context.traceparent, this.context.tracestate);
         const msgOut = await this.aws4ProxyAdapter.buildMessage(msg);
         return msgOut;
     }
@@ -32565,7 +32620,7 @@ class S3FileAdapterBase {
             bucket: this.bucketName,
             key: this.getPath(readPath, extensions)
         };
-        const s3Msg = new Message(getParams.key, this.context.tenant, "GET");
+        const s3Msg = new Message(getParams.key, this.context.tenant, "GET", null);
         if (startByte || endByte) {
             const range = `bytes=${startByte ?? ''}-${endByte ?? ''}`;
             s3Msg.setHeader('Range', range);
@@ -32577,7 +32632,7 @@ class S3FileAdapterBase {
     }
     async write(path, data, extensions) {
         const key = this.getPath(path, extensions);
-        const s3Msg = new Message(key, this.context.tenant, "PUT");
+        const s3Msg = new Message(key, this.context.tenant, "PUT", null);
         s3Msg.data = data;
         this.context.logger.info(`AWS S3 write start ${path} at ${new Date().getTime()}`);
         await s3Msg.data.ensureDataIsArrayBuffer();
@@ -32603,7 +32658,7 @@ class S3FileAdapterBase {
         };
         const metadata = await this.check(path, extensions);
         if (metadata.status === "none") return 404;
-        const s3Msg = new Message(deleteParams.key, this.context.tenant, "DELETE");
+        const s3Msg = new Message(deleteParams.key, this.context.tenant, "DELETE", null);
         const msgSend = await this.processForAws(s3Msg);
         try {
             const msgOut = await this.context.makeRequest(msgSend);
@@ -32626,7 +32681,7 @@ class S3FileAdapterBase {
             url.query["delimiter"] = [
                 "/"
             ];
-            const s3Msg = new Message(url, this.context.tenant, "GET");
+            const s3Msg = new Message(url, this.context.tenant, "GET", null);
             const sendMsg = await this.processForAws(s3Msg);
             const msgOut = await this.context.makeRequest(sendMsg);
             if (!msgOut.ok) console.log(await msgOut.data.asString());
@@ -33250,13 +33305,14 @@ class ElasticDataAdapter {
         }
     }
     async requestElastic(msg) {
+        msg.startSpan(this.context.traceparent, this.context.tracestate);
         await this.ensureProxyAdapter();
         const sendMsg = await this.elasticProxyAdapter.buildMessage(msg);
         return await this.context.makeRequest(sendMsg);
     }
     async readKey(dataset, key) {
         dataset = this.normaliseIndexName(dataset);
-        const msg = new Message(`/${dataset}/_source/${key}`, this.context.tenant, "GET");
+        const msg = new Message(`/${dataset}/_source/${key}`, this.context.tenant, "GET", null);
         const msgOut = await this.requestElastic(msg);
         if (!msgOut.ok) {
             return msgOut.status;
@@ -33267,7 +33323,7 @@ class ElasticDataAdapter {
     }
     async listDataset(dataset) {
         if (dataset === '') {
-            const msg = new Message("/_aliases", this.context.tenant, "GET");
+            const msg = new Message("/_aliases", this.context.tenant, "GET", null);
             const msgOut = await this.requestElastic(msg);
             if (!msgOut.ok) {
                 return msgOut.status;
@@ -33280,7 +33336,7 @@ class ElasticDataAdapter {
             }
         } else {
             dataset = this.normaliseIndexName(dataset);
-            const msg1 = new Message(`/${dataset}/_search`, this.context.tenant, "POST");
+            const msg1 = new Message(`/${dataset}/_search`, this.context.tenant, "POST", null);
             msg1.setDataJson({
                 query: {
                     match_all: {}
@@ -33312,7 +33368,7 @@ class ElasticDataAdapter {
     }
     async writeKey(dataset, key, data) {
         dataset = this.normaliseIndexName(dataset);
-        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "PUT");
+        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "PUT", null);
         const writeData = await data.asJson();
         writeData._timestamp = new Date().getTime();
         msg.setDataJson(writeData);
@@ -33327,21 +33383,21 @@ class ElasticDataAdapter {
     }
     async deleteKey(dataset, key) {
         dataset = this.normaliseIndexName(dataset);
-        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "DELETE");
+        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "DELETE", null);
         const msgOut = await this.requestElastic(msg);
         await this.waitForWrite();
         return msgOut.status;
     }
     async deleteDataset(dataset) {
         dataset = this.normaliseIndexName(dataset);
-        const msg = new Message(`/${dataset}`, this.context.tenant, "DELETE");
+        const msg = new Message(`/${dataset}`, this.context.tenant, "DELETE", null);
         const msgOut = await this.requestElastic(msg);
         await this.waitForWrite();
         return msgOut.status;
     }
     async checkKey(dataset, key) {
         dataset = this.normaliseIndexName(dataset);
-        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "GET");
+        const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "GET", null);
         const msgOut = await this.requestElastic(msg);
         let status = "none";
         if (!msgOut.ok) {
@@ -33365,10 +33421,10 @@ class ElasticDataAdapter {
     }
     async ensureSchemasIndex() {
         if (!this.schemasIndexChecked) {
-            const msg = new Message(`/.schemas`, this.context.tenant, "GET");
+            const msg = new Message(`/.schemas`, this.context.tenant, "GET", null);
             const msgCheck = await this.requestElastic(msg);
             if (!msgCheck.ok) {
-                const createMappingMsg = new Message('/.schemas', this.context.tenant, "PUT");
+                const createMappingMsg = new Message('/.schemas', this.context.tenant, "PUT", null);
                 createMappingMsg.setDataJson({
                     settings: {
                         index: {
@@ -33392,9 +33448,9 @@ class ElasticDataAdapter {
         if (schema['es_settings']) {
             params.es_settings = schema['es_settings'];
         }
-        const msg = new Message(`/${dataset}`, this.context.tenant, "GET");
+        const msg = new Message(`/${dataset}`, this.context.tenant, "GET", null);
         const msgCheck = await this.requestElastic(msg);
-        const setMappingMsg = new Message(`/${dataset}/_mapping`, this.context.tenant, "PUT");
+        const setMappingMsg = new Message(`/${dataset}/_mapping`, this.context.tenant, "PUT", null);
         let resCode = 200;
         setMappingMsg.setDataJson(params.mappings);
         if (!msgCheck.ok) {
@@ -33499,7 +33555,8 @@ class ElasticQueryAdapter {
             index = '/' + queryObj.index;
             delete queryObj.index;
         }
-        const msg = new Message(index + '/_search', this.context.tenant, "POST");
+        const msg = new Message(index + '/_search', this.context.tenant, "POST", null);
+        msg.startSpan(this.context.traceparent, this.context.tracestate);
         msg.setDataJson(queryObj);
         const res = await this.requestElastic(msg);
         if (!res.ok) {
@@ -33541,7 +33598,113 @@ const __default18 = {
         "IQueryAdapter"
     ]
 };
+class LogLine {
+    constructor(line){
+        this.line = line;
+    }
+    get tenant() {
+        return this.line.substring(81, this.line.indexOf(' ', 81));
+    }
+    line;
+}
+class FileLogReaderAdapter {
+    logPath;
+    blockSize;
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+        this.blockSize = 1024;
+        this.logPath = props.logPath;
+    }
+    async *scanBack(count) {
+        const stat = await Deno.stat(this.logPath);
+        const fileLen = stat.size;
+        const file = await Deno.open(this.logPath, {
+            read: true
+        });
+        const decoder = new TextDecoder();
+        const blockSize = stat.blksize || this.blockSize;
+        const buf = new Uint8Array(blockSize);
+        let toRead = fileLen % blockSize;
+        let blocks = Math.floor(fileLen / blockSize) + 1;
+        if (toRead === 0) {
+            toRead = blockSize;
+            blocks--;
+        }
+        file.seek((blocks - 1) * blockSize, Deno.SeekMode.Start);
+        let overflow = '';
+        while(count > 0 && blocks > 0){
+            let nRead = await file.read(buf);
+            while(nRead < toRead){
+                const nThisRead = await file.read(buf.subarray(nRead));
+                if (nThisRead == 0) yield "file.read === 0";
+                if (!nThisRead) break;
+                nRead += nThisRead;
+            }
+            const str = decoder.decode(buf.subarray(0, nRead));
+            let idx = str.length - 1;
+            while(idx > 0 && count > 0){
+                const newIdx = str.lastIndexOf("\n", idx);
+                if (newIdx > 0) {
+                    const line = new LogLine(str.substring(newIdx + 1, idx + 1) + overflow);
+                    if (line.tenant === this.context.tenant) {
+                        yield line.line;
+                        count--;
+                    }
+                    overflow = '';
+                } else {
+                    overflow = str.substring(0, idx + 1);
+                    blocks--;
+                    if (blocks > 0) file.seek((blocks - 1) * blockSize, Deno.SeekMode.Start);
+                    toRead = blockSize;
+                }
+                idx = newIdx - 1;
+            }
+        }
+        if (overflow.length && count > 0) {
+            const line1 = new LogLine(overflow);
+            if (line1.tenant === this.context.tenant) {
+                yield overflow;
+            }
+        }
+    }
+    async tail(nLines) {
+        const lines = [];
+        for await (const line of this.scanBack(nLines)){
+            lines.unshift(line);
+        }
+        return lines;
+    }
+    async search(maxLines, search) {
+        const lines = [];
+        for await (const line of this.scanBack(maxLines)){
+            if (line.includes(search)) {
+                lines.unshift(line);
+            }
+        }
+        return lines;
+    }
+    context;
+    props;
+}
 const __default19 = {
+    "name": "Local File Log Reader Adapter",
+    "description": "Scans a log file on the local file system",
+    "moduleUrl": "./adapter/FileLogReaderAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "logPath": {
+                "type": "string",
+                "description": "Full system file path to log file"
+            }
+        }
+    },
+    "adapterInterfaces": [
+        "ILogReaderAdapter"
+    ]
+};
+const __default20 = {
     "name": "Services Service",
     "description": "Provides discovery of configured services and service catalogue",
     "moduleUrl": "./services/services.ts",
@@ -33549,7 +33712,7 @@ const __default19 = {
         "services"
     ]
 };
-const __default20 = {
+const __default21 = {
     "name": "Authentication Service",
     "description": "Provides simple JWT authentication",
     "moduleUrl": "./services/auth.ts",
@@ -33566,6 +33729,10 @@ const __default20 = {
             "loginPage": {
                 "type": "string",
                 "description": "Login page url for redirect management"
+            },
+            "sessionTimeoutMins": {
+                "type": "number",
+                "description": "How long before a new login is required in minutes"
             }
         },
         "required": [
@@ -33785,7 +33952,7 @@ service.deleteDirectory(async (msg, { adapter  })=>{
     }
     return msg;
 });
-const __default21 = {
+const __default22 = {
     "name": "Data Service",
     "description": "Reads and writes data from urls with the pattern datasource/key",
     "moduleUrl": "./services/data.ts",
@@ -33975,7 +34142,7 @@ service1.delete(async (msg, { adapter  })=>{
 service1.deleteDirectory((msg)=>{
     return Promise.resolve(msg.setStatus(400, 'Cannot delete the underlying dataset of a dataset service'));
 });
-const __default22 = {
+const __default23 = {
     "name": "Dataset Service",
     "description": "Reads and writes data with configured schema from urls by key",
     "moduleUrl": "./services/dataset.ts",
@@ -34165,7 +34332,7 @@ service2.deleteDirectory(async (msg, { adapter  })=>{
     }
     return msg;
 });
-const __default23 = {
+const __default24 = {
     "name": "File Service",
     "description": "GET files from urls and PUT files to urls",
     "moduleUrl": "./services/file.ts",
@@ -34294,9 +34461,7 @@ function decode3(b64) {
     return bytes;
 }
 const service3 = new Service();
-service3.postPath('/bypass', (msg)=>{
-    return Promise.resolve(msg);
-});
+service3.postPath('/bypass', (msg)=>msg);
 service3.postPath('/to-b64', async (msg)=>{
     if (!msg.data) return msg;
     const arry = new Uint8Array(await msg.data.asArrayBuffer());
@@ -34323,25 +34488,30 @@ service3.postPath('/selector-schema', async (msg)=>{
 service3.postPath('/redirect-permanent', (msg)=>{
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
-    return Promise.resolve(msg.setHeader('location', location).setStatus(301));
+    return msg.setHeader('location', location).setStatus(301);
 });
 service3.postPath('/redirect-temporary', (msg)=>{
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
-    return Promise.resolve(msg.setHeader('location', location).setStatus(307));
+    return msg.setHeader('location', location).setStatus(307);
 });
 service3.postPath('/see-other', (msg)=>{
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
-    return Promise.resolve(msg.setHeader('location', location).setStatus(303));
+    return msg.setHeader('location', location).setStatus(303);
 });
 service3.postPath('/reload-referer', (msg)=>{
     const location = msg.getHeader('referer');
     if (!location) return Promise.resolve(msg);
     msg.exitConditionalMode();
-    return Promise.resolve(msg.setHeader('location', location).setStatus(303));
+    return msg.setHeader('location', location).setStatus(303);
 });
-const __default24 = {
+service3.postPath('/log/body', async (msg, context)=>{
+    const json = await msg.data?.asJson();
+    context.logger.info('BODY ' + JSON.stringify(json || {}), ...msg.loggerArgs());
+    return msg;
+});
+const __default25 = {
     "name": "Library functions",
     "description": "A range of simple utility web functions",
     "moduleUrl": "./services/lib.ts",
@@ -34349,7 +34519,7 @@ const __default24 = {
         "sys.lib"
     ]
 };
-const __default25 = {
+const __default26 = {
     "name": "Pipeline",
     "description": "A pipeline of urls acting as request processors in parallel or serial",
     "moduleUrl": "./services/pipeline.ts",
@@ -34414,7 +34584,7 @@ const __default25 = {
         }
     }
 };
-const __default26 = {
+const __default27 = {
     "name": "Pipeline store",
     "description": "Run a pipeline whose specification is stored at the request url",
     "moduleUrl": "./services/pipeline-store.ts",
@@ -34483,7 +34653,7 @@ const processGet = async (msg, { adapter , logger  }, config)=>{
     return msg;
 };
 service4.get(processGet);
-const __default27 = {
+const __default28 = {
     "name": "Static site filter",
     "description": "Provide static site behaviour with options suitable for hosting SPAs",
     "moduleUrl": "./services/static-site-filter.ts",
@@ -34499,7 +34669,7 @@ const __default27 = {
         }
     }
 };
-const __default28 = {
+const __default29 = {
     "name": "Static site service",
     "description": "Hosts a static site with options suitable for SPA routing",
     "moduleUrl": "./services/file.ts",
@@ -34539,7 +34709,7 @@ const __default28 = {
         }
     }
 };
-const __default29 = {
+const __default30 = {
     "name": "User data service",
     "description": "Manages access to and stores user data",
     "moduleUrl": "./services/dataset.ts",
@@ -34565,7 +34735,7 @@ const __default29 = {
         }
     }
 };
-const __default30 = {
+const __default31 = {
     "name": "User filter",
     "description": "Manage passwords and restrict illegal operations to users",
     "moduleUrl": "./services/user-filter.ts",
@@ -34584,7 +34754,7 @@ service5.post(async (msg, context, config)=>{
     const output = await context.adapter.fillTemplate(data, template || "", contextUrl);
     return msg.setData(output, config.outputMime);
 });
-const __default31 = {
+const __default32 = {
     "name": "Template",
     "description": "Fill a template with data from the request",
     "moduleUrl": "./services/template.ts",
@@ -34659,7 +34829,7 @@ service6.all(async (msg, { adapter , makeRequest  })=>{
     const sendMsg = await adapter.buildMessage(msg);
     return makeRequest(sendMsg);
 });
-const __default32 = {
+const __default33 = {
     "name": "Proxy Service",
     "description": "Forwards requests with server defined authentication or urls",
     "moduleUrl": "./services/proxy.ts",
@@ -35990,7 +36160,7 @@ service7.post(async (msg, _context, config)=>{
     }
     return msg.setData(null, "").setStatus(201);
 });
-const __default33 = {
+const __default34 = {
     "name": "Email Service",
     "description": "Send an email optionally with attachments",
     "moduleUrl": "./services/email.ts",
@@ -36030,7 +36200,7 @@ const __default33 = {
         ]
     }
 };
-const __default34 = {
+const __default35 = {
     "name": "Account Service",
     "description": "Provides password reset and email verification",
     "moduleUrl": "./services/account.ts",
@@ -37535,7 +37705,8 @@ const buildStore = ({ basePath , service , schema , mapUrlRead , mapUrlWrite , m
         const transformedUrl = applyMapUrl(mapUrlDirectoryRead, msg, config);
         if (transformedUrl instanceof Message) return transformedUrl;
         const [url, method] = transformedUrl;
-        const reqMsg = new Message(url, context.tenant, method);
+        const reqMsg = new Message(url, context.tenant, method, msg);
+        reqMsg.startSpan();
         const dirResp = await context.makeProxyRequest(reqMsg);
         const dirJson = await applyTransform(transformDirectory, dirResp, config);
         if (dirJson instanceof Message) return dirJson;
@@ -37567,7 +37738,8 @@ const buildStore = ({ basePath , service , schema , mapUrlRead , mapUrlWrite , m
             const mappedUrl = applyMapUrl(mapUrl, msg, config, createTest, mapUrlCreate);
             if (mappedUrl instanceof Message) return mappedUrl;
             const [url, method] = mappedUrl;
-            const reqMsg = new Message(url, context.tenant, method);
+            const reqMsg = new Message(url, context.tenant, method, msg);
+            reqMsg.startSpan();
             if (msg.method === "PUT" || msg.method === "POST") {
                 if (!msg.data) return msg.setStatus(400, "No body in write operation");
                 if (transformWrite) {
@@ -37661,10 +37833,12 @@ const sendTrigger = async (event, data, triggerUrl, context)=>{
     if (triggerUrl) {
         const url = triggerUrl.replace('${name}', data?.data?.name || '').replace('${event}', event);
         context.logger.info(`Discord trigger to ${url} with data ${JSON.stringify(data)}`);
-        const reqMsg = new Message(url, context.tenant, "GET");
+        const reqMsg = new Message(url, context.tenant, "GET", null);
+        reqMsg.startSpan(context.traceparent, context.tracestate);
         respMsg = await context.makeRequest(reqMsg);
     } else {
-        respMsg = new Message('/', context.tenant, 'GET');
+        respMsg = new Message('/', context.tenant, 'GET', null);
+        respMsg.startSpan(context.traceparent, context.tracestate);
         respMsg.setStatus(400, "Configuration error in bot: no processor");
     }
     return await messageToInteractionResponse(respMsg);
@@ -38106,7 +38280,7 @@ service8.getDirectoryPath("/command/.", (msg, _, config)=>{
     msg.data = MessageBody.fromObject(dir).setIsDirectory();
     return Promise.resolve(msg);
 });
-const __default35 = {
+const __default36 = {
     "name": "Discord Service",
     "description": "Manages command creation for Discord",
     "moduleUrl": "./services/discord.ts",
@@ -38187,7 +38361,7 @@ const __default35 = {
     },
     "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts"
 };
-const __default36 = {
+const __default37 = {
     "name": "Temporary access service",
     "description": "Generates a token for temporary access to resources and then gives access",
     "moduleUrl": "./services/temporary-access.ts",
@@ -38243,7 +38417,7 @@ service9.post(async (msg, context)=>{
     msg.setDataJson(result);
     return msg;
 });
-const __default37 = {
+const __default38 = {
     "name": "Query",
     "description": "Stores queries as text files and runs the query in the file parameterised with a POST body to produce the response",
     "moduleUrl": "./services/query.ts",
@@ -39720,7 +39894,7 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
 service10.postPath("ndjson", csvToJson("ndjson"));
 service10.postPath("validate", csvToJson("validate"));
 service10.postPath("json", csvToJson("json"));
-const __default38 = {
+const __default39 = {
     "name": "CSV converter",
     "description": "Convert CSV files to and from JSON or NDJSON",
     "moduleUrl": "./services/csvConverter.ts",
@@ -39743,6 +39917,30 @@ const __default38 = {
     "exposedConfigProperties": [
         "lineSchema"
     ]
+};
+const service11 = new Service();
+service11.getPath("tail", async (msg, { adapter  })=>{
+    const nLines = parseInt(msg.url.servicePathElements?.[0]);
+    if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
+    const lines = await adapter.tail(nLines);
+    return msg.setData(lines.join('\n'), 'text/plain');
+});
+service11.getPath("search", async (msg, { adapter  })=>{
+    const nLines = parseInt(msg.url.servicePathElements?.[0]);
+    const search = msg.url.servicePathElements?.[1];
+    if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
+    if (!search) return msg.setStatus(400, 'Must provide a string to search for');
+    const lines = await adapter.search(nLines, search);
+    return msg.setData(lines.join('\n'), 'text/plain');
+});
+const __default40 = {
+    "name": "Log Reader Service",
+    "description": "Queries a log store for log information",
+    "moduleUrl": "./services/logReader.ts",
+    "apis": [
+        "view"
+    ],
+    "adapterInterface": "ILogReaderAdapter"
 };
 var LogLevels1;
 (function(LogLevels) {
@@ -40150,12 +40348,30 @@ function setup1(config) {
 }
 setup1(DEFAULT_CONFIG1);
 const formatter = (rec)=>{
-    const dt = rec.datetime;
-    const hr = dt.getHours().toString().padStart(2, '0');
-    const mn = dt.getMinutes().toString().padStart(2, '0');
-    const sc = dt.getSeconds().toString().padStart(2, '0');
-    const ms = dt.getMilliseconds().toString().padStart(3, '0');
-    return `${hr}:${mn}:${sc}:${ms} ${rec.msg}`;
+    let severity = 'DEBUG';
+    switch(rec.levelName){
+        case "NOTSET":
+            severity = "TRACE";
+            break;
+        case "INFO":
+            severity = "INFO ";
+            break;
+        case "WARNING":
+            severity = "WARN ";
+            break;
+        case "ERROR":
+            severity = "ERROR";
+            break;
+        case "CRITICAL":
+            severity = "FATAL";
+            break;
+    }
+    let [tenant, username, traceId, spanId] = rec.args;
+    if (!tenant) tenant = 'global';
+    if (!username) username = '?';
+    if (!traceId) traceId = 'x'.repeat(32);
+    if (!spanId) spanId = 'x'.repeat(16);
+    return `${severity} ${rec.datetime.toISOString()} ${traceId} ${spanId} ${tenant} ${username} ${rec.msg}`;
 };
 const schemaIServiceManifest = {
     type: "object",
@@ -40206,7 +40422,8 @@ class RestspaceLoader {
         this.async = true;
     }
     getSource(name, cb) {
-        const msg = new Message(name, this.context.tenant, "GET");
+        const msg = new Message(name, this.context.tenant, "GET", null);
+        msg.startSpan(this.context.traceparent, this.context.tracestate);
         this.context.makeRequest(msg).then((res)=>{
             if (!res.ok) {
                 res.data?.asString().then((s)=>cb(new Error(`${res.status} ${s}`), null));
@@ -40379,7 +40596,7 @@ class ServiceFactory {
         this.serviceConfigs = null;
     }
     async loadServiceManifests(serviceManifestSources) {
-        config.logger.debug(`Start -- loading manifests for ${this.tenant}`);
+        config.logger.debug(`Start -- loading manifests`, this.tenant);
         const uniqueServiceManifestSources = serviceManifestSources.filter((ms, i)=>serviceManifestSources.indexOf(ms) === i);
         const getServiceManifestPromises = uniqueServiceManifestSources.map((source)=>config.modules.getServiceManifest(source));
         const serviceManifests = await Promise.all(getServiceManifestPromises);
@@ -40408,7 +40625,7 @@ class ServiceFactory {
         const errors = adapterManifests.filter((m)=>typeof m === 'string');
         if (errors.length) throw new Error('failed to load adapter manifests: ' + errors.join('; '));
         uniqueAdapterManifestSources.forEach((source, i)=>this.adapterManifestsBySource[source] = adapterManifests[i]);
-        config.logger.debug(`End -- loading manifests for ${this.tenant}`);
+        config.logger.debug(`End -- loading manifests`, this.tenant);
     }
     async getPrivateServiceManifests(existingServiceSources, serviceManifests) {
         if (serviceManifests.length === 0) return [];
@@ -40504,7 +40721,7 @@ class ServiceFactory {
         const sourceServiceFunc = source === Source.External || source === Source.Outer ? serviceWrapper.external(source) : serviceWrapper.internal;
         serviceContext.manifest = structuredClone(serviceContext.manifest);
         const copyServiceConfig = structuredClone(serviceConfig);
-        return (msg)=>sourceServiceFunc(msg, serviceContext, copyServiceConfig);
+        return (msg)=>Promise.resolve(sourceServiceFunc(msg, serviceContext, copyServiceConfig));
     }
     attachFilter(url, func, context) {
         const filterUrl = url.query['$filter']?.[0];
@@ -40584,18 +40801,18 @@ class ServiceWrapper {
                 if (err.message === 'Not found') {
                     newMsg.setStatus(404, 'Not found');
                 } else {
-                    config.logger.error(`Tenant: ${context.tenant} Service: ${serviceConfig.name} error: ${err}`);
+                    config.logger.error(`Service: ${serviceConfig.name} error: ${err}`, ...msg.loggerArgs());
                     newMsg.setStatus(500, 'Internal Server Error');
                 }
             }
             if (newMsg && !newMsg.ok) {
-                config.logger.warning(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`);
+                config.logger.warning(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`, ...msg.loggerArgs());
             }
             newMsg.setHeader('X-Restspace-Service', serviceConfig.name);
             if (newMsg.data && !newMsg.data.wasMimeHandled) {
                 const handler = mimeHandlers[upTo(newMsg.data.mimeType, ';')];
                 if (handler) {
-                    newMsg = await handler(newMsg, msg.url, (innerMsg)=>this.internal(innerMsg, context, serviceConfig));
+                    newMsg = await handler(newMsg, msg.url, (innerMsg)=>Promise.resolve(this.internal(innerMsg, context, serviceConfig)));
                     if (newMsg.data) newMsg.data.wasMimeHandled = true;
                 }
             }
@@ -40605,7 +40822,7 @@ class ServiceWrapper {
                 const origin = msg.getHeader('origin');
                 const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
                 if (!isPermitted) {
-                    config.logger.warning(`Unauthorized: ${msg.user?.email || 'anon'} for ${msg.url}`);
+                    config.logger.warning(`Unauthorized for ${msg.url}`, ...msg.loggerArgs());
                     return this.setCors(msg, origin).setStatus(401, "Unauthorized");
                 }
                 msg.authenticated = true;
@@ -40766,10 +40983,10 @@ class NunjucksTemplateAdapter {
 const deleteManifestProperties = [
     'exposedConfigProperties'
 ];
-const service11 = new Service();
-const service12 = new AuthService();
-const service13 = new Service();
+const service12 = new Service();
+const service13 = new AuthService();
 const service14 = new Service();
+const service15 = new Service();
 function mapLegalChanges(msg, oldValues, newUser) {
     const currentUserObj = msg.user || AuthUser.anon;
     const current = new AuthUser(currentUserObj);
@@ -40842,13 +41059,13 @@ async function validateChange(msg, context) {
     msg.setDataJson(updatedUser);
     return msg;
 }
-const service15 = new Service();
 const service16 = new Service();
+const service17 = new Service();
 class TemporaryAccessState extends BaseStateClass {
     validTokenExpiries = [];
     tokenBaseUrls = {};
 }
-const service17 = new Service();
+const service18 = new Service();
 class Modules {
     adapterConstructors;
     serviceManifests;
@@ -40876,7 +41093,8 @@ class Modules {
             "./adapter/AWS4ProxyAdapter.ts": AWS4ProxyAdapter,
             "./adapter/ElasticProxyAdapter.ts": ElasticProxyAdapter,
             "./adapter/ElasticDataAdapter.ts": ElasticDataAdapter,
-            "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter
+            "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter,
+            "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter
         };
         this.adapterManifests = {
             "./adapter/LocalFileAdapter.ram.json": __default10,
@@ -40886,53 +41104,56 @@ class Modules {
             "./adapter/AWS4ProxyAdapter.ram.json": __default15,
             "./adapter/ElasticProxyAdapter.ram.json": __default16,
             "./adapter/ElasticDataAdapter.ram.json": __default17,
-            "./adapter/ElasticQueryAdapter.ram.json": __default18
+            "./adapter/ElasticQueryAdapter.ram.json": __default18,
+            "./adapter/FileLogReaderAdapter.ram.json": __default19
         };
         Object.entries(this.adapterManifests).forEach(([url, v])=>{
             v.source = url;
             this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
         });
         this.services = {
-            "./services/services.ts": service11,
-            "./services/auth.ts": service12,
+            "./services/services.ts": service12,
+            "./services/auth.ts": service13,
             "./services/data.ts": service,
             "./services/dataset.ts": service1,
             "./services/file.ts": service2,
             "./services/lib.ts": service3,
-            "./services/pipeline.ts": service13,
-            "./services/pipeline-store.ts": service14,
+            "./services/pipeline.ts": service14,
+            "./services/pipeline-store.ts": service15,
             "./services/static-site-filter.ts": service4,
-            "./services/user-filter.ts": service15,
+            "./services/user-filter.ts": service16,
             "./services/template.ts": service5,
             "./services/proxy.ts": service6,
             "./services/email.ts": service7,
-            "./services/account.ts": service16,
+            "./services/account.ts": service17,
             "./services/discord.ts": service8,
-            "./services/temporary-access.ts": service17,
+            "./services/temporary-access.ts": service18,
             "./services/query.ts": service9,
-            "./services/csvConverter.ts": service10
+            "./services/csvConverter.ts": service10,
+            "./services/logReader.ts": service11
         };
         this.serviceManifests = {
-            "./services/services.rsm.json": __default19,
-            "./services/auth.rsm.json": __default20,
-            "./services/data.rsm.json": __default21,
-            "./services/dataset.rsm.json": __default22,
-            "./services/file.rsm.json": __default23,
-            "./services/lib.rsm.json": __default24,
-            "./services/pipeline.rsm.json": __default25,
-            "./services/pipeline-store.rsm.json": __default26,
-            "./services/static-site-filter.rsm.json": __default27,
-            "./services/static-site.rsm.json": __default28,
-            "./services/user-data.rsm.json": __default29,
-            "./services/user-filter.rsm.json": __default30,
-            "./services/template.rsm.json": __default31,
-            "./services/proxy.rsm.json": __default32,
-            "./services/email.rsm.json": __default33,
-            "./services/account.rsm.json": __default34,
-            "./services/discord.rsm.json": __default35,
-            "./services/temporary-access.rsm.json": __default36,
-            "./services/query.rsm.json": __default37,
-            "./services/csvConverter.rsm.json": __default38
+            "./services/services.rsm.json": __default20,
+            "./services/auth.rsm.json": __default21,
+            "./services/data.rsm.json": __default22,
+            "./services/dataset.rsm.json": __default23,
+            "./services/file.rsm.json": __default24,
+            "./services/lib.rsm.json": __default25,
+            "./services/pipeline.rsm.json": __default26,
+            "./services/pipeline-store.rsm.json": __default27,
+            "./services/static-site-filter.rsm.json": __default28,
+            "./services/static-site.rsm.json": __default29,
+            "./services/user-data.rsm.json": __default30,
+            "./services/user-filter.rsm.json": __default31,
+            "./services/template.rsm.json": __default32,
+            "./services/proxy.rsm.json": __default33,
+            "./services/email.rsm.json": __default34,
+            "./services/account.rsm.json": __default35,
+            "./services/discord.rsm.json": __default36,
+            "./services/temporary-access.rsm.json": __default37,
+            "./services/query.rsm.json": __default38,
+            "./services/csvConverter.rsm.json": __default39,
+            "./services/logReader.rsm.json": __default40
         };
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
             v.source = url;
@@ -41309,7 +41530,7 @@ class Tenant {
                 throw new Error(`Service ${config.name} failed to initialize: ${reason}`);
             });
         })).catch((reason)=>{
-            config.logger.error(`Failed to init all services, ${reason}`);
+            config.logger.error(`Failed to init all services, ${reason}`, this.name);
             throw new Error(`${reason}`);
         });
         const res = await this.serviceFactory.getServiceAndConfigByApi("auth");
@@ -41350,7 +41571,7 @@ const getTenant = async (requestTenant)=>{
     }
     if (!config.tenants[requestTenant]) {
         try {
-            config.logger.debug(`Start -- load tenant ${requestTenant}`);
+            config.logger.debug(`Start -- load tenant ${requestTenant}`, requestTenant);
             let resolveLoad = null;
             tenantLoads[requestTenant] = new Promise((resolve)=>resolveLoad = resolve);
             const tenantAdapter = await config.modules.getConfigAdapter(requestTenant);
@@ -41362,10 +41583,10 @@ const getTenant = async (requestTenant)=>{
             const tenantDomains = Object.entries(config.server.domainMap).filter(([, ten])=>ten === requestTenant).map(([dom, ])=>dom);
             config.tenants[requestTenant] = new Tenant(requestTenant, servicesConfig, tenantDomains);
             await config.tenants[requestTenant].init();
-            config.logger.info(`Loaded tenant ${requestTenant} successfully`);
+            config.logger.info(`Loaded tenant ${requestTenant} successfully`, requestTenant);
             if (resolveLoad) resolveLoad();
         } catch (err) {
-            config.logger.error(`Failed to load services for tenant ${requestTenant}: ${err}`);
+            config.logger.error(`Failed to load services for tenant ${requestTenant}: ${err}`, requestTenant);
             config.tenants[requestTenant] = new Tenant(requestTenant, {
                 services: {}
             }, []);
@@ -41374,7 +41595,7 @@ const getTenant = async (requestTenant)=>{
     }
     return config.tenants[requestTenant];
 };
-service11.getPath('catalogue', (msg)=>{
+service12.getPath('catalogue', (msg)=>{
     if (catalogue === null) {
         catalogue = {
             services: {},
@@ -41408,7 +41629,7 @@ service11.getPath('catalogue', (msg)=>{
         catalogue
     }));
 });
-service11.getPath('services', async (msg, context)=>{
+service12.getPath('services', async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
@@ -41435,8 +41656,8 @@ const getRaw = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
 };
-service11.getPath('raw', getRaw);
-service11.getPath('raw.json', getRaw);
+service12.getPath('raw', getRaw);
+service12.getPath('raw.json', getRaw);
 const rebuildConfig = async (rawServicesConfig, tenant)=>{
     let newTenant;
     try {
@@ -41451,7 +41672,7 @@ const rebuildConfig = async (rawServicesConfig, tenant)=>{
     try {
         await config.tenants[tenant].unload();
     } catch (err1) {
-        config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, err1);
+        config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, tenant);
     }
     config.tenants[tenant] = newTenant;
     (async ()=>{
@@ -41459,7 +41680,7 @@ const rebuildConfig = async (rawServicesConfig, tenant)=>{
             const configAdapter = await config.modules.getConfigAdapter(tenant);
             await configAdapter.write('services.json', MessageBody.fromObject(rawServicesConfig));
         } catch (err) {
-            config.logger.error(`Failed to write back tenant config: ${tenant}`, err);
+            config.logger.error(`Failed to write back tenant config: ${tenant}`, tenant);
         }
     })();
     return [
@@ -41522,6 +41743,7 @@ class PipelineStep {
             if (context.targetHost && msg.url.domain === context.targetHost.domain) {
                 Object.assign(msg.headers, context.targetHeaders);
             }
+            msg.startSpan();
             return context.handler(msg);
         };
         const innerExecute = async ()=>{
@@ -41557,7 +41779,7 @@ class PipelineStep {
                 }
                 return outMsg;
             } catch (err) {
-                config.logger.error(`error executing pipeline element: ${this.step}, ${err}`);
+                config.logger.error(`error executing pipeline element: ${this.step}, ${err}`, ...context.callerLoggerArgs || []);
                 return msg.setStatus(500, 'Internal Server Error');
             }
         };
@@ -41587,8 +41809,8 @@ const putRaw = async (msg, context)=>{
     if (status) return msg.setStatus(status, message);
     return msg.setStatus(200);
 };
-service11.putPath('raw', putRaw);
-service11.putPath('raw.json', putRaw);
+service12.putPath('raw', putRaw);
+service12.putPath('raw.json', putRaw);
 const putChords = async (msg, context)=>{
     const chords = await msg?.data?.asJson();
     if (typeof chords !== 'object') return msg.setStatus(400, 'Chords should be an object labelled by chord id');
@@ -41613,14 +41835,14 @@ const putChords = async (msg, context)=>{
     const [status, message] = await rebuildConfig(newRawConfig, context.tenant);
     return msg.setStatus(status || 200, message);
 };
-service11.putPath('chords', putChords);
-service11.putPath('chords.json', putChords);
+service12.putPath('chords', putChords);
+service12.putPath('chords.json', putChords);
 const getChordMap = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.chordMap));
 };
-service11.getPath('chord-map', getChordMap);
-service11.getPath('chord-map.json', getChordMap);
+service12.getPath('chord-map', getChordMap);
+service12.getPath('chord-map.json', getChordMap);
 const openApi = async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const spec = {
@@ -41705,7 +41927,7 @@ const openApi = async (msg, context)=>{
     }
     return msg.setDataJson(spec);
 };
-service11.getPath('openApi', openApi);
+service12.getPath('openApi', openApi);
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
     PipelineElementType[PipelineElementType["serializer"] = 1] = "serializer";
@@ -41925,7 +42147,7 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                     throw new Error(`unrecognized pipeline element ${JSON.stringify(pipeline[pos])}`);
             }
         } catch (err) {
-            config.logger.error(`pipeline error stage = '${pipeline[pos]}': ${err}`);
+            config.logger.error(`pipeline error stage = '${pipeline[pos]}': ${err}`, ...context.callerLoggerArgs || []);
             context.path.pop();
             return msgs.flatMap(()=>err);
         }
@@ -41992,7 +42214,7 @@ function runDistributePipelineOne(pipeline, msg, context) {
         } catch (err) {
             context.path.pop();
             msgs.close();
-            config.logger.error(`pipeline error stage = '${pipeline[pos]}' ${err}`);
+            config.logger.error(`pipeline error stage = '${pipeline[pos]}' ${err}`, ...context.callerLoggerArgs || []);
             return new AsyncQueue(1).enqueue(err);
         }
         pos++;
@@ -42005,6 +42227,7 @@ function createInitialContext(pipeline, handler, callerMsg, contextUrl, external
         handler,
         callerUrl: contextUrl || callerMsg.url,
         callerMethod: callerMsg.method,
+        callerLoggerArgs: callerMsg.loggerArgs(),
         external,
         path: []
     };
@@ -42070,17 +42293,17 @@ const handleIncomingRequest = async (msg)=>{
         const tenant = await getTenant(tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
-        config.logger.info(`${" ".repeat(msg.depth)}Request (${tenantName}) by ${msg.user?.email || '?'} ${msg.method} ${msg.url}`);
+        config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg.callDown());
         msgOut.depth = msg.depth;
         msgOut.callUp();
         if (!msgOut.ok) {
-            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`);
+        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS' ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
     }
 };
@@ -42097,22 +42320,22 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
         let msgOut;
         if (tenantName !== null) {
             const tenant = await getTenant(tenantName || 'main');
-            config.logger.info(`${" ".repeat(msg.depth)}Request (${tenantName}) ${msg.method} ${msg.url}`);
+            config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msg.tenant = tenantName;
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
             msgOut.callUp();
         } else {
-            config.logger.info(`Request external ${msg.method} ${msg.url}`);
+            config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut = await config.requestExternal(msg);
         }
         if (!msgOut.ok) {
-            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} (${tenantName}) ${msg.method} ${msg.url}`);
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`);
+        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS' && tenantName ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
     }
 };
@@ -42134,9 +42357,9 @@ const handleOutgoingRequestFromPrivateServices = (prePost, privateServices, tena
             return handleOutgoingRequest(msg);
         }
     };
-async function setJwt(msg, user) {
+async function setJwt(msg, user, expiryMins) {
     const jwt = await config.authoriser.getJwt(user);
-    const timeToExpirySecs = 30 * 60;
+    const timeToExpirySecs = expiryMins * 60;
     const cookieOptions = new CookieOptions({
         httpOnly: true,
         maxAge: timeToExpirySecs
@@ -42148,7 +42371,7 @@ async function setJwt(msg, user) {
     msg.setCookie('rs-auth', jwt, cookieOptions);
     return timeToExpirySecs;
 }
-async function login(msg, userUrlPattern, context) {
+async function login(msg, userUrlPattern, context, config) {
     const userSpec = await msg.data.asJson();
     const fullUser = await getUserFromEmail(context, userUrlPattern, msg, userSpec.email, true);
     if (!fullUser) {
@@ -42160,7 +42383,7 @@ async function login(msg, userUrlPattern, context) {
         return msg.setStatus(400, 'bad password');
     }
     try {
-        const timeToExpirySecs = await setJwt(msg, user);
+        const timeToExpirySecs = await setJwt(msg, user, config.sessionTimeoutMins || 30);
         fullUser.password = user.passwordMask();
         fullUser.exp = new Date().getTime() + timeToExpirySecs * 1000;
         return msg.setDataJson(fullUser);
@@ -42173,8 +42396,8 @@ function logout(msg) {
     msg.deleteCookie('rs-auth');
     return Promise.resolve(msg);
 }
-service12.postPath('login', async (msg, context, config)=>{
-    const newMsg = await login(msg, config.userUrlPattern, context);
+service13.postPath('login', async (msg, context, config)=>{
+    const newMsg = await login(msg, config.userUrlPattern, context, config);
     if (config.loginPage && msg.getHeader('referer')) {
         let redirUrl = msg.url.copy();
         try {
@@ -42208,8 +42431,8 @@ service12.postPath('login', async (msg, context, config)=>{
     }
     return newMsg;
 });
-service12.postPath('logout', (msg)=>logout(msg));
-service12.getPath('user', async (msg, context, config)=>{
+service13.postPath('logout', (msg)=>logout(msg));
+service13.getPath('user', async (msg, context, config)=>{
     if (!msg.user || userIsAnon(msg.user)) {
         return msg.setStatus(401, 'Unauthorized');
     }
@@ -42221,7 +42444,8 @@ service12.getPath('user', async (msg, context, config)=>{
         return msg.setStatus(404, "No such user");
     }
 });
-service12.setUser(async (msg)=>{
+service13.getPath('timeout', (msg, _context, config)=>msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
+service13.setUser(async (msg, _context, { sessionTimeoutMins  })=>{
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
     let authResult = '';
@@ -42236,18 +42460,18 @@ service12.setUser(async (msg)=>{
             ...authResult,
             exp: (authResult.exp || 0) * 1000
         });
-        const refreshTime = (msg.user.exp || 0) - 30 * 60 * 1000 / 2;
+        const refreshTime = (msg.user.exp || 0) - (sessionTimeoutMins || 30) * 60 * 1000 / 2;
         const nowTime = new Date().getTime();
         if (nowTime > refreshTime) {
-            const timeToExpirySecs = await setJwt(msg, msg.user);
+            const timeToExpirySecs = await setJwt(msg, msg.user, sessionTimeoutMins || 30);
             const newExpiryTime = nowTime + timeToExpirySecs * 1000;
             msg.user.exp = newExpiryTime;
-            config.logger.info(`refreshed to ${new Date(newExpiryTime)}`);
+            config.logger.info(`refreshed to ${new Date(newExpiryTime)}`, ...msg.loggerArgs());
         }
     }
     return msg;
 });
-service13.all((msg, context, config)=>{
+service14.all((msg, context, config)=>{
     let runPipeline = config.pipeline;
     if (msg.url.query["$to-step"]) {
         const toStep = parseInt(msg.url.query["$to-step"][0]);
@@ -42257,7 +42481,7 @@ service13.all((msg, context, config)=>{
     }
     return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal));
 });
-service14.all(async (msg, context)=>{
+service15.all(async (msg, context)=>{
     const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
@@ -42274,7 +42498,7 @@ service14.all(async (msg, context)=>{
     pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
     return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
-service15.get(async (msg, context)=>{
+service16.get(async (msg, context)=>{
     if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
     if (msg.url.query['test'] !== undefined) {
         msg.data = undefined;
@@ -42298,9 +42522,9 @@ service15.get(async (msg, context)=>{
     msg.data.mimeType = originalMime;
     return msg;
 });
-service15.put(validateChange);
-service15.post(validateChange);
-service15.delete(validateChange);
+service16.put(validateChange);
+service16.post(validateChange);
+service16.delete(validateChange);
 const sendTokenUrl = async (msg, context, serviceConfig, subservice)=>{
     if (msg.url.servicePathElements.length < 1) return msg.setStatus(400, 'Missing email');
     const user = await getUserFromEmail(context, serviceConfig.userUrlPattern, msg, msg.url.servicePathElements[0], true);
@@ -42380,11 +42604,11 @@ const tokenVerifySchema = {
         }
     }
 };
-service16.postPath('reset-password', (msg, context, config)=>{
+service17.postPath('reset-password', (msg, context, config)=>{
     if (!config.passwordReset) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.passwordReset);
 });
-service16.postPath('token-update-password', (msg, context, config)=>{
+service17.postPath('token-update-password', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, async (userData, posted)=>{
         const user = new AuthUser(userData);
         user.password = posted['password'];
@@ -42392,18 +42616,18 @@ service16.postPath('token-update-password', (msg, context, config)=>{
         return user;
     });
 }, tokenPasswordSchema);
-service16.postPath('verify-email', (msg, context, config)=>{
+service17.postPath('verify-email', (msg, context, config)=>{
     if (!config.emailConfirm) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.emailConfirm);
 });
-service16.postPath('confirm-email', (msg, context, config)=>{
+service17.postPath('confirm-email', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, (userData, _posted)=>{
         const user = new AuthUser(userData);
         user.emailVerified = new Date();
         return Promise.resolve(user);
     });
 }, tokenVerifySchema);
-service17.all(async (msg, context, config)=>{
+service18.all(async (msg, context, config)=>{
     const state = await context.state(TemporaryAccessState, context, config);
     const expireTokens = ()=>{
         const now = new Date();
