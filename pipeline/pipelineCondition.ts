@@ -35,6 +35,18 @@ export class PipelineCondition {
             method: context.callerMethod?.toUpperCase(),
             subpath: callerUrl && (callerUrl.subPathElementCount === null ? callerUrl.servicePathElements : callerUrl.subPathElements),
             header: (hdr: string) => msg.getHeader(hdr),
+            body: () => {
+                if (!msg.data) {
+                    return {};
+                } else if (msg.data.data instanceof ArrayBuffer) {
+                    return JSON.parse(msg.data.asStringSync());
+                } else {
+                    throw new Error('Pipeline condition based on message body of message with stream data');
+                }
+            },
+            query: () => {
+                Object.fromEntries(Object.entries(msg.url.query).map(([ k, v ]) => [k, v[0]]));
+            }
         }
         return !!evaluate(this.exp, msgValues);
     }

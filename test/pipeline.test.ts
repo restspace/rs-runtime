@@ -211,6 +211,16 @@ Deno.test('conditional subpath subpipelines', async function () {
     const output = await msgOut.data?.asString();
     assertStrictEquals(output, 'abc result');
 });
+Deno.test('conditional body subpipelines', async function () {
+    const msg = testMessage('/', 'GET');
+    const msgOut = await pipeline(msg, [
+        "try GET /test/object",
+        [ "if (!body().val1) GET /test/abc" ],
+        [ "if (body().val1 === 'aaa') GET /test/xyz" ]
+    ]);
+    const output = await msgOut.data?.asString();
+    assertStrictEquals(output, 'xyz result');
+});
 // Deno.test('target host', async function () {
 //     let domainCount = 0;
 //     domainRequestHandlers["test1.com"] = async (msg: Message) => {
