@@ -6,7 +6,13 @@ import { ServiceContext } from "../../rs-core/ServiceContext.ts";
 const service = new Service<IProxyAdapter>();
 
 service.all(async (msg: Message, { adapter, makeRequest }: ServiceContext<IProxyAdapter>) => {
-	const sendMsg = await adapter.buildMessage(msg);
+	let sendMsg = msg.copy();
+	// remove the base path from the url
+	while (sendMsg.url.basePathElementCount > 0) {
+		sendMsg.url.pathElements.shift();
+		sendMsg.url.basePathElementCount--;
+	}
+	sendMsg = await adapter.buildMessage(sendMsg);
 	return makeRequest(sendMsg);
 });
 

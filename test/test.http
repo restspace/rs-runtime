@@ -175,7 +175,7 @@ POST https://restspace.local:3131/query/multitest
 Content-Type: application/json
 
 {
-	"subgroups": [ "5\"", "6" ]
+	"subgroups": [ "5", "6" ]
 }
 
 ###
@@ -226,10 +226,18 @@ Content-Type: text/csv
 GET https://restspace.local:3131/log/tail/100
 
 ###
-POST https://ademchic2.restspace.io/query/getItemsById
+POST https://ademchic2.restspace.io/backend/itemsById
 Content-Type: application/json
 
 {
-	"ids": [ "10493873-aeaa-4ac0-b48c-e13c54adce23" ]
+	"ids": [ "10493873-aeaa-4ac0-b48c-e13c54adce23", "d486c7d2-02d2-4364-aee2-8334732138f6" ]
 }
 
+###
+GET https://ademchic2.restspace.io/log/search/10/data
+
+###
+POST https://ademchic2.restspace.io/elastic/testac
+
+###
+GET https://restspace.local:3131/elastic/testac

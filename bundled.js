@@ -12375,7 +12375,11 @@ class Message {
         return headersOut;
     }
     set headers(val) {
-        this._headers = val;
+        const valLowerCase = Object.fromEntries(Object.entries(val).map(([k, v])=>[
+                k.toLowerCase(),
+                v
+            ]));
+        this._headers = valLowerCase;
     }
     get data() {
         return this._data;
@@ -12438,9 +12442,9 @@ class Message {
         this.data = data;
         if (headers) {
             if (headers instanceof Headers) {
-                for (const [key, val] of headers.entries())this._headers[key] = val;
+                for (const [key, val] of headers.entries())this._headers[key.toLowerCase()] = val;
             } else {
-                this._headers = headers;
+                this.headers = headers;
             }
         }
         if (this.getHeader("x-forwarded-proto")) {
@@ -33581,8 +33585,16 @@ class ElasticQueryAdapter {
         const data = await res.data?.asJson();
         return data.hits.hits;
     }
-    quoteString(s) {
-        return '"' + s.replace('"', '\\"') + '"';
+    quote(x) {
+        if (typeof x === "string") {
+            return "\"" + x.replace("\"", "\\\"") + "\"";
+        } else if (typeof x !== "object") {
+            return JSON.stringify(x);
+        } else if (Array.isArray(x)) {
+            return JSON.stringify(x.filter((item)=>typeof item !== "object"));
+        } else {
+            return new Error('query variable must be a primitive, or an array of primitives');
+        }
     }
     context;
     props;
@@ -38402,22 +38414,8 @@ const __default37 = {
     }
 };
 const service9 = new Service();
-const quoteStrings = (obj, adapter)=>{
-    if (typeof obj === 'string') {
-        return adapter.quoteString(obj);
-    } else if (Array.isArray(obj)) {
-        return obj.map((item)=>quoteStrings(item, adapter));
-    } else if (typeof obj === 'object') {
-        return Object.fromEntries(Object.entries(obj).map(([k, v])=>[
-                k,
-                quoteStrings(v, adapter)
-            ]));
-    } else {
-        return obj;
-    }
-};
 service9.post(async (msg, context)=>{
-    let params = await msg.data?.asJson() ?? {};
+    const params = await msg.data?.asJson() ?? {};
     const reqQuery = msg.copy().setMethod("GET");
     const msgQuery = await context.makeRequest(reqQuery);
     if (!msgQuery.ok) return msgQuery;
@@ -38425,12 +38423,34 @@ service9.post(async (msg, context)=>{
     if (!query) return msg.setStatus(400, 'No query');
     const contextUrl = msg.url.copy();
     contextUrl.setSubpathFromUrl(msgQuery.getHeader('location') || '');
-    params = quoteStrings(params, context.adapter);
-    query = query.replace(/\$\{([^}]*)\}/gi, (_, p1)=>getProp(params, p1.split('.')) || '');
-    query = query.replace(/\$([0-9]+)/gi, (_, p1)=>{
-        const idx = parseInt(p1);
-        return idx < (contextUrl.subPathElementCount || 0) ? context.adapter.quoteString(contextUrl.subPathElements[idx]) : '';
+    let error = null;
+    query = query.replace(/\$\{([^}]*)\}/gi, (_, p1)=>{
+        const quoted = context.adapter.quote(getProp(params, p1.split('.')) || '');
+        if (quoted instanceof Error) {
+            error = quoted;
+            return '';
+        } else {
+            return quoted;
+        }
     });
+    if (error === null) {
+        query = query.replace(/\$([0-9]+)/gi, (_, p1)=>{
+            const idx = parseInt(p1);
+            if (idx < (contextUrl.subPathElementCount || 0)) {
+                const quoted = context.adapter.quote(contextUrl.subPathElements[idx]);
+                if (quoted instanceof Error) {
+                    error = quoted;
+                    return '';
+                } else {
+                    return quoted;
+                }
+            } else {
+                return '';
+            }
+        });
+    }
+    if (error !== null) return msg.setStatus(400, error.toString());
+    context.logger.info(`Query: ${query}`);
     const result = await context.adapter.runQuery(query);
     if (typeof result === 'number') return msg.setStatus(result);
     msg.setDataJson(result);
