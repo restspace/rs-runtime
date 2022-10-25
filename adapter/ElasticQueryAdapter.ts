@@ -2,7 +2,6 @@ import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import { Message } from "rs-core/Message.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
-import { AnyOfError } from "https://cdn.skypack.dev/-/ajv@v8.11.0-6F7JuaBGOwHo7L2fdKpW/dist=es2019,mode=types/dist/vocabularies/applicator/anyOf.d.ts";
 
 export interface ElasticAdapterProps {
 	username: string;
@@ -57,7 +56,18 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		return data.hits.hits;
 	}
 	
-	quoteString(s: string): string {
-		return '"' + s.replace('"', '\\"') + '"';
+	quote(x: any): string | Error {
+		if (typeof x === "string") {
+			return "\"" + x.replace("\"", "\\\"") + "\"";
+		} else if (typeof x !== "object") {
+			return JSON.stringify(x);
+		} else if (Array.isArray(x)) {
+			return JSON.stringify(x
+				.filter(item => typeof item !== "object")
+				.map(item => typeof item === 'string' ? item.replace("\"", "\\\"") : item)
+			);
+		} else {
+			return new Error('query variable must be a primitive, or an array of primitives');
+		}
 	}
 }

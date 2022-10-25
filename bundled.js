@@ -1459,9 +1459,9 @@ function queryString(args) {
 function fullQueryString(args) {
     return args && Object.values(args).length !== 0 ? "?" + queryString(args) : '';
 }
-function resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl, query, name, isDirectory) {
+function resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode) {
     if (!pathPattern) return '';
-    const getParts = (path)=>slashTrim(path || '').split('/').filter((part)=>part !== '');
+    const getParts = (path)=>slashTrim(path || '').split('/').filter((part)=>part !== '').map((part)=>decode ? decodeURIComponent(part) : part);
     const pathParts = getParts(currentPath);
     const basePathParts = getParts(basePath);
     const subPathParts = getParts(subPath);
@@ -1500,11 +1500,11 @@ function resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl
     }).replace('/$$', '').replace('$$', '');
     return result;
 }
-function resolvePathPatternWithUrl(pathPattern, url, obj, name) {
+function resolvePathPatternWithUrl(pathPattern, url, obj, name, decode) {
     if (obj) {
-        return resolvePathPatternWithObject(pathPattern, obj, [], url.servicePath, url.basePathElements.join('/'), url.subPathElements.join('/'), url.toString(), url.query, name, url.isDirectory);
+        return resolvePathPatternWithObject(pathPattern, obj, [], url.servicePath, url.basePathElements.join('/'), url.subPathElements.join('/'), url.toString(), url.query, name, url.isDirectory, decode);
     } else {
-        return resolvePathPattern(pathPattern, url.servicePath, url.basePathElements.join('/'), url.subPathElements.join('/'), url.toString(), url.query, name, url.isDirectory);
+        return resolvePathPattern(pathPattern, url.servicePath, url.basePathElements.join('/'), url.subPathElements.join('/'), url.toString(), url.query, name, url.isDirectory, decode);
     }
 }
 function multiplyVariableSegments(currentSegments, newSegment, sourceObject) {
@@ -1542,9 +1542,9 @@ function resolvePathPatternWithObjectInner(pathPattern, regex, partialResolution
         ];
     }
 }
-function resolvePathPatternWithObject(pathPattern, sourceObject, sourcePath, currentPath, basePath, subPath, fullUrl, query, name, isDirectory) {
+function resolvePathPatternWithObject(pathPattern, sourceObject, sourcePath, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode) {
     const regex = /\${([\w\[\].]*)}/g;
-    const partResolvedPattern = resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl, query, name, isDirectory);
+    const partResolvedPattern = resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode);
     const [resolved, wasMultiplied] = resolvePathPatternWithObjectInner(partResolvedPattern, regex, [
         partResolvedPattern
     ], sourceObject, sourcePath);
@@ -22754,7 +22754,7 @@ const transformation = (transformObject, data, url = new Url('/'))=>{
                 ...new Set(Array.from(list))
             ],
         pathCombine,
-        pathPattern: (pattern)=>resolvePathPatternWithUrl(pattern, url, data),
+        pathPattern: (pattern, decode)=>resolvePathPatternWithUrl(pattern, url, data, undefined, decode),
         newDate: (...args)=>args.length === 0 ? new Date() : args.length === 1 ? typeof args[0] === 'number' ? new Date(args[0]) : dayjs_min(args[0]).toDate() : new Date(args[0], args[1], args[2], args[3], args[4], args[5], args[6]),
         formatDate: (date, format)=>format === 'forQuery' ? `datetime'${dayjs_min(date).format().slice(0, -6)}'` : dayjs_min(date).format(format),
         propsToList: (obj, keyProp)=>Object.entries(obj).map(([key, val])=>{
@@ -34477,6 +34477,10 @@ function decode3(b64) {
 }
 const service3 = new Service();
 service3.postPath('/bypass', (msg)=>msg);
+service3.postPath('/destream', async (msg)=>{
+    await msg.data?.ensureDataIsArrayBuffer();
+    return msg;
+});
 service3.postPath('/to-b64', async (msg)=>{
     if (!msg.data) return msg;
     const arry = new Uint8Array(await msg.data.asArrayBuffer());
@@ -40975,8 +40979,8 @@ class NunjucksTemplateAdapter {
         this.env.addFilter("authorizedFor", (user, roles)=>{
             return new AuthUser(user).authorizedFor(roles);
         });
-        this.env.addFilter("pathPattern", function(pattern) {
-            return resolvePathPatternWithUrl(pattern, this.ctx._url);
+        this.env.addFilter("pathPattern", function(pattern, decode) {
+            return resolvePathPatternWithUrl(pattern, this.ctx._url, undefined, undefined, decode);
         });
     }
     fillTemplate(data, template, url) {

@@ -171,6 +171,14 @@ Content-Type: application/json
 }
 
 ###
+POST https://restspace.local:3131/query/multitest
+Content-Type: application/json
+
+{
+	"subgroups": [ 5, 6 ]
+}
+
+###
 GET https://restspace.local:3131/data/ds-auth/abc
 
 ###
@@ -216,3 +224,12 @@ Content-Type: text/csv
 
 ###
 GET https://restspace.local:3131/log/tail/100
+
+###
+POST https://ademchic2.restspace.io/query/getItemsById
+Content-Type: application/json
+
+{
+	"ids": [ "10493873-aeaa-4ac0-b48c-e13c54adce23" ]
+}
+
