@@ -64,7 +64,6 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		} else if (Array.isArray(x)) {
 			return JSON.stringify(x
 				.filter(item => typeof item !== "object")
-				.map(item => typeof item === 'string' ? item.replace("\"", "\\\"") : item)
 			);
 		} else {
 			return new Error('query variable must be a primitive, or an array of primitives');

@@ -175,7 +175,7 @@ POST https://restspace.local:3131/query/multitest
 Content-Type: application/json
 
 {
-	"subgroups": [ 5, 6 ]
+	"subgroups": [ "5\"", "6" ]
 }
 
 ###
