@@ -6,6 +6,11 @@ const service = new Service();
 
 service.postPath('/bypass', msg => msg);
 
+service.postPath('/destream', async msg => {
+    await msg.data?.ensureDataIsArrayBuffer();
+    return msg;
+});
+
 service.postPath('/to-b64', async msg => {
     if (!msg.data) return msg;
     const arry = new Uint8Array((await msg.data.asArrayBuffer())!);

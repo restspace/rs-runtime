@@ -56,8 +56,8 @@ class NunjucksTemplateAdapter implements ITemplateAdapter {
         this.env.addFilter("authorizedFor", (user: IAuthUser, roles: string) => {
             return new AuthUser(user).authorizedFor(roles);
         });
-        this.env.addFilter("pathPattern", function(this: any, pattern: string) {
-            return resolvePathPatternWithUrl(pattern, this.ctx._url as Url);
+        this.env.addFilter("pathPattern", function(this: any, pattern: string, decode?: boolean) {
+            return resolvePathPatternWithUrl(pattern, this.ctx._url as Url, undefined, undefined, decode);
         });
     }
 
