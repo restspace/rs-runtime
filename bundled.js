@@ -31652,7 +31652,7 @@ function fileToDataAdapter(fileAdapter) {
         deleteKey = (dataset, key)=>this.delete(pathCombine(dataset, key), [
                 'json'
             ]);
-        listDataset = async (dataset, getUpdateTime)=>{
+        listDataset = async (dataset, _take = 1000, _skip = 0, getUpdateTime)=>{
             const msgBody = await this.readDirectory(dataset || '/', getUpdateTime);
             if (!msgBody.ok) {
                 if (msgBody.statusCode === 404) {
@@ -33340,7 +33340,7 @@ class ElasticDataAdapter {
             return data;
         }
     }
-    async listDataset(dataset) {
+    async listDataset(dataset, take = 1000, skip = 0) {
         if (dataset === '') {
             const msg = new Message("/_aliases", this.context.tenant, "GET", null);
             const msgOut = await this.requestElastic(msg);
@@ -33357,6 +33357,8 @@ class ElasticDataAdapter {
             dataset = this.normaliseIndexName(dataset);
             const msg1 = new Message(`/${dataset}/_search`, this.context.tenant, "POST", null);
             msg1.setDataJson({
+                size: take,
+                from: skip,
                 query: {
                     match_all: {}
                 },
