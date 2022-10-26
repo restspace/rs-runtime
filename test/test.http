@@ -247,7 +247,8 @@ Content-Type: application/json
 	},
 	"fields": [
 		"_id", "_timestamp"
-	]
+	],
+	"_source": false
 }
 
 ###

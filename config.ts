@@ -9,7 +9,6 @@ import { IChordServiceConfig } from "rs-core/IServiceConfig.ts";
 import { schemaIChordServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IChord } from "./IChord.ts";
 import { Message } from "../rs-core/Message.ts";
-import { FileHandler } from "std/log/handlers.ts";
 
 export interface Infra {
     adapterSource: string;
@@ -62,7 +61,6 @@ export const config = {
     modules: new Modules(ajv),
     tenants: {} as { [ name: string ]: Tenant },
     logger: log.getLogger(),
-    loggerFileHandler: () => config.logger.handlers[1] as FileHandler,
     // path.resolves resolves relative to dir of current source file, which is repo root
     fixRelativeToRoot: (pathUrl: string) => pathUrl.startsWith('.') ? path.resolve(pathUrl) : pathUrl,
     ajv,

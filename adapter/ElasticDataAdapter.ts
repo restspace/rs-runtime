@@ -147,9 +147,10 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 				query: {
 					match_all: {}
 				},
-				"fields": [
+				fields: [
 					"_id", "_timestamp"
-				]
+				],
+				"_source": false
 			});
 			const msgOut = await this.requestElastic(msg);
 			if (msgOut.status === 404) {
@@ -158,7 +159,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 				return msgOut.status;
 			} else {
 				const data = await msgOut.data?.asJson();
-				const listing = (data.hits.hits as any[]).map((h: any) => (h.fields._timestamp ? [ h._id, h._source._timestamp ] : [ h._id ]) as PathInfo);
+				const listing = (data.hits.hits as any[]).map((h: any) => (h.fields._timestamp ? [ h._id, h.fields._timestamp ] : [ h._id ]) as PathInfo);
 				// if not a 404, then a schema was exists in .schemas
 				listing.push([ '.schema.json' ] as PathInfo);
 				return listing;

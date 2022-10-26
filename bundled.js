@@ -39967,13 +39967,15 @@ const __default39 = {
     ]
 };
 const service11 = new Service();
-service11.getPath("tail", async (msg, { adapter  })=>{
+service11.getPath("tail", async (msg, { adapter , logger  })=>{
+    logger.handlers[1].flush();
     const nLines = parseInt(msg.url.servicePathElements?.[0]);
     if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
     const lines = await adapter.tail(nLines);
     return msg.setData(lines.join('\n'), 'text/plain');
 });
-service11.getPath("search", async (msg, { adapter  })=>{
+service11.getPath("search", async (msg, { adapter , logger  })=>{
+    logger.handlers[1].flush();
     const nLines = parseInt(msg.url.servicePathElements?.[0]);
     const search = msg.url.servicePathElements?.[1];
     if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');

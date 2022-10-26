@@ -31,9 +31,10 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		return await this.context.makeRequest(sendMsg);
 	}
 
-	async runQuery(query: string): Promise<number | Record<string,unknown>[]> {
+	async runQuery(query: string, take = 1000, skip = 0): Promise<number | Record<string,unknown>[]> {
 		await this.ensureProxyAdapter();
 		let index = '';
+		
 		let queryObj = {} as any;
 		try {
 			queryObj = JSON.parse(query);
@@ -44,6 +45,9 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			index = '/' + queryObj.index;
 			delete queryObj.index;
 		}
+		queryObj.size = take;
+		queryObj.from = skip;
+
 		const msg = new Message(index + '/_search', this.context.tenant, "POST", null);
 		msg.startSpan(this.context.traceparent, this.context.tracestate);
 		msg.setDataJson(queryObj);
