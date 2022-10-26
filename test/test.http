@@ -226,18 +226,32 @@ Content-Type: text/csv
 GET https://restspace.local:3131/log/tail/100
 
 ###
-POST https://ademchic2.restspace.io/backend/itemsById
+POST https://ademchic2.restspace.io/query/itemsById
 Content-Type: application/json
 
 {
-	"ids": [ "10493873-aeaa-4ac0-b48c-e13c54adce23", "d486c7d2-02d2-4364-aee2-8334732138f6" ]
+	"ids": [ "d2189420-6537-41fa-a856-9be8bf3fa7fa", "d486c7d2-02d2-4364-aee2-8334732138f6" ]
 }
 
 ###
 GET https://ademchic2.restspace.io/log/search/10/data
 
 ###
-POST https://ademchic2.restspace.io/elastic/testac
+POST https://ademchic2.restspace.io/elastic/catalogue/_search
+Content-Type: application/json
+
+{
+	"size": 1000,
+	"query": {
+		"match_all": {}
+	},
+	"fields": [
+		"_id", "_timestamp"
+	]
+}
+
+###
+DELETE https://ademchic2.restspace.io/elastic/catalogue2
 
 ###
 GET https://restspace.local:3131/elastic/testac

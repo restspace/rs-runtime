@@ -125,7 +125,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 		}
 	}
 
-	async listDataset(dataset: string): Promise<number | PathInfo[]> {
+	async listDataset(dataset: string, take = 1000, skip = 0): Promise<number | PathInfo[]> {
 		if (dataset === '') {
 			const msg = new Message("/_aliases", this.context.tenant, "GET", null);
 			const msgOut = await this.requestElastic(msg);
@@ -142,6 +142,8 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 			dataset = this.normaliseIndexName(dataset);
 			const msg = new Message(`/${dataset}/_search`, this.context.tenant, "POST", null);
 			msg.setDataJson({
+				size: take,
+				from: skip,
 				query: {
 					match_all: {}
 				},

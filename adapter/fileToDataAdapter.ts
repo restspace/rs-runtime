@@ -21,8 +21,8 @@ export function fileToDataAdapter<TFileAdapter extends IFileAdapterConstructor>(
         deleteKey: (dataset: string, key: string) => Promise<number> =
             (dataset: string, key: string) => this.delete(pathCombine(dataset, key), [ 'json' ]);
 
-        listDataset: (dataset: string, getUpdateTime?: boolean) => Promise<PathInfo[] | number> =
-            async (dataset: string, getUpdateTime?: boolean) => {
+        listDataset: (dataset: string, take?: number, skip?: number, getUpdateTime?: boolean) => Promise<PathInfo[] | number> =
+            async (dataset: string, _take = 1000, _skip = 0, getUpdateTime?: boolean) => {
                 const msgBody = await this.readDirectory(dataset || '/', getUpdateTime);
                 if (!msgBody.ok) {
                     if (msgBody.statusCode === 404) {

@@ -34856,8 +34856,15 @@ const __default32 = {
     }
 };
 const service6 = new Service();
-service6.all(async (msg, { adapter , makeRequest  })=>{
-    const sendMsg = await adapter.buildMessage(msg);
+service6.all(async (msg, context)=>{
+    const { adapter , makeRequest  } = context;
+    let sendMsg = msg.copy();
+    while(sendMsg.url.basePathElementCount > 0){
+        sendMsg.url.pathElements.shift();
+        sendMsg.url.basePathElementCount--;
+    }
+    sendMsg = await adapter.buildMessage(sendMsg);
+    context.logger.info(`Proxy, msg headers: ${JSON.stringify(sendMsg.headers)}`);
     return makeRequest(sendMsg);
 });
 const __default33 = {
