@@ -184,7 +184,7 @@ class S3FileAdapterBase implements IFileAdapter {
     protected async* listPrefixed(filePath: string, maxKeys?: number) {
 		const url = new Url("/?list-type=2");
         if (maxKeys) url.query['max-keys'] = [ maxKeys.toString() ];
-		if (filePath) url.query['prefix'] = [ filePath ];
+		if (filePath && filePath !== '/') url.query['prefix'] = [ filePath ];
         try {
             url.query["delimiter"] = [ "/" ];
 			const s3Msg = new Message(url, this.context.tenant, "GET", null);
@@ -235,8 +235,8 @@ class S3FileAdapterBase implements IFileAdapter {
 		yield ']';
     }
 
-    readDirectory(readPath: string, getUpdateTime = false) {
-        const filePath = this.getPath(readPath, undefined, true, true) + '/';
+    readDirectory(readPath: string, _getUpdateTime = false) {
+        let filePath = this.getPath(readPath, undefined, true, true) + '/';
 
         const blockIter = toBlockChunks(this.jsonStreamPrefixed(filePath));
 

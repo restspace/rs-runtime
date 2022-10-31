@@ -32703,7 +32703,7 @@ class S3FileAdapterBase {
             const s3Msg = new Message(url, this.context.tenant, "GET", null);
             const sendMsg = await this.processForAws(s3Msg);
             const msgOut = await this.context.makeRequest(sendMsg);
-            if (!msgOut.ok) console.log(await msgOut.data.asString());
+            if (!msgOut.ok) this.context.logger.error(await msgOut.data.asString());
             const status = msgOut.status;
             if (status && status !== 200) return status;
             const text = await msgOut.data.asString();
@@ -32727,7 +32727,7 @@ class S3FileAdapterBase {
                 };
             }
         } catch (err) {
-            console.log(err);
+            this.context.logger.error(err);
             return 500;
         }
     }
@@ -41364,14 +41364,14 @@ class Authoriser {
             return TokenVerification.expired;
         }
     }
-    async getJwt(user) {
+    async getJwt(user, expirySecs) {
         await this.ensureKey();
         return await create1({
             alg: "HS512",
             typ: "JWT"
         }, {
             ...user.getJwtPayload(),
-            exp: getNumericDate(config.jwtExpiryMins * 60)
+            exp: getNumericDate(expirySecs || config.jwtExpiryMins * 60)
         }, this.key);
     }
     async getImpersonationJwt(user, newEmail, newRoles) {
@@ -42378,10 +42378,12 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
+            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut = await config.requestExternal(msg);
+            config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         }
         if (!msgOut.ok) {
             config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
@@ -42411,7 +42413,7 @@ const handleOutgoingRequestFromPrivateServices = (prePost, privateServices, tena
         }
     };
 async function setJwt(msg, user, expiryMins) {
-    const jwt = await config.authoriser.getJwt(user);
+    const jwt = await config.authoriser.getJwt(user, expiryMins * 60);
     const timeToExpirySecs = expiryMins * 60;
     const cookieOptions = new CookieOptions({
         httpOnly: true,
