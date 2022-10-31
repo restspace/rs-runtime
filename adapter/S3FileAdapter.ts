@@ -191,7 +191,7 @@ class S3FileAdapterBase implements IFileAdapter {
 			const sendMsg = await this.processForAws(s3Msg);
 
             const msgOut = await this.context.makeRequest(sendMsg);
-            if (!msgOut.ok) console.log(await msgOut.data!.asString());
+            if (!msgOut.ok) this.context.logger.error(await msgOut.data!.asString());
             const status = msgOut.status;
             if (status && status !== 200) return status;
 			const text = await msgOut.data!.asString();
@@ -216,7 +216,7 @@ class S3FileAdapterBase implements IFileAdapter {
             }
 
         } catch (err) {
-            console.log(err);
+            this.context.logger.error(err);
             return 500;
         }
     }
