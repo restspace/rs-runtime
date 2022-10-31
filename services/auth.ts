@@ -21,7 +21,7 @@ interface AuthServiceConfig extends IServiceConfig {
 const service = new AuthService<IAdapter, AuthServiceConfig>();
 
 async function setJwt(msg: Message, user: AuthUser, expiryMins: number) {
-    const jwt = await config.authoriser.getJwt(user);
+    const jwt = await config.authoriser.getJwt(user, expiryMins * 60);
     const timeToExpirySecs = expiryMins * 60;
     const cookieOptions = new CookieOptions({ httpOnly: true, maxAge: timeToExpirySecs });
     if (msg.url.scheme === 'https://') {

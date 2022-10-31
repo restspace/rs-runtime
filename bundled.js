@@ -33362,10 +33362,11 @@ class ElasticDataAdapter {
                 query: {
                     match_all: {}
                 },
-                "fields": [
+                fields: [
                     "_id",
                     "_timestamp"
-                ]
+                ],
+                "_source": false
             });
             const msgOut1 = await this.requestElastic(msg1);
             if (msgOut1.status === 404) {
@@ -33376,7 +33377,7 @@ class ElasticDataAdapter {
                 const data1 = await msgOut1.data?.asJson();
                 const listing1 = data1.hits.hits.map((h)=>h.fields._timestamp ? [
                         h._id,
-                        h._source._timestamp
+                        h.fields._timestamp
                     ] : [
                         h._id
                     ]);
@@ -33563,7 +33564,7 @@ class ElasticQueryAdapter {
         const sendMsg = await this.elasticProxyAdapter.buildMessage(msg);
         return await this.context.makeRequest(sendMsg);
     }
-    async runQuery(query) {
+    async runQuery(query, take = 1000, skip = 0) {
         await this.ensureProxyAdapter();
         let index = '';
         let queryObj = {};
@@ -33576,6 +33577,8 @@ class ElasticQueryAdapter {
             index = '/' + queryObj.index;
             delete queryObj.index;
         }
+        queryObj.size = take;
+        queryObj.from = skip;
         const msg = new Message(index + '/_search', this.context.tenant, "POST", null);
         msg.startSpan(this.context.traceparent, this.context.tracestate);
         msg.setDataJson(queryObj);

@@ -64,9 +64,9 @@ export class Authoriser {
         }
     }
 
-    async getJwt(user: AuthUser) {
+    async getJwt(user: AuthUser, expirySecs?: number) {
         await this.ensureKey();
-        return await jwt.create({ alg: "HS512", typ: "JWT" }, { ...user.getJwtPayload(), exp: jwt.getNumericDate(config.jwtExpiryMins * 60) }, this.key);
+        return await jwt.create({ alg: "HS512", typ: "JWT" }, { ...user.getJwtPayload(), exp: jwt.getNumericDate(expirySecs || (config.jwtExpiryMins * 60)) }, this.key);
     }
 
     async getImpersonationJwt(user: AuthUser, newEmail: string, newRoles?: string) {
