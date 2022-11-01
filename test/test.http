@@ -1,4 +1,4 @@
-@cookie = rs-auth=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImphbWVzZWpAb3V0bG9vay5jb20iLCJyb2xlcyI6IlUgQSBFIiwiZXhwIjoxNjY2OTUzNDgyfQ.3KHN9WCaod3CYzPGiHyRKJjcmG6HEC1_5V-mgvq08GhZk-erRpmB2_4KtLrtxJeDyuY5HXnb_TrG-LzZNM9RvA
+@cookie = rs-auth=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImphbWVzZWpAb3V0bG9vay5jb20iLCJyb2xlcyI6IlUgQSBFIiwiZXhwIjoxNjY3MzIxOTA3fQ.UdUMt-wV4kcS50E_bjXvfyTw4cqMej9gdDrC3ZYCfD4lBKcJT4xgLqv9dmyhZ_Eav9sd6BIW-mrXGZglxwgtaQ
 
 GET http://localhost:3100/rs-data/?$list=nodirs,recursive
 
@@ -274,3 +274,18 @@ DELETE https://ademchic2.restspace.io/elastic/catalogue2
 
 ###
 GET https://restspace.local:3131/elastic/testac
+
+###
+POST https://ademchic2.restspace.io/new-pdf
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+	"data": "<html><head></head><body><div style=\"background-image: url('https://ademchic2.restspace.io/file/image/json/instance/reportgen/index.json/frontpage/coverimage/cover-image.jpg'); width: 200px; height: 200px; background-size: cover\"></div></body></html>",
+	"format": "A4",
+	"landscape": true,
+	"persisted": true,
+	"s3Bucket": "rs-pdf-output",
+	"s3Key": "pdf-b",
+	"printBackground": true
+}

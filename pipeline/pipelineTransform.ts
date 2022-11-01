@@ -10,7 +10,7 @@ export class PipelineTransform {
         const jsonIn = msg.data ? await msg.data.asJson() : {};
         let transJson: any = null;
         try {
-            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url);
+            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url, msg.name);
         } catch (err) {
             if (err instanceof SyntaxError) {
                 const errx = err as SyntaxError & { filename: string };

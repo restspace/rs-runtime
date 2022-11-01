@@ -103,8 +103,8 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
-            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut.callUp();
+            config.logger.info(`${" ".repeat(msgOut.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut = await config.requestExternal(msg);

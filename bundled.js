@@ -12438,6 +12438,26 @@ class Message {
         this._status = 0;
         this.uninitiatedDataCopies = [];
         this._headers = {};
+        this.forbiddenHeaders = [
+            "accept-charset",
+            "accept-encoding",
+            "access-control-request-headers",
+            "access-control-request-method",
+            "connection",
+            "date",
+            "dnt",
+            "expect",
+            "feature-policy",
+            "host",
+            "keep-alive",
+            "origin",
+            "referer",
+            "te",
+            "trailer",
+            "transfer-encoding",
+            "upgrade",
+            "via"
+        ];
         this.url = typeof url === 'string' ? new Url(url) : url;
         this.data = data;
         if (headers) {
@@ -12509,6 +12529,11 @@ class Message {
         const isContentDispositionFormData = (k, v)=>k.toLowerCase() === 'content-disposition' && !Array.isArray(v) && v.startsWith('form-data');
         return Object.fromEntries(Object.entries(headers).filter(([k, v])=>sendHeaders.indexOf(k.toLowerCase()) >= 0 && !isContentDispositionFormData(k, v)));
     }
+    forbiddenHeaders;
+    nonForbiddenHeaders() {
+        const isForbidden = (h)=>this.forbiddenHeaders.includes(h) || h.startsWith('proxy-') || h.startsWith('sec-');
+        return Object.fromEntries(Object.entries(this.headers).filter(([k, _])=>!isForbidden(k)));
+    }
     responsify() {
         this.method = "";
         this.status = this.status || 200;
@@ -12533,7 +12558,7 @@ class Message {
         }
         const req = new Request(this.url.toString(), {
             method: this.method,
-            headers: this.mapHeaders(this.headers, new Headers()),
+            headers: this.mapHeaders(this.nonForbiddenHeaders(), new Headers()),
             body: this.data?.data || undefined
         });
         return req;
@@ -32693,7 +32718,7 @@ class S3FileAdapterBase {
         if (maxKeys) url.query['max-keys'] = [
             maxKeys.toString()
         ];
-        if (filePath) url.query['prefix'] = [
+        if (filePath && filePath !== '/') url.query['prefix'] = [
             filePath
         ];
         try {
@@ -32744,8 +32769,8 @@ class S3FileAdapterBase {
         }
         yield ']';
     }
-    readDirectory(readPath, getUpdateTime = false) {
-        const filePath = this.getPath(readPath, undefined, true, true) + '/';
+    readDirectory(readPath, _getUpdateTime = false) {
+        let filePath = this.getPath(readPath, undefined, true, true) + '/';
         const blockIter = toBlockChunks(this.jsonStreamPrefixed(filePath));
         return Promise.resolve(new MessageBody(readableStreamFromIterable(blockIter), 'text/plain').setIsDirectory());
     }
@@ -42350,9 +42375,10 @@ const handleIncomingRequest = async (msg)=>{
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg.callDown());
         msgOut.depth = msg.depth;
+        config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         msgOut.callUp();
         if (!msgOut.ok) {
-            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
@@ -42378,8 +42404,8 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
-            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut.callUp();
+            config.logger.info(`${" ".repeat(msgOut.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut = await config.requestExternal(msg);
