@@ -3,6 +3,7 @@ import { isJson } from "rs-core/mimeType.ts";
 import { jsonQuote } from "rs-core/utility/utility.ts";
 
 export async function jsonObject(msgs: AsyncIterator<Message, Message, Message>): Promise<Message | null> {
+    let outerName = '';
     let first: IteratorResult<Message | null, Message | null> = { value: null };
     while (!((first.value && first.value.hasData()) || first.done)) {
         first = await msgs.next();
@@ -52,8 +53,17 @@ export async function jsonObject(msgs: AsyncIterator<Message, Message, Message>)
                 }
             }
         } else {
-            // append the first message's data to the JSON output
-            const name = msg.name.replace('"', '');
+            let name = msg.name.replace('"', '');
+            if (name.includes('.')) {
+                const lastDot = name.lastIndexOf('.');
+                const newOuterName = name.substring(0, lastDot);
+                if (newOuterName && !outerName) {
+                    outerName = newOuterName;
+                } else if (newOuterName !== outerName) {
+                    outerName = "_mixed_";
+                }
+                name = name.substring(lastDot + 1);
+            }
             if (msg.data?.data === null) {
                 writeProperty(name, "null");
                 return;
@@ -87,5 +97,5 @@ export async function jsonObject(msgs: AsyncIterator<Message, Message, Message>)
         writer.close();
     });
 
-    return (first.value && first.value.setData(readable, 'application/json')) || null;
+    return (first.value && first.value.setData(readable, 'application/json').setName(outerName)) || null;
 }

@@ -13,7 +13,11 @@ async function* messageProcessor(firstMsg: IteratorResult<Message | null, Messag
 			const buf = await msg.data.asArrayBuffer();
 			const stream = msg.data.asReadable();
 			if (buf && stream) {
-				let name = msg.name || msg.url.resourceName;
+				let name = msg.name;
+				if (name && name.includes('.')) {
+					name = name.split('.').slice(-1)[0];
+				}
+				name = name || msg.url.resourceName;
 				const nameMime = getType(name);
 				if (nameMime === null) {
 					name = addExtension(name, msg.data.mimeType);
@@ -43,9 +47,12 @@ export async function zip(msgs: AsyncIterator<Message, Message, Message>): Promi
 
 	const stream = write(messageProcessor(first, msgs));
     const msgOut = first.value!;
+	if (msgOut.name && msgOut.name.includes('.')) {
+		msgOut.name = msgOut.name.split('.').slice(0, -1).join('.');
+	}
     const filename = msgOut.url.isDirectory ? last(msgOut.url.pathElements) : msgOut.url.resourceName;
     // once you have first message, return the archiver which is an active stream as the data
-    return first.value!.copy()
+    return msgOut.copy()
         .setData(stream, 'application/zip')
         .setHeader('Content-Disposition', 'attachment; filename="' + filename + '.zip"');
 }

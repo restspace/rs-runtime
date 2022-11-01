@@ -72,10 +72,14 @@ export class PipelineStep {
                     if (Array.isArray(newMsg_s)) {
                         const newMsgs = new AsyncQueue<Message>(newMsg_s.length);
                         newMsg_s.forEach((msg, i) => sendMsg(msg).then(outMsg => {
+                            let prename = '';
+                            if (this.rename.startsWith('.')) {
+                                prename = outMsg.name;
+                            }
                             if (this.rename) {
-                                outMsg.name = resolvePathPatternWithUrl(this.rename, outMsg.url) as string;
+                                outMsg.name = prename + resolvePathPatternWithUrl(this.rename, outMsg.url, undefined, msg.name) as string;
                             } else {
-                                outMsg.name = i.toString();
+                                outMsg.name = prename + i.toString();
                             }
                             newMsgs.enqueue(outMsg);
                         }));
