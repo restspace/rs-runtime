@@ -21703,7 +21703,11 @@ async function* messageProcessor(firstMsg, msgs) {
             const buf = await msg.data.asArrayBuffer();
             const stream = msg.data.asReadable();
             if (buf && stream) {
-                let name = msg.name || msg.url.resourceName;
+                let name = msg.name;
+                if (name && name.includes('.')) {
+                    name = name.split('.').slice(-1)[0];
+                }
+                name = name || msg.url.resourceName;
                 const nameMime = getType(name);
                 if (nameMime === null) {
                     name = addExtension(name, msg.data.mimeType);
@@ -21734,10 +21738,14 @@ async function zip(msgs) {
     if (first.done) return null;
     const stream = write(messageProcessor(first, msgs));
     const msgOut = first.value;
+    if (msgOut.name && msgOut.name.includes('.')) {
+        msgOut.name = msgOut.name.split('.').slice(0, -1).join('.');
+    }
     const filename = msgOut.url.isDirectory ? last(msgOut.url.pathElements) : msgOut.url.resourceName;
-    return first.value.copy().setData(stream, 'application/zip').setHeader('Content-Disposition', 'attachment; filename="' + filename + '.zip"');
+    return msgOut.copy().setData(stream, 'application/zip').setHeader('Content-Disposition', 'attachment; filename="' + filename + '.zip"');
 }
 async function jsonObject(msgs) {
+    let outerName = '';
     let first = {
         value: null
     };
@@ -21785,7 +21793,17 @@ async function jsonObject(msgs) {
                 }
             }
         } else {
-            const name = msg.name.replace('"', '');
+            let name = msg.name.replace('"', '');
+            if (name.includes('.')) {
+                const lastDot = name.lastIndexOf('.');
+                const newOuterName = name.substring(0, lastDot);
+                if (newOuterName && !outerName) {
+                    outerName = newOuterName;
+                } else if (newOuterName !== outerName) {
+                    outerName = "_mixed_";
+                }
+                name = name.substring(lastDot + 1);
+            }
             if (msg.data?.data === null) {
                 writeProperty(name, "null");
                 return;
@@ -21815,7 +21833,7 @@ async function jsonObject(msgs) {
         writeString("\n}");
         writer.close();
     });
-    return first.value && first.value.setData(readable, 'application/json') || null;
+    return first.value && first.value.setData(readable, 'application/json').setName(outerName) || null;
 }
 const GZIP_HEADER = Uint8Array.from([
     31,
@@ -41832,10 +41850,14 @@ class PipelineStep {
                     if (Array.isArray(newMsg_s)) {
                         const newMsgs = new AsyncQueue(newMsg_s.length);
                         newMsg_s.forEach((msg, i)=>sendMsg(msg).then((outMsg)=>{
+                                let prename = '';
+                                if (this.rename.startsWith('.')) {
+                                    prename = outMsg.name;
+                                }
                                 if (this.rename) {
-                                    outMsg.name = resolvePathPatternWithUrl(this.rename, outMsg.url);
+                                    outMsg.name = prename + resolvePathPatternWithUrl(this.rename, outMsg.url, undefined, msg.name);
                                 } else {
-                                    outMsg.name = i.toString();
+                                    outMsg.name = prename + i.toString();
                                 }
                                 newMsgs.enqueue(outMsg);
                             }));

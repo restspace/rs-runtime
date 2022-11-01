@@ -6,6 +6,7 @@ import { pipeline } from "../pipeline/pipeline.ts";
 import { mockHandler } from "../services/mock.ts";
 import { testServerConfig } from "./testServerConfig.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
+import { assertEquals } from "https://deno.land/std@0.144.0/testing/asserts.ts";
 
 config.server = testServerConfig;
 
@@ -366,6 +367,32 @@ Deno.test('split patch', async function () {
     const check = await msgReadOut.data?.asJson();
     assertStrictEquals(msgReadOut.status, 404);
     //when PATCH implemented for DataSet: assertStrictEquals(check, { a: 123, b: 234 });
+});
+
+Deno.test('nested split', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
+        [
+            { 'a': 123 },
+            { 'b': 234 }
+        ]
+    ), [
+        "jsonSplit",
+        [
+            "serial",
+            [
+                "/lib/bypass :.x",
+                "/lib/bypass :.y"
+            ],
+            "jsonObject"
+        ],
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output, {
+        "0": { x: { a: 123 }, y: { a: 123 } },
+        "1": { x: { b: 234 }, y: { b: 234 } },
+        length: 2
+      });
 });
 
 // Deno.test('simple post', async function () {

@@ -89,7 +89,11 @@ export class PipelineStep {
                     }
                 }
                 if (this.rename) {
-                    outMsg.name = resolvePathPatternWithUrl(this.rename, outMsg.url) as string;
+                    let prename = ''
+                    if (this.rename.startsWith('.')) {
+                        prename = outMsg.name;
+                    }
+                    outMsg.name = prename + resolvePathPatternWithUrl(this.rename, outMsg.url, undefined, outMsg.name) as string;
                 }
                 if (this.tryMode) {
                     outMsg.enterConditionalMode();
