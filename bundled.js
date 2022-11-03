@@ -12499,6 +12499,7 @@ class Message {
         msg.authenticated = this.authenticated;
         msg.internalPrivilege = this.internalPrivilege;
         msg.user = this.user;
+        msg.name = this.name;
         return msg.setStatus(this.status);
     }
     copyWithData() {
@@ -12506,6 +12507,17 @@ class Message {
         newMsg.data = this.data ? this.data.copy() : undefined;
         if (newMsg.data) this.uninitiatedDataCopies.push(newMsg.data);
         return newMsg;
+    }
+    setMetadataOn(msg) {
+        msg.externalUrl = this.externalUrl ? this.externalUrl.copy() : null;
+        msg.depth = this.depth;
+        msg.conditionalMode = this.conditionalMode;
+        msg.authenticated = this.authenticated;
+        msg.internalPrivilege = this.internalPrivilege;
+        msg.user = this.user;
+        msg.name = this.name;
+        const traceparent = this.getHeader('traceparent');
+        if (traceparent) msg.setHeader('traceparent', traceparent);
     }
     hasData() {
         return !!this.data && !!this.data.data;
@@ -12764,6 +12776,8 @@ class Message {
         }
         const msgOut = Message.fromResponse(resp, this.tenant);
         msgOut.method = this.method;
+        msgOut.name = this.name;
+        this.setMetadataOn(msgOut);
         return msgOut;
     }
     async divertToSpec(spec, defaultMethod, effectiveUrl, inheritMethod, headers) {
@@ -12786,10 +12800,7 @@ class Message {
                 ...this._headers
             };
             msg.setStatus(this.status);
-            msg.internalPrivilege = this.internalPrivilege;
-            msg.depth = this.depth;
-            msg.authenticated = this.authenticated;
-            msg.user = this.user;
+            this.setMetadataOn(msg);
         });
         return msgs;
     }
@@ -41867,7 +41878,11 @@ class PipelineStep {
                     }
                 }
                 if (this.rename) {
-                    outMsg.name = resolvePathPatternWithUrl(this.rename, outMsg.url);
+                    let prename = '';
+                    if (this.rename.startsWith('.')) {
+                        prename = outMsg.name;
+                    }
+                    outMsg.name = prename + resolvePathPatternWithUrl(this.rename, outMsg.url, undefined, outMsg.name);
                 }
                 if (this.tryMode) {
                     outMsg.enterConditionalMode();
