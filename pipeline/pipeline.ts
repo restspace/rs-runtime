@@ -18,6 +18,9 @@ import { copyPipelineContext, PipelineContext } from "./pipelineContext.ts";
 import { handleOutgoingRequest } from "../handleRequest.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { jsonSplit } from "./jsonSplitSplitter.ts";
+import { limitConcurrency } from "../../rs-core/utility/limitConcurrency.ts";
+
+const DefaultConcurrencyLimit = 12;
 
 type PipelineElement = PipelineSpec | PipelineOperator | PipelineStep | PipelineMode | PipelineTransform;
 
@@ -318,7 +321,8 @@ function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, 
         callerMethod: callerMsg.method,
         callerLoggerArgs: callerMsg.loggerArgs(),
         external,
-        path: []
+        path: [],
+        concurrencyLimiter: limitConcurrency(DefaultConcurrencyLimit)
     } as PipelineContext;
     let stepIdx = 0;
     for (; stepIdx < pipeline.length; stepIdx++) {

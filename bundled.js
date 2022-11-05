@@ -34809,10 +34809,10 @@ const __default30 = {
     ],
     "adapterInterface": "IDataAdapter",
     "prePipeline": [
-        "$METHOD userFilter/$*"
+        "$METHOD userFilter/$P*"
     ],
     "postPipeline": [
-        "$METHOD userFilter/$*"
+        "$METHOD userFilter/$P*"
     ],
     "privateServices": {
         "userFilter": {

@@ -51,6 +51,9 @@ mockHandler.getJson("/test/list", [ "abc", "xyz" ]);
 mockHandler.getJson("/test/list-repeats", [ "abc", "abd", "abc" ]);
 mockHandler.getJson("/test/timing-list", [ 100, 80, 50 ]);
 mockHandler.getJson("/test/object", { val1: "aaa", val2: "bbb" });
+mockHandler.getStringDelay("/test/aaa-100ms", 100, "aaa result");
+mockHandler.getStringDelay("/test/bbb-75ms", 75, "bbb result");
+mockHandler.getStringDelay("/test/ccc-50ms", 50, "ccc result");
 
 function testMessage(url: string, method: MessageMethod) {
     const msg = new Message(url, 'pipeline', method, null)
@@ -393,6 +396,32 @@ Deno.test('nested split', async function () {
         "1": { x: { b: 234 }, y: { b: 234 } },
         length: 2
       });
+});
+
+Deno.test('parallel timing', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST'), [
+        [
+            "/test/aaa-100ms",
+            "/test/bbb-75ms",
+            "/test/ccc-50ms"
+        ]
+    ]);
+    // with unjoined parallel results, pipeline returns last result it received
+    const output = await msgOut.data?.asJson();
+    assertEquals(output, "aaa result");
+});
+
+Deno.test('limited concurrency', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST'), [
+        "concurrency 1",
+        [
+            "/test/aaa-100ms",
+            "/test/bbb-75ms",
+            "/test/ccc-50ms"
+        ]
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output, "ccc result");
 });
 
 // Deno.test('simple post', async function () {

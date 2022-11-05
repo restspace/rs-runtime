@@ -17,6 +17,11 @@ export class MockHandler {
         this.subhandlers[path] = (msg: Message) => Promise.resolve(msg.setData(response, "text/plain"));
     }
 
+    getStringDelay(path: string, delayMs: number, response: string) {
+        this.subhandlers[path] = (msg: Message) => 
+            new Promise(res => setTimeout(() => res(msg.setData(response, "text/plain")), delayMs));
+    }
+
     getJson(path: string, obj: unknown) {
         this.subhandlers[path] = (msg: Message) => Promise.resolve(msg.setDataJson(obj));
     }

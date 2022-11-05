@@ -1,4 +1,5 @@
 import { Url } from "rs-core/Url.ts";
+import { limitConcurrency } from "../../rs-core/utility/limitConcurrency.ts";
 import { PipelineContext } from "./pipelineContext.ts";
 
 export function pipelineInitializerIntoContext(step: string): Partial<PipelineContext> | null {
@@ -14,6 +15,12 @@ export function pipelineInitializerIntoContext(step: string): Partial<PipelineCo
         }
         case "trace": {
             return { trace: true, traceOutputs: {} };
+        }
+        case "concurrency": {
+            if (words.length < 2) return null;
+            const limit = parseInt(words[1]);
+            if (isNaN(limit)) return null;
+            return { concurrencyLimiter: limitConcurrency(limit) };
         }
         default: {
             return null;

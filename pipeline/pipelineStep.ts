@@ -61,7 +61,8 @@ export class PipelineStep {
 
             //const externality = context.external ? Source.External : Source.Internal;
             
-            return context.handler(msg);
+            // ensure we limit how many requests we are running simultaneously
+            return context.concurrencyLimiter(() => context.handler(msg));
         }
 
         const innerExecute = async () => {
