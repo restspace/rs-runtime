@@ -59,6 +59,10 @@ export class Tenant {
         const name = this.name === "main" ? '' : this.name;
         return this.domains[0] || (name + '.' + config.server.mainDomain);
     }
+
+    get isEmpty() {
+        return Object.keys(this.rawServicesConfig).length === 0;
+    }
     
     constructor(public name: string, public rawServicesConfig: IRawServicesConfig, public domains: string[]) {
         this.serviceFactory = new ServiceFactory(name);

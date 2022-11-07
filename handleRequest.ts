@@ -3,8 +3,13 @@ import { Source } from "rs-core/Source.ts";
 import { IServiceConfig, PrePost } from "rs-core/IServiceConfig.ts";
 import { config } from "./config.ts";
 import { IRawServicesConfig, Tenant } from "./tenant.ts";
+import { NodeResolveLoader } from "https://deno.land/x/nunjucks@3.2.3/src/node_loaders.js";
 
 const tenantLoads = {} as Record<string, Promise<void>>;
+
+const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+const tenantLoadTimeoutMs = 5000;
 
 const getTenant = async (requestTenant: string) => {
     const tenantLoad = tenantLoads[requestTenant];
@@ -13,10 +18,23 @@ const getTenant = async (requestTenant: string) => {
     }
 
     if (!config.tenants[requestTenant]) {
+        // the resolve function which resolves the promise on which any subsequent getTenant calls
+        // will block until the first getTenant call for a tenant succeeds, to ensure only the first
+        // getTenant actually does the tenant loading.
+        let resolveLoad = null as (() => void) | null;
+        let timeoutHandle = null as number | null;
         try {
             config.logger.debug(`Start -- load tenant ${requestTenant}`, requestTenant);
-            let resolveLoad = null as (() => void) | null ;
             tenantLoads[requestTenant] = new Promise<void>(resolve => resolveLoad = resolve); // block reentry
+            timeoutHandle = setTimeout(() => {
+                if (resolveLoad) {
+                    resolveLoad();
+                }
+                config.logger.error(`Timeout loading services for tenant ${requestTenant}`, requestTenant);
+                config.tenants[requestTenant] = new Tenant(requestTenant, { services: {} }, []); // empty tenant
+                timeoutHandle = null;
+            }, tenantLoadTimeoutMs);
+
             // get the spec for the adapter to access the store where we can find services.json(s)
             const tenantAdapter = await config.modules.getConfigAdapter(requestTenant);
             const servicesRes = await tenantAdapter.read('services.json');
@@ -30,11 +48,13 @@ const getTenant = async (requestTenant: string) => {
             config.tenants[requestTenant] = new Tenant(requestTenant, servicesConfig, tenantDomains);
             await config.tenants[requestTenant].init();
             config.logger.info(`Loaded tenant ${requestTenant} successfully`, requestTenant);
-            if (resolveLoad) resolveLoad(); // allow reentry
         } catch (err) {
             config.logger.error(`Failed to load services for tenant ${requestTenant}: ${err}`, requestTenant);
             config.tenants[requestTenant] = new Tenant(requestTenant, { services: {} }, []); // empty tenant
             throw err;
+        } finally {
+            if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+            if (resolveLoad) resolveLoad(); // allow reentry
         }
     }
 
@@ -96,15 +116,20 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         }
 
         let msgOut: Message;
+        let tenant: Tenant;
         if (tenantName !== null) {
-            const tenant = await getTenant(tenantName || 'main');
+            tenant = await getTenant(tenantName || 'main');
+            if (tenant.isEmpty) tenantName = null;
+        }
+
+        if (tenantName !== null) {
             config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msg.tenant = tenantName;
-            const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
+            const messageFunction = await tenant!.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
-            msgOut.callUp();
             config.logger.info(`${" ".repeat(msgOut.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut = await config.requestExternal(msg);

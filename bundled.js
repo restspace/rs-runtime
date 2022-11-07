@@ -12772,7 +12772,7 @@ class Message {
             resp = await fetch(this.toRequest());
         } catch (err) {
             console.error(`Request failed: ${err}`);
-            return this.setStatus(500, 'request fail');
+            return this.setStatus(500, `request fail: ${err}`);
         }
         const msgOut = Message.fromResponse(resp, this.tenant);
         msgOut.method = this.method;
@@ -22414,6 +22414,55 @@ class PipelineMode {
         return newMode;
     }
 }
+function limitConcurrency(concurrency) {
+    if (!((Number.isInteger(concurrency) || concurrency === Number.POSITIVE_INFINITY) && concurrency >= 0)) {
+        throw new TypeError('Expected `concurrency` to be a number from 0 and up');
+    }
+    if (concurrency === 0) concurrency = Number.POSITIVE_INFINITY;
+    const queue = new ArrayQueue();
+    let activeCount = 0;
+    const next = ()=>{
+        activeCount--;
+        if (queue.length > 0) {
+            queue.dequeue()();
+        }
+    };
+    const run = async (fn, resolve, args)=>{
+        activeCount++;
+        const result = (async ()=>fn(...args))();
+        resolve(result);
+        try {
+            await result;
+        } catch  {}
+        next();
+    };
+    const enqueue = (fn, resolve, args)=>{
+        queue.enqueue(run.bind(undefined, fn, resolve, args));
+        (async ()=>{
+            await Promise.resolve();
+            if (activeCount < concurrency && queue.length > 0) {
+                queue.dequeue()();
+            }
+        })();
+    };
+    const generator = (fn, ...args)=>new Promise((resolve)=>{
+            enqueue(fn, resolve, args);
+        });
+    Object.defineProperties(generator, {
+        activeCount: {
+            get: ()=>activeCount
+        },
+        pendingCount: {
+            get: ()=>queue.length
+        },
+        clearQueue: {
+            value: ()=>{
+                while(queue.length)queue.pop();
+            }
+        }
+    });
+    return generator;
+}
 function pipelineInitializerIntoContext(step) {
     const words = step.split(' ').map((word)=>word.trim());
     switch(words[0]){
@@ -22433,6 +22482,15 @@ function pipelineInitializerIntoContext(step) {
                 return {
                     trace: true,
                     traceOutputs: {}
+                };
+            }
+        case "concurrency":
+            {
+                if (words.length < 2) return null;
+                const limit = parseInt(words[1]);
+                if (isNaN(limit)) return null;
+                return {
+                    concurrencyLimiter: limitConcurrency(limit)
                 };
             }
         default:
@@ -41050,7 +41108,6 @@ class ServiceWrapper {
     external;
     service;
 }
-var PipelineElementType;
 class NunjucksTemplateAdapter {
     env;
     constructor(context){
@@ -41851,7 +41908,7 @@ class PipelineStep {
                 Object.assign(msg.headers, context.targetHeaders);
             }
             msg.startSpan();
-            return context.handler(msg);
+            return context.concurrencyLimiter(()=>context.handler(msg));
         };
         const innerExecute = async ()=>{
             try {
@@ -42043,6 +42100,7 @@ const openApi = async (msg, context)=>{
     return msg.setDataJson(spec);
 };
 service12.getPath('openApi', openApi);
+var PipelineElementType;
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
     PipelineElementType[PipelineElementType["serializer"] = 1] = "serializer";
@@ -42344,7 +42402,8 @@ function createInitialContext(pipeline, handler, callerMsg, contextUrl, external
         callerMethod: callerMsg.method,
         callerLoggerArgs: callerMsg.loggerArgs(),
         external,
-        path: []
+        path: [],
+        concurrencyLimiter: limitConcurrency(12)
     };
     let stepIdx = 0;
     for(; stepIdx < pipeline.length; stepIdx++){

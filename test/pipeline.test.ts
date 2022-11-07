@@ -102,6 +102,29 @@ Deno.test('complex parallel json 2', async function () {
     assertStrictEquals(output.a, 1);
     assertStrictEquals(output.abc.val1, 'aaa');
 });
+Deno.test('transfer files', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson({ a: 1, b: 2}), [
+            "GET /test/list",
+            "GET /test/${[]} :$*",
+            {
+                "value": "$this",
+                "name": "pathPattern('$N*')"
+            },
+            "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    console.log('output ' + JSON.stringify(output));
+    assertEquals(output, {
+        "test/abc": {
+            name: "test/abc",
+            value: "abc result"
+        },
+        "test/xyz": {
+            name: "test/xyz",
+            value: "xyz result"
+        }
+    });
+});
 Deno.test('expansion', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [
         [
