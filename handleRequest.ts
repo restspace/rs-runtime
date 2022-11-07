@@ -118,8 +118,12 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         let msgOut: Message;
         let tenant: Tenant;
         if (tenantName !== null) {
-            tenant = await getTenant(tenantName || 'main');
-            if (tenant.isEmpty) tenantName = null;
+            try {
+                tenant = await getTenant(tenantName || 'main');
+                if (tenant.isEmpty) tenantName = null;
+            } catch {
+                tenantName = null;
+            }
         }
 
         if (tenantName !== null) {

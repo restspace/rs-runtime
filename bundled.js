@@ -41596,6 +41596,9 @@ class Tenant {
         const name = this.name === "main" ? '' : this.name;
         return this.domains[0] || name + '.' + config.server.mainDomain;
     }
+    get isEmpty() {
+        return Object.keys(this.rawServicesConfig).length === 0;
+    }
     constructor(name, rawServicesConfig, domains){
         this.name = name;
         this.rawServicesConfig = rawServicesConfig;
@@ -41728,16 +41731,28 @@ class Tenant {
     domains;
 }
 const tenantLoads = {};
+const tenantLoadTimeoutMs = 5000;
 const getTenant = async (requestTenant)=>{
     const tenantLoad = tenantLoads[requestTenant];
     if (tenantLoad !== undefined) {
         await tenantLoads[requestTenant];
     }
     if (!config.tenants[requestTenant]) {
+        let resolveLoad = null;
+        let timeoutHandle = null;
         try {
             config.logger.debug(`Start -- load tenant ${requestTenant}`, requestTenant);
-            let resolveLoad = null;
             tenantLoads[requestTenant] = new Promise((resolve)=>resolveLoad = resolve);
+            timeoutHandle = setTimeout(()=>{
+                if (resolveLoad) {
+                    resolveLoad();
+                }
+                config.logger.error(`Timeout loading services for tenant ${requestTenant}`, requestTenant);
+                config.tenants[requestTenant] = new Tenant(requestTenant, {
+                    services: {}
+                }, []);
+                timeoutHandle = null;
+            }, tenantLoadTimeoutMs);
             const tenantAdapter = await config.modules.getConfigAdapter(requestTenant);
             const servicesRes = await tenantAdapter.read('services.json');
             if (!servicesRes.ok) {
@@ -41748,13 +41763,15 @@ const getTenant = async (requestTenant)=>{
             config.tenants[requestTenant] = new Tenant(requestTenant, servicesConfig, tenantDomains);
             await config.tenants[requestTenant].init();
             config.logger.info(`Loaded tenant ${requestTenant} successfully`, requestTenant);
-            if (resolveLoad) resolveLoad();
         } catch (err) {
             config.logger.error(`Failed to load services for tenant ${requestTenant}: ${err}`, requestTenant);
             config.tenants[requestTenant] = new Tenant(requestTenant, {
                 services: {}
             }, []);
             throw err;
+        } finally{
+            if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+            if (resolveLoad) resolveLoad();
         }
     }
     return config.tenants[requestTenant];
@@ -42493,15 +42510,23 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
             tenantName = tenantFromHostname(msg.url.domain);
         }
         let msgOut;
+        let tenant;
         if (tenantName !== null) {
-            const tenant = await getTenant(tenantName || 'main');
+            try {
+                tenant = await getTenant(tenantName || 'main');
+                if (tenant.isEmpty) tenantName = null;
+            } catch  {
+                tenantName = null;
+            }
+        }
+        if (tenantName !== null) {
             config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msg.tenant = tenantName;
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
-            msgOut.callUp();
             config.logger.info(`${" ".repeat(msgOut.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut = await config.requestExternal(msg);
