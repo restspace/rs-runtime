@@ -86,11 +86,11 @@ export const handleIncomingRequest = async (msg: Message) => {
         const tenant = await getTenant(tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
-        config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg.callDown());
         msgOut.depth = msg.depth;
-        config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         msgOut.callUp();
         if (!msgOut.ok) {
             config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
@@ -136,8 +136,26 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
-            msgOut = await config.requestExternal(msg);
-            config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            let resp: Response;
+
+            try {
+                resp = await fetch(msg.toRequest());
+            } catch (err) {
+                config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                msg.setStatus(500, `External request fail: ${err}`);
+                return msg;
+            }
+            const msgOut = Message.fromResponse(resp, msg.tenant);
+            msgOut.method = msg.method; // slightly pointless
+            msgOut.name = msg.name;
+            msg.setMetadataOn(msgOut);
+            if (msgOut.ok) {
+                config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            } else {
+                const body = msg.hasData() ? await msg.data!.asString() : 'none';
+                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msg.status} body ${body}`, ...msgOut.loggerArgs());
+            }
+            return msgOut;
         }
         
         if (!msgOut.ok) {

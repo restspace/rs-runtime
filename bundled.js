@@ -12756,8 +12756,10 @@ class Message {
         const traceparent = this.getHeader('traceparent');
         if (traceparent) {
             const parts = traceparent.split('-');
-            traceId = parts[1];
-            spanId = parts[2];
+            if (parts.length >= 3) {
+                traceId = parts[1];
+                spanId = parts[2];
+            }
         }
         return [
             this.tenant,
@@ -12771,8 +12773,8 @@ class Message {
         try {
             resp = await fetch(this.toRequest());
         } catch (err) {
-            console.error(`Request failed: ${err}`);
-            return this.setStatus(500, `request fail: ${err}`);
+            console.error(`External request failed: ${err}`);
+            return this.setStatus(500, `External request fail: ${err}`);
         }
         const msgOut = Message.fromResponse(resp, this.tenant);
         msgOut.method = this.method;
@@ -33198,6 +33200,7 @@ class AWS4ProxyAdapter {
         if (this.sessionToken) msg.setHeader("X-Amz-Security-Token", this.sessionToken);
         const req = await this.signer.sign(this.props.service, msg.toRequest());
         const msgOut = Message.fromRequest(req, msg.tenant);
+        msg.setMetadataOn(msgOut);
         return msgOut;
     }
     context;
@@ -40089,6 +40092,45 @@ service11.getPath("tail", async (msg, { adapter , logger  })=>{
     const lines = await adapter.tail(nLines);
     return msg.setData(lines.join('\n'), 'text/plain');
 });
+service11.getPath("json", async (msg, { adapter , logger  })=>{
+    logger.handlers[1].flush();
+    const nLines = parseInt(msg.url.servicePathElements?.[0]);
+    if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
+    const lines = await adapter.tail(nLines);
+    const json = lines.reduce((prev, line)=>{
+        const lineParts = line.split(' ').filter((p)=>!!p);
+        const lineJson = {
+            level: lineParts[0],
+            timestamp: lineParts[1],
+            request: lineParts[2],
+            span: lineParts[3],
+            user: lineParts[5],
+            message: lineParts.slice(6).join(' ')
+        };
+        const lineEntry = {
+            timestamp: lineJson.timestamp,
+            level: lineJson.level,
+            message: lineJson.message
+        };
+        if (prev[lineJson.request]) {
+            if (prev[lineJson.request][lineJson.span]) {
+                prev[lineJson.request][lineJson.span].push(lineEntry);
+            } else {
+                prev[lineJson.request][lineJson.span] = [
+                    lineEntry
+                ];
+            }
+        } else {
+            prev[lineJson.request] = {
+                [lineJson.span]: [
+                    lineEntry
+                ]
+            };
+        }
+        return prev;
+    }, {});
+    return msg.setDataJson(json);
+});
 service11.getPath("search", async (msg, { adapter , logger  })=>{
     logger.handlers[1].flush();
     const nLines = parseInt(msg.url.servicePathElements?.[0]);
@@ -41597,7 +41639,7 @@ class Tenant {
         return this.domains[0] || name + '.' + config.server.mainDomain;
     }
     get isEmpty() {
-        return Object.keys(this.rawServicesConfig).length === 0;
+        return Object.keys(this.rawServicesConfig.services).length === 0;
     }
     constructor(name, rawServicesConfig, domains){
         this.name = name;
@@ -42484,11 +42526,11 @@ const handleIncomingRequest = async (msg)=>{
         const tenant = await getTenant(tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
-        config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg.callDown());
         msgOut.depth = msg.depth;
-        config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         msgOut.callUp();
         if (!msgOut.ok) {
             config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
@@ -42529,15 +42571,32 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
             msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
-            msgOut = await config.requestExternal(msg);
-            config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            let resp;
+            try {
+                resp = await fetch(msg.toRequest());
+            } catch (err) {
+                config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                msg.setStatus(500, `External request fail: ${err}`);
+                return msg;
+            }
+            const msgOut1 = Message.fromResponse(resp, msg.tenant);
+            msgOut1.method = msg.method;
+            msgOut1.name = msg.name;
+            msg.setMetadataOn(msgOut1);
+            if (msgOut1.ok) {
+                config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut1.loggerArgs());
+            } else {
+                const body = msg.hasData() ? await msg.data.asString() : 'none';
+                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msg.status} body ${body}`, ...msgOut1.loggerArgs());
+            }
+            return msgOut1;
         }
         if (!msgOut.ok) {
             config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
-    } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
+    } catch (err1) {
+        config.logger.warning(`request processing failed: ${err1}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS' && tenantName ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
     }
 };

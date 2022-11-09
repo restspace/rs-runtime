@@ -75,7 +75,7 @@ export default class AWS4ProxyAdapter implements IProxyAdapter {
     const req = await this.signer!.sign(this.props.service, msg.toRequest());
     const msgOut = Message.fromRequest(req, msg.tenant);
     //if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
-
+    msg.setMetadataOn(msgOut);
     return msgOut;
   }
 }

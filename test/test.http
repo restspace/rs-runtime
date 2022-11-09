@@ -1,4 +1,4 @@
-@cookie = rs-auth=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImphbWVzZWpAb3V0bG9vay5jb20iLCJyb2xlcyI6IlUgQSBFIiwiZXhwIjoxNjY3NzU4OTQ2fQ.eSuqz39gTJdmEEH1Xts5GyFqsks-VhQ8910ALw_GxGnMbeYfzPa9OEvu9JMR5ZLs4NvTU-I-IJB_GGpfICccig
+@cookie = rs-auth=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImphbWVzZWpAb3V0bG9vay5jb20iLCJyb2xlcyI6IlUgQSBFIiwiZXhwIjoxNjY3OTYxNzEzfQ.H6A_fzYzptwPWKmFwXKk0VxBBmqaa7DmfcB7CTBEo0cIBeYELhM78H4rnjHTrVZ6c-GFTlMaZHUuECT8IeUyGg
 
 GET http://localhost:3100/rs-data/?$list=nodirs,recursive
 
@@ -223,7 +223,7 @@ Content-Type: text/csv
 ,P1,P-1,Paint,Wall Paint,Pure Brilliant White Matt Finish,S 0500-N,Pure Brilliant White,Matt finish ,,,Dulux,Contractor to quote,https://www.dulux.co.uk/en/colour-details/pure-brilliant-white,,,,,,,,,,,,,,,,,
 
 ###
-GET https://restspace.local:3131/log/tail/100
+GET https://restspace.local:3131/log/json/100
 
 ###
 POST https://ademchic2.restspace.io/backend/itemsById
@@ -252,7 +252,8 @@ Cookie: {{cookie}}
 POST https://ademchic2.restspace.io/query/all
 
 ###
-GET https://ademchic2.restspace.io/log/search/10/data
+GET https://ademchic2.restspace.io/log/json/30
+Cookie: {{cookie}}
 
 ###
 POST https://ademchic2.restspace.io/elastic/catalogue/_search
@@ -291,14 +292,6 @@ Cookie: {{cookie}}
 }
 
 ###
-POST https://ademchic2.restspace.io/backend/transfer?from=json/instance/&to=ademchic3.restspace.io/json/instance/
+POST https://ademchic2.restspace.io/backend/transfer?from=css/&to=ademchic3.restspace.io/css/
 Content-Type: application/json
 Cookie: {{cookie}}
-
-###
-PUT https://ademchic3.restspace.io/json/instance/groups/test
-Content-Type: application/json
-
-{
-	"test": 1
-}

@@ -61,7 +61,7 @@ export class Tenant {
     }
 
     get isEmpty() {
-        return Object.keys(this.rawServicesConfig).length === 0;
+        return Object.keys(this.rawServicesConfig.services).length === 0;
     }
     
     constructor(public name: string, public rawServicesConfig: IRawServicesConfig, public domains: string[]) {
