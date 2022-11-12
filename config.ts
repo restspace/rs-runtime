@@ -80,7 +80,7 @@ export const config = {
             }
         }
     }),
-    requestExternal: (msg: Message) => msg.requestExternal()
+    requestExternal: null as null | ((msg: Message) => Promise<Message>)
 }
 
 export const setupLogging = async (level: LogLevel) => {

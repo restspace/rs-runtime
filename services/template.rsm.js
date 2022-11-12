@@ -9,6 +9,7 @@ export default {
         "type": "object",
         "properties": {
             "outputMime": { "type": "string" },
+            "metadataProperty": { "type": "string" },
             "store": {
                 "type": "object",
                 "description": "Configuration for the template store",
@@ -23,6 +24,9 @@ export default {
             }
         },
         "required": [ "outputMime", "store" ]
+    },
+    "defaults": {
+        "metadataProperty": "$message"
     },
     "postPipeline": [ "if (method !== 'POST') $METHOD store/$*" ],
     "privateServices": {

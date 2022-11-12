@@ -1,10 +1,10 @@
-import { Message, MessageMethod } from "../../rs-core/Message.ts";
-import { Url } from "../../rs-core/Url.ts";
+import { Message, MessageMethod } from "rs-core/Message.ts";
+import { Url } from "rs-core/Url.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
 import { assert } from "std/testing/asserts.ts";
 import { config } from "../config.ts";
-import { AdapterContext } from "../../rs-core/ServiceContext.ts";
-import { IAdapter } from "../../rs-core/adapter/IAdapter.ts";
+import { AdapterContext, nullState } from "rs-core/ServiceContext.ts";
+import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 
 export const utilsForHost = (host: string) => ({
 	testMessage: (url: string, method: MessageMethod, token?: string) => {
@@ -43,7 +43,8 @@ export const makeAdapterContext = (tenant: string, getAdapter?: <T extends IAdap
 		makeRequest: msg => msg.requestExternal(),
 		runPipeline: (msg) => Promise.resolve(msg),
 		logger: config.logger,
-		getAdapter: getAdapter || (<T extends IAdapter>(_url: string, _config: unknown) => Promise.resolve({} as T))
+		getAdapter: getAdapter || (<T extends IAdapter>(_url: string, _config: unknown) => Promise.resolve({} as T)),
+		state: nullState
 	} as AdapterContext;
 }
 

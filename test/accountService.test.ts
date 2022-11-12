@@ -17,7 +17,7 @@ testServicesConfig['account'] = JSON.parse(`{
             "source": "./services/account.rsm.json",
             "access": { "readRoles": "all", "writeRoles": "all" },
             "userUrlPattern": "/user/${'${email}'}",
-            "emailSendUrlPattern": "http://email.com/${'${email}'}",
+            "emailSendUrlPattern": "https://email.com/${'${email}'}",
             "passwordReset": {
                 "tokenExpiryMins": 30,
                 "returnPageUrl": "/reset",

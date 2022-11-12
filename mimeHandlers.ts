@@ -18,7 +18,6 @@ const generatePaths = async function* (msg: Message, requestInternal?: (req: Mes
             const msgOut = await requestInternal(msg.copy().setUrl(newUrl).setData(null, ''));
             const dirList = ((await msgOut.data!.asJson()) || []) as DirDescriptor[];
             for (const resDir of dirList) {
-                resDir.paths = resDir.paths.map(([ p, ...rest ]) => [ subdir + p, ...rest ]);
                 yield [ msgOut, { ...resDir } ];
             }
         }
@@ -28,7 +27,11 @@ const generatePaths = async function* (msg: Message, requestInternal?: (req: Mes
 const dirToItems = async (msg: Message, dir: DirDescriptor, requestInternal: (req: Message) => Promise<Message>) => {
     const fetchAllMessages = dir.paths
         .filter(([ path ]) => !path.endsWith('/'))
-        .map(([ path ]) => msg.copy().setUrl(msg.url.follow(last(path.split('/')))));
+        .map(([ path ]) => {
+            const url = msg.url.copy();
+            url.servicePath = dir.path + path;
+            return msg.copy().setUrl(url);
+        });
     const fullList: Record<string, unknown> = {};
     await Promise.all(fetchAllMessages
         .map(msg => requestInternal(msg)
@@ -68,6 +71,7 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
             pathsOnly = true;
         }
         let results = [] as any[];
+        const basePath = msg.url.servicePath;
         for await (const [ resMsg, resDir ] of generatePaths(msg, isRecursive ? requestInternal : undefined)) {
             if (!resDir) continue;
             if (!allFiles) {
@@ -83,7 +87,8 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
                 result = await dirToItems(resMsg, resDir, requestInternal);
                 results.push(result);
             } else if (pathsOnly) {
-                results = results.concat(resDir.paths);
+                const relPath = resDir.path.substring(basePath.length);
+                results = results.concat(resDir.paths.map(([p, ...rest]) => [relPath + p, ...rest]));
             } else {
                 results.push(result);
             }
@@ -96,12 +101,6 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
             } else if (!fileInfo) {
                 // list of lists
                 results = results.flatMap(i => i);
-            }
-            if (details) {
-                results.forEach((r: DirDescriptor) => r.paths = r.paths.map(([ p, ...rest ]) => [
-                    final(p),
-                    ...rest
-                ]));
             }
         } else {
             if (!pathsOnly) {

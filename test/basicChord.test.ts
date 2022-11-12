@@ -1,4 +1,4 @@
-import { assert, assertStrictEquals } from "std/testing/asserts.ts";
+import { assert, assertEquals, assertStrictEquals } from "std/testing/asserts.ts";
 import { Message, MessageMethod } from "rs-core/Message.ts";
 import { config } from "../config.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
@@ -169,7 +169,6 @@ async function logIn(email: string) {
     return token;
 }
 
-/*
 Deno.test('writes and reads file', async () => {
     let msg = testMessage("/files/abc.json", "PUT")
         .setData('{ "thing": "def" }', 'application/json');
@@ -193,13 +192,79 @@ Deno.test('writes and reads file', async () => {
     msgOut = await handleIncomingRequest(msg);
     assert(msgOut.ok, "failed to list dir");
     const list = msgOut.data ? await msgOut.data.asJson() as string[] : null;
+    console.log(list);
     assertStrictEquals(list?.[0], "abc.json");
     assertStrictEquals(msgOut.data?.mimeType, "inode/directory+json", "wrong mime type directory");
 
     await deleteUrl("/files/abc.json");
 });
 
-*/
+Deno.test('file dirs', async () => {
+    let msg = testMessage("/files/dira/dirb/xxx.json", "PUT")
+        .setData('{ "thing": "xxx" }', 'application/json');
+    let msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, 'failed to write file xxx');
+
+    msg = testMessage("/files/dirc/yyy.json", "PUT")
+        .setData('{ "thing": "yyy" }', 'application/json');
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, 'failed to write file yyy');
+
+    msg = testMessage("/files/dira/dirb/xxx.json", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to read file");
+    const str = msgOut.data ? await msgOut.data.asString() : '';
+    assertStrictEquals(msgOut.data?.mimeType, 'application/json');
+    assertStrictEquals(str, '{ "thing": "xxx" }', 'reads wrong body');
+
+    msg = testMessage("/files/dira/dirb/?$list=details", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to list dir $list=details");
+    const listDetails = msgOut.data ? await msgOut.data.asJson() as DirDescriptor : null;
+    assertStrictEquals(listDetails?.paths[0][0], "xxx.json");
+
+    msg = testMessage("/files/?$list=details,recursive", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to list dir");
+    const list = msgOut.data ? await msgOut.data.asJson() : null;
+    assertEquals(list, [
+        {
+          path: "/",
+          paths: [ [ "dira/" ], [ "dirc/" ] ],
+          spec: { pattern: "store", storeMimeTypes: [], createDirectory: true, createFiles: true }
+        },
+        {
+          path: "dira/",
+          paths: [ [ "dirb/" ] ],
+          spec: { pattern: "store", storeMimeTypes: [], createDirectory: true, createFiles: true }
+        },
+        {
+          path: "dira/dirb/",
+          paths: [ [ "xxx.json" ] ],
+          spec: { pattern: "store", storeMimeTypes: [], createDirectory: true, createFiles: true }
+        },
+        {
+          path: "dirc/",
+          paths: [ [ "yyy.json" ] ],
+          spec: { pattern: "store", storeMimeTypes: [], createDirectory: true, createFiles: true }
+        }
+      ]);
+
+    msg = testMessage("/files/dira/?$list=recursive", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to list dir");
+    const sublist = msgOut.data ? await msgOut.data.asJson() as string[] : null;
+    assertEquals(sublist, [ "dirb/", "dirb/xxx.json" ]);
+
+    msg = testMessage("/files/?$list=items,recursive", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed to list dir");
+    const items = msgOut.data ? await msgOut.data.asJson() : null;
+    assertEquals(items, { "dira/dirb/xxx.json": { thing: "xxx" }, "dirc/yyy.json": { thing: "yyy" } });
+
+    await deleteUrl("/files/dira/dirb/xxx.json");
+    await deleteUrl("/files/dirc/yyy.json");
+});
 
 Deno.test('writes and reads file parentIfMissing', async () => {
     let msg = testMessage("/files2/abc", "PUT")
@@ -307,8 +372,6 @@ Deno.test('writes and reads data', async () => {
     // should be able to delete a dir with just a .schema.json in it
     await deleteUrl("/data/set1/");
 });
-
-/*
 
 Deno.test('writes and reads dataset', async () => {
     const schema = {
@@ -460,5 +523,3 @@ Deno.test("authenticated access", async () => {
     await deleteUrl("/user-bypass/jamesej2@outlook.com.json", tokenEditor);
     await deleteUrl("/user-bypass/jamesej3@outlook.com.json", tokenUser);
 });
-
-*/

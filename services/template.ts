@@ -7,12 +7,20 @@ import { Url } from "rs-core/Url.ts";
 
 interface ITemplateConfig extends IServiceConfig {
 	outputMime: string;
+	metadataProperty?: string;
 }
 
 const service = new Service<ITemplateAdapter, ITemplateConfig>();
 
 service.post(async (msg: Message, context: ServiceContext<ITemplateAdapter>, config: ITemplateConfig) => {
-	const data = (await msg.data?.asJson()) ?? {};
+	const data: Record<string, unknown> = (await msg.data?.asJson()) ?? {};
+	if (config.metadataProperty) {
+		data[config.metadataProperty] = {
+			headers: Object.fromEntries(Object.entries(msg.headers).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])),
+			schema: msg.schema,
+			method: msg.method
+		}
+	}
 	const reqTemplate = msg.copy().setMethod("GET");
 	const msgTemplate = await context.makeRequest(reqTemplate);
 	if (!msgTemplate.ok) return msgTemplate;

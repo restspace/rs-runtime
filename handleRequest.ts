@@ -138,14 +138,25 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             let resp: Response;
 
-            try {
-                resp = await fetch(msg.toRequest());
-            } catch (err) {
-                config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
-                msg.setStatus(500, `External request fail: ${err}`);
-                return msg;
+            let msgOut: Message;
+            if (config.requestExternal) {
+                try {
+                    msgOut = await config.requestExternal(msg);
+                } catch (err) {
+                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                    msg.setStatus(500, `External request fail: ${err}`);
+                    return msg;
+                }
+            } else {
+                try {
+                    resp = await fetch(msg.toRequest());
+                } catch (err) {
+                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                    msg.setStatus(500, `External request fail: ${err}`);
+                    return msg;
+                }
+                msgOut = Message.fromResponse(resp, msg.tenant);
             }
-            const msgOut = Message.fromResponse(resp, msg.tenant);
             msgOut.method = msg.method; // slightly pointless
             msgOut.name = msg.name;
             msg.setMetadataOn(msgOut);
