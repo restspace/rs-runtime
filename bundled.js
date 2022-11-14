@@ -12381,6 +12381,14 @@ class Message {
             ]));
         this._headers = valLowerCase;
     }
+    get schema() {
+        const contentType = this.getHeader('content-type');
+        if (contentType.includes("schema=")) {
+            return upTo(after(contentType, 'schema="'), '"');
+        } else {
+            return '';
+        }
+    }
     get data() {
         return this._data;
     }
@@ -23283,10 +23291,6 @@ const generatePaths = async function*(msg, requestInternal) {
             const msgOut = await requestInternal(msg.copy().setUrl(newUrl).setData(null, ''));
             const dirList = await msgOut.data.asJson() || [];
             for (const resDir of dirList){
-                resDir.paths = resDir.paths.map(([p, ...rest])=>[
-                        subdir + p,
-                        ...rest
-                    ]);
                 yield [
                     msgOut,
                     {
@@ -23298,7 +23302,11 @@ const generatePaths = async function*(msg, requestInternal) {
     }
 };
 const dirToItems = async (msg, dir, requestInternal)=>{
-    const fetchAllMessages = dir.paths.filter(([path])=>!path.endsWith('/')).map(([path])=>msg.copy().setUrl(msg.url.follow(last(path.split('/')))));
+    const fetchAllMessages = dir.paths.filter(([path])=>!path.endsWith('/')).map(([path])=>{
+        const url = msg.url.copy();
+        url.servicePath = dir.path + path;
+        return msg.copy().setUrl(url);
+    });
     const fullList = {};
     await Promise.all(fetchAllMessages.map((msg)=>requestInternal(msg).then((msg)=>msg.data.asJson().then((data)=>fullList[slashTrimLeft(dir.path) + msg.url.resourceName] = data))));
     return fullList;
@@ -23331,6 +23339,8 @@ const mimeHandlers = {
             pathsOnly = true;
         }
         let results = [];
+        let basePath = msg.url.servicePath;
+        if (basePath === '/') basePath = '';
         for await (const [resMsg, resDir] of generatePaths(msg, isRecursive ? requestInternal : undefined)){
             if (!resDir) continue;
             if (!allFiles) {
@@ -23344,7 +23354,11 @@ const mimeHandlers = {
                 result = await dirToItems(resMsg, resDir, requestInternal);
                 results.push(result);
             } else if (pathsOnly) {
-                results = results.concat(resDir.paths);
+                const relPath = (resDir.path === '/' ? '' : resDir.path).substring(basePath.length);
+                results = results.concat(resDir.paths.map(([p, ...rest])=>[
+                        relPath + p,
+                        ...rest
+                    ]));
             } else {
                 results.push(result);
             }
@@ -23354,12 +23368,6 @@ const mimeHandlers = {
                 results = Object.assign(results[0], ...results.slice(1));
             } else if (!fileInfo) {
                 results = results.flatMap((i)=>i);
-            }
-            if (details) {
-                results.forEach((r)=>r.paths = r.paths.map(([p, ...rest])=>[
-                            __final(p),
-                            ...rest
-                        ]));
             }
         } else {
             if (!pathsOnly) {
@@ -34896,6 +34904,16 @@ const __default31 = {
 const service5 = new Service();
 service5.post(async (msg, context, config)=>{
     const data = await msg.data?.asJson() ?? {};
+    if (config.metadataProperty) {
+        data[config.metadataProperty] = {
+            headers: Object.fromEntries(Object.entries(msg.headers).map(([k, v])=>[
+                    k,
+                    Array.isArray(v) ? v[0] : v
+                ])),
+            schema: msg.schema,
+            method: msg.method
+        };
+    }
     const reqTemplate = msg.copy().setMethod("GET");
     const msgTemplate = await context.makeRequest(reqTemplate);
     if (!msgTemplate.ok) return msgTemplate;
@@ -34918,6 +34936,9 @@ const __default32 = {
         "type": "object",
         "properties": {
             "outputMime": {
+                "type": "string"
+            },
+            "metadataProperty": {
                 "type": "string"
             },
             "store": {
@@ -34954,6 +34975,9 @@ const __default32 = {
             "outputMime",
             "store"
         ]
+    },
+    "defaults": {
+        "metadataProperty": "$message"
     },
     "postPipeline": [
         "if (method !== 'POST') $METHOD store/$*"
@@ -41599,7 +41623,7 @@ const config = {
             }
         }
     }),
-    requestExternal: (msg)=>msg.requestExternal()
+    requestExternal: null
 };
 const setupLogging = async (level)=>{
     await setup1({
@@ -42572,14 +42596,25 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             let resp;
-            try {
-                resp = await fetch(msg.toRequest());
-            } catch (err) {
-                config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
-                msg.setStatus(500, `External request fail: ${err}`);
-                return msg;
+            let msgOut1;
+            if (config.requestExternal) {
+                try {
+                    msgOut1 = await config.requestExternal(msg);
+                } catch (err) {
+                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                    msg.setStatus(500, `External request fail: ${err}`);
+                    return msg;
+                }
+            } else {
+                try {
+                    resp = await fetch(msg.toRequest());
+                } catch (err1) {
+                    config.logger.error(`External request failed: ${err1}`, ...msg.loggerArgs());
+                    msg.setStatus(500, `External request fail: ${err1}`);
+                    return msg;
+                }
+                msgOut1 = Message.fromResponse(resp, msg.tenant);
             }
-            const msgOut1 = Message.fromResponse(resp, msg.tenant);
             msgOut1.method = msg.method;
             msgOut1.name = msg.name;
             msg.setMetadataOn(msgOut1);
@@ -42595,8 +42630,8 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
             config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
-    } catch (err1) {
-        config.logger.warning(`request processing failed: ${err1}`, ...msg.loggerArgs());
+    } catch (err2) {
+        config.logger.warning(`request processing failed: ${err2}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS' && tenantName ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
     }
 };

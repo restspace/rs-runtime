@@ -1,7 +1,7 @@
 import { Message } from "rs-core/Message.ts";
 import { Url } from "rs-core/Url.ts";
 import { DirDescriptor } from "rs-core/DirDescriptor.ts";
-import { getProp, last, slashTrimLeft } from "rs-core/utility/utility.ts";
+import { getProp, last, slashTrim, slashTrimLeft } from "rs-core/utility/utility.ts";
 import { makeKeywordArgs } from "https://deno.land/x/nunjucks@3.2.3/src/runtime.js";
 
 type MimeHandler = (msg: Message, url: Url, requestInternal: (req: Message) => Promise<Message>) => Promise<Message>;
@@ -71,7 +71,8 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
             pathsOnly = true;
         }
         let results = [] as any[];
-        const basePath = msg.url.servicePath;
+        let basePath = msg.url.servicePath;
+        if (basePath === '/') basePath = '';
         for await (const [ resMsg, resDir ] of generatePaths(msg, isRecursive ? requestInternal : undefined)) {
             if (!resDir) continue;
             if (!allFiles) {
@@ -87,7 +88,7 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
                 result = await dirToItems(resMsg, resDir, requestInternal);
                 results.push(result);
             } else if (pathsOnly) {
-                const relPath = resDir.path.substring(basePath.length);
+                const relPath = (resDir.path === '/' ? '' : resDir.path).substring(basePath.length);
                 results = results.concat(resDir.paths.map(([p, ...rest]) => [relPath + p, ...rest]));
             } else {
                 results.push(result);

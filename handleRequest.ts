@@ -163,8 +163,8 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             if (msgOut.ok) {
                 config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
             } else {
-                const body = msg.hasData() ? await msg.data!.asString() : 'none';
-                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msg.status} body ${body}`, ...msgOut.loggerArgs());
+                const body = msgOut.hasData() ? await msgOut.data!.asString() : 'none';
+                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...msgOut.loggerArgs());
             }
             return msgOut;
         }
