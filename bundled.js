@@ -42621,8 +42621,8 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
             if (msgOut1.ok) {
                 config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut1.loggerArgs());
             } else {
-                const body = msg.hasData() ? await msg.data.asString() : 'none';
-                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msg.status} body ${body}`, ...msgOut1.loggerArgs());
+                const body = msgOut1.hasData() ? await msgOut1.data.asString() : 'none';
+                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut1.status} body ${body}`, ...msgOut1.loggerArgs());
             }
             return msgOut1;
         }

@@ -59,21 +59,23 @@ export class AuthUser implements IAuthUser {
     }
 
     authorizedFor(roleSpec: string, servicePath?: string) {
-        if (servicePath && !servicePath.startsWith('/')) servicePath = '/' + servicePath;
+        const servicePathElements = servicePath ? servicePath.split('/').filter(el => !!el) : null;
         let specParts = roleSpec.trim().split(' ');
-        let specPath = '/';
+        let specPathElements = [] as string[];
         let rootReqRoles = [] as string[];
         while (specParts.length) {
             const nextUrlIdx = specParts.findIndex(s => s.startsWith('/'));
             const reqRoles = nextUrlIdx < 0 ? specParts : specParts.slice(0, nextUrlIdx);
-            if (specPath === '/') {
+            if (specPathElements.length === 0) {
                 rootReqRoles = reqRoles;
-            } else if (servicePath && servicePath.startsWith(specPath)) {
+            } else if (servicePathElements
+                && specPathElements.every((spe, idx) =>
+                    servicePathElements.length > idx && servicePathElements[idx] === spe)) {
                 return this.authorizedForInner(reqRoles, servicePath);
             }
             
             if (reqRoles.length < specParts.length) {
-                specPath = specParts[reqRoles.length];
+                specPathElements = specParts[reqRoles.length].split('/').filter(el => !!el);
                 specParts = specParts.slice(reqRoles.length + 1);
             } else {
                 specParts = [];

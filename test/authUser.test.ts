@@ -21,6 +21,11 @@ Deno.test('succeeds weaker perms on base path', function() {
     const res = user.authorizedFor("A /base/thing X /base all", "/base/xyz");
     assert(res);
 });
+Deno.test('succeeds weaker perms on base path 2', function() {
+    const user = new AuthUser({ email: 'abc@def.com', roles: 'U E' });
+    const res = user.authorizedFor("A /base/thing X /base all", "/based/xyz");
+    assert(!res);
+});
 Deno.test('fails forbidden path', function() {
     const user = new AuthUser({ email: 'abc@def.com', roles: 'U E' });
     const res = user.authorizedFor("A /base/xyz /base all", "/base/xyz");

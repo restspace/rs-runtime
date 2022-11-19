@@ -52,6 +52,7 @@ export default class AWS4ProxyAdapter implements IProxyAdapter {
                 "X-aws-ec2-metadata-token": token
             }
         });
+        if (!keysResp.ok) throw new Error('Failed to get AWS temporary credentials');
         const keys = await keysResp.json();
         const { AccessKeyId: accessKeyId, SecretAccessKey: secretAccessKey, Token: sessionToken } = keys;
         this.setSigner(accessKeyId, secretAccessKey);
