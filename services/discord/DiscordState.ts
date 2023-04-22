@@ -129,10 +129,11 @@ export class DiscordState extends BaseStateClass {
 					const readyEvent = data.d as unknown as ReadyEvent;
 					this.sessionId = readyEvent.session_id as string;
 					this.guilds = Object.fromEntries(readyEvent.guilds.map(g => [g.id, null]));
+					this.context?.logger.info(JSON.stringify(this.guilds));
 					this.wsState = "running";
 				}
 				else {
-					this.context?.logger.error(`Received wrong event while Identifying: ${JSON.stringify(data)}`);
+					this.context?.logger.error(`Received wrong event while Identifying: ${JSON.stringify(data, undefined, 2)}`);
 				}
 				break;
 			}
@@ -185,6 +186,7 @@ export class DiscordState extends BaseStateClass {
 						name: c.name
 					} as GuildChannel))
 				};
+				this.context?.logger.info(JSON.stringify(this.guilds![id]!.members));
 				if (this.guilds![id]!.members.length === 1) this.context!.logger.warning(`Guild ${id} has only one member listed on GUILD_CREATE event. Probably need Presence intent enabled in Discord application config and Restspace config for Discord service.`);
 				break;
 			}
