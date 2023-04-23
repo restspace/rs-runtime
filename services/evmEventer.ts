@@ -1,7 +1,7 @@
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { Service } from "rs-core/Service.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
-import { ethers } from "npm:ethers@^5.7";
+import Web3 from "https://deno.land/x/web3/mod.ts";
 import { BaseStateClass, SimpleServiceContext } from "rs-core/ServiceContext.ts";
 import { Message } from "rs-core/Message.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
@@ -21,31 +21,40 @@ const getAuthUser = async (sender: string, userAddressUrl: string, context: Simp
 	return new AuthUser(await res.data?.asJson());
 }
 
-const eventHandler = (context: SimpleServiceContext, config: EvmEventerConfig) => async (sender: string, url: string, json: string) => {
-	const user = await getAuthUser(sender, config.userUrlIndexedByAddress, context);
-	const msg = new Message(pathCombine(config.triggerUrlBase, url), context.tenant, "POST", null);
+const eventHandler = (context: SimpleServiceContext, config: EvmEventerConfig) => async (ev: any) => {
+	const user = await getAuthUser(ev.returnValues.sender, config.userUrlIndexedByAddress, context);
+	const msg = new Message(pathCombine(config.triggerUrlBase, ev.returnValues.url), context.tenant, "POST", null);
 	msg.user = user ? user : new AuthUser({});
-	msg.setDataJson(json);
+	msg.setDataJson(ev.returnValues.json);
 	await context.makeRequest(msg);
 };
 
+const options = {
+    fromBlock: 'latest'
+};
+
 class EvmEventerState extends BaseStateClass {
-	eventerContract: ethers.Contract | null = null;
-	eventHandler: ((sender: string, url: string, json: string) => Promise<void>) | null = null;
+	eventerContract: InstanceType<Web3["eth"]["Contract"]> | null = null;
+	eventHandler: ((ev: any) => Promise<void>) | null = null;
 
 	async load(context: SimpleServiceContext, config: EvmEventerConfig): Promise<void> {
-		const provider = new ethers.providers.JsonRpcProvider(config.alchemyHttpsUrl);
-		provider.on("error", (err) => {
-			context.logger.critical('provider error: ' + JSON.stringify(err));
-		});
-		this.eventerContract = new ethers.Contract(config.contractAddress, abi, provider);
+		const web3 = new Web3(new Web3.providers.WebsocketProvider(config.alchemyHttpsUrl));
+		this.eventerContract = new web3.eth.Contract(abi, config.contractAddress);
 		this.eventHandler = eventHandler(context, config);
-		this.eventerContract.on("LogEvent", this.eventHandler);
+		const evt = this.eventerContract.events.LogEvent(options, (err: any, ev: any) => {
+			if (err) {
+				context.logger.error(err);
+			} else if (this.eventHandler) {
+				this.eventHandler(ev);
+			}
+		});
 	}
 	async unload(): Promise<void> {
-		if (this.eventHandler) this.eventerContract?.off("LogEvent", this.eventHandler);
 	}
 }
+
+type AbiType = 'function' | 'constructor' | 'event' | 'fallback';
+type StateMutabilityType = 'pure' | 'view' | 'nonpayable' | 'payable';
 
 const abi = [
 	{
@@ -71,7 +80,7 @@ const abi = [
 			}
 		],
 		"name": "LogEvent",
-		"type": "event"
+		"type": "event" as AbiType
 	},
 	{
 		"inputs": [
@@ -88,8 +97,8 @@ const abi = [
 		],
 		"name": "log",
 		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
+		"stateMutability": "nonpayable" as StateMutabilityType,
+		"type": "function" as AbiType
 	}
 ];
 

@@ -138,8 +138,8 @@ export class ServiceWrapper {
     }
 
     private setCache(msg: Message, { caching }: IServiceConfig, isPublic: boolean): Message {
-        if (msg.method !== 'GET' || msg.url.isDirectory) {
-            msg.setHeader("Cache-Control", "no-store");
+        if (msg.method !== 'GET' || msg.url.isDirectory || !msg.ok) {
+            msg.setCaching('none');
             return msg;
         }
 
