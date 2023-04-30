@@ -12,6 +12,7 @@ import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
 import { SimpleServiceContext, StateClass, nullState, BaseStateClass } from "../rs-core/ServiceContext.ts";
 import { p } from "https://cdn.skypack.dev/dayjs@1.10.4";
+import { applyServiceConfigTemplate } from "./Modules.ts";
 
 export interface IServicesConfig {
     services: Record<string, IServiceConfig>;
@@ -125,9 +126,20 @@ export class Tenant {
         return defaultedService;
     }
 
+    private applyTemplate<T extends IServiceConfig>(service: T): T {
+        const template = this.serviceFactory.serviceManifestsBySource[service.source].configTemplate;
+        if (!template) return service;
+        const serviceFromTemplate = applyServiceConfigTemplate(service, template);
+        return serviceFromTemplate as T;
+    }
+
     private async buildServicesConfig(rawServicesConfig: IRawServicesConfig): Promise<IServicesConfig> {
         const services = { ...rawServicesConfig.services };
-        Object.keys(services).forEach(k => services[k] = this.applyDefaults(services[k]));
+        Object.keys(services).forEach(k => {
+            services[k] = this.applyDefaults(services[k]);
+            services[k] = this.applyTemplate(services[k]);
+        });
+
         const servicesConfig: IServicesConfig = {
             services,
             authServicePath: rawServicesConfig.authServicePath
