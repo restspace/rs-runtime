@@ -3,7 +3,7 @@ import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
 import { Message } from "rs-core/Message.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
 import { Url } from "rs-core/Url.ts";
-import { getProp } from "../../rs-core/utility/utility.ts";
+import { getProp } from "rs-core/utility/utility.ts";
 
 const service = new Service<IQueryAdapter>();
 

@@ -9,9 +9,9 @@ import { handleOutgoingRequest } from "./handleRequest.ts";
 import { handleOutgoingRequestFromPrivateServices } from "./handleRequest.ts";
 import { pipelineConcat, PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { AuthUser } from "./auth/AuthUser.ts";
-import { ServiceContext } from "../rs-core/ServiceContext.ts";
-import { upTo } from "../rs-core/utility/utility.ts";
-import { Source } from "../rs-core/Source.ts";
+import { ServiceContext } from "rs-core/ServiceContext.ts";
+import { upTo } from "rs-core/utility/utility.ts";
+import { Source } from "rs-core/Source.ts";
 
 export class ServiceWrapper {
     constructor(public service: Service) {

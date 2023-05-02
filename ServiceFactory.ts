@@ -1,5 +1,5 @@
 import { Message } from "rs-core/Message.ts";
-import { MessageFunction, Service } from "../rs-core/Service.ts";
+import { MessageFunction, Service } from "rs-core/Service.ts";
 import { Source } from "rs-core/Source.ts";
 import { Url } from "rs-core/Url.ts";
 import { config } from "./config.ts";
@@ -9,7 +9,7 @@ import { applyServiceConfigTemplate } from "./Modules.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
-import { ServiceContext } from "../rs-core/ServiceContext.ts";
+import { ServiceContext } from "rs-core/ServiceContext.ts";
 import { StateFunction } from "./tenant.ts";
 
 interface ITemplateConfigFromManifest {

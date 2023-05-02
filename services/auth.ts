@@ -9,7 +9,7 @@ import { Url } from "rs-core/Url.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { userIsAnon } from "rs-core/user/IAuthUser.ts";
 import { config } from "../config.ts";
-import { SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
+import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
 
 interface AuthServiceConfig extends IServiceConfig {
     userUrlPattern: string;

@@ -2,12 +2,12 @@ import { ITemplateAdapter } from "rs-core/adapter/ITemplateAdapter.ts";
 import nunjucks from "https://deno.land/x/nunjucks@3.2.3/mod.js";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { Environment } from "https://deno.land/x/nunjucks@3.2.3/src/environment.js";
-import { Message } from "../../rs-core/Message.ts";
+import { Message } from "rs-core/Message.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
-import { IAuthUser } from "../../rs-core/user/IAuthUser.ts";
+import { IAuthUser } from "rs-core/user/IAuthUser.ts";
 import dayjs from "https://cdn.skypack.dev/dayjs@1.10.4";
-import { resolvePathPatternWithUrl } from "../../rs-core/PathPattern.ts";
-import { Url } from "../../rs-core/Url.ts";
+import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
+import { Url } from "rs-core/Url.ts";
 
 interface LoaderRes {
     src: string;

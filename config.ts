@@ -8,7 +8,7 @@ import { Authoriser } from "./auth/Authoriser.ts";
 import { IChordServiceConfig } from "rs-core/IServiceConfig.ts";
 import { schemaIChordServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IChord } from "./IChord.ts";
-import { Message } from "../rs-core/Message.ts";
+import { Message } from "rs-core/Message.ts";
 
 export interface Infra {
     adapterSource: string;

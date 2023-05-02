@@ -9,8 +9,8 @@ import { MessageBody } from "rs-core/MessageBody.ts";
 import { IDiscordConfig } from "./discord/IDiscordConfig.ts";
 import { DiscordState } from "./discord/DiscordState.ts";
 import { sendTrigger } from "./discord/sendTrigger.ts";
-import { SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
-import { resolvePathPatternWithUrl } from "../../rs-core/PathPattern.ts";
+import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
+import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
 
 const service = new Service<IDataAdapter, IDiscordConfig>();
 

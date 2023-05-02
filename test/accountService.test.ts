@@ -4,9 +4,9 @@ import { testServicesConfig } from "./TestConfigFileAdapter.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
 import { testServerConfig } from "./testServerConfig.ts";
 import { utilsForHost } from "./testUtility.ts";
-import { after } from "../../rs-core/utility/utility.ts";
-import { upTo } from "../../rs-core/utility/utility.ts";
-import { IAuthUser } from "../../rs-core/user/IAuthUser.ts";
+import { after } from "rs-core/utility/utility.ts";
+import { upTo } from "rs-core/utility/utility.ts";
+import { IAuthUser } from "rs-core/user/IAuthUser.ts";
 
 config.server = testServerConfig;
 

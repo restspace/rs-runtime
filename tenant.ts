@@ -10,7 +10,7 @@ import { IChord } from "./IChord.ts";
 import { deepEqualIfPresent, mergeDeep } from "rs-core/utility/utility.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
-import { SimpleServiceContext, StateClass, nullState, BaseStateClass } from "../rs-core/ServiceContext.ts";
+import { SimpleServiceContext, StateClass, nullState, BaseStateClass } from "rs-core/ServiceContext.ts";
 import { p } from "https://cdn.skypack.dev/dayjs@1.10.4";
 import { applyServiceConfigTemplate } from "./Modules.ts";
 

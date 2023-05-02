@@ -1,6 +1,6 @@
 import { Message } from "rs-core/Message.ts";
 import { AsyncQueue } from "rs-core/utility/asyncQueue.ts";
-import { toLines } from "../../rs-core/streams/streams.ts";
+import { toLines } from "rs-core/streams/streams.ts";
 
 export function jsonSplit(msg: Message): AsyncQueue<Message> {
     const queue = new AsyncQueue<Message>();

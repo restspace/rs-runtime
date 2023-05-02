@@ -1,6 +1,6 @@
 import { Service } from "rs-core/Service.ts";
-import { PipelineSpec } from "../../rs-core/PipelineSpec.ts";
-import { Url } from "../../rs-core/Url.ts";
+import { PipelineSpec } from "rs-core/PipelineSpec.ts";
+import { Url } from "rs-core/Url.ts";
 import { pipeline } from "../pipeline/pipeline.ts";
 
 const service = new Service();

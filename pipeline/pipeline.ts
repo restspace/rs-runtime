@@ -18,7 +18,7 @@ import { copyPipelineContext, PipelineContext } from "./pipelineContext.ts";
 import { handleOutgoingRequest } from "../handleRequest.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { jsonSplit } from "./jsonSplitSplitter.ts";
-import { limitConcurrency } from "../../rs-core/utility/limitConcurrency.ts";
+import { limitConcurrency } from "rs-core/utility/limitConcurrency.ts";
 
 const DefaultConcurrencyLimit = 12;
 

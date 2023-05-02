@@ -1,8 +1,8 @@
 import { AWSSignerV4 } from "../../deno_aws_sign/mod.ts";
-import { IProxyAdapter } from "../../rs-core/adapter/IProxyAdapter.ts";
-import { Message } from "../../rs-core/Message.ts";
-import { resolvePathPatternWithUrl } from "../../rs-core/PathPattern.ts";
-import { AdapterContext } from "../../rs-core/ServiceContext.ts";
+import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
+import { Message } from "rs-core/Message.ts";
+import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
+import { AdapterContext } from "rs-core/ServiceContext.ts";
 
 export interface AWS4ProxyAdapterProps {
     service: "s3";

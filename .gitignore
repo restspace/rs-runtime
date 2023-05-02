@@ -5,3 +5,4 @@ dist
 *.log
 *.tar
 main.log.*
+cookies.dat

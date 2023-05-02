@@ -2,7 +2,7 @@ import { Service } from "rs-core/Service.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { SMTPClient, SendConfig } from "https://deno.land/x/denomailer/mod.ts";
-import { getExtension, isJson, isText } from "../../rs-core/mimeType.ts";
+import { getExtension, isJson, isText } from "rs-core/mimeType.ts";
 
 interface EmailServiceConfig extends IServiceConfig {
     host: string;

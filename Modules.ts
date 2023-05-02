@@ -72,7 +72,7 @@ import ModulesManifest from "./services/module.rsm.js";
 import EvmEventer from "./services/evmEventer.ts";
 import EvmEventerManifest from "./services/evmEventer.rsm.js";
 
-import { AdapterContext, nullState } from "../rs-core/ServiceContext.ts";
+import { AdapterContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
 import { transformation } from "rs-core/transformation/transformation.ts";
 

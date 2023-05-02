@@ -6,7 +6,7 @@ import { config } from "../config.ts";
 import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
 import { matchFirst, scanFirst, upTo } from "rs-core/utility/utility.ts";
 import { PipelineMode } from "./pipelineMode.ts";
-import { isJson } from "../../rs-core/mimeType.ts";
+import { isJson } from "rs-core/mimeType.ts";
 
 export class PipelineStep {
     condition: PipelineCondition | null = null;

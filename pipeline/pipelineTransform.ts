@@ -1,5 +1,5 @@
 import { Message } from "rs-core/Message.ts";
-import { transformation } from "../../rs-core/transformation/transformation.ts";
+import { transformation } from "rs-core/transformation/transformation.ts";
 import { PipelineContext } from "./pipelineContext.ts";
 
 export class PipelineTransform {

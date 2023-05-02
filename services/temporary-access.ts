@@ -2,9 +2,9 @@ import { Service } from "rs-core/Service.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 import { Url } from "rs-core/Url.ts";
-import { BaseStateClass } from "../../rs-core/ServiceContext.ts";
+import { BaseStateClass } from "rs-core/ServiceContext.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
-import { Source } from "../../rs-core/Source.ts";
+import { Source } from "rs-core/Source.ts";
 
 interface ITemporaryAccessConfig extends IServiceConfig {
 	acquiredRole: string;

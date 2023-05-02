@@ -1,10 +1,10 @@
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
-import { Message } from "../../rs-core/Message.ts";
-import { resolvePathPatternWithUrl } from "../../rs-core/PathPattern.ts";
-import { AdapterContext } from "../../rs-core/ServiceContext.ts";
+import { Message } from "rs-core/Message.ts";
+import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
+import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { S3Client } from "https://deno.land/x/aws_sdk@v3.32.0-1/client-s3/mod.ts";
 import { Hash } from "https://jspm.dev/@aws-sdk/hash-node";
-import { applyOrMap } from "../../rs-core/utility/utility.ts";
+import { applyOrMap } from "rs-core/utility/utility.ts";
 
 export interface AWS4ProxyAdapterProps {
     service: "s3";

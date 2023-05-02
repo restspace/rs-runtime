@@ -1,5 +1,5 @@
 import { Url } from "rs-core/Url.ts";
-import { limitConcurrency } from "../../rs-core/utility/limitConcurrency.ts";
+import { limitConcurrency } from "rs-core/utility/limitConcurrency.ts";
 import { PipelineContext } from "./pipelineContext.ts";
 
 export function pipelineInitializerIntoContext(step: string): Partial<PipelineContext> | null {

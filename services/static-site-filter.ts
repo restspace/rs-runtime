@@ -3,7 +3,7 @@ import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 import { Message } from "rs-core/Message.ts";
 import { Url } from "rs-core/Url.ts";
-import { ServiceContext } from "../../rs-core/ServiceContext.ts";
+import { ServiceContext } from "rs-core/ServiceContext.ts";
 
 interface IStaticSiteFilterConfig extends IServiceConfig {
     divertMissingToDefault?: boolean;

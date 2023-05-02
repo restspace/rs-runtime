@@ -6,7 +6,7 @@ import { PathInfo } from "rs-core/DirDescriptor.ts";
 import S3FileAdapter from "../adapter/S3FileAdapter.ts";
 import { getAdapterFromConfig, makeAdapterContext } from "./testUtility.ts";
 import AWS4ProxyAdapter from "../adapter/AWS4ProxyAdapter.ts";
-import { IAdapter } from "../../rs-core/adapter/IAdapter.ts";
+import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 
 const testFileSpace = (adapter: IFileAdapter) => {
     const encoder = new TextEncoder();

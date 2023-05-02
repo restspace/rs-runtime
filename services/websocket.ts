@@ -1,6 +1,6 @@
 import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
-import { SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
+import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 
 class State {

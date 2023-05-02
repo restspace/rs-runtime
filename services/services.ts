@@ -6,9 +6,9 @@ import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
 import { IRawServicesConfig, Tenant } from "../tenant.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { IChord } from "../IChord.ts";
-import { getErrors } from "../../rs-core/utility/errors.ts";
-import { SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
-import { ApiPattern } from "../../rs-core/DirDescriptor.ts";
+import { getErrors } from "rs-core/utility/errors.ts";
+import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
+import { ApiPattern } from "rs-core/DirDescriptor.ts";
 import { storeApi } from "../openApi.ts";
 
 type InfraDetails = Record<string, unknown> & Infra;

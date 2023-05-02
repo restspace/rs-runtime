@@ -4,7 +4,7 @@ import { readerFromStreamReader } from "std/streams/conversion.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import Ajv, { ValidateFunction } from "https://cdn.skypack.dev/ajv?dts";
-import { BaseStateClass, SimpleServiceContext } from "../../rs-core/ServiceContext.ts";
+import { BaseStateClass, SimpleServiceContext } from "rs-core/ServiceContext.ts";
 
 export interface ICSVConverterConfig extends IServiceConfig {
 	lineSchema: Record<string, unknown>;

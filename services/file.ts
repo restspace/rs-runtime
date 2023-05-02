@@ -4,11 +4,11 @@ import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
-import { IServiceConfig } from "../../rs-core/IServiceConfig.ts";
-import { getType, isZip } from "../../rs-core/mimeType.ts";
-import { ServiceContext } from "../../rs-core/ServiceContext.ts";
+import { IServiceConfig } from "rs-core/IServiceConfig.ts";
+import { getType, isZip } from "rs-core/mimeType.ts";
+import { ServiceContext } from "rs-core/ServiceContext.ts";
 import { unzip } from "../pipeline/unzipSplitter.ts";
-import { Url } from "../../rs-core/Url.ts";
+import { Url } from "rs-core/Url.ts";
 
 interface IFileServiceConfig extends IServiceConfig {
     extensions?: string[];

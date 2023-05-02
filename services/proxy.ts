@@ -1,7 +1,7 @@
 import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
-import { ServiceContext } from "../../rs-core/ServiceContext.ts";
+import { ServiceContext } from "rs-core/ServiceContext.ts";
 
 const service = new Service<IProxyAdapter>();
 

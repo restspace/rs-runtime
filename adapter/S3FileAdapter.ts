@@ -12,7 +12,7 @@ import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { Message } from "rs-core/Message.ts";
 import { parse } from "https://deno.land/x/xml/mod.ts";
 import { node } from "https://deno.land/x/xml@2.0.4/utils/types.ts";
-import { Url } from "../../rs-core/Url.ts";
+import { Url } from "rs-core/Url.ts";
 import { config } from "../config.ts";
 
 export interface S3FileAdapterProps {

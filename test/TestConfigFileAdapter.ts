@@ -2,7 +2,7 @@ import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { ItemMetadata } from "rs-core/ItemMetadata.ts";
 import { IServicesConfig } from "../tenant.ts";
-import { AdapterContext } from "../../rs-core/ServiceContext.ts";
+import { AdapterContext } from "rs-core/ServiceContext.ts";
 
 export const testServicesConfig: { [ tenant: string ]: IServicesConfig } = {};
 

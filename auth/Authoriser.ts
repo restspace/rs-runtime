@@ -1,7 +1,7 @@
 import { AuthUser } from './AuthUser.ts';
 import * as jwt from 'https://deno.land/x/djwt@v2.3/mod.ts';
 import { config } from "../config.ts";
-import { IAuthUser } from "../../rs-core/user/IAuthUser.ts";
+import { IAuthUser } from "rs-core/user/IAuthUser.ts";
 
 export enum TokenVerification {
     noMatch = 'noMatch',

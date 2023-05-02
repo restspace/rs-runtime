@@ -8,7 +8,7 @@ import { Url } from "rs-core/Url.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { IAuthUser } from "rs-core/user/IAuthUser.ts";
 import { config } from "../config.ts";
-import { ServiceContext } from "../../rs-core/ServiceContext.ts";
+import { ServiceContext } from "rs-core/ServiceContext.ts";
 
 interface AccountSubservice {
     tokenExpiryMins?: number;

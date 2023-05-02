@@ -1,4 +1,4 @@
-import { IServiceManifest } from "../rs-core/IManifest.ts"
+import { IServiceManifest } from "rs-core/IManifest.ts"
 
 export const storeApi = (manifest: IServiceManifest) => {
     return {

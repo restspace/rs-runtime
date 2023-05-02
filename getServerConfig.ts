@@ -1,4 +1,4 @@
-import { Message } from "../rs-core/Message.ts";
+import { Message } from "rs-core/Message.ts";
 import { config, IServerConfig } from "./config.ts";
 
 export const getServerConfig = async (serverConfigLocation: string) => {

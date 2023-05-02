@@ -1,7 +1,7 @@
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
-import { Message } from "../../rs-core/Message.ts";
-import { resolvePathPatternWithUrl } from "../../rs-core/PathPattern.ts";
-import { AdapterContext } from "../../rs-core/ServiceContext.ts";
+import { Message } from "rs-core/Message.ts";
+import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
+import { AdapterContext } from "rs-core/ServiceContext.ts";
 
 export interface SimpleProxyAdapterProps {
     urlPattern: string;

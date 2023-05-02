@@ -1,4 +1,4 @@
-import { Message } from "../../rs-core/Message.ts";
+import { Message } from "rs-core/Message.ts";
 import { write, WriteEntry } from "https://deno.land/x/streaming_zip@v1.0.1/write.ts";
 import { crc32 } from "https://deno.land/x/crc32@v0.2.2/mod.ts";
 import { addExtension, getType } from "rs-core/mimeType.ts";

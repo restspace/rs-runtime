@@ -5,8 +5,8 @@ import { MessageBody } from "rs-core/MessageBody.ts";
 import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { IReadOnlySchemaAdapter, ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
-import { ServiceContext } from "../../rs-core/ServiceContext.ts";
-import { deleteProp, patch, setProp } from "../../rs-core/utility/utility.ts";
+import { ServiceContext } from "rs-core/ServiceContext.ts";
+import { deleteProp, patch, setProp } from "rs-core/utility/utility.ts";
 import * as log from "std/log/mod.ts";
 
 const service = new Service<IDataAdapter>();
