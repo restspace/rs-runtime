@@ -2,7 +2,7 @@ import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
 import { ILogReaderAdapter } from "rs-core/adapter/ILogReaderAdapter.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
-import { FileHandler } from "std/log/handlers.ts";
+import { BaseHandler, FileHandler } from "https://deno.land/std@0.185.0/log/handlers.ts";
 
 const service = new Service<ILogReaderAdapter>();
 

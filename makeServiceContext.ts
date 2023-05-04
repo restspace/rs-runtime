@@ -2,13 +2,12 @@ import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { PrePost } from "rs-core/IServiceConfig.ts";
 import { Message } from "rs-core/Message.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
-import { ServiceContext } from "rs-core/ServiceContext.ts";
+import { ServiceContext, StateFunction } from "rs-core/ServiceContext.ts";
 import { Source } from "rs-core/Source.ts";
 import { Url } from "rs-core/Url.ts";
 import { config } from "./config.ts";
 import { handleIncomingRequest, handleOutgoingRequest } from "./handleRequest.ts";
 import { pipeline } from "./pipeline/pipeline.ts";
-import { StateFunction } from "./tenant.ts";
 
 export function makeServiceContext(tenantName: string, state: StateFunction, prePost?: PrePost): ServiceContext<IAdapter> {
 	const context = {

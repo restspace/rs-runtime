@@ -5,7 +5,7 @@ import { slashTrim } from "rs-core/utility/utility.ts";
 import * as path from "std/path/mod.ts";
 import { ensureDir } from "std/fs/mod.ts"
 import { readFileStream, toBlockChunks, writeFileStream } from "rs-core/streams/streams.ts";
-import { readableStreamFromIterable } from "std/io/streams.ts";
+import { readableStreamFromIterable } from "std/streams/readable_stream_from_iterable.ts";
 import { getType } from "rs-core/mimeType.ts";
 import { fileToDataAdapter } from "./fileToDataAdapter.ts";
 import { dataToSchemaAdapter } from "./dataToSchemaAdapter.ts";

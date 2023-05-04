@@ -1,6 +1,6 @@
 import { Service, ServiceFunction } from "rs-core/Service.ts";
 import { readCSV } from "https://deno.land/x/csv/mod.ts";
-import { readerFromStreamReader } from "std/streams/conversion.ts";
+import { readerFromStreamReader } from "std/streams/reader_from_stream_reader.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import Ajv, { ValidateFunction } from "https://cdn.skypack.dev/ajv?dts";

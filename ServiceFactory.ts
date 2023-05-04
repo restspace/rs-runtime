@@ -9,8 +9,7 @@ import { applyServiceConfigTemplate } from "./Modules.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
-import { ServiceContext } from "rs-core/ServiceContext.ts";
-import { StateFunction } from "./tenant.ts";
+import { ServiceContext, StateFunction } from "rs-core/ServiceContext.ts";
 
 interface ITemplateConfigFromManifest {
     serviceConfigTemplates?: Record<string, IServiceConfigTemplate>;

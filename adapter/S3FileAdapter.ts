@@ -4,14 +4,14 @@ import { ItemMetadata } from "rs-core/ItemMetadata.ts";
 import { arrayify, last, pathCombine, slashTrim } from "rs-core/utility/utility.ts";
 import * as path from "std/path/mod.ts";
 import { toBlockChunks } from "rs-core/streams/streams.ts";
-import { readableStreamFromIterable } from "std/io/streams.ts";
+import { readableStreamFromIterable } from "std/streams/readable_stream_from_iterable.ts";
 import { fileToDataAdapter } from "./fileToDataAdapter.ts";
 import { dataToSchemaAdapter } from "./dataToSchemaAdapter.ts";
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { Message } from "rs-core/Message.ts";
 import { parse } from "https://deno.land/x/xml/mod.ts";
-import { node } from "https://deno.land/x/xml@2.0.4/utils/types.ts";
+import { node } from "https://deno.land/x/xml/utils/types.ts";
 import { Url } from "rs-core/Url.ts";
 import { config } from "../config.ts";
 

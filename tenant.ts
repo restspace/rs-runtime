@@ -24,8 +24,6 @@ export interface IRawServicesConfig extends IServicesConfig {
     defaults?: Record<string, unknown>;
 }
 
-export type StateFunction = <T extends BaseStateClass>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => Promise<T>;
-
 const baseChord: IChord = {
     id: 'sys.base',
     newServices: [

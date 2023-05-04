@@ -12698,6 +12698,7 @@ function typeByExtension(extension) {
 const textTypes = [
     "text/",
     "application/javascript",
+    "application/typescript",
     "application/xml",
     "application/xhtml+xml"
 ];
@@ -12709,7 +12710,7 @@ const multiExtensions = {
         'jpg',
         'jpeg'
     ],
-    "text/x.typescript": [
+    "application/typescript": [
         'ts',
         'tsx'
     ],
