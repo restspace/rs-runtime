@@ -7,7 +7,7 @@ import { IChordServiceConfig, IServiceConfig, PrePost } from "rs-core/IServiceCo
 import { config } from "./config.ts";
 import { AuthUser } from "./auth/AuthUser.ts";
 import { IChord } from "./IChord.ts";
-import { deepEqualIfPresent, mergeDeep } from "rs-core/utility/utility.ts";
+import { after, deepEqualIfPresent, mergeDeep, upTo } from "rs-core/utility/utility.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
 import { SimpleServiceContext, StateClass, nullState, BaseStateClass } from "rs-core/ServiceContext.ts";
@@ -73,14 +73,40 @@ export class Tenant {
             : Object.values(serviceRecord).map(serv => serv.source);
     }
 
-    private extractSources() {
+    private extractSources(rawServicesConfig: IRawServicesConfig) {
         return [
-            ...this.getSources(this.rawServicesConfig.services),
-            ...[ ...Object.values(this.rawServicesConfig?.chords || {}), baseChord ]
+            ...this.getSources(rawServicesConfig.services),
+            ...[ ...Object.values(rawServicesConfig?.chords || {}), baseChord ]
                 .flatMap(chord => [
                     ...this.getSources(chord.newServices || [])
                 ])
         ];
+    }
+
+    private sourceIsLocalHttp(source: string) {
+        if (source.startsWith('/')) return true;
+        if (source.startsWith('http://') || source.startsWith('https://')) {
+            const domain = upTo(after(source, '://'), '/');
+            return this.domains.includes(domain);
+        }
+        return false;
+    }
+
+    private filterConfigByLocalSource(rawServicesConfig: IRawServicesConfig, isLocal: boolean) {
+        const servicesEntries = Object.entries(rawServicesConfig.services);
+        const filteredConfig = {
+            ...rawServicesConfig,
+            services: Object.fromEntries(
+                servicesEntries.filter(([,s]) => isLocal === this.sourceIsLocalHttp(s.source))
+            )
+        } as IRawServicesConfig;
+        if (rawServicesConfig.chords) {
+            const chordEntries = Object.entries(rawServicesConfig.chords);
+            filteredConfig.chords = Object.fromEntries(
+                chordEntries.filter(([,c]) => isLocal === c.newServices?.some(s => this.sourceIsLocalHttp(s.source)))
+            );
+        }
+        return filteredConfig;
     }
 
     private async applyChord(services: Record<string, IServiceConfig>, chordKey: string, chord: IChord) {
@@ -152,24 +178,32 @@ export class Tenant {
         return servicesConfig;
     }
 
-    async init() {
+    async loadConfig(rawServicesConfig: IRawServicesConfig, oldTenant?: Tenant) {
         // we need the service manifests for their default values before building servicesConfig
-        await this.serviceFactory.loadServiceManifests(this.extractSources());
+        await this.serviceFactory.loadServiceManifests(this.extractSources(rawServicesConfig));
 
-        this.servicesConfig = await this.buildServicesConfig(this.rawServicesConfig);
-        this.serviceFactory.serviceConfigs = this.servicesConfig.services;
-        await this.serviceFactory.loadAdapterManifests();
-
-        const seq = async (ps: Promise<void>[]) => {
-            for (const p of ps) {
-                await p;
-            } 
+        const newServicesConfig = await this.buildServicesConfig(rawServicesConfig);
+        if (this.servicesConfig === null) {
+            this.servicesConfig = newServicesConfig;
+        } else {
+            this.servicesConfig = {
+                services: { ...this.servicesConfig.services, ...newServicesConfig.services },
+                authServicePath: this.servicesConfig.authServicePath || newServicesConfig.authServicePath
+            };
         }
 
-        // init state for tenant here
-        await Promise.all(Object.values(this.serviceFactory.serviceConfigs).map(config => {
+        if (this.serviceFactory.serviceConfigs === null) {
+            this.serviceFactory.serviceConfigs = this.servicesConfig.services;
+        } else {
+            this.serviceFactory.serviceConfigs = { ...this.serviceFactory.serviceConfigs, ...this.servicesConfig.services };
+        }
+
+        await this.serviceFactory.loadAdapterManifests();
+
+        // init state for the services here
+        await Promise.all(Object.values(newServicesConfig.services).map(config => {
             const context = makeServiceContext(this.name, this.state(config.basePath));
-            return this.serviceFactory.initService(config, context)
+            return this.serviceFactory.initService(config, context, oldTenant?._state[config.basePath])
                 .catch(reason => {
                     throw new Error(`Service ${config.name} failed to initialize: ${reason}`);
                 });
@@ -178,16 +212,31 @@ export class Tenant {
             throw new Error(`${reason}`);
         });
 
-        const res = await this.serviceFactory.getServiceAndConfigByApi("auth");
-        if (res) {
-            const [ authService, authServiceConfig ] = res;
-            this.authService = authService as AuthService;
-            this.authServiceConfig = authServiceConfig;
+        if (!this.authService) {
+            const res = await this.serviceFactory.getServiceAndConfigByApi("auth");
+            if (res) {
+                const [ authService, authServiceConfig ] = res;
+                this.authService = authService as AuthService;
+                this.authServiceConfig = authServiceConfig;
+            }
         }
     }
 
-    async unload() {
-        await Promise.allSettled(Object.values(this._state).map(cls => cls.unload()));
+    async init(oldTenant?: Tenant) {
+        await this.loadConfig(this.filterConfigByLocalSource(this.rawServicesConfig, false), oldTenant);
+        await this.loadConfig(this.filterConfigByLocalSource(this.rawServicesConfig, true), oldTenant);
+    }
+
+    async unload(newTenant: Tenant) {
+        await Promise.allSettled(Object.entries(this._state).map(([key, cls]) => {
+            const newState = newTenant._state[key];
+            // check newState is the same class as cls
+            if (newState && newState.constructor.name === cls.constructor.name) {
+                cls.unload(newState);
+            } else {
+                cls.unload();
+            }
+        }));
     }
 
     getMessageFunctionByUrl(url: Url, source: Source) {

@@ -326,3 +326,7 @@ GET https://lib.restspace.io/core/Message.ts
 ###
 
 GET https://restspace.local:3131/services/abc.ts
+
+###
+
+POST https://restspace.local:3131/pipelines/change-role

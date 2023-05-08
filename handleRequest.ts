@@ -11,9 +11,12 @@ const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 const tenantLoadTimeoutMs = 5000;
 
-const getTenant = async (requestTenant: string) => {
+const getTenant = async (requestTenant: string, source = Source.External) => {
     const tenantLoad = tenantLoads[requestTenant];
-    if (tenantLoad !== undefined) {
+
+    // if we're not the first getTenant call for this tenant, wait for the first call to complete
+    // unless we're triggered as part of the first call i.e. source is internal
+    if (tenantLoad !== undefined && source !== Source.Internal) {
         await tenantLoads[requestTenant];
     }
 
@@ -119,7 +122,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         let tenant: Tenant;
         if (tenantName !== null) {
             try {
-                tenant = await getTenant(tenantName || 'main');
+                tenant = await getTenant(tenantName || 'main', source);
                 if (tenant.isEmpty) tenantName = null;
             } catch {
                 tenantName = null;

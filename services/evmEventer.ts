@@ -4,7 +4,7 @@ import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import Web3 from "https://deno.land/x/web3/mod.ts";
 import { BaseStateClass, SimpleServiceContext } from "rs-core/ServiceContext.ts";
 import { Message } from "rs-core/Message.ts";
-import { AuthUser } from "../auth/AuthUser.ts";
+import { IAuthUser } from "rs-core/user/IAuthUser.ts";
 import { pathCombine } from "rs-core/utility/utility.ts";
 
 interface EvmEventerConfig extends IServiceConfig {
@@ -18,13 +18,13 @@ const getAuthUser = async (sender: string, userAddressUrl: string, context: Simp
 	const msg = Message.fromSpec("GET " + userAddressUrl, context.tenant, undefined, { address: sender }) as Message;
 	const res = await context.makeRequest(msg);
 	if (!res.ok) return null;
-	return new AuthUser(await res.data?.asJson());
+	return await res.data?.asJson() as IAuthUser;
 }
 
 const eventHandler = (context: SimpleServiceContext, config: EvmEventerConfig) => async (ev: any) => {
 	const user = await getAuthUser(ev.returnValues.sender, config.userUrlIndexedByAddress, context);
 	const msg = new Message(pathCombine(config.triggerUrlBase, ev.returnValues.url), context.tenant, "POST", null);
-	msg.user = user ? user : new AuthUser({});
+	msg.user = user ? user : { token: '', email: '', originalEmail: '', roles: '', password: ''};
 	msg.setDataJson(ev.returnValues.json);
 	await context.makeRequest(msg);
 };

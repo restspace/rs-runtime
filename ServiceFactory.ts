@@ -9,7 +9,7 @@ import { applyServiceConfigTemplate } from "./Modules.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
-import { ServiceContext, StateFunction } from "rs-core/ServiceContext.ts";
+import { BaseStateClass, ServiceContext, StateFunction } from "rs-core/ServiceContext.ts";
 
 interface ITemplateConfigFromManifest {
     serviceConfigTemplates?: Record<string, IServiceConfigTemplate>;
@@ -33,7 +33,7 @@ export class ServiceFactory {
         config.logger.debug(`Start -- loading manifests`, this.tenant);
         // get promises to get service manifests
         const uniqueServiceManifestSources = serviceManifestSources.filter((ms, i) => serviceManifestSources.indexOf(ms) === i);
-        const getServiceManifestPromises = uniqueServiceManifestSources.map(source => config.modules.getServiceManifest(source));
+        const getServiceManifestPromises = uniqueServiceManifestSources.map(source => config.modules.getServiceManifest(source, this.tenant));
 
         const serviceManifests = await Promise.all<string | IServiceManifest>(getServiceManifestPromises);
         const errors = serviceManifests.filter(m => typeof m === 'string') as string[];
@@ -94,7 +94,7 @@ export class ServiceFactory {
                 ? Object.values(sc.privateServices).map(ps => ps.source)
                 : [])
             .filter(s => !existingServiceSources.includes(s));
-        const manifestsLayer0 = await Promise.all(privateServiceSources.map(pss => config.modules.getServiceManifest(pss)));
+        const manifestsLayer0 = await Promise.all(privateServiceSources.map(pss => config.modules.getServiceManifest(pss, this.tenant)));
         // bail on any error
         if (manifestsLayer0.some(m => typeof m === 'string')) return manifestsLayer0;
         privateServiceSources.forEach((source, i) => this.serviceManifestsBySource[source] = manifestsLayer0[i] as IServiceManifest);
@@ -146,15 +146,15 @@ export class ServiceFactory {
         return infraName;
     }
 
-    async initService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>): Promise<void> {
-        const service = await config.modules.getService(serviceConfig.source);
+    async initService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>, oldState?: BaseStateClass): Promise<void> {
+        const service = await config.modules.getService(serviceConfig.source, this.tenant);
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceContext.manifest = manifest;
-        await service.initFunc(serviceContext, serviceConfig);
+        await service.initFunc(serviceContext, serviceConfig, oldState);
     }
 
     async getMessageFunctionForService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>, source: Source): Promise<MessageFunction> {
-        const service = await config.modules.getService(serviceConfig.source);
+        const service = await config.modules.getService(serviceConfig.source, this.tenant);
 
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceConfig = this.addPrivateServiceConfig(serviceConfig, manifest);
@@ -262,6 +262,6 @@ export class ServiceFactory {
     async getServiceAndConfigByApi(api: string): Promise<[ Service, IServiceConfig ] | null> {
         const serviceConfig = this.getServiceConfigByApi(api);
         if (!serviceConfig) return null;
-        return [ await config.modules.getService(serviceConfig.source), serviceConfig ];
+        return [ await config.modules.getService(serviceConfig.source, this.tenant), serviceConfig ];
     }
 }

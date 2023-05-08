@@ -75,6 +75,7 @@ import ModulesManifest from "./services/module.rsm.js";
 import { AdapterContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
 import { transformation } from "rs-core/transformation/transformation.ts";
+import { getSource } from "./getSource.ts";
 
 export const schemaIServiceManifest = {
     type: "object",
@@ -306,10 +307,10 @@ export class Modules {
         }
     }
 
-    async getServiceManifest(url: string): Promise<IServiceManifest | string> {
+    async getServiceManifest(url: string, tenant: string): Promise<IServiceManifest | string> {
         if (!this.serviceManifests[url]) {
             try {
-                const manifestJson = await Deno.readTextFile(url);
+                const manifestJson = await getSource(url, tenant);
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
                 this.serviceManifests[url] = manifest;
@@ -326,22 +327,32 @@ export class Modules {
         return this.serviceManifests[url];
     }
 
-    async getService(url?: string): Promise<Service> {
-        if (url === undefined) {
+    async getService(url?: string, tenant?: string): Promise<Service> {
+        if (url === undefined || tenant === undefined) {
             return Service.Identity; // returns message unchanged
         }
 
         // pull manifest if necessary
         if (url.split('?')[0].endsWith('.rsm.json')) {
-            const manifest = await this.getServiceManifest(url);
+            const manifest = await this.getServiceManifest(url, tenant);
             if (typeof manifest === 'string') throw new Error(manifest);
-            url = manifest.moduleUrl;
+            if (url.startsWith("https://") && manifest.moduleUrl) {
+                url = new URL(manifest.moduleUrl, url).toString();
+            } else if (url.startsWith("/") && manifest.moduleUrl) {
+                url = new URL(manifest.moduleUrl, 'http://x.org' + url).toString().replace('http://x.org', '');
+            } else {
+                url = manifest.moduleUrl;
+            }
             if (url === undefined) return Service.Identity;
         }
 
         if (!this.services[url]) {
             try {
                 config.logger.debug(`Start -- loading service at ${url}`);
+                if (url.startsWith("/")) {
+                    const primaryDomain = config.tenants[tenant].primaryDomain;
+                    url = `https://${primaryDomain}${url}`;
+                }
                 const module = await import(url);
                 this.services[url] = module.default;
                 config.logger.debug(`End -- loading service at ${url}`);

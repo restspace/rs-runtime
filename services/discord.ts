@@ -104,7 +104,7 @@ const memberSchema = {
 				premium_type: { type: "number" },
 				public_flags: { type: "number" } 
 			},
-			required: [ "id", "username", "discriminator", "avatar" ]
+			required: [ "id", "username", "discriminator" ]
 		},
 		nick: { type: "string"},
 		avatar: { type: "string"},
@@ -121,7 +121,7 @@ const memberSchema = {
 		permissions: { type: "string" },
 		communication_disabled_until: { type: "string" }
 	},
-	required: [ "roles", "joined_at", "deaf", "nute", "flags" ],
+	required: [ "roles", "joined_at", "deaf", "mute", "flags" ],
 	pathPattern: '${user.username}|${user.id}'
 }
 const roleSchema = {

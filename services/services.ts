@@ -58,7 +58,7 @@ service.getPath('services', async (msg: Message, context: SimpleServiceContext) 
     const manifestData: Record<string, Partial<IServiceManifest>> = {};
     for (const serv of Object.values(tenant.servicesConfig!.services)) {
         if (!manifestData[serv.source]) {
-            const manifest = await config.modules.getServiceManifest(serv.source);
+            const manifest = await config.modules.getServiceManifest(serv.source, tenant.name);
             if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
             manifestData[serv.source] = {
                 exposedConfigProperties: manifest.exposedConfigProperties || [],
@@ -100,7 +100,7 @@ const rebuildConfig = async (rawServicesConfig: IRawServicesConfig, tenant: stri
         return [ 400, `Bad config for tenant ${tenant}: ${err}` ];
     }
     try {
-        await config.tenants[tenant].unload();
+        await config.tenants[tenant].unload(newTenant);
     } catch (err) {
         config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, tenant);
     }
@@ -192,7 +192,7 @@ const openApi = async (msg: Message, context: SimpleServiceContext) => {
     const manifestData: Record<string, Partial<IServiceManifest>> = {};
     for (const serv of Object.values(tenant.servicesConfig!.services)) {
         if (!manifestData[serv.source]) {
-            const manifest = await config.modules.getServiceManifest(serv.source);
+            const manifest = await config.modules.getServiceManifest(serv.source, context.tenant);
             if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
             let apiPattern: ApiPattern = "store";
             if (manifest.apis?.includes('store-transform')) apiPattern = "storeTransform"

@@ -3,7 +3,7 @@
         "run": "deno run --allow-all --unstable --import-map=importMap.json server.ts ./serverConfig.json",
         "run-debug": "deno run --inspect-brk --allow-all --unstable --import-map=importMap.json --unsafely-ignore-certificate-errors=localhost server.ts ./serverConfig.json",
         "run-nocheck": "deno run --allow-all --unstable --no-check --import-map=importMap.json --unsafely-ignore-certificate-errors=localhost server.ts ./serverConfig.json",
-        "run-nocheck-lib": "deno run --allow-all --unstable --no-check --reload --import-map=importMapLib.json --unsafely-ignore-certificate-errors=localhost server.ts ./serverConfig.json",
+        "run-nocheck-lib": "deno run --allow-all --unstable --no-check --import-map=importMapLib.json --unsafely-ignore-certificate-errors=restspace.local server.ts ./serverConfig.json",
         "run-verbose": "deno run --allow-all --unstable --no-check --import-map=importMap.json --unsafely-ignore-certificate-errors=localhost server.ts ./serverConfig.json 3100 DEBUG",
         "check": "deno check --unstable --import-map=importMap.json server.ts",
         "clean-tests": "rmdir C:\\Dev\\test\\test-data /S /Q && mkdir C:\\Dev\\test\\test-data",
