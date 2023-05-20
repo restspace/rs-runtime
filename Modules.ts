@@ -69,6 +69,7 @@ import CSVConverterManifest from "./services/csvConverter.rsm.js";
 import LogReader from "./services/logReader.ts";
 import LogReaderManifest from "./services/logReader.rsm.js";
 import ModulesManifest from "./services/module.rsm.js";
+import ServiceStoreManifest from "./services/service-store.rsm.js"
 //import EvmEventer from "./services/evmEventer.ts";
 //import EvmEventerManifest from "./services/evmEventer.rsm.js";
 
@@ -133,20 +134,20 @@ export function applyServiceConfigTemplate(serviceConfig: IServiceConfig, config
     const transformObject = { ...configTemplate };
     delete (transformObject as any).source;
     const outputConfig = transformation(transformObject, serviceConfig, new Url(configTemplate.source));
-    outputConfig.source = configTemplate.source;
     return outputConfig;
 }
 
 /** Modules is a singleton which holds compiled services and adapters for all tenants */
 export class Modules {
-    adapterConstructors: { [ name: string ]: new (context: AdapterContext, config: unknown) => IAdapter } = {};
-    serviceManifests: { [ name: string ]: IServiceManifest } = {};
-    adapterManifests: { [ name: string ]: IAdapterManifest } = {};
-    services: { [ name: string ]: Service } = {};
+    adapterConstructors: Record<string, new (context: AdapterContext, config: unknown) => IAdapter>= {};
+    serviceManifests: Record<string, IServiceManifest> = {};
+    adapterManifests: Record<string, IAdapterManifest> = {};
+    services: Record<string, Service> = {};
+
     validateServiceManifest: ValidateFunction<IServiceManifest>;
     validateAdapterManifest: ValidateFunction<IAdapterManifest>;
-    validateAdapterConfig: { [ source: string ]: ValidateFunction } = {};
-    validateServiceConfig: { [ source: string ]: ValidateFunction } = {};
+    validateAdapterConfig: Record<string, ValidateFunction> = {};
+    validateServiceConfig: Record<string, ValidateFunction> = {};
 
     constructor(public ajv: Ajv) {
         this.validateServiceManifest = ajv.compile<IServiceManifest>(schemaIServiceManifest);
@@ -226,6 +227,7 @@ export class Modules {
             "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest,
             "./services/logReader.rsm.json": LogReaderManifest as unknown as IServiceManifest,
             "./services/modules.rsm.json": ModulesManifest as unknown as IServiceManifest,
+            "./services/service-store.rsm.json": ServiceStoreManifest as unknown as IServiceManifest,
             //"./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest
         };
         Object.entries(this.serviceManifests).forEach(([url, v]) => {

@@ -59,7 +59,10 @@ service.getPath('services', async (msg: Message, context: SimpleServiceContext) 
     for (const serv of Object.values(tenant.servicesConfig!.services)) {
         if (!manifestData[serv.source]) {
             const manifest = await config.modules.getServiceManifest(serv.source, tenant.name);
-            if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
+            if (typeof manifest === 'string') {
+                context.logger.error(`Failed to get manifest for service ${serv.source}: ${manifest}`);
+                return msg.setStatus(500, 'Server error');
+            }
             manifestData[serv.source] = {
                 exposedConfigProperties: manifest.exposedConfigProperties || [],
                 apis: manifest.apis

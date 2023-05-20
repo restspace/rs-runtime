@@ -86,6 +86,7 @@ function _format(sep, pathObject) {
     const dir = pathObject.dir || pathObject.root;
     const base = pathObject.base || (pathObject.name || "") + (pathObject.ext || "");
     if (!dir) return base;
+    if (base === sep) return dir;
     if (dir === pathObject.root) return dir + base;
     return dir + sep + base;
 }
@@ -101,6 +102,48 @@ function encodeWhitespace(string) {
     return string.replaceAll(/[\s]/g, (c)=>{
         return WHITESPACE_ENCODINGS[c] ?? c;
     });
+}
+function lastPathSegment(path, isSep, start = 0) {
+    let matchedNonSeparator = false;
+    let end = path.length;
+    for(let i = path.length - 1; i >= start; --i){
+        if (isSep(path.charCodeAt(i))) {
+            if (matchedNonSeparator) {
+                start = i + 1;
+                break;
+            }
+        } else if (!matchedNonSeparator) {
+            matchedNonSeparator = true;
+            end = i + 1;
+        }
+    }
+    return path.slice(start, end);
+}
+function stripTrailingSeparators(segment, isSep) {
+    if (segment.length <= 1) {
+        return segment;
+    }
+    let end = segment.length;
+    for(let i = segment.length - 1; i > 0; i--){
+        if (isSep(segment.charCodeAt(i))) {
+            end = i;
+        } else {
+            break;
+        }
+    }
+    return segment.slice(0, end);
+}
+function stripSuffix(name, suffix) {
+    if (suffix.length >= name.length) {
+        return name;
+    }
+    const lenDiff = name.length - suffix.length;
+    for(let i = suffix.length - 1; i >= 0; --i){
+        if (name.charCodeAt(lenDiff + i) !== suffix.charCodeAt(i)) {
+            return name;
+        }
+    }
+    return name.slice(0, -suffix.length);
 }
 class DenoStdInternalError extends Error {
     constructor(message){
@@ -499,69 +542,24 @@ function dirname(path) {
         if (rootEnd === -1) return ".";
         else end = rootEnd;
     }
-    return path.slice(0, end);
+    return stripTrailingSeparators(path.slice(0, end), isPosixPathSeparator);
 }
-function basename(path, ext = "") {
-    if (ext !== undefined && typeof ext !== "string") {
-        throw new TypeError('"ext" argument must be a string');
-    }
+function basename(path, suffix = "") {
     assertPath(path);
+    if (path.length === 0) return path;
+    if (typeof suffix !== "string") {
+        throw new TypeError(`Suffix must be a string. Received ${JSON.stringify(suffix)}`);
+    }
     let start = 0;
-    let end = -1;
-    let matchedSlash = true;
-    let i;
     if (path.length >= 2) {
         const drive = path.charCodeAt(0);
         if (isWindowsDeviceRoot(drive)) {
             if (path.charCodeAt(1) === 58) start = 2;
         }
     }
-    if (ext !== undefined && ext.length > 0 && ext.length <= path.length) {
-        if (ext.length === path.length && ext === path) return "";
-        let extIdx = ext.length - 1;
-        let firstNonSlashEnd = -1;
-        for(i = path.length - 1; i >= start; --i){
-            const code = path.charCodeAt(i);
-            if (isPathSeparator(code)) {
-                if (!matchedSlash) {
-                    start = i + 1;
-                    break;
-                }
-            } else {
-                if (firstNonSlashEnd === -1) {
-                    matchedSlash = false;
-                    firstNonSlashEnd = i + 1;
-                }
-                if (extIdx >= 0) {
-                    if (code === ext.charCodeAt(extIdx)) {
-                        if (--extIdx === -1) {
-                            end = i;
-                        }
-                    } else {
-                        extIdx = -1;
-                        end = firstNonSlashEnd;
-                    }
-                }
-            }
-        }
-        if (start === end) end = firstNonSlashEnd;
-        else if (end === -1) end = path.length;
-        return path.slice(start, end);
-    } else {
-        for(i = path.length - 1; i >= start; --i){
-            if (isPathSeparator(path.charCodeAt(i))) {
-                if (!matchedSlash) {
-                    start = i + 1;
-                    break;
-                }
-            } else if (end === -1) {
-                matchedSlash = false;
-                end = i + 1;
-            }
-        }
-        if (end === -1) return "";
-        return path.slice(start, end);
-    }
+    const lastSegment = lastPathSegment(path, isPathSeparator, start);
+    const strippedSegment = stripTrailingSeparators(lastSegment, isPathSeparator);
+    return suffix ? stripSuffix(strippedSegment, suffix) : strippedSegment;
 }
 function extname(path) {
     assertPath(path);
@@ -652,6 +650,7 @@ function parse(path) {
                     if (isPathSeparator(path.charCodeAt(2))) {
                         if (len === 3) {
                             ret.root = ret.dir = path;
+                            ret.base = "\\";
                             return ret;
                         }
                         rootEnd = 3;
@@ -664,6 +663,7 @@ function parse(path) {
         }
     } else if (isPathSeparator(code)) {
         ret.root = ret.dir = path;
+        ret.base = "\\";
         return ret;
     }
     if (rootEnd > 0) ret.root = path.slice(0, rootEnd);
@@ -702,6 +702,7 @@ function parse(path) {
         ret.base = path.slice(startPart, end);
         ret.ext = path.slice(startDot, end);
     }
+    ret.base = ret.base || "\\";
     if (startPart > 0 && startPart !== rootEnd) {
         ret.dir = path.slice(0, startPart - 1);
     } else ret.dir = ret.root;
@@ -770,7 +771,7 @@ function resolve1(...pathSegments) {
             continue;
         }
         resolvedPath = `${path}/${resolvedPath}`;
-        resolvedAbsolute = path.charCodeAt(0) === CHAR_FORWARD_SLASH;
+        resolvedAbsolute = isPosixPathSeparator(path.charCodeAt(0));
     }
     resolvedPath = normalizeString(resolvedPath, !resolvedAbsolute, "/", isPosixPathSeparator);
     if (resolvedAbsolute) {
@@ -782,8 +783,8 @@ function resolve1(...pathSegments) {
 function normalize1(path) {
     assertPath(path);
     if (path.length === 0) return ".";
-    const isAbsolute = path.charCodeAt(0) === 47;
-    const trailingSeparator = path.charCodeAt(path.length - 1) === 47;
+    const isAbsolute = isPosixPathSeparator(path.charCodeAt(0));
+    const trailingSeparator = isPosixPathSeparator(path.charCodeAt(path.length - 1));
     path = normalizeString(path, !isAbsolute, "/", isPosixPathSeparator);
     if (path.length === 0 && !isAbsolute) path = ".";
     if (path.length > 0 && trailingSeparator) path += "/";
@@ -792,7 +793,7 @@ function normalize1(path) {
 }
 function isAbsolute1(path) {
     assertPath(path);
-    return path.length > 0 && path.charCodeAt(0) === 47;
+    return path.length > 0 && isPosixPathSeparator(path.charCodeAt(0));
 }
 function join1(...paths) {
     if (paths.length === 0) return ".";
@@ -818,13 +819,13 @@ function relative1(from, to) {
     let fromStart = 1;
     const fromEnd = from.length;
     for(; fromStart < fromEnd; ++fromStart){
-        if (from.charCodeAt(fromStart) !== 47) break;
+        if (!isPosixPathSeparator(from.charCodeAt(fromStart))) break;
     }
     const fromLen = fromEnd - fromStart;
     let toStart = 1;
     const toEnd = to.length;
     for(; toStart < toEnd; ++toStart){
-        if (to.charCodeAt(toStart) !== 47) break;
+        if (!isPosixPathSeparator(to.charCodeAt(toStart))) break;
     }
     const toLen = toEnd - toStart;
     const length = fromLen < toLen ? fromLen : toLen;
@@ -833,13 +834,13 @@ function relative1(from, to) {
     for(; i <= length; ++i){
         if (i === length) {
             if (toLen > length) {
-                if (to.charCodeAt(toStart + i) === 47) {
+                if (isPosixPathSeparator(to.charCodeAt(toStart + i))) {
                     return to.slice(toStart + i + 1);
                 } else if (i === 0) {
                     return to.slice(toStart + i);
                 }
             } else if (fromLen > length) {
-                if (from.charCodeAt(fromStart + i) === 47) {
+                if (isPosixPathSeparator(from.charCodeAt(fromStart + i))) {
                     lastCommonSep = i;
                 } else if (i === 0) {
                     lastCommonSep = 0;
@@ -850,11 +851,11 @@ function relative1(from, to) {
         const fromCode = from.charCodeAt(fromStart + i);
         const toCode = to.charCodeAt(toStart + i);
         if (fromCode !== toCode) break;
-        else if (fromCode === 47) lastCommonSep = i;
+        else if (isPosixPathSeparator(fromCode)) lastCommonSep = i;
     }
     let out = "";
     for(i = fromStart + lastCommonSep + 1; i <= fromEnd; ++i){
-        if (i === fromEnd || from.charCodeAt(i) === 47) {
+        if (i === fromEnd || isPosixPathSeparator(from.charCodeAt(i))) {
             if (out.length === 0) out += "..";
             else out += "/..";
         }
@@ -862,7 +863,7 @@ function relative1(from, to) {
     if (out.length > 0) return out + to.slice(toStart + lastCommonSep);
     else {
         toStart += lastCommonSep;
-        if (to.charCodeAt(toStart) === 47) ++toStart;
+        if (isPosixPathSeparator(to.charCodeAt(toStart))) ++toStart;
         return to.slice(toStart);
     }
 }
@@ -870,80 +871,33 @@ function toNamespacedPath1(path) {
     return path;
 }
 function dirname1(path) {
-    assertPath(path);
     if (path.length === 0) return ".";
-    const hasRoot = path.charCodeAt(0) === 47;
     let end = -1;
-    let matchedSlash = true;
+    let matchedNonSeparator = false;
     for(let i = path.length - 1; i >= 1; --i){
-        if (path.charCodeAt(i) === 47) {
-            if (!matchedSlash) {
+        if (isPosixPathSeparator(path.charCodeAt(i))) {
+            if (matchedNonSeparator) {
                 end = i;
                 break;
             }
         } else {
-            matchedSlash = false;
+            matchedNonSeparator = true;
         }
     }
-    if (end === -1) return hasRoot ? "/" : ".";
-    if (hasRoot && end === 1) return "//";
-    return path.slice(0, end);
+    if (end === -1) {
+        return isPosixPathSeparator(path.charCodeAt(0)) ? "/" : ".";
+    }
+    return stripTrailingSeparators(path.slice(0, end), isPosixPathSeparator);
 }
-function basename1(path, ext = "") {
-    if (ext !== undefined && typeof ext !== "string") {
-        throw new TypeError('"ext" argument must be a string');
-    }
+function basename1(path, suffix = "") {
     assertPath(path);
-    let start = 0;
-    let end = -1;
-    let matchedSlash = true;
-    let i;
-    if (ext !== undefined && ext.length > 0 && ext.length <= path.length) {
-        if (ext.length === path.length && ext === path) return "";
-        let extIdx = ext.length - 1;
-        let firstNonSlashEnd = -1;
-        for(i = path.length - 1; i >= 0; --i){
-            const code = path.charCodeAt(i);
-            if (code === 47) {
-                if (!matchedSlash) {
-                    start = i + 1;
-                    break;
-                }
-            } else {
-                if (firstNonSlashEnd === -1) {
-                    matchedSlash = false;
-                    firstNonSlashEnd = i + 1;
-                }
-                if (extIdx >= 0) {
-                    if (code === ext.charCodeAt(extIdx)) {
-                        if (--extIdx === -1) {
-                            end = i;
-                        }
-                    } else {
-                        extIdx = -1;
-                        end = firstNonSlashEnd;
-                    }
-                }
-            }
-        }
-        if (start === end) end = firstNonSlashEnd;
-        else if (end === -1) end = path.length;
-        return path.slice(start, end);
-    } else {
-        for(i = path.length - 1; i >= 0; --i){
-            if (path.charCodeAt(i) === 47) {
-                if (!matchedSlash) {
-                    start = i + 1;
-                    break;
-                }
-            } else if (end === -1) {
-                matchedSlash = false;
-                end = i + 1;
-            }
-        }
-        if (end === -1) return "";
-        return path.slice(start, end);
+    if (path.length === 0) return path;
+    if (typeof suffix !== "string") {
+        throw new TypeError(`Suffix must be a string. Received ${JSON.stringify(suffix)}`);
     }
+    const lastSegment = lastPathSegment(path, isPosixPathSeparator);
+    const strippedSegment = stripTrailingSeparators(lastSegment, isPosixPathSeparator);
+    return suffix ? stripSuffix(strippedSegment, suffix) : strippedSegment;
 }
 function extname1(path) {
     assertPath(path);
@@ -954,7 +908,7 @@ function extname1(path) {
     let preDotState = 0;
     for(let i = path.length - 1; i >= 0; --i){
         const code = path.charCodeAt(i);
-        if (code === 47) {
+        if (isPosixPathSeparator(code)) {
             if (!matchedSlash) {
                 startPart = i + 1;
                 break;
@@ -993,7 +947,7 @@ function parse1(path) {
         name: ""
     };
     if (path.length === 0) return ret;
-    const isAbsolute = path.charCodeAt(0) === 47;
+    const isAbsolute = isPosixPathSeparator(path.charCodeAt(0));
     let start;
     if (isAbsolute) {
         ret.root = "/";
@@ -1009,7 +963,7 @@ function parse1(path) {
     let preDotState = 0;
     for(; i >= start; --i){
         const code = path.charCodeAt(i);
-        if (code === 47) {
+        if (isPosixPathSeparator(code)) {
             if (!matchedSlash) {
                 startPart = i + 1;
                 break;
@@ -1035,6 +989,7 @@ function parse1(path) {
                 ret.base = ret.name = path.slice(startPart, end);
             }
         }
+        ret.base = ret.base || "/";
     } else {
         if (startPart === 0 && isAbsolute) {
             ret.name = path.slice(1, startDot);
@@ -1045,8 +1000,9 @@ function parse1(path) {
         }
         ret.ext = path.slice(startDot, end);
     }
-    if (startPart > 0) ret.dir = path.slice(0, startPart - 1);
-    else if (isAbsolute) ret.dir = "/";
+    if (startPart > 0) {
+        ret.dir = stripTrailingSeparators(path.slice(0, startPart - 1), isPosixPathSeparator);
+    } else if (isAbsolute) ret.dir = "/";
     return ret;
 }
 function fromFileUrl1(url) {
@@ -1496,7 +1452,7 @@ function resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl
         return getPartsMatch(p6, p7, p8) || '$$';
     }).replace(/\$\?(\*|\((.+?)\))/g, (_match, p1, p2)=>{
         if (p1 === '*') return queryString(query);
-        return (query || {})[p2] === [] ? '$$' : ((query || {})[p2] || []).join(',') || '$$';
+        return (query?.[p2] || []).length === 0 ? '$$' : ((query || {})[p2] || []).join(',') || '$$';
     }).replace('/$$', '').replace('$$', '');
     return result;
 }
@@ -1733,6 +1689,220 @@ class Url {
         }
         return newUrl;
     }
+}
+const extensions = new Map();
+function consumeToken(v) {
+    const notPos = indexOf(v, isNotTokenChar);
+    if (notPos == -1) {
+        return [
+            v,
+            ""
+        ];
+    }
+    if (notPos == 0) {
+        return [
+            "",
+            v
+        ];
+    }
+    return [
+        v.slice(0, notPos),
+        v.slice(notPos)
+    ];
+}
+function consumeValue(v) {
+    if (!v) {
+        return [
+            "",
+            v
+        ];
+    }
+    if (v[0] !== `"`) {
+        return consumeToken(v);
+    }
+    let value = "";
+    for(let i = 1; i < v.length; i++){
+        const r = v[i];
+        if (r === `"`) {
+            return [
+                value,
+                v.slice(i + 1)
+            ];
+        }
+        if (r === "\\" && i + 1 < v.length && isTSpecial(v[i + 1])) {
+            value += v[i + 1];
+            i++;
+            continue;
+        }
+        if (r === "\r" || r === "\n") {
+            return [
+                "",
+                v
+            ];
+        }
+        value += v[i];
+    }
+    return [
+        "",
+        v
+    ];
+}
+function consumeMediaParam(v) {
+    let rest = v.trimStart();
+    if (!rest.startsWith(";")) {
+        return [
+            "",
+            "",
+            v
+        ];
+    }
+    rest = rest.slice(1);
+    rest = rest.trimStart();
+    let param;
+    [param, rest] = consumeToken(rest);
+    param = param.toLowerCase();
+    if (!param) {
+        return [
+            "",
+            "",
+            v
+        ];
+    }
+    rest = rest.slice(1);
+    rest = rest.trimStart();
+    const [value, rest2] = consumeValue(rest);
+    if (value == "" && rest2 === rest) {
+        return [
+            "",
+            "",
+            v
+        ];
+    }
+    rest = rest2;
+    return [
+        param,
+        value,
+        rest
+    ];
+}
+function decode2331Encoding(v) {
+    const sv = v.split(`'`, 3);
+    if (sv.length !== 3) {
+        return undefined;
+    }
+    const charset = sv[0].toLowerCase();
+    if (!charset) {
+        return undefined;
+    }
+    if (charset != "us-ascii" && charset != "utf-8") {
+        return undefined;
+    }
+    const encv = decodeURI(sv[2]);
+    if (!encv) {
+        return undefined;
+    }
+    return encv;
+}
+function indexOf(s, fn) {
+    let i = -1;
+    for (const v of s){
+        i++;
+        if (fn(v)) {
+            return i;
+        }
+    }
+    return -1;
+}
+function isNotTokenChar(r) {
+    return !isTokenChar(r);
+}
+function isTokenChar(r) {
+    const code = r.charCodeAt(0);
+    return code > 0x20 && code < 0x7f && !isTSpecial(r);
+}
+function isTSpecial(r) {
+    return `()<>@,;:\\"/[]?=`.includes(r[0]);
+}
+function parseMediaType(v) {
+    const [base] = v.split(";");
+    const mediaType = base.toLowerCase().trim();
+    const params = {};
+    const continuation = new Map();
+    v = v.slice(base.length);
+    while(v.length){
+        v = v.trimStart();
+        if (v.length === 0) {
+            break;
+        }
+        const [key, value, rest] = consumeMediaParam(v);
+        if (!key) {
+            if (rest.trim() === ";") {
+                break;
+            }
+            throw new TypeError("Invalid media parameter.");
+        }
+        let pmap = params;
+        const [baseName, rest2] = key.split("*");
+        if (baseName && rest2 != null) {
+            if (!continuation.has(baseName)) {
+                continuation.set(baseName, {});
+            }
+            pmap = continuation.get(baseName);
+        }
+        if (key in pmap) {
+            throw new TypeError("Duplicate key parsed.");
+        }
+        pmap[key] = value;
+        v = rest;
+    }
+    let str = "";
+    for (const [key, pieceMap] of continuation){
+        const singlePartKey = `${key}*`;
+        const v = pieceMap[singlePartKey];
+        if (v) {
+            const decv = decode2331Encoding(v);
+            if (decv) {
+                params[key] = decv;
+            }
+            continue;
+        }
+        str = "";
+        let valid = false;
+        for(let n = 0;; n++){
+            const simplePart = `${key}*${n}`;
+            let v = pieceMap[simplePart];
+            if (v) {
+                valid = true;
+                str += v;
+                continue;
+            }
+            const encodedPart = `${simplePart}*`;
+            v = pieceMap[encodedPart];
+            if (!v) {
+                break;
+            }
+            valid = true;
+            if (n === 0) {
+                const decv = decode2331Encoding(v);
+                if (decv) {
+                    str += decv;
+                }
+            } else {
+                const decv = decodeURI(v);
+                str += decv;
+            }
+        }
+        if (valid) {
+            params[key] = str;
+        }
+    }
+    return Object.keys(params).length ? [
+        mediaType,
+        params
+    ] : [
+        mediaType,
+        undefined
+    ];
 }
 const __default = {
     "application/1d-interleaved-parityfec": {
@@ -12436,139 +12606,6 @@ const __default = {
         "compressible": true
     }
 };
-function consumeToken(v) {
-    const notPos = indexOf(v, isNotTokenChar);
-    if (notPos == -1) {
-        return [
-            v,
-            ""
-        ];
-    }
-    if (notPos == 0) {
-        return [
-            "",
-            v
-        ];
-    }
-    return [
-        v.slice(0, notPos),
-        v.slice(notPos)
-    ];
-}
-function consumeValue(v) {
-    if (!v) {
-        return [
-            "",
-            v
-        ];
-    }
-    if (v[0] !== `"`) {
-        return consumeToken(v);
-    }
-    let value = "";
-    for(let i = 1; i < v.length; i++){
-        const r = v[i];
-        if (r === `"`) {
-            return [
-                value,
-                v.slice(i + 1)
-            ];
-        }
-        if (r === "\\" && i + 1 < v.length && isTSpecial(v[i + 1])) {
-            value += v[i + 1];
-            i++;
-            continue;
-        }
-        if (r === "\r" || r === "\n") {
-            return [
-                "",
-                v
-            ];
-        }
-        value += v[i];
-    }
-    return [
-        "",
-        v
-    ];
-}
-function consumeMediaParam(v) {
-    let rest = v.trimStart();
-    if (!rest.startsWith(";")) {
-        return [
-            "",
-            "",
-            v
-        ];
-    }
-    rest = rest.slice(1);
-    rest = rest.trimStart();
-    let param;
-    [param, rest] = consumeToken(rest);
-    param = param.toLowerCase();
-    if (!param) {
-        return [
-            "",
-            "",
-            v
-        ];
-    }
-    rest = rest.slice(1);
-    rest = rest.trimStart();
-    const [value, rest2] = consumeValue(rest);
-    if (value == "" && rest2 === rest) {
-        return [
-            "",
-            "",
-            v
-        ];
-    }
-    rest = rest2;
-    return [
-        param,
-        value,
-        rest
-    ];
-}
-function decode2331Encoding(v) {
-    const sv = v.split(`'`, 3);
-    if (sv.length !== 3) {
-        return undefined;
-    }
-    const charset = sv[0].toLowerCase();
-    if (!charset) {
-        return undefined;
-    }
-    if (charset != "us-ascii" && charset != "utf-8") {
-        return undefined;
-    }
-    const encv = decodeURI(sv[2]);
-    if (!encv) {
-        return undefined;
-    }
-    return encv;
-}
-function indexOf(s, fn) {
-    let i = -1;
-    for (const v of s){
-        i++;
-        if (fn(v)) {
-            return i;
-        }
-    }
-    return -1;
-}
-function isNotTokenChar(r) {
-    return !isTokenChar(r);
-}
-function isTokenChar(r) {
-    const code = r.charCodeAt(0);
-    return code > 0x20 && code < 0x7f && !isTSpecial(r);
-}
-function isTSpecial(r) {
-    return `()<>@,;:\\"/[]?=`.includes(r[0]);
-}
-const extensions = new Map();
 const types = new Map();
 (function populateMaps() {
     const preference = [
@@ -12597,12 +12634,9 @@ const types = new Map();
         }
     }
 })();
-function extension(type) {
-    const exts = extensionsByType(type);
-    if (exts) {
-        return exts[0];
-    }
-    return undefined;
+function typeByExtension(extension) {
+    extension = extension.startsWith(".") ? extension.slice(1) : extension;
+    return types.get(extension.toLowerCase());
 }
 function extensionsByType(type) {
     try {
@@ -12610,90 +12644,12 @@ function extensionsByType(type) {
         return extensions.get(mediaType);
     } catch  {}
 }
-function parseMediaType(v) {
-    const [base] = v.split(";");
-    const mediaType = base.toLowerCase().trim();
-    const params = {};
-    const continuation = new Map();
-    v = v.slice(base.length);
-    while(v.length){
-        v = v.trimStart();
-        if (v.length === 0) {
-            break;
-        }
-        const [key, value, rest] = consumeMediaParam(v);
-        if (!key) {
-            if (rest.trim() === ";") {
-                break;
-            }
-            throw new TypeError("Invalid media parameter.");
-        }
-        let pmap = params;
-        const [baseName, rest2] = key.split("*");
-        if (baseName && rest2 != null) {
-            if (!continuation.has(baseName)) {
-                continuation.set(baseName, {});
-            }
-            pmap = continuation.get(baseName);
-        }
-        if (key in pmap) {
-            throw new TypeError("Duplicate key parsed.");
-        }
-        pmap[key] = value;
-        v = rest;
+function extension(type) {
+    const exts = extensionsByType(type);
+    if (exts) {
+        return exts[0];
     }
-    let str = "";
-    for (const [key, pieceMap] of continuation){
-        const singlePartKey = `${key}*`;
-        const v = pieceMap[singlePartKey];
-        if (v) {
-            const decv = decode2331Encoding(v);
-            if (decv) {
-                params[key] = decv;
-            }
-            continue;
-        }
-        str = "";
-        let valid = false;
-        for(let n = 0;; n++){
-            const simplePart = `${key}*${n}`;
-            let v = pieceMap[simplePart];
-            if (v) {
-                valid = true;
-                str += v;
-                continue;
-            }
-            const encodedPart = `${simplePart}*`;
-            v = pieceMap[encodedPart];
-            if (!v) {
-                break;
-            }
-            valid = true;
-            if (n === 0) {
-                const decv = decode2331Encoding(v);
-                if (decv) {
-                    str += decv;
-                }
-            } else {
-                const decv = decodeURI(v);
-                str += decv;
-            }
-        }
-        if (valid) {
-            params[key] = str;
-        }
-    }
-    return Object.keys(params).length ? [
-        mediaType,
-        params
-    ] : [
-        mediaType,
-        undefined
-    ];
-}
-function typeByExtension(extension) {
-    extension = extension.startsWith(".") ? extension.slice(1) : extension;
-    return types.get(extension.toLowerCase());
+    return undefined;
 }
 const textTypes = [
     "text/",
@@ -12920,82 +12876,10 @@ class Buffer {
         }
     }
 }
-class AbstractBufBase {
-    buf;
-    usedBufferBytes = 0;
-    err = null;
-    constructor(buf){
-        this.buf = buf;
-    }
-    size() {
-        return this.buf.byteLength;
-    }
-    available() {
-        return this.buf.byteLength - this.usedBufferBytes;
-    }
-    buffered() {
-        return this.usedBufferBytes;
-    }
-}
-class BufWriterSync extends AbstractBufBase {
-    #writer;
-    static create(writer, size = 4096) {
-        return writer instanceof BufWriterSync ? writer : new BufWriterSync(writer, size);
-    }
-    constructor(writer, size = 4096){
-        super(new Uint8Array(size <= 0 ? 4096 : size));
-        this.#writer = writer;
-    }
-    reset(w) {
-        this.err = null;
-        this.usedBufferBytes = 0;
-        this.#writer = w;
-    }
-    flush() {
-        if (this.err !== null) throw this.err;
-        if (this.usedBufferBytes === 0) return;
-        try {
-            const p = this.buf.subarray(0, this.usedBufferBytes);
-            let nwritten = 0;
-            while(nwritten < p.length){
-                nwritten += this.#writer.writeSync(p.subarray(nwritten));
-            }
-        } catch (e) {
-            if (e instanceof Error) {
-                this.err = e;
-            }
-            throw e;
-        }
-        this.buf = new Uint8Array(this.buf.length);
-        this.usedBufferBytes = 0;
-    }
-    writeSync(data) {
-        if (this.err !== null) throw this.err;
-        if (data.length === 0) return 0;
-        let totalBytesWritten = 0;
-        let numBytesWritten = 0;
-        while(data.byteLength > this.available()){
-            if (this.buffered() === 0) {
-                try {
-                    numBytesWritten = this.#writer.writeSync(data);
-                } catch (e) {
-                    if (e instanceof Error) {
-                        this.err = e;
-                    }
-                    throw e;
-                }
-            } else {
-                numBytesWritten = copy(data, this.buf, this.usedBufferBytes);
-                this.usedBufferBytes += numBytesWritten;
-                this.flush();
-            }
-            totalBytesWritten += numBytesWritten;
-            data = data.subarray(numBytesWritten);
-        }
-        numBytesWritten = copy(data, this.buf, this.usedBufferBytes);
-        this.usedBufferBytes += numBytesWritten;
-        totalBytesWritten += numBytesWritten;
-        return totalBytesWritten;
+async function writeAll(w, arr) {
+    let nwritten = 0;
+    while(nwritten < arr.length){
+        nwritten += await w.write(arr.subarray(nwritten));
     }
 }
 function readerFromStreamReader(streamReader) {
@@ -13012,32 +12896,6 @@ function readerFromStreamReader(streamReader) {
             return buffer.read(p);
         }
     };
-}
-function readableStreamFromIterable(iterable) {
-    const iterator = iterable[Symbol.asyncIterator]?.() ?? iterable[Symbol.iterator]?.();
-    return new ReadableStream({
-        async pull (controller) {
-            const { value , done  } = await iterator.next();
-            if (done) {
-                controller.close();
-            } else {
-                controller.enqueue(value);
-            }
-        },
-        async cancel (reason) {
-            if (typeof iterator.throw == "function") {
-                try {
-                    await iterator.throw(reason);
-                } catch  {}
-            }
-        }
-    });
-}
-async function writeAll(w, arr) {
-    let nwritten = 0;
-    while(nwritten < arr.length){
-        nwritten += await w.write(arr.subarray(nwritten));
-    }
 }
 class MessageBody {
     data;
@@ -13311,16 +13169,14 @@ class EventEmitter {
         return this.on(event, l);
     }
     off(event, listener) {
-        if (!event && listener) throw new Error("Why is there a listener defined here?");
-        else if (!event && !listener) this._events_.clear();
+        if ((event === undefined || event === null) && listener) throw new Error("Why is there a listener defined here?");
+        else if ((event === undefined || event === null) && !listener) this._events_.clear();
         else if (event && !listener) this._events_.delete(event);
         else if (event && listener && this._events_.has(event)) {
             const _ = this._events_.get(event);
             _.delete(listener);
             if (_.size === 0) this._events_.delete(event);
-        } else {
-            throw new Error("Unknown action!");
-        }
+        } else ;
         return this;
     }
     emitSync(event, ...args) {
@@ -13368,6 +13224,15 @@ class EventEmitter {
             timeoutId = typeof timeout !== "number" ? null : setTimeout(()=>(this.off(event, listener), reject(new Error("Timed out!"))));
             this.once(event, listener);
         });
+    }
+    clone(cloneListeners = true) {
+        const emitter = new EventEmitter();
+        if (cloneListeners) {
+            for (const [key, set] of this._events_)emitter._events_.set(key, new Set([
+                ...set
+            ]));
+        }
+        return emitter;
     }
 }
 class ArrayQueue extends Array {
@@ -21087,9 +20952,9 @@ class Service {
         return this;
     }
     initializer(initFunc) {
-        this.initFunc = (context, config)=>{
+        this.initFunc = (context, config, oldState)=>{
             this.enhanceContext(context, config);
-            return initFunc(context, config);
+            return initFunc(context, config, oldState);
         };
     }
     get = (func)=>this.setMethodPath('get', '/', func);
@@ -21123,7 +20988,7 @@ class BaseStateClass {
     load(_context, _config) {
         return Promise.resolve();
     }
-    unload() {
+    unload(newState) {
         return Promise.resolve();
     }
 }
@@ -24408,67 +24273,336 @@ const copyPipelineContext = (context)=>{
         ]
     };
 };
-const { Deno: Deno1  } = globalThis;
-const noColor = typeof Deno1?.noColor === "boolean" ? Deno1.noColor : true;
-let enabled = !noColor;
-function code1(open, close) {
-    return {
-        open: `\x1b[${open.join(";")}m`,
-        close: `\x1b[${close}m`,
-        regexp: new RegExp(`\\x1b\\[${close}m`, "g")
-    };
+const MAX_SIZE1 = 2 ** 32 - 2;
+class Buffer1 {
+    #buf;
+    #off = 0;
+    #readable = new ReadableStream({
+        type: "bytes",
+        pull: (controller)=>{
+            const view = new Uint8Array(controller.byobRequest.view.buffer);
+            if (this.empty()) {
+                this.reset();
+                controller.close();
+                controller.byobRequest.respond(0);
+                return;
+            }
+            const nread = copy(this.#buf.subarray(this.#off), view);
+            this.#off += nread;
+            controller.byobRequest.respond(nread);
+        },
+        autoAllocateChunkSize: 16_640
+    });
+    get readable() {
+        return this.#readable;
+    }
+    #writable = new WritableStream({
+        write: (chunk)=>{
+            const m = this.#grow(chunk.byteLength);
+            copy(chunk, this.#buf, m);
+        }
+    });
+    get writable() {
+        return this.#writable;
+    }
+    constructor(ab){
+        this.#buf = ab === undefined ? new Uint8Array(0) : new Uint8Array(ab);
+    }
+    bytes(options = {
+        copy: true
+    }) {
+        if (options.copy === false) return this.#buf.subarray(this.#off);
+        return this.#buf.slice(this.#off);
+    }
+    empty() {
+        return this.#buf.byteLength <= this.#off;
+    }
+    get length() {
+        return this.#buf.byteLength - this.#off;
+    }
+    get capacity() {
+        return this.#buf.buffer.byteLength;
+    }
+    truncate(n) {
+        if (n === 0) {
+            this.reset();
+            return;
+        }
+        if (n < 0 || n > this.length) {
+            throw Error("bytes.Buffer: truncation out of range");
+        }
+        this.#reslice(this.#off + n);
+    }
+    reset() {
+        this.#reslice(0);
+        this.#off = 0;
+    }
+    #tryGrowByReslice(n) {
+        const l = this.#buf.byteLength;
+        if (n <= this.capacity - l) {
+            this.#reslice(l + n);
+            return l;
+        }
+        return -1;
+    }
+    #reslice(len) {
+        assert(len <= this.#buf.buffer.byteLength);
+        this.#buf = new Uint8Array(this.#buf.buffer, 0, len);
+    }
+    #grow(n) {
+        const m = this.length;
+        if (m === 0 && this.#off !== 0) {
+            this.reset();
+        }
+        const i = this.#tryGrowByReslice(n);
+        if (i >= 0) {
+            return i;
+        }
+        const c = this.capacity;
+        if (n <= Math.floor(c / 2) - m) {
+            copy(this.#buf.subarray(this.#off), this.#buf);
+        } else if (c + n > MAX_SIZE1) {
+            throw new Error("The buffer cannot be grown beyond the maximum size.");
+        } else {
+            const buf = new Uint8Array(Math.min(2 * c + n, MAX_SIZE1));
+            copy(this.#buf.subarray(this.#off), buf);
+            this.#buf = buf;
+        }
+        this.#off = 0;
+        this.#reslice(Math.min(m + n, MAX_SIZE1));
+        return m;
+    }
+    grow(n) {
+        if (n < 0) {
+            throw Error("Buffer.grow: negative count");
+        }
+        const m = this.#grow(n);
+        this.#reslice(m);
+    }
 }
-function run(str, code) {
-    return enabled ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
+function createLPS(pat) {
+    const lps = new Uint8Array(pat.length);
+    lps[0] = 0;
+    let prefixEnd = 0;
+    let i = 1;
+    while(i < lps.length){
+        if (pat[i] == pat[prefixEnd]) {
+            prefixEnd++;
+            lps[i] = prefixEnd;
+            i++;
+        } else if (prefixEnd === 0) {
+            lps[i] = 0;
+            i++;
+        } else {
+            prefixEnd = lps[prefixEnd - 1];
+        }
+    }
+    return lps;
 }
-function bold(str) {
-    return run(str, code1([
-        1
-    ], 22));
+class BytesList {
+    #len = 0;
+    #chunks = [];
+    constructor(){}
+    size() {
+        return this.#len;
+    }
+    add(value, start = 0, end = value.byteLength) {
+        if (value.byteLength === 0 || end - start === 0) {
+            return;
+        }
+        checkRange(start, end, value.byteLength);
+        this.#chunks.push({
+            value,
+            end,
+            start,
+            offset: this.#len
+        });
+        this.#len += end - start;
+    }
+    shift(n) {
+        if (n === 0) {
+            return;
+        }
+        if (this.#len <= n) {
+            this.#chunks = [];
+            this.#len = 0;
+            return;
+        }
+        const idx = this.getChunkIndex(n);
+        this.#chunks.splice(0, idx);
+        const [chunk] = this.#chunks;
+        if (chunk) {
+            const diff = n - chunk.offset;
+            chunk.start += diff;
+        }
+        let offset = 0;
+        for (const chunk of this.#chunks){
+            chunk.offset = offset;
+            offset += chunk.end - chunk.start;
+        }
+        this.#len = offset;
+    }
+    getChunkIndex(pos) {
+        let max = this.#chunks.length;
+        let min = 0;
+        while(true){
+            const i = min + Math.floor((max - min) / 2);
+            if (i < 0 || this.#chunks.length <= i) {
+                return -1;
+            }
+            const { offset , start , end  } = this.#chunks[i];
+            const len = end - start;
+            if (offset <= pos && pos < offset + len) {
+                return i;
+            } else if (offset + len <= pos) {
+                min = i + 1;
+            } else {
+                max = i - 1;
+            }
+        }
+    }
+    get(i) {
+        if (i < 0 || this.#len <= i) {
+            throw new Error("out of range");
+        }
+        const idx = this.getChunkIndex(i);
+        const { value , offset , start  } = this.#chunks[idx];
+        return value[start + i - offset];
+    }
+    *iterator(start = 0) {
+        const startIdx = this.getChunkIndex(start);
+        if (startIdx < 0) return;
+        const first = this.#chunks[startIdx];
+        let firstOffset = start - first.offset;
+        for(let i = startIdx; i < this.#chunks.length; i++){
+            const chunk = this.#chunks[i];
+            for(let j = chunk.start + firstOffset; j < chunk.end; j++){
+                yield chunk.value[j];
+            }
+            firstOffset = 0;
+        }
+    }
+    slice(start, end = this.#len) {
+        if (end === start) {
+            return new Uint8Array();
+        }
+        checkRange(start, end, this.#len);
+        const result = new Uint8Array(end - start);
+        const startIdx = this.getChunkIndex(start);
+        const endIdx = this.getChunkIndex(end - 1);
+        let written = 0;
+        for(let i = startIdx; i <= endIdx; i++){
+            const { value: chunkValue , start: chunkStart , end: chunkEnd , offset: chunkOffset  } = this.#chunks[i];
+            const readStart = chunkStart + (i === startIdx ? start - chunkOffset : 0);
+            const readEnd = i === endIdx ? end - chunkOffset + chunkStart : chunkEnd;
+            const len = readEnd - readStart;
+            result.set(chunkValue.subarray(readStart, readEnd), written);
+            written += len;
+        }
+        return result;
+    }
+    concat() {
+        const result = new Uint8Array(this.#len);
+        let sum = 0;
+        for (const { value , start , end  } of this.#chunks){
+            result.set(value.subarray(start, end), sum);
+            sum += end - start;
+        }
+        return result;
+    }
 }
-function red(str) {
-    return run(str, code1([
-        31
-    ], 39));
+function checkRange(start, end, len) {
+    if (start < 0 || len < start || end < 0 || len < end || end < start) {
+        throw new Error("invalid range");
+    }
 }
-function yellow(str) {
-    return run(str, code1([
-        33
-    ], 39));
+class DelimiterStream extends TransformStream {
+    #bufs = new BytesList();
+    #delimiter;
+    #inspectIndex = 0;
+    #matchIndex = 0;
+    #delimLen;
+    #delimLPS;
+    #disp;
+    constructor(delimiter, options){
+        super({
+            transform: (chunk, controller)=>{
+                this.#handle(chunk, controller);
+            },
+            flush: (controller)=>{
+                controller.enqueue(this.#bufs.concat());
+            }
+        });
+        this.#delimiter = delimiter;
+        this.#delimLen = delimiter.length;
+        this.#delimLPS = createLPS(delimiter);
+        this.#disp = options?.disposition ?? "discard";
+    }
+    #handle(chunk, controller) {
+        this.#bufs.add(chunk);
+        let localIndex = 0;
+        while(this.#inspectIndex < this.#bufs.size()){
+            if (chunk[localIndex] === this.#delimiter[this.#matchIndex]) {
+                this.#inspectIndex++;
+                localIndex++;
+                this.#matchIndex++;
+                if (this.#matchIndex === this.#delimLen) {
+                    const start = this.#inspectIndex - this.#delimLen;
+                    const end = this.#disp == "suffix" ? this.#inspectIndex : start;
+                    const copy = this.#bufs.slice(0, end);
+                    controller.enqueue(copy);
+                    const shift = this.#disp == "prefix" ? start : this.#inspectIndex;
+                    this.#bufs.shift(shift);
+                    this.#inspectIndex = this.#disp == "prefix" ? this.#delimLen : 0;
+                    this.#matchIndex = 0;
+                }
+            } else {
+                if (this.#matchIndex === 0) {
+                    this.#inspectIndex++;
+                    localIndex++;
+                } else {
+                    this.#matchIndex = this.#delimLPS[this.#matchIndex - 1];
+                }
+            }
+        }
+    }
 }
-function blue(str) {
-    return run(str, code1([
-        34
-    ], 39));
+function readableStreamFromIterable(iterable) {
+    const iterator = iterable[Symbol.asyncIterator]?.() ?? iterable[Symbol.iterator]?.();
+    return new ReadableStream({
+        async pull (controller) {
+            const { value , done  } = await iterator.next();
+            if (done) {
+                controller.close();
+            } else {
+                controller.enqueue(value);
+            }
+        },
+        async cancel (reason) {
+            if (typeof iterator.throw == "function") {
+                try {
+                    await iterator.throw(reason);
+                } catch  {}
+            }
+        }
+    });
 }
-new RegExp([
-    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
-    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"
-].join("|"), "g");
-var DiffType;
-(function(DiffType) {
-    DiffType["removed"] = "removed";
-    DiffType["common"] = "common";
-    DiffType["added"] = "added";
-})(DiffType || (DiffType = {}));
-BigInt(Number.MAX_SAFE_INTEGER);
 function getFileInfoType(fileInfo) {
     return fileInfo.isFile ? "file" : fileInfo.isDirectory ? "dir" : fileInfo.isSymlink ? "symlink" : undefined;
 }
 async function ensureDir(dir) {
     try {
+        await Deno.mkdir(dir, {
+            recursive: true
+        });
+    } catch (err) {
+        if (!(err instanceof Deno.errors.AlreadyExists)) {
+            throw err;
+        }
         const fileInfo = await Deno.lstat(dir);
         if (!fileInfo.isDirectory) {
             throw new Error(`Ensure path exists, expected 'dir', got '${getFileInfoType(fileInfo)}'`);
         }
-    } catch (err) {
-        if (err instanceof Deno.errors.NotFound) {
-            await Deno.mkdir(dir, {
-                recursive: true
-            });
-            return;
-        }
-        throw err;
     }
 }
 const BUF_SIZE = 64 * 1024;
@@ -33139,26 +33273,80 @@ const assignProperties = (schema, schema2)=>{
     }
     return newSchema;
 };
-async function exists(filePath) {
+async function exists(path, options) {
     try {
-        await Deno.lstat(filePath);
+        const stat = await Deno.stat(path);
+        if (options && (options.isReadable || options.isDirectory || options.isFile)) {
+            if (options.isDirectory && options.isFile) {
+                throw new TypeError("ExistsOptions.options.isDirectory and ExistsOptions.options.isFile must not be true together.");
+            }
+            if (options.isDirectory && !stat.isDirectory || options.isFile && !stat.isFile) {
+                return false;
+            }
+            if (options.isReadable) {
+                if (stat.mode == null) {
+                    return true;
+                }
+                if (Deno.uid() == stat.uid) {
+                    return (stat.mode & 0o400) == 0o400;
+                } else if (Deno.gid() == stat.gid) {
+                    return (stat.mode & 0o040) == 0o040;
+                }
+                return (stat.mode & 0o004) == 0o004;
+            }
+        }
         return true;
-    } catch (err) {
-        if (err instanceof Deno.errors.NotFound) {
+    } catch (error) {
+        if (error instanceof Deno.errors.NotFound) {
             return false;
         }
-        throw err;
+        if (error instanceof Deno.errors.PermissionDenied) {
+            if ((await Deno.permissions.query({
+                name: "read",
+                path
+            })).state === "granted") {
+                return !options?.isReadable;
+            }
+        }
+        throw error;
     }
 }
-function existsSync1(filePath) {
+function existsSync1(path, options) {
     try {
-        Deno.lstatSync(filePath);
+        const stat = Deno.statSync(path);
+        if (options && (options.isReadable || options.isDirectory || options.isFile)) {
+            if (options.isDirectory && options.isFile) {
+                throw new TypeError("ExistsOptions.options.isDirectory and ExistsOptions.options.isFile must not be true together.");
+            }
+            if (options.isDirectory && !stat.isDirectory || options.isFile && !stat.isFile) {
+                return false;
+            }
+            if (options.isReadable) {
+                if (stat.mode == null) {
+                    return true;
+                }
+                if (Deno.uid() == stat.uid) {
+                    return (stat.mode & 0o400) == 0o400;
+                } else if (Deno.gid() == stat.gid) {
+                    return (stat.mode & 0o040) == 0o040;
+                }
+                return (stat.mode & 0o004) == 0o004;
+            }
+        }
         return true;
-    } catch (err) {
-        if (err instanceof Deno.errors.NotFound) {
+    } catch (error) {
+        if (error instanceof Deno.errors.NotFound) {
             return false;
         }
-        throw err;
+        if (error instanceof Deno.errors.PermissionDenied) {
+            if (Deno.permissions.querySync({
+                name: "read",
+                path
+            }).state === "granted") {
+                return !options?.isReadable;
+            }
+        }
+        throw error;
     }
 }
 new Deno.errors.AlreadyExists("dest already exists.");
@@ -39539,8 +39727,7 @@ const memberSchema = {
             required: [
                 "id",
                 "username",
-                "discriminator",
-                "avatar"
+                "discriminator"
             ]
         },
         nick: {
@@ -39584,7 +39771,7 @@ const memberSchema = {
         "roles",
         "joined_at",
         "deaf",
-        "nute",
+        "mute",
         "flags"
     ],
     pathPattern: '${user.username}|${user.id}'
@@ -40245,36 +40432,36 @@ class Logger {
         return this.#_log(LogLevels.CRITICAL, msg, ...args);
     }
 }
-const { Deno: Deno2  } = globalThis;
-const noColor1 = typeof Deno2?.noColor === "boolean" ? Deno2.noColor : true;
-let enabled1 = !noColor1;
-function code2(open, close) {
+const { Deno: Deno1  } = globalThis;
+const noColor = typeof Deno1?.noColor === "boolean" ? Deno1.noColor : true;
+let enabled = !noColor;
+function code1(open, close) {
     return {
         open: `\x1b[${open.join(";")}m`,
         close: `\x1b[${close}m`,
         regexp: new RegExp(`\\x1b\\[${close}m`, "g")
     };
 }
-function run1(str, code) {
-    return enabled1 ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
+function run(str, code) {
+    return enabled ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
 }
-function bold1(str) {
-    return run1(str, code2([
+function bold(str) {
+    return run(str, code1([
         1
     ], 22));
 }
-function red1(str) {
-    return run1(str, code2([
+function red(str) {
+    return run(str, code1([
         31
     ], 39));
 }
-function yellow1(str) {
-    return run1(str, code2([
+function yellow(str) {
+    return run(str, code1([
         33
     ], 39));
 }
-function blue1(str) {
-    return run1(str, code2([
+function blue(str) {
+    return run(str, code1([
         34
     ], 39));
 }
@@ -40293,7 +40480,7 @@ function assert2(expr, msg = "") {
         throw new DenoStdInternalError2(msg);
     }
 }
-class AbstractBufBase1 {
+class AbstractBufBase {
     buf;
     usedBufferBytes = 0;
     err = null;
@@ -40310,10 +40497,10 @@ class AbstractBufBase1 {
         return this.usedBufferBytes;
     }
 }
-class BufWriterSync1 extends AbstractBufBase1 {
+class BufWriterSync extends AbstractBufBase {
     #writer;
     static create(writer, size = 4096) {
-        return writer instanceof BufWriterSync1 ? writer : new BufWriterSync1(writer, size);
+        return writer instanceof BufWriterSync ? writer : new BufWriterSync(writer, size);
     }
     constructor(writer, size = 4096){
         super(new Uint8Array(size <= 0 ? 4096 : size));
@@ -40407,16 +40594,16 @@ class ConsoleHandler extends BaseHandler {
         let msg = super.format(logRecord);
         switch(logRecord.level){
             case LogLevels.INFO:
-                msg = blue1(msg);
+                msg = blue(msg);
                 break;
             case LogLevels.WARNING:
-                msg = yellow1(msg);
+                msg = yellow(msg);
                 break;
             case LogLevels.ERROR:
-                msg = red1(msg);
+                msg = red(msg);
                 break;
             case LogLevels.CRITICAL:
-                msg = bold1(red1(msg));
+                msg = bold(red(msg));
                 break;
             default:
                 break;
@@ -40456,7 +40643,7 @@ class FileHandler extends WriterHandler {
     setup() {
         this._file = Deno.openSync(this._filename, this._openOptions);
         this._writer = this._file;
-        this._buf = new BufWriterSync1(this._file);
+        this._buf = new BufWriterSync(this._file);
         addEventListener("unload", this.#unloadCallback);
     }
     handle(logRecord) {
@@ -41747,6 +41934,121 @@ class Logger1 {
         return this.#_log(LogLevels1.CRITICAL, msg, ...args);
     }
 }
+const { Deno: Deno2  } = globalThis;
+const noColor1 = typeof Deno2?.noColor === "boolean" ? Deno2.noColor : true;
+let enabled1 = !noColor1;
+function code2(open, close) {
+    return {
+        open: `\x1b[${open.join(";")}m`,
+        close: `\x1b[${close}m`,
+        regexp: new RegExp(`\\x1b\\[${close}m`, "g")
+    };
+}
+function run1(str, code) {
+    return enabled1 ? `${code.open}${str.replace(code.regexp, code.open)}${code.close}` : str;
+}
+function bold1(str) {
+    return run1(str, code2([
+        1
+    ], 22));
+}
+function red1(str) {
+    return run1(str, code2([
+        31
+    ], 39));
+}
+function yellow1(str) {
+    return run1(str, code2([
+        33
+    ], 39));
+}
+function blue1(str) {
+    return run1(str, code2([
+        34
+    ], 39));
+}
+new RegExp([
+    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
+    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"
+].join("|"), "g");
+class AbstractBufBase1 {
+    buf;
+    usedBufferBytes = 0;
+    err = null;
+    constructor(buf){
+        this.buf = buf;
+    }
+    size() {
+        return this.buf.byteLength;
+    }
+    available() {
+        return this.buf.byteLength - this.usedBufferBytes;
+    }
+    buffered() {
+        return this.usedBufferBytes;
+    }
+}
+class BufWriterSync1 extends AbstractBufBase1 {
+    #writer;
+    static create(writer, size = 4096) {
+        return writer instanceof BufWriterSync1 ? writer : new BufWriterSync1(writer, size);
+    }
+    constructor(writer, size = 4096){
+        super(new Uint8Array(size <= 0 ? 4096 : size));
+        this.#writer = writer;
+    }
+    reset(w) {
+        this.err = null;
+        this.usedBufferBytes = 0;
+        this.#writer = w;
+    }
+    flush() {
+        if (this.err !== null) throw this.err;
+        if (this.usedBufferBytes === 0) return;
+        try {
+            const p = this.buf.subarray(0, this.usedBufferBytes);
+            let nwritten = 0;
+            while(nwritten < p.length){
+                nwritten += this.#writer.writeSync(p.subarray(nwritten));
+            }
+        } catch (e) {
+            if (e instanceof Error) {
+                this.err = e;
+            }
+            throw e;
+        }
+        this.buf = new Uint8Array(this.buf.length);
+        this.usedBufferBytes = 0;
+    }
+    writeSync(data) {
+        if (this.err !== null) throw this.err;
+        if (data.length === 0) return 0;
+        let totalBytesWritten = 0;
+        let numBytesWritten = 0;
+        while(data.byteLength > this.available()){
+            if (this.buffered() === 0) {
+                try {
+                    numBytesWritten = this.#writer.writeSync(data);
+                } catch (e) {
+                    if (e instanceof Error) {
+                        this.err = e;
+                    }
+                    throw e;
+                }
+            } else {
+                numBytesWritten = copy(data, this.buf, this.usedBufferBytes);
+                this.usedBufferBytes += numBytesWritten;
+                this.flush();
+            }
+            totalBytesWritten += numBytesWritten;
+            data = data.subarray(numBytesWritten);
+        }
+        numBytesWritten = copy(data, this.buf, this.usedBufferBytes);
+        this.usedBufferBytes += numBytesWritten;
+        totalBytesWritten += numBytesWritten;
+        return totalBytesWritten;
+    }
+}
 const DEFAULT_FORMATTER1 = "{levelName} {msg}";
 class BaseHandler1 {
     level;
@@ -41783,16 +42085,16 @@ class ConsoleHandler1 extends BaseHandler1 {
         let msg = super.format(logRecord);
         switch(logRecord.level){
             case LogLevels1.INFO:
-                msg = blue(msg);
+                msg = blue1(msg);
                 break;
             case LogLevels1.WARNING:
-                msg = yellow(msg);
+                msg = yellow1(msg);
                 break;
             case LogLevels1.ERROR:
-                msg = red(msg);
+                msg = red1(msg);
                 break;
             case LogLevels1.CRITICAL:
-                msg = bold(red(msg));
+                msg = bold1(red1(msg));
                 break;
             default:
                 break;
@@ -41832,7 +42134,7 @@ class FileHandler1 extends WriterHandler1 {
     setup() {
         this._file = Deno.openSync(this._filename, this._openOptions);
         this._writer = this._file;
-        this._buf = new BufWriterSync(this._file);
+        this._buf = new BufWriterSync1(this._file);
         addEventListener("unload", this.#unloadCallback);
     }
     handle(logRecord) {
@@ -41880,8 +42182,12 @@ class RotatingFileHandler extends FileHandler1 {
         await super.setup();
         if (this._mode === "w") {
             for(let i = 1; i <= this.#maxBackupCount; i++){
-                if (await exists(this._filename + "." + i)) {
+                try {
                     await Deno.remove(this._filename + "." + i);
+                } catch (error) {
+                    if (!(error instanceof Deno.errors.NotFound)) {
+                        throw error;
+                    }
                 }
             }
         } else if (this._mode === "x") {
@@ -41906,7 +42212,7 @@ class RotatingFileHandler extends FileHandler1 {
     }
     rotateLogFiles() {
         this._buf.flush();
-        Deno.close(this._file.rid);
+        this._file.close();
         for(let i = this.#maxBackupCount - 1; i >= 0; i--){
             const source = this._filename + (i === 0 ? "" : "." + i);
             const dest = this._filename + "." + (i + 1);
@@ -41916,7 +42222,7 @@ class RotatingFileHandler extends FileHandler1 {
         }
         this._file = Deno.openSync(this._filename, this._openOptions);
         this._writer = this._file;
-        this._buf = new BufWriterSync(this._file);
+        this._buf = new BufWriterSync1(this._file);
     }
 }
 const DEFAULT_LEVEL1 = "INFO";
@@ -42262,7 +42568,7 @@ class ServiceFactory {
     async loadServiceManifests(serviceManifestSources) {
         config.logger.debug(`Start -- loading manifests`, this.tenant);
         const uniqueServiceManifestSources = serviceManifestSources.filter((ms, i)=>serviceManifestSources.indexOf(ms) === i);
-        const getServiceManifestPromises = uniqueServiceManifestSources.map((source)=>config.modules.getServiceManifest(source));
+        const getServiceManifestPromises = uniqueServiceManifestSources.map((source)=>config.modules.getServiceManifest(source, this.tenant));
         const serviceManifests = await Promise.all(getServiceManifestPromises);
         const errors = serviceManifests.filter((m)=>typeof m === 'string');
         if (errors.length) throw new Error('failed to load service manifests: ' + errors.join('; '));
@@ -42294,7 +42600,7 @@ class ServiceFactory {
     async getPrivateServiceManifests(existingServiceSources, serviceManifests) {
         if (serviceManifests.length === 0) return [];
         const privateServiceSources = serviceManifests.flatMap((sc)=>sc.privateServices ? Object.values(sc.privateServices).map((ps)=>ps.source) : []).filter((s)=>!existingServiceSources.includes(s));
-        const manifestsLayer0 = await Promise.all(privateServiceSources.map((pss)=>config.modules.getServiceManifest(pss)));
+        const manifestsLayer0 = await Promise.all(privateServiceSources.map((pss)=>config.modules.getServiceManifest(pss, this.tenant)));
         if (manifestsLayer0.some((m)=>typeof m === 'string')) return manifestsLayer0;
         privateServiceSources.forEach((source, i)=>this.serviceManifestsBySource[source] = manifestsLayer0[i]);
         const manifestsOtherLayers = await this.getPrivateServiceManifests([
@@ -42339,14 +42645,14 @@ class ServiceFactory {
         }
         return infraName;
     }
-    async initService(serviceConfig, serviceContext) {
-        const service = await config.modules.getService(serviceConfig.source);
+    async initService(serviceConfig, serviceContext, oldState) {
+        const service = await config.modules.getService(serviceConfig.source, this.tenant);
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceContext.manifest = manifest;
-        await service.initFunc(serviceContext, serviceConfig);
+        await service.initFunc(serviceContext, serviceConfig, oldState);
     }
     async getMessageFunctionForService(serviceConfig, serviceContext, source) {
-        const service = await config.modules.getService(serviceConfig.source);
+        const service = await config.modules.getService(serviceConfig.source, this.tenant);
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceConfig = this.addPrivateServiceConfig(serviceConfig, manifest);
         const configValidator = config.modules.validateServiceConfig[serviceConfig.source];
@@ -42440,7 +42746,7 @@ class ServiceFactory {
         const serviceConfig = this.getServiceConfigByApi(api);
         if (!serviceConfig) return null;
         return [
-            await config.modules.getService(serviceConfig.source),
+            await config.modules.getService(serviceConfig.source, this.tenant),
             serviceConfig
         ];
     }
@@ -42890,10 +43196,10 @@ class Modules {
             }
         }
     }
-    async getServiceManifest(url) {
+    async getServiceManifest(url, tenant) {
         if (!this.serviceManifests[url]) {
             try {
-                const manifestJson = await Deno.readTextFile(url);
+                const manifestJson = await getSource(url, tenant);
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
                 this.serviceManifests[url] = manifest;
@@ -42907,19 +43213,29 @@ class Modules {
         }
         return this.serviceManifests[url];
     }
-    async getService(url) {
-        if (url === undefined) {
+    async getService(url, tenant) {
+        if (url === undefined || tenant === undefined) {
             return Service.Identity;
         }
         if (url.split('?')[0].endsWith('.rsm.json')) {
-            const manifest = await this.getServiceManifest(url);
+            const manifest = await this.getServiceManifest(url, tenant);
             if (typeof manifest === 'string') throw new Error(manifest);
-            url = manifest.moduleUrl;
+            if (url.startsWith("https://") && manifest.moduleUrl) {
+                url = new URL(manifest.moduleUrl, url).toString();
+            } else if (url.startsWith("/") && manifest.moduleUrl) {
+                url = new URL(manifest.moduleUrl, 'http://x.org' + url).toString().replace('http://x.org', '');
+            } else {
+                url = manifest.moduleUrl;
+            }
             if (url === undefined) return Service.Identity;
         }
         if (!this.services[url]) {
             try {
                 config.logger.debug(`Start -- loading service at ${url}`);
+                if (url.startsWith("/")) {
+                    const primaryDomain = config.tenants[tenant].primaryDomain;
+                    url = `https://${primaryDomain}${url}`;
+                }
                 const module = await import(url);
                 this.services[url] = module.default;
                 config.logger.debug(`End -- loading service at ${url}`);
@@ -43123,16 +43439,36 @@ class Tenant {
     getSources(serviceRecord) {
         return Array.isArray(serviceRecord) ? serviceRecord.map((serv)=>serv.source) : Object.values(serviceRecord).map((serv)=>serv.source);
     }
-    extractSources() {
+    extractSources(rawServicesConfig) {
         return [
-            ...this.getSources(this.rawServicesConfig.services),
+            ...this.getSources(rawServicesConfig.services),
             ...[
-                ...Object.values(this.rawServicesConfig?.chords || {}),
+                ...Object.values(rawServicesConfig?.chords || {}),
                 baseChord
             ].flatMap((chord)=>[
                     ...this.getSources(chord.newServices || [])
                 ])
         ];
+    }
+    sourceIsLocalHttp(source) {
+        if (source.startsWith('/')) return true;
+        if (source.startsWith('http://') || source.startsWith('https://')) {
+            const domain = upTo(after(source, '://'), '/');
+            return this.domains.includes(domain);
+        }
+        return false;
+    }
+    filterConfigByLocalSource(rawServicesConfig, isLocal) {
+        const servicesEntries = Object.entries(rawServicesConfig.services);
+        const filteredConfig = {
+            ...rawServicesConfig,
+            services: Object.fromEntries(servicesEntries.filter(([, s])=>isLocal === this.sourceIsLocalHttp(s.source)))
+        };
+        if (rawServicesConfig.chords) {
+            const chordEntries = Object.entries(rawServicesConfig.chords);
+            filteredConfig.chords = Object.fromEntries(chordEntries.filter(([, c])=>isLocal === c.newServices?.some((s)=>this.sourceIsLocalHttp(s.source))));
+        }
+        return filteredConfig;
     }
     async applyChord(services, chordKey, chord) {
         this.chordMap[chordKey] = {};
@@ -43198,29 +43534,60 @@ class Tenant {
         Object.keys(servicesConfig.services).forEach((keyPath)=>servicesConfig.services[keyPath].basePath = keyPath);
         return servicesConfig;
     }
-    async init() {
-        await this.serviceFactory.loadServiceManifests(this.extractSources());
-        this.servicesConfig = await this.buildServicesConfig(this.rawServicesConfig);
-        this.serviceFactory.serviceConfigs = this.servicesConfig.services;
+    async loadConfig(rawServicesConfig, oldTenant) {
+        await this.serviceFactory.loadServiceManifests(this.extractSources(rawServicesConfig));
+        const newServicesConfig = await this.buildServicesConfig(rawServicesConfig);
+        if (this.servicesConfig === null) {
+            this.servicesConfig = newServicesConfig;
+        } else {
+            this.servicesConfig = {
+                services: {
+                    ...this.servicesConfig.services,
+                    ...newServicesConfig.services
+                },
+                authServicePath: this.servicesConfig.authServicePath || newServicesConfig.authServicePath
+            };
+        }
+        if (this.serviceFactory.serviceConfigs === null) {
+            this.serviceFactory.serviceConfigs = this.servicesConfig.services;
+        } else {
+            this.serviceFactory.serviceConfigs = {
+                ...this.serviceFactory.serviceConfigs,
+                ...this.servicesConfig.services
+            };
+        }
         await this.serviceFactory.loadAdapterManifests();
-        await Promise.all(Object.values(this.serviceFactory.serviceConfigs).map((config)=>{
+        await Promise.all(Object.values(newServicesConfig.services).map((config)=>{
             const context = makeServiceContext(this.name, this.state(config.basePath));
-            return this.serviceFactory.initService(config, context).catch((reason)=>{
+            return this.serviceFactory.initService(config, context, oldTenant?._state[config.basePath]).catch((reason)=>{
                 throw new Error(`Service ${config.name} failed to initialize: ${reason}`);
             });
         })).catch((reason)=>{
             config.logger.error(`Failed to init all services, ${reason}`, this.name);
             throw new Error(`${reason}`);
         });
-        const res = await this.serviceFactory.getServiceAndConfigByApi("auth");
-        if (res) {
-            const [authService, authServiceConfig] = res;
-            this.authService = authService;
-            this.authServiceConfig = authServiceConfig;
+        if (!this.authService) {
+            const res = await this.serviceFactory.getServiceAndConfigByApi("auth");
+            if (res) {
+                const [authService, authServiceConfig] = res;
+                this.authService = authService;
+                this.authServiceConfig = authServiceConfig;
+            }
         }
     }
-    async unload() {
-        await Promise.allSettled(Object.values(this._state).map((cls)=>cls.unload()));
+    async init(oldTenant) {
+        await this.loadConfig(this.filterConfigByLocalSource(this.rawServicesConfig, false), oldTenant);
+        await this.loadConfig(this.filterConfigByLocalSource(this.rawServicesConfig, true), oldTenant);
+    }
+    async unload(newTenant) {
+        await Promise.allSettled(Object.entries(this._state).map(([key, cls])=>{
+            const newState = newTenant._state[key];
+            if (newState && newState.constructor.name === cls.constructor.name) {
+                cls.unload(newState);
+            } else {
+                cls.unload();
+            }
+        }));
     }
     getMessageFunctionByUrl(url, source) {
         return this.serviceFactory.getMessageFunctionByUrl(url, makeServiceContext(this.name, nullState), this.state, source);
@@ -43241,9 +43608,9 @@ class Tenant {
 }
 const tenantLoads = {};
 const tenantLoadTimeoutMs = 5000;
-const getTenant = async (requestTenant)=>{
+const getTenant = async (requestTenant, source = Source.External)=>{
     const tenantLoad = tenantLoads[requestTenant];
-    if (tenantLoad !== undefined) {
+    if (tenantLoad !== undefined && source !== Source.Internal) {
         await tenantLoads[requestTenant];
     }
     if (!config.tenants[requestTenant]) {
@@ -43324,7 +43691,7 @@ service12.getPath('services', async (msg, context)=>{
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
         if (!manifestData[serv.source]) {
-            const manifest = await config.modules.getServiceManifest(serv.source);
+            const manifest = await config.modules.getServiceManifest(serv.source, tenant.name);
             if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
             manifestData[serv.source] = {
                 exposedConfigProperties: manifest.exposedConfigProperties || [],
@@ -43360,7 +43727,7 @@ const rebuildConfig = async (rawServicesConfig, tenant)=>{
         ];
     }
     try {
-        await config.tenants[tenant].unload();
+        await config.tenants[tenant].unload(newTenant);
     } catch (err) {
         config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, tenant);
     }
@@ -43501,6 +43868,128 @@ function makeServiceContext(tenantName, state, prePost) {
     };
     return context;
 }
+const tenantFromHostname = (hostname)=>{
+    const domainParts = hostname.split('.');
+    if (config.server.tenancy === 'single') {
+        return '';
+    } else if (config.server.domainMap && config.server.domainMap[hostname]) {
+        return config.server.domainMap[hostname];
+    } else {
+        const mainDomain = [];
+        mainDomain.unshift(domainParts.pop());
+        mainDomain.unshift(domainParts.pop());
+        if (mainDomain.join('.').toLowerCase() !== config.server.mainDomain.toLowerCase()) {
+            return null;
+        }
+        return domainParts.join('.');
+    }
+};
+const handleIncomingRequest = async (msg)=>{
+    const originalMethod = msg.method;
+    try {
+        const tenantName = tenantFromHostname(msg.getHeader('host') || 'none');
+        if (tenantName === null) return msg.setStatus(404, 'Not found');
+        const tenant = await getTenant(tenantName || 'main');
+        msg.tenant = tenant.name;
+        msg = await tenant.attachUser(msg);
+        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
+        const msgOut = await messageFunction(msg.callDown());
+        msgOut.depth = msg.depth;
+        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        msgOut.callUp();
+        if (!msgOut.ok) {
+            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+        }
+        return msgOut;
+    } catch (err) {
+        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
+        return originalMethod === 'OPTIONS' ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
+    }
+};
+const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
+    const originalMethod = msg.method;
+    let tenantName = '';
+    try {
+        if (msg.url.domain === '' || msg.url.domain === undefined) {
+            tenantName = msg.tenant;
+            if (msg.url.isRelative) throw new Error(`Cannot request a relative url ${msg.url}`);
+        } else {
+            tenantName = tenantFromHostname(msg.url.domain);
+        }
+        let msgOut;
+        let tenant;
+        if (tenantName !== null) {
+            try {
+                tenant = await getTenant(tenantName || 'main', source);
+                if (tenant.isEmpty) tenantName = null;
+            } catch  {
+                tenantName = null;
+            }
+        }
+        if (tenantName !== null) {
+            config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            msg.tenant = tenantName;
+            const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
+            msgOut = await messageFunction(msg.callDown());
+            msgOut.depth = msg.depth;
+            config.logger.info(`${" ".repeat(msgOut.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            msgOut.callUp();
+        } else {
+            config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            let resp;
+            let msgOut;
+            if (config.requestExternal) {
+                try {
+                    msgOut = await config.requestExternal(msg);
+                } catch (err) {
+                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                    msg.setStatus(500, `External request fail: ${err}`);
+                    return msg;
+                }
+            } else {
+                try {
+                    resp = await fetch(msg.toRequest());
+                } catch (err) {
+                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                    msg.setStatus(500, `External request fail: ${err}`);
+                    return msg;
+                }
+                msgOut = Message.fromResponse(resp, msg.tenant);
+            }
+            msgOut.method = msg.method;
+            msgOut.name = msg.name;
+            msg.setMetadataOn(msgOut);
+            if (msgOut.ok) {
+                config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            } else {
+                const body = msgOut.hasData() ? await msgOut.data.asString() : 'none';
+                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...msgOut.loggerArgs());
+            }
+            return msgOut;
+        }
+        if (!msgOut.ok) {
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+        }
+        return msgOut;
+    } catch (err) {
+        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
+        return originalMethod === 'OPTIONS' && tenantName ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
+    }
+};
+const getSource = async (url, tenant)=>{
+    let data;
+    const urlStr = url instanceof Url ? url.toString() : url;
+    if (urlStr.startsWith("https://") || urlStr.startsWith("http://") || urlStr.startsWith("/")) {
+        const msg = new Message(url, tenant, "GET", null);
+        const resp = await handleOutgoingRequest(msg);
+        if (!resp.ok) throw new Error('Failed to get source: ' + urlStr);
+        data = await resp.data?.asString() || '';
+    } else {
+        data = await Deno.readTextFile(urlStr);
+    }
+    return data;
+};
 const putRaw = async (msg, context)=>{
     const rawServicesConfig = await msg?.data?.asJson();
     const [status, message] = await rebuildConfig(rawServicesConfig, context.tenant);
@@ -43560,7 +44049,7 @@ const openApi = async (msg, context)=>{
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
         if (!manifestData[serv.source]) {
-            const manifest = await config.modules.getServiceManifest(serv.source);
+            const manifest = await config.modules.getServiceManifest(serv.source, context.tenant);
             if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
             let apiPattern = "store";
             if (manifest.apis?.includes('store-transform')) apiPattern = "storeTransform";
@@ -43920,115 +44409,6 @@ async function pipeline(msg, pipeline, contextUrl, external, handler = handleOut
     }
     return msg.copy().setStatus(204, '');
 }
-const tenantFromHostname = (hostname)=>{
-    const domainParts = hostname.split('.');
-    if (config.server.tenancy === 'single') {
-        return '';
-    } else if (config.server.domainMap && config.server.domainMap[hostname]) {
-        return config.server.domainMap[hostname];
-    } else {
-        const mainDomain = [];
-        mainDomain.unshift(domainParts.pop());
-        mainDomain.unshift(domainParts.pop());
-        if (mainDomain.join('.').toLowerCase() !== config.server.mainDomain.toLowerCase()) {
-            return null;
-        }
-        return domainParts.join('.');
-    }
-};
-const handleIncomingRequest = async (msg)=>{
-    const originalMethod = msg.method;
-    try {
-        const tenantName = tenantFromHostname(msg.getHeader('host') || 'none');
-        if (tenantName === null) return msg.setStatus(404, 'Not found');
-        const tenant = await getTenant(tenantName || 'main');
-        msg.tenant = tenant.name;
-        msg = await tenant.attachUser(msg);
-        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
-        const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
-        const msgOut = await messageFunction(msg.callDown());
-        msgOut.depth = msg.depth;
-        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
-        msgOut.callUp();
-        if (!msgOut.ok) {
-            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
-        }
-        return msgOut;
-    } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
-        return originalMethod === 'OPTIONS' ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
-    }
-};
-const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
-    const originalMethod = msg.method;
-    let tenantName = '';
-    try {
-        if (msg.url.domain === '' || msg.url.domain === undefined) {
-            tenantName = msg.tenant;
-            if (msg.url.isRelative) throw new Error(`Cannot request a relative url ${msg.url}`);
-        } else {
-            tenantName = tenantFromHostname(msg.url.domain);
-        }
-        let msgOut;
-        let tenant;
-        if (tenantName !== null) {
-            try {
-                tenant = await getTenant(tenantName || 'main');
-                if (tenant.isEmpty) tenantName = null;
-            } catch  {
-                tenantName = null;
-            }
-        }
-        if (tenantName !== null) {
-            config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
-            msg.tenant = tenantName;
-            const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
-            msgOut = await messageFunction(msg.callDown());
-            msgOut.depth = msg.depth;
-            config.logger.info(`${" ".repeat(msgOut.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
-            msgOut.callUp();
-        } else {
-            config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
-            let resp;
-            let msgOut;
-            if (config.requestExternal) {
-                try {
-                    msgOut = await config.requestExternal(msg);
-                } catch (err) {
-                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
-                    msg.setStatus(500, `External request fail: ${err}`);
-                    return msg;
-                }
-            } else {
-                try {
-                    resp = await fetch(msg.toRequest());
-                } catch (err) {
-                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
-                    msg.setStatus(500, `External request fail: ${err}`);
-                    return msg;
-                }
-                msgOut = Message.fromResponse(resp, msg.tenant);
-            }
-            msgOut.method = msg.method;
-            msgOut.name = msg.name;
-            msg.setMetadataOn(msgOut);
-            if (msgOut.ok) {
-                config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
-            } else {
-                const body = msgOut.hasData() ? await msgOut.data.asString() : 'none';
-                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...msgOut.loggerArgs());
-            }
-            return msgOut;
-        }
-        if (!msgOut.ok) {
-            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
-        }
-        return msgOut;
-    } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
-        return originalMethod === 'OPTIONS' && tenantName ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
-    }
-};
 const handleOutgoingRequestFromPrivateServices = (prePost, privateServices, tenantName)=>async (msg)=>{
         if (msg.url.isRelative) {
             const privateServiceName = msg.url.pathElements[0];

@@ -113,6 +113,7 @@ export class ServiceFactory {
         const privateServiceConfigs = {} as Record<string, IServiceConfig>;
         Object.entries(manifest.privateServices).forEach(([ name, configTemplate ]) => {
             let innerServiceConfig = applyServiceConfigTemplate(serviceConfig, configTemplate);
+            innerServiceConfig.source = configTemplate.source;
             innerServiceConfig.basePath = name;
             const innerManifest = this.serviceManifestsBySource[innerServiceConfig.source];
             innerServiceConfig = this.addPrivateServiceConfig(innerServiceConfig, innerManifest);
