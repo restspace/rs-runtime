@@ -43,7 +43,11 @@ export class ServiceWrapper {
             if (err.message === 'Not found') {
                 newMsg.setStatus(404, 'Not found');
             } else {
-                config.logger.error(`Service: ${serviceConfig.name} error: ${err}`, ...msg.loggerArgs());
+                let errStack = '';
+                if (err instanceof Error) {
+                    errStack = ` at \n${err.stack || ''}`;
+                }
+                config.logger.error(`Service: ${serviceConfig.name} error: ${err}${errStack}`, ...msg.loggerArgs());
                 newMsg.setStatus(500, 'Internal Server Error');
             }
         }

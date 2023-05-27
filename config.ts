@@ -11,7 +11,7 @@ import { IChord } from "./IChord.ts";
 import { Message } from "rs-core/Message.ts";
 
 export interface Infra {
-    adapterSource: string;
+    adapterSource: string; // cannot be site relative
 }
 
 export interface IServerConfig {
@@ -80,7 +80,9 @@ export const config = {
             }
         }
     }),
-    requestExternal: null as null | ((msg: Message) => Promise<Message>)
+    requestExternal: null as null | ((msg: Message) => Promise<Message>),
+    canonicaliseUrl: (url: string, tenant?: string, primaryDomain?: string) =>
+        url.startsWith('/') ? "https://" + (primaryDomain || config.tenants[tenant || ''].primaryDomain) + url : url
 }
 
 export const setupLogging = async (level: LogLevel) => {

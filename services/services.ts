@@ -10,45 +10,114 @@ import { getErrors } from "rs-core/utility/errors.ts";
 import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
 import { ApiPattern } from "rs-core/DirDescriptor.ts";
 import { storeApi } from "../openApi.ts";
+import { Url } from "../../rs-core/Url.ts";
 
 type InfraDetails = Record<string, unknown> & Infra;
 
-let catalogue: {
+let catalogue: Record<string, {
     services: Record<string, IServiceManifest & { source: string }>,
     adapters: Record<string, IAdapterManifest & { source: string }>,
-    infra: Record<string, InfraDetails>
-} | null = null;
+    infra?: Record<string, InfraDetails>
+}> = {};
 
 const deleteManifestProperties = [ 'exposedConfigProperties' ];
 
 const service = new Service();
 
-service.getPath('catalogue', (msg: Message) => {
-    if (catalogue === null) {
-        catalogue = { services: {}, adapters: {}, infra: {} };
-        for (const [ name, serviceManifest ] of Object.entries(config.modules.serviceManifests)) {
-            const manifest = { ...serviceManifest } as (IServiceManifest & { source: string });
-            deleteManifestProperties.forEach(prop => delete (manifest as any)[prop]);
-            manifest.source = name;
-            catalogue.services[manifest.name] = manifest;
+const serviceManifestAsCatalogue = (entry: [string, IServiceManifest]) => {
+    const [name, serviceManifest] = entry;
+    const manifest = { ...serviceManifest } as (IServiceManifest & { source: string });
+    deleteManifestProperties.forEach(prop => delete (manifest as any)[prop]);
+    manifest.source = name;
+    return [name, manifest] as [string, IServiceManifest & { source: string }];
+}
+
+const adapterManifestAsCatalogue = (entry: [string, IAdapterManifest]) => {
+    const [name, adapterManifest] = entry;
+    const manifest = adapterManifest as IAdapterManifest & { source: string };
+    manifest.source = name;
+    return [name, manifest] as [string, IAdapterManifest & { source: string }];
+}
+
+const infraAsCatalogue = (entry: [string, InfraDetails]) => {
+    const [name, infra] = entry;
+    return [name, {
+        adapterSource: infra.adapterSource,
+        preconfigured: Object.keys(infra).filter(k => k !== 'adapterSource')
+    }] as [string, { adapterSource: string, preconfigured: string[] }];
+}
+
+const fetchDomainCatalogue = (domainOrTenant: string) => {
+    const serviceManifests = (config.modules.serviceManifestsMap[domainOrTenant] || [])
+        .map(url => [url, config.modules.serviceManifests[url]] as [string, IServiceManifest]);
+    const adapterManifests = (config.modules.adapterManifestsMap[domainOrTenant] || [])
+        .map(url => [url, config.modules.adapterManifests[url]] as [string, IAdapterManifest]);
+    return {
+        services: Object.fromEntries(serviceManifests.map(serviceManifestAsCatalogue)),
+        adapters: Object.fromEntries(adapterManifests.map(adapterManifestAsCatalogue))
+    };
+}
+
+const tenantOrUrlToDomain = (dir: string) => {
+    if (dir === '') return dir;
+
+    if (dir.startsWith('http://') || dir.startsWith('https://')) return new Url(dir).domain;
+    
+    const domain = config.tenants[dir]?.primaryDomain;
+    if (!domain) throw new Error(`No tenant or domain found for ${dir}`);
+    return domain;
+}
+
+const ensureAllManifests = async (tenantOrUrl: string, context: SimpleServiceContext) => {
+    const domain = tenantOrUrlToDomain(tenantOrUrl);
+    if (catalogue[domain]) return domain;
+
+    if (tenantOrUrl === "") {
+        catalogue[domain] = {
+            services: Object.fromEntries(Object.entries(config.modules.serviceManifests).map(serviceManifestAsCatalogue)),
+            adapters: Object.fromEntries(Object.entries(config.modules.adapterManifests).map(adapterManifestAsCatalogue)),
+            infra: Object.fromEntries(Object.entries(config.server.infra as Record<string, InfraDetails>).map(infraAsCatalogue))
         }
-        for (const [ name, adapterManifest ] of Object.entries(config.modules.adapterManifests)) {
-            const manifest = adapterManifest as IAdapterManifest & { source: string };
-            manifest.source = name;
-            catalogue.adapters[manifest.name] = manifest;
-        }
-        for (const [name, infra] of Object.entries(config.server.infra as Record<string, InfraDetails>)) {
-            catalogue.infra[name] = {
-                adapterSource: infra.adapterSource,
-                preconfigured: Object.keys(infra).filter(k => k !== 'adapterSource')
-            };
-        }
+    } else {
+        await config.modules.loadManifestsFromDomain(domain, context);
+        catalogue[domain] = fetchDomainCatalogue(domain);
     }
 
-    const baseSchema = schemaIServiceConfig;
-    (baseSchema.properties.source as any).enum = Object.values(catalogue.services).map(serv => serv.source);
+    return domain;
+};
 
-    return Promise.resolve(msg.setDataJson({ baseSchema, catalogue }));
+service.getPath('catalogue', async (msg, context) => {
+    // load basic manifest set
+    const builtIns = "";
+    const local = context.tenant;
+    const extLibs = [ "https://lib.restspace.io" ]
+        .filter(lib => config.tenants[context.tenant].primaryDomain !== new Url(lib).domain);
+    await ensureAllManifests(builtIns, context);
+    const localDomain = await ensureAllManifests(local, context);
+
+    const baseSchema = schemaIServiceConfig;
+    const allCat = {
+        services: {
+            ...catalogue[builtIns].services,
+            ...catalogue[localDomain].services
+        },
+        adapters: {
+            ...catalogue[builtIns].adapters,
+            ...catalogue[localDomain].adapters
+        },
+        infra: { ...catalogue[builtIns].infra }
+    };
+
+    
+    for (const lib of extLibs) {
+        const domain = await ensureAllManifests(lib, context);
+        allCat.services = { ...allCat.services, ...(catalogue[domain]?.services || {}) };
+        allCat.adapters = { ...allCat.adapters, ...(catalogue[domain]?.adapters || {})};
+    }
+
+    (baseSchema.properties.source as any).enum = Object.values(allCat.services).map(serv => serv.source);
+
+    return Promise.resolve(msg.setDataJson({ baseSchema, catalogue: allCat }));
 });
 
 service.getPath('services', async (msg: Message, context: SimpleServiceContext) => {

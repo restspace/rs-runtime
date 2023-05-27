@@ -68,15 +68,19 @@ import CSVConverter from "./services/csvConverter.ts";
 import CSVConverterManifest from "./services/csvConverter.rsm.js";
 import LogReader from "./services/logReader.ts";
 import LogReaderManifest from "./services/logReader.rsm.js";
-import ModulesManifest from "./services/module.rsm.js";
 import ServiceStoreManifest from "./services/service-store.rsm.js"
 //import EvmEventer from "./services/evmEventer.ts";
 //import EvmEventerManifest from "./services/evmEventer.rsm.js";
 
-import { AdapterContext, nullState } from "rs-core/ServiceContext.ts";
+import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
 import { transformation } from "rs-core/transformation/transformation.ts";
 import { getSource } from "./getSource.ts";
+import { Message } from "rs-core/Message.ts";
+import { handleOutgoingRequest } from "./handleRequest.ts";
+import { pathCombine, upToLast } from "rs-core/utility/utility.ts";
+import { DirDescriptor } from "../rs-core/DirDescriptor.ts";
+import { TextEncoderOrIntArrayStream } from "https://deno.land/x/denomailer@1.6.0/client/basic/transforms.ts";
 
 export const schemaIServiceManifest = {
     type: "object",
@@ -137,15 +141,25 @@ export function applyServiceConfigTemplate(serviceConfig: IServiceConfig, config
     return outputConfig;
 }
 
+export type AdapterConstructor = new (context: AdapterContext, config: unknown) => IAdapter;
+
 /** Modules is a singleton which holds compiled services and adapters for all tenants */
 export class Modules {
-    adapterConstructors: Record<string, new (context: AdapterContext, config: unknown) => IAdapter>= {};
+    // keyed by source as full url with domain or file path
+    adapterConstructors: Record<string, AdapterConstructor>= {};
     serviceManifests: Record<string, IServiceManifest> = {};
     adapterManifests: Record<string, IAdapterManifest> = {};
     services: Record<string, Service> = {};
 
+    // These map domain to the full url on that domain (or file path) of the service/adapter
+    adapterConstructorsMap: Record<string, string[]> = {};
+    serviceManifestsMap: Record<string, string[]> = {};
+    adapterManifestsMap: Record<string, string[]> = {};
+    servicesMap: Record<string, string[]> = {};
+
     validateServiceManifest: ValidateFunction<IServiceManifest>;
     validateAdapterManifest: ValidateFunction<IAdapterManifest>;
+    // keyed by source as full url with domain or file path
     validateAdapterConfig: Record<string, ValidateFunction> = {};
     validateServiceConfig: Record<string, ValidateFunction> = {};
 
@@ -166,6 +180,7 @@ export class Modules {
             "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter as new (context: AdapterContext, props: unknown) => IAdapter
         };
+        this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
             "./adapter/LocalFileAdapter.ram.json": LocalFileAdapterManifest,
             "./adapter/S3FileAdapter.ram.json": S3FileAdapterManifest,
@@ -177,6 +192,8 @@ export class Modules {
             "./adapter/ElasticQueryAdapter.ram.json": ElasticQueryAdapterManifest,
             "./adapter/FileLogReaderAdapter.ram.json": FileLogReaderAdapterManifest
         };
+        this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
+
         Object.entries(this.adapterManifests).forEach(([url, v]) => {
             (v as any).source = url;
             this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
@@ -204,6 +221,8 @@ export class Modules {
             "./services/logReader.ts": LogReader as unknown as Service<IAdapter, IServiceConfig>,
             //"./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>
         };
+        this.serviceManifestsMap[""] = Object.keys(this.services);
+
         this.serviceManifests = {
             "./services/services.rsm.json": ServicesManifest,
             "./services/auth.rsm.json": AuthManifest,
@@ -226,14 +245,26 @@ export class Modules {
             "./services/query.rsm.json": QueryManifest as unknown as IServiceManifest,
             "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest,
             "./services/logReader.rsm.json": LogReaderManifest as unknown as IServiceManifest,
-            "./services/modules.rsm.json": ModulesManifest as unknown as IServiceManifest,
             "./services/service-store.rsm.json": ServiceStoreManifest as unknown as IServiceManifest,
             //"./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest
         };
+        this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
+
         Object.entries(this.serviceManifests).forEach(([url, v]) => {
             (v as any).source = url;
             this.ensureServiceConfigValidator(url);
         });
+    }
+
+    addToDomainMap(map: Record<string, string[]>, url: string, tenant: string) {
+        const objUrl = new Url(url);
+        if (objUrl.domain) {
+            map[objUrl.domain] = map[objUrl.domain] || [];
+            map[objUrl.domain].push(url);
+        } else {
+            map[tenant] = map[tenant] || [];
+            map[tenant].push(url);
+        }
     }
 
     async getConfigAdapter(tenant: string) {
@@ -244,50 +275,64 @@ export class Modules {
         return configAdapter;
     }
 
-    async getAdapterConstructor<T extends IAdapter>(url: string): Promise<new (context: AdapterContext, config: unknown) => T> {
-        if (!this.adapterConstructors[url]) {
+    /**
+     * Load an adapter as a module and return the constructor
+     * @param sourceUrl relative or absolute url to the adapter source, or './' for built ins
+     * @param manifestUrl the url of the manifest that references the adapter
+     * @returns the adapter constructor
+     */
+    async getAdapterConstructor<T extends IAdapter>(sourceUrl: string, manifestUrl?: string): Promise<new (context: AdapterContext, config: unknown) => T> {
+        if (manifestUrl) sourceUrl = this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter");
+        if (!this.adapterConstructors[sourceUrl]) {
             try {
-            const module = await import(url);
-            this.adapterConstructors[url] = module.default;
+                const module = await import(sourceUrl);
+                this.adapterConstructors[sourceUrl] = module.default;
+                //this.addToDomainMap(this.adapterConstructorsMap, url, tenant);
             } catch (err) {
-                throw new Error(`failed to load adapter at ${url}: ${err}`);
+                throw new Error(`failed to load adapter at ${sourceUrl}: ${err}`);
             }
         }
-        return this.adapterConstructors[url] as new (context: AdapterContext, config: unknown) => T;
+        return this.adapterConstructors[sourceUrl] as new (context: AdapterContext, config: unknown) => T;
     }
 
-    async getAdapterManifest(url: string): Promise<IAdapterManifest | string> {
-        if (!this.adapterManifests[url]) {
+    async getAdapterManifest(url: string, tenant: string, primaryDomain?: string): Promise<IAdapterManifest | string> {
+        const fullUrl = config.canonicaliseUrl(url, tenant, primaryDomain);
+        if (!this.adapterManifests[fullUrl]) {
             try {
-                const manifestJson = await Deno.readTextFile(url);
+                const manifestJson = await getSource(url, tenant);
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
-                this.adapterManifests[url] = manifest;
+                this.adapterManifests[fullUrl] = manifest;
+                // don't add to domain map as it has to map all services or none
+                //this.addToDomainMap(this.adapterManifestsMap, url, tenant);
             } catch (err) {
                 return `failed to load manifest at ${url}: ${err}`;
             }
 
-            if (!this.validateAdapterManifest(this.adapterManifests[url])) {
-                return `bad format manifest at ${url}: ${getErrors(this.validateAdapterManifest)}`;
+            if (!this.validateAdapterManifest(this.adapterManifests[fullUrl])) {
+                return `bad format manifest at ${fullUrl}: ${getErrors(this.validateAdapterManifest)}`;
             }
 
-            if (!this.validateAdapterConfig[url]) {
-                this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {})
+            if (!this.validateAdapterConfig[fullUrl]) {
+                this.validateAdapterConfig[fullUrl] = this.ajv.compile(this.adapterManifests[fullUrl].configSchema || {})
             }
         }
-        return this.adapterManifests[url];
+        return this.adapterManifests[fullUrl];
     }
 
     /** returns a new instance of an adapter */
-    async getAdapter<T extends IAdapter>(url: string, context: AdapterContext, config: unknown): Promise<T> {
-        if (url.split('?')[0].endsWith('.ram.json')) {
-            const manifest = await this.getAdapterManifest(url);
+    async getAdapter<T extends IAdapter>(sourceUrl: string, context: AdapterContext, adapterConfig: unknown): Promise<T> {
+        sourceUrl = config.canonicaliseUrl(sourceUrl, context.tenant);
+        let manifestUrl;
+        if (sourceUrl.split('?')[0].endsWith('.ram.json')) {
+            const manifest = await this.getAdapterManifest(sourceUrl, context.tenant);
             if (typeof manifest === 'string') throw new Error(manifest);
-            url = manifest.moduleUrl as string;
+            manifestUrl = sourceUrl;
+            sourceUrl = manifest.moduleUrl as string;
         }
 
-        const constr = await this.getAdapterConstructor(url);
-        return new constr(context, config) as T;
+        const constr = await this.getAdapterConstructor(sourceUrl, manifestUrl);
+        return new constr(context, adapterConfig) as T;
     }
 
     ensureServiceConfigValidator(url: string) {
@@ -309,59 +354,138 @@ export class Modules {
         }
     }
 
-    async getServiceManifest(url: string, tenant: string): Promise<IServiceManifest | string> {
-        if (!this.serviceManifests[url]) {
+    async getServiceManifest(url: string, tenant: string, primaryDomain?: string): Promise<IServiceManifest | string> {
+        const fullUrl = config.canonicaliseUrl(url, tenant, primaryDomain);
+        if (!this.serviceManifests[fullUrl]) {
             try {
                 const manifestJson = await getSource(url, tenant);
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
-                this.serviceManifests[url] = manifest;
+                this.serviceManifests[fullUrl] = manifest;
+                //this.addToDomainMap(this.serviceManifestsMap, url, tenant);
             } catch (err) {
                 return `failed to load manifest at ${url}: ${err}`;
             }
 
-            if (!this.validateServiceManifest(this.serviceManifests[url])) {
-                return `bad format manifest at ${url}: ${(this.validateServiceManifest.errors || []).map(e => e.message).join('; ')}`;
+            if (!this.validateServiceManifest(this.serviceManifests[fullUrl])) {
+                return `bad format manifest at ${fullUrl}: ${(this.validateServiceManifest.errors || []).map(e => e.message).join('; ')}`;
             }
 
-            this.ensureServiceConfigValidator(url);
+            this.ensureServiceConfigValidator(fullUrl);
         }
-        return this.serviceManifests[url];
+        return this.serviceManifests[fullUrl];
     }
 
-    async getService(url?: string, tenant?: string): Promise<Service> {
+    urlRelativeToManifest(manifestUrl: string, sourceUrl: string | undefined, type: "service" | "adapter") {
+        if (manifestUrl.startsWith("https://") && sourceUrl) {
+            sourceUrl = new URL(sourceUrl, manifestUrl).toString();
+        } else if (manifestUrl.startsWith("/") && sourceUrl) {
+            throw new Error('Not allowed to have a site-relative source url for a manifest: ' + manifestUrl);
+        } else {
+            sourceUrl = sourceUrl || (
+                type === "service"
+                ? manifestUrl.replace('.rsm.json', '.ts')
+                : manifestUrl.replace('.ram.json', '.ts')
+            );
+        }
+        return sourceUrl;
+    }
+
+    async getService(url?: string, tenant?: string, primaryDomain?: string): Promise<Service> {
         if (url === undefined || tenant === undefined) {
             return Service.Identity; // returns message unchanged
         }
 
+        url = config.canonicaliseUrl(url, tenant, primaryDomain);
+
         // pull manifest if necessary
+        let sourceUrl = url;
         if (url.split('?')[0].endsWith('.rsm.json')) {
-            const manifest = await this.getServiceManifest(url, tenant);
+            const manifest = await this.getServiceManifest(url, tenant, primaryDomain);
             if (typeof manifest === 'string') throw new Error(manifest);
-            if (url.startsWith("https://") && manifest.moduleUrl) {
-                url = new URL(manifest.moduleUrl, url).toString();
-            } else if (url.startsWith("/") && manifest.moduleUrl) {
-                url = new URL(manifest.moduleUrl, 'http://x.org' + url).toString().replace('http://x.org', '');
-            } else {
-                url = manifest.moduleUrl;
-            }
-            if (url === undefined) return Service.Identity;
+            sourceUrl = this.urlRelativeToManifest(url, manifest.moduleUrl, "service");
+            if (sourceUrl === undefined) return Service.Identity;
         }
 
-        if (!this.services[url]) {
+        if (!this.services[sourceUrl]) {
             try {
                 config.logger.debug(`Start -- loading service at ${url}`);
-                if (url.startsWith("/")) {
-                    const primaryDomain = config.tenants[tenant].primaryDomain;
-                    url = `https://${primaryDomain}${url}`;
-                }
-                const module = await import(url);
-                this.services[url] = module.default;
+                const module = await import(sourceUrl);
+                this.services[sourceUrl] = module.default;
+                //this.addToDomainMap(this.servicesMap, url, tenant);
                 config.logger.debug(`End -- loading service at ${url}`);
             } catch (err) {
                 throw new Error(`failed to load module at ${url}: ${err}`);
             }
         }
-        return this.services[url];
+        return this.services[sourceUrl];
+    }
+
+    async loadManifestsFromDomain(domain: string, context: SimpleServiceContext) {
+        const urlBase = domain === config.tenants[context.tenant].primaryDomain ? '' : `https://${domain}`;
+        const servicesUrl = pathCombine(urlBase, '/.well-known/restspace/services');
+        const msg = new Message(servicesUrl, context);
+        const resp = await handleOutgoingRequest(msg);
+        if (!resp.ok || !resp.data) {
+            context.logger.error(`Error reading services from ${servicesUrl}: ${resp.status} ${resp.data?.asStringSync()}`);
+        }
+        const services = await resp.data?.asJson() as Record<string, { apis: string[], basePath: string }>;
+        this.serviceManifestsMap[domain] = [];
+        this.adapterManifestsMap[domain] = [];
+        const serviceStoreServices = Object.values(services).filter(s => s.apis.includes("service-store"));
+        for (const s of serviceStoreServices) {
+            await this.loadManifestsFromDirectory(pathCombine(urlBase, s.basePath + '/'), context);
+        }
+    }
+
+    async loadManifestsFromDirectory(url: string, context: SimpleServiceContext) {
+        url = upToLast(url, '?');
+        if (!url.endsWith('/')) throw new Error('Trying to load manifests from a non-directory URL');
+
+        const fetchUrl = url + '?$list=items,recursive';
+        const msg = new Message(fetchUrl, context, "GET");
+        const resp = await handleOutgoingRequest(msg);
+        if (!resp.ok || !resp.data || !resp.data.isDirectory) context.logger.error(`Error loading manifests from ${url}: ${resp.status} ${resp.data?.asStringSync()}`);
+        const dir = await resp.data?.asJson() as Record<string, any>;
+
+        const fullUrl = config.canonicaliseUrl(url, context.tenant);
+        for (const [key, manifest] of Object.entries(dir)) {
+            const itemUrl = fullUrl + key;
+            if (key.endsWith('.rsm.json')) {
+                try {
+                    manifest.source = itemUrl;
+                    if (!this.validateServiceManifest(manifest)) {
+                        const desc = (this.validateServiceManifest.errors || [])
+                            .map(e => `${e.message} at ${e.instancePath}`).join('; ')
+                        throw new Error(`bad format manifest at ${itemUrl}: ${desc}`);
+                    }
+
+                    this.serviceManifests[itemUrl] = manifest;
+                    this.addToDomainMap(this.serviceManifestsMap, itemUrl, context.tenant);
+                        
+                    this.ensureServiceConfigValidator(itemUrl);
+                } catch (err) {
+                    context.logger.error(`failed to load manifest at ${itemUrl}: ${err}`);
+                }
+            } else if (key.endsWith('.ram.json')) {
+                try {
+                    manifest.source = itemUrl;
+                    if (!this.validateAdapterManifest(manifest)) {
+                        const desc = (this.validateAdapterManifest.errors || [])
+                            .map(e => `${e.message} at ${e.instancePath}`).join('; ')
+                        throw new Error(`bad format manifest at ${itemUrl}: ${desc}`);
+                    }
+
+                    this.adapterManifests[itemUrl] = manifest;
+                    this.addToDomainMap(this.adapterManifestsMap, itemUrl, context.tenant);
+                    if (!this.validateAdapterConfig[itemUrl]) {
+                        this.validateAdapterConfig[itemUrl] = this.ajv.compile(this.adapterManifests[itemUrl].configSchema || {})
+                    }
+                } catch (err) {
+                    context.logger.error(`failed to load manifest at ${itemUrl}: ${err}`);
+                }
+    
+            }
+        }
     }
 }

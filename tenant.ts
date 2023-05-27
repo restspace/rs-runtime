@@ -64,7 +64,8 @@ export class Tenant {
     }
     
     constructor(public name: string, public rawServicesConfig: IRawServicesConfig, public domains: string[]) {
-        this.serviceFactory = new ServiceFactory(name);
+        const primaryDomain = domains[0] || ((name === 'main' ? '' : name + '.') + config.server.mainDomain);
+        this.serviceFactory = new ServiceFactory(name, primaryDomain);
     }
 
     private getSources(serviceRecord: Record<string, IServiceConfig> | IServiceConfig[] | IChordServiceConfig[]) {
@@ -97,7 +98,10 @@ export class Tenant {
         const filteredConfig = {
             ...rawServicesConfig,
             services: Object.fromEntries(
-                servicesEntries.filter(([,s]) => isLocal === this.sourceIsLocalHttp(s.source))
+                servicesEntries.filter(([,s]) => isLocal === !!(
+                    this.sourceIsLocalHttp(s.source)
+                    || (s.adapterSource && this.sourceIsLocalHttp(s.adapterSource))
+                ))
             )
         } as IRawServicesConfig;
         if (rawServicesConfig.chords) {

@@ -3,13 +3,12 @@ import { Source } from "rs-core/Source.ts";
 import { IServiceConfig, PrePost } from "rs-core/IServiceConfig.ts";
 import { config } from "./config.ts";
 import { IRawServicesConfig, Tenant } from "./tenant.ts";
-import { NodeResolveLoader } from "https://deno.land/x/nunjucks@3.2.3/src/node_loaders.js";
 
 const tenantLoads = {} as Record<string, Promise<void>>;
 
 const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-const tenantLoadTimeoutMs = 5000;
+const tenantLoadTimeoutMs = 500000;
 
 const getTenant = async (requestTenant: string, source = Source.External) => {
     const tenantLoad = tenantLoads[requestTenant];
@@ -100,7 +99,11 @@ export const handleIncomingRequest = async (msg: Message) => {
         }
         return msgOut;
     } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
+        let errStack = '';
+        if (err instanceof Error) {
+            errStack = ` at \n${err.stack || ''}`;
+        }
+        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS'
             ? config.server.setServerCors(msg).setStatus(204)
             : msg.setStatus(500, 'Server error');
@@ -177,7 +180,11 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         }
         return msgOut;
     } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
+        let errStack = '';
+        if (err instanceof Error) {
+            errStack = ` at \n${err.stack || ''}`;
+        }
+        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS' && tenantName
             ? config.server.setServerCors(msg).setStatus(204)
             : msg.setStatus(500, 'Server error');

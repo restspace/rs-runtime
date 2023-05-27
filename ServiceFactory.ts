@@ -21,11 +21,12 @@ type GetPrivateManifestsOutput = (string | IServiceManifest)[];
 
 /** Service message function creation and manifest caching for a tenant */
 export class ServiceFactory {
+    // souce is url with domain or file path
     serviceManifestsBySource  = {} as { [ manifestSource: string ]: IServiceManifest };
     adapterManifestsBySource  = {} as { [ manifestSource: string ]: IAdapterManifest };
     serviceConfigs = null as Record<string, IServiceConfig> | null;
 
-    constructor(public tenant: string) {
+    constructor(public tenant: string, public primaryDomain: string) {
     }
 
     /** loads all manifests required by serviceConfigs and resolves private services */
@@ -33,7 +34,7 @@ export class ServiceFactory {
         config.logger.debug(`Start -- loading manifests`, this.tenant);
         // get promises to get service manifests
         const uniqueServiceManifestSources = serviceManifestSources.filter((ms, i) => serviceManifestSources.indexOf(ms) === i);
-        const getServiceManifestPromises = uniqueServiceManifestSources.map(source => config.modules.getServiceManifest(source, this.tenant));
+        const getServiceManifestPromises = uniqueServiceManifestSources.map(source => config.modules.getServiceManifest(source, this.tenant, this.primaryDomain));
 
         const serviceManifests = await Promise.all<string | IServiceManifest>(getServiceManifestPromises);
         const errors = serviceManifests.filter(m => typeof m === 'string') as string[];
@@ -71,7 +72,7 @@ export class ServiceFactory {
         const uniqueAdapterManifestSources = allAdapterManifestSources
             .filter((ms, i) => allAdapterManifestSources.indexOf(ms) === i);
         const getAdapterManifestPromises = uniqueAdapterManifestSources
-            .map(source => config.modules.getAdapterManifest(source));
+            .map(source => config.modules.getAdapterManifest(source, this.tenant, this.primaryDomain));
 
         // get all the manifests
         const adapterManifests = await Promise.all<string | IAdapterManifest>(getAdapterManifestPromises);
@@ -94,7 +95,7 @@ export class ServiceFactory {
                 ? Object.values(sc.privateServices).map(ps => ps.source)
                 : [])
             .filter(s => !existingServiceSources.includes(s));
-        const manifestsLayer0 = await Promise.all(privateServiceSources.map(pss => config.modules.getServiceManifest(pss, this.tenant)));
+        const manifestsLayer0 = await Promise.all(privateServiceSources.map(pss => config.modules.getServiceManifest(pss, this.tenant, this.primaryDomain)));
         // bail on any error
         if (manifestsLayer0.some(m => typeof m === 'string')) return manifestsLayer0;
         privateServiceSources.forEach((source, i) => this.serviceManifestsBySource[source] = manifestsLayer0[i] as IServiceManifest);
@@ -133,7 +134,7 @@ export class ServiceFactory {
     async infraForAdapterInterface(adapterInterface: string) {
         let infraName = '';
         for (const [ name, infra ] of Object.entries(config.server.infra)) {
-            const adapterManifest = await config.modules.getAdapterManifest(infra.adapterSource);
+            const adapterManifest = await config.modules.getAdapterManifest(infra.adapterSource, this.tenant);
             if (typeof adapterManifest === 'string') {
                 config.logger.error('Failed to load adapter manifest: ' + adapterManifest);
             } else if (adapterManifest.adapterInterfaces.includes(adapterInterface)) {
@@ -148,19 +149,20 @@ export class ServiceFactory {
     }
 
     async initService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>, oldState?: BaseStateClass): Promise<void> {
-        const service = await config.modules.getService(serviceConfig.source, this.tenant);
+        const service = await config.modules.getService(serviceConfig.source, this.tenant, this.primaryDomain);
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceContext.manifest = manifest;
         await service.initFunc(serviceContext, serviceConfig, oldState);
     }
 
     async getMessageFunctionForService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>, source: Source): Promise<MessageFunction> {
-        const service = await config.modules.getService(serviceConfig.source, this.tenant);
+        const service = await config.modules.getService(serviceConfig.source, this.tenant, this.primaryDomain);
 
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceConfig = this.addPrivateServiceConfig(serviceConfig, manifest);
 
-        const configValidator = config.modules.validateServiceConfig[serviceConfig.source];
+        const canonicalSource = config.canonicaliseUrl(serviceConfig.source, this.tenant, this.primaryDomain);
+        const configValidator = config.modules.validateServiceConfig[canonicalSource];
         const serviceName = serviceConfig.name;
         if (!configValidator(serviceConfig)) {
             throw new Error(`failed to validate config for service ${serviceName}: ${getErrors(configValidator)}`);
@@ -176,7 +178,8 @@ export class ServiceFactory {
                 Object.assign(adapterConfig, infra);
             }
 
-            const validator = config.modules.validateAdapterConfig[adapterSource as string];
+            const canonicalAdapterSource = config.canonicaliseUrl(adapterSource as string, this.tenant, this.primaryDomain);
+            const validator = config.modules.validateAdapterConfig[canonicalAdapterSource];
             if (!validator(adapterConfig)) {
                 throw new Error(`failed to validate adapter config for service ${serviceConfig.name}: ${getErrors(validator)}`);
             }
@@ -263,6 +266,6 @@ export class ServiceFactory {
     async getServiceAndConfigByApi(api: string): Promise<[ Service, IServiceConfig ] | null> {
         const serviceConfig = this.getServiceConfigByApi(api);
         if (!serviceConfig) return null;
-        return [ await config.modules.getService(serviceConfig.source, this.tenant), serviceConfig ];
+        return [ await config.modules.getService(serviceConfig.source, this.tenant, this.primaryDomain), serviceConfig ];
     }
 }
