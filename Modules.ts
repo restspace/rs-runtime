@@ -9,6 +9,8 @@ import { IAdapterManifest, IManifest, IServiceManifest } from "rs-core/IManifest
 import { config, Infra } from "./config.ts";
 import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 
+import TestConfigFileAdapter from "./test/TestConfigFileAdapter.ts";
+import TestConfigFileAdapterManifest from "./test/TestConfigFileAdapter.ram.js";
 import LocalFileAdapter from "./adapter/LocalFileAdapter.ts";
 import LocalFileAdapterManifest from "./adapter/LocalFileAdapter.ram.js";
 import S3FileAdapter from "./adapter/S3FileAdapter.ts";
@@ -28,6 +30,8 @@ import ElasticQueryAdapterManifest from "./adapter/ElasticQueryAdapter.ram.js";
 import FileLogReaderAdapter from "./adapter/FileLogReaderAdapter.ts";
 import FileLogReaderAdapterManifest from "./adapter/FileLogReaderAdapter.ram.js";
 
+import Mock from "./services/mock.ts";
+import MockManifest from "./services/mock.rsm.js";
 import Services from "./services/services.ts";
 import ServicesManifest from "./services/services.rsm.js";
 import Auth from "./services/auth.ts";
@@ -79,8 +83,6 @@ import { getSource } from "./getSource.ts";
 import { Message } from "rs-core/Message.ts";
 import { handleOutgoingRequest } from "./handleRequest.ts";
 import { pathCombine, upToLast } from "rs-core/utility/utility.ts";
-import { DirDescriptor } from "../rs-core/DirDescriptor.ts";
-import { TextEncoderOrIntArrayStream } from "https://deno.land/x/denomailer@1.6.0/client/basic/transforms.ts";
 
 export const schemaIServiceManifest = {
     type: "object",
@@ -170,6 +172,7 @@ export class Modules {
         // Statically load core services & adapters
         
         this.adapterConstructors = {
+            "./test/TestConfigFileAdapter.ts": TestConfigFileAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/LocalFileAdapter.ts": LocalFileAdapter,
             "./adapter/S3FileAdapter.ts": S3FileAdapter,
             "./adapter/NunjucksTemplateAdapter.ts": NunjucksTemplateAdapter,
@@ -182,6 +185,7 @@ export class Modules {
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
+            "./test/TestConfigFileAdapter.ram.json": TestConfigFileAdapterManifest,
             "./adapter/LocalFileAdapter.ram.json": LocalFileAdapterManifest,
             "./adapter/S3FileAdapter.ram.json": S3FileAdapterManifest,
             "./adapter/NunjucksTemplateAdapter.ram.json": NunjucksTemplateAdapterManifest,
@@ -200,6 +204,7 @@ export class Modules {
         });
 
         this.services = {
+            "./services/mock.ts": Mock,
             "./services/services.ts": Services,
             "./services/auth.ts": Auth as unknown as Service<IAdapter, IServiceConfig>,
             "./services/data.ts": Data as unknown as Service<IAdapter, IServiceConfig>,
@@ -224,6 +229,7 @@ export class Modules {
         this.serviceManifestsMap[""] = Object.keys(this.services);
 
         this.serviceManifests = {
+            "./services/mock.rsm.json": MockManifest,
             "./services/services.rsm.json": ServicesManifest,
             "./services/auth.rsm.json": AuthManifest,
             "./services/data.rsm.json": DataManifest,
