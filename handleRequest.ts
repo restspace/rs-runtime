@@ -85,7 +85,8 @@ export const handleIncomingRequest = async (msg: Message) => {
     try {
         const tenantName = tenantFromHostname(msg.getHeader('host') || 'none');
         if (tenantName === null) return msg.setStatus(404, 'Not found');
-        const tenant = await getTenant(tenantName || 'main');
+        const source = msg.url.query['$x-rs-source']?.[0] === 'internal' ? Source.Internal : Source.External;
+        const tenant = await getTenant(tenantName || 'main', source);
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
         config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());

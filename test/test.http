@@ -336,3 +336,12 @@ GET https://lib.restspace.io/.well-known/restspace/services
 
 ###
 GEt https://restspace.local:3131/.well-known/restspace/catalogue
+
+###
+
+POST https://restspace.local:3131/embeddings
+Content-Type: text/plain
+
+function f(x) {
+	return x * x;
+}

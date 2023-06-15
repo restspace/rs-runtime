@@ -69,8 +69,8 @@ import CSVConverterManifest from "./services/csvConverter.rsm.js";
 import LogReader from "./services/logReader.ts";
 import LogReaderManifest from "./services/logReader.rsm.js";
 import ServiceStoreManifest from "./services/service-store.rsm.js"
-//import EvmEventer from "./services/evmEventer.ts";
-//import EvmEventerManifest from "./services/evmEventer.rsm.js";
+import EvmEventer from "./services/evmEventer.ts";
+import EvmEventerManifest from "./services/evmEventer.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -219,7 +219,7 @@ export class Modules {
             "./services/query.ts": Query as unknown as Service<IAdapter, IServiceConfig>,
             "./services/csvConverter.ts": CSVConverter as unknown as Service<IAdapter, IServiceConfig>,
             "./services/logReader.ts": LogReader as unknown as Service<IAdapter, IServiceConfig>,
-            //"./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>
+            "./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>
         };
         this.serviceManifestsMap[""] = Object.keys(this.services);
 
@@ -246,7 +246,7 @@ export class Modules {
             "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest,
             "./services/logReader.rsm.json": LogReaderManifest as unknown as IServiceManifest,
             "./services/service-store.rsm.json": ServiceStoreManifest as unknown as IServiceManifest,
-            //"./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest
+            "./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 
@@ -285,7 +285,9 @@ export class Modules {
         if (manifestUrl) sourceUrl = this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter");
         if (!this.adapterConstructors[sourceUrl]) {
             try {
-                const module = await import(sourceUrl);
+                const moduleReqUrl = new Url(sourceUrl);
+                moduleReqUrl.query['$x-rs-source'] = [ 'internal']
+                const module = await import(moduleReqUrl.toString());
                 this.adapterConstructors[sourceUrl] = module.default;
                 //this.addToDomainMap(this.adapterConstructorsMap, url, tenant);
             } catch (err) {
@@ -331,6 +333,7 @@ export class Modules {
             sourceUrl = manifest.moduleUrl as string;
         }
 
+        context.logger.debug(`Loading adapter at ${sourceUrl}`);
         const constr = await this.getAdapterConstructor(sourceUrl, manifestUrl);
         return new constr(context, adapterConfig) as T;
     }
@@ -410,7 +413,9 @@ export class Modules {
         if (!this.services[sourceUrl]) {
             try {
                 config.logger.debug(`Start -- loading service at ${url}`);
-                const module = await import(sourceUrl);
+                const moduleReqUrl = new Url(sourceUrl);
+                moduleReqUrl.query['$x-rs-source'] = [ 'internal']
+                const module = await import(moduleReqUrl.toString());
                 this.services[sourceUrl] = module.default;
                 //this.addToDomainMap(this.servicesMap, url, tenant);
                 config.logger.debug(`End -- loading service at ${url}`);

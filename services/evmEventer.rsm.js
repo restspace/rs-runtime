@@ -9,9 +9,9 @@ export default {
 	        "triggerUrlBase": { "type": "string" },
 	        "contractAddress": { "type": "string" },
             "alchemyHttpsUrl": { "type": "string" },
-            "userUrlIndexedByAddress": { "type": "string" },
+            "userUrlIndexedByAddress": { "type": "string", "description": "Url to get user by their chain address with ${address} substitution" },
         },
-        "required": [ "triggerUrlBase", "contractAddress", "alchemyWebSocketUrl", "userUrlIndexedByAddress" ]
+        "required": [ "triggerUrlBase", "contractAddress", "alchemyHttpsUrl", "userUrlIndexedByAddress" ]
     },
     "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts" 
 }

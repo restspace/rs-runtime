@@ -13525,7 +13525,7 @@ const headerDate = (d)=>{
     return `${dayName}, ${day} ${month} ${year} ${hour}:${minute}:${second} GMT`;
 };
 class Message {
-    tenant;
+    tenantOrContext;
     method;
     cookies;
     context;
@@ -13538,6 +13538,7 @@ class Message {
     externalUrl;
     user;
     websocket;
+    tenant;
     _status;
     _data;
     uninitiatedDataCopies;
@@ -13618,8 +13619,8 @@ class Message {
         const host = this.getHeader('Host');
         return host || '';
     }
-    constructor(url, tenant, method = "GET", parent, headers, data){
-        this.tenant = tenant;
+    constructor(url, tenantOrContext, method = "GET", parent, headers, data){
+        this.tenantOrContext = tenantOrContext;
         this.method = method;
         this.cookies = {};
         this.context = {};
@@ -13666,17 +13667,27 @@ class Message {
         if (this.getHeader("x-forwarded-proto")) {
             this.url.scheme = this.getHeader("x-forwarded-proto") + '://';
         }
-        if (parent === null) {
+        if (!parent) {
             const traceId = crypto.randomUUID().replace(/-/g, '');
             const spanId = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
             this.setHeader('traceparent', `00-${traceId}-${spanId}-00`);
-        } else {
+        } else if (parent instanceof Message) {
             const traceparent = parent.getHeader('traceparent');
             if (traceparent) {
                 this.setHeader('traceparent', traceparent);
                 const tracestate = parent.getHeader('tracestate');
                 if (tracestate) this.setHeader('tracestate', tracestate);
             }
+        } else if (typeof tenantOrContext !== 'string') {
+            if (tenantOrContext.traceparent) {
+                this.setHeader('traceparent', tenantOrContext.traceparent);
+                if (tenantOrContext.tracestate) this.setHeader('tracestate', tenantOrContext.tracestate);
+            }
+        }
+        if (typeof tenantOrContext === 'string') {
+            this.tenant = tenantOrContext;
+        } else {
+            this.tenant = tenantOrContext.tenant;
         }
         const cookieStrings = (this.headers['cookie'] || '').split(';');
         this.cookies = cookieStrings ? cookieStrings.reduce((res, cookieString)=>{
@@ -41767,21 +41778,23 @@ const __default40 = {
     "adapterInterface": "ILogReaderAdapter"
 };
 const __default41 = {
-    "name": "Module service",
-    "description": "Stores module code and manifests",
+    "name": "Service store service",
+    "description": "Stores files for service and adapter code and manifests",
     "moduleUrl": "./services/file.ts",
     "apis": [
         "store",
-        "file.base"
+        "file.base",
+        "service-store"
     ],
     "adapterInterface": "IFileAdapter",
     "configTemplate": {
-        "source": "./services/file.rsm.json",
         "$this": "$this",
         "extensions": [
-            "'json'",
-            "'ts'"
-        ]
+            "'ts'",
+            "'json'"
+        ],
+        "parentIfMissing": "false",
+        "defaultResource": "''"
     }
 };
 var LogLevels1;
@@ -42496,7 +42509,7 @@ class AuthUser {
     static noPasswordMask = '<no password>';
     static anon = new AuthUser({});
 }
-let catalogue = null;
+let catalogue = {};
 const baseChord = {
     id: 'sys.base',
     newServices: [
@@ -42551,16 +42564,17 @@ function applyServiceConfigTemplate(serviceConfig, configTemplate) {
     };
     delete transformObject.source;
     const outputConfig = transformation(transformObject, serviceConfig, new Url(configTemplate.source));
-    outputConfig.source = configTemplate.source;
     return outputConfig;
 }
 class ServiceFactory {
     tenant;
+    primaryDomain;
     serviceManifestsBySource;
     adapterManifestsBySource;
     serviceConfigs;
-    constructor(tenant){
+    constructor(tenant, primaryDomain){
         this.tenant = tenant;
+        this.primaryDomain = primaryDomain;
         this.serviceManifestsBySource = {};
         this.adapterManifestsBySource = {};
         this.serviceConfigs = null;
@@ -42568,7 +42582,7 @@ class ServiceFactory {
     async loadServiceManifests(serviceManifestSources) {
         config.logger.debug(`Start -- loading manifests`, this.tenant);
         const uniqueServiceManifestSources = serviceManifestSources.filter((ms, i)=>serviceManifestSources.indexOf(ms) === i);
-        const getServiceManifestPromises = uniqueServiceManifestSources.map((source)=>config.modules.getServiceManifest(source, this.tenant));
+        const getServiceManifestPromises = uniqueServiceManifestSources.map((source)=>config.modules.getServiceManifest(source, this.tenant, this.primaryDomain));
         const serviceManifests = await Promise.all(getServiceManifestPromises);
         const errors = serviceManifests.filter((m)=>typeof m === 'string');
         if (errors.length) throw new Error('failed to load service manifests: ' + errors.join('; '));
@@ -42590,7 +42604,7 @@ class ServiceFactory {
             ...adapterInfraManifestSources
         ];
         const uniqueAdapterManifestSources = allAdapterManifestSources.filter((ms, i)=>allAdapterManifestSources.indexOf(ms) === i);
-        const getAdapterManifestPromises = uniqueAdapterManifestSources.map((source)=>config.modules.getAdapterManifest(source));
+        const getAdapterManifestPromises = uniqueAdapterManifestSources.map((source)=>config.modules.getAdapterManifest(source, this.tenant, this.primaryDomain));
         const adapterManifests = await Promise.all(getAdapterManifestPromises);
         const errors = adapterManifests.filter((m)=>typeof m === 'string');
         if (errors.length) throw new Error('failed to load adapter manifests: ' + errors.join('; '));
@@ -42600,7 +42614,7 @@ class ServiceFactory {
     async getPrivateServiceManifests(existingServiceSources, serviceManifests) {
         if (serviceManifests.length === 0) return [];
         const privateServiceSources = serviceManifests.flatMap((sc)=>sc.privateServices ? Object.values(sc.privateServices).map((ps)=>ps.source) : []).filter((s)=>!existingServiceSources.includes(s));
-        const manifestsLayer0 = await Promise.all(privateServiceSources.map((pss)=>config.modules.getServiceManifest(pss, this.tenant)));
+        const manifestsLayer0 = await Promise.all(privateServiceSources.map((pss)=>config.modules.getServiceManifest(pss, this.tenant, this.primaryDomain)));
         if (manifestsLayer0.some((m)=>typeof m === 'string')) return manifestsLayer0;
         privateServiceSources.forEach((source, i)=>this.serviceManifestsBySource[source] = manifestsLayer0[i]);
         const manifestsOtherLayers = await this.getPrivateServiceManifests([
@@ -42614,6 +42628,7 @@ class ServiceFactory {
         const privateServiceConfigs = {};
         Object.entries(manifest.privateServices).forEach(([name, configTemplate])=>{
             let innerServiceConfig = applyServiceConfigTemplate(serviceConfig, configTemplate);
+            innerServiceConfig.source = configTemplate.source;
             innerServiceConfig.basePath = name;
             const innerManifest = this.serviceManifestsBySource[innerServiceConfig.source];
             innerServiceConfig = this.addPrivateServiceConfig(innerServiceConfig, innerManifest);
@@ -42632,7 +42647,7 @@ class ServiceFactory {
     async infraForAdapterInterface(adapterInterface) {
         let infraName = '';
         for (const [name, infra] of Object.entries(config.server.infra)){
-            const adapterManifest = await config.modules.getAdapterManifest(infra.adapterSource);
+            const adapterManifest = await config.modules.getAdapterManifest(infra.adapterSource, this.tenant);
             if (typeof adapterManifest === 'string') {
                 config.logger.error('Failed to load adapter manifest: ' + adapterManifest);
             } else if (adapterManifest.adapterInterfaces.includes(adapterInterface)) {
@@ -42646,16 +42661,17 @@ class ServiceFactory {
         return infraName;
     }
     async initService(serviceConfig, serviceContext, oldState) {
-        const service = await config.modules.getService(serviceConfig.source, this.tenant);
+        const service = await config.modules.getService(serviceConfig.source, this.tenant, this.primaryDomain);
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceContext.manifest = manifest;
         await service.initFunc(serviceContext, serviceConfig, oldState);
     }
     async getMessageFunctionForService(serviceConfig, serviceContext, source) {
-        const service = await config.modules.getService(serviceConfig.source, this.tenant);
+        const service = await config.modules.getService(serviceConfig.source, this.tenant, this.primaryDomain);
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceConfig = this.addPrivateServiceConfig(serviceConfig, manifest);
-        const configValidator = config.modules.validateServiceConfig[serviceConfig.source];
+        const canonicalSource = config.canonicaliseUrl(serviceConfig.source, this.tenant, this.primaryDomain);
+        const configValidator = config.modules.validateServiceConfig[canonicalSource];
         const serviceName = serviceConfig.name;
         if (!configValidator(serviceConfig)) {
             throw new Error(`failed to validate config for service ${serviceName}: ${getErrors(configValidator)}`);
@@ -42671,7 +42687,8 @@ class ServiceFactory {
                 adapterSource = infra.adapterSource;
                 Object.assign(adapterConfig, infra);
             }
-            const validator = config.modules.validateAdapterConfig[adapterSource];
+            const canonicalAdapterSource = config.canonicaliseUrl(adapterSource, this.tenant, this.primaryDomain);
+            const validator = config.modules.validateAdapterConfig[canonicalAdapterSource];
             if (!validator(adapterConfig)) {
                 throw new Error(`failed to validate adapter config for service ${serviceConfig.name}: ${getErrors(validator)}`);
             }
@@ -42746,7 +42763,7 @@ class ServiceFactory {
         const serviceConfig = this.getServiceConfigByApi(api);
         if (!serviceConfig) return null;
         return [
-            await config.modules.getService(serviceConfig.source, this.tenant),
+            await config.modules.getService(serviceConfig.source, this.tenant, this.primaryDomain),
             serviceConfig
         ];
     }
@@ -42771,7 +42788,11 @@ class ServiceWrapper {
                 if (err.message === 'Not found') {
                     newMsg.setStatus(404, 'Not found');
                 } else {
-                    config.logger.error(`Service: ${serviceConfig.name} error: ${err}`, ...msg.loggerArgs());
+                    let errStack = '';
+                    if (err instanceof Error) {
+                        errStack = ` at \n${err.stack || ''}`;
+                    }
+                    config.logger.error(`Service: ${serviceConfig.name} error: ${err}${errStack}`, ...msg.loggerArgs());
                     newMsg.setStatus(500, 'Internal Server Error');
                 }
             }
@@ -43041,6 +43062,10 @@ class Modules {
     serviceManifests;
     adapterManifests;
     services;
+    adapterConstructorsMap;
+    serviceManifestsMap;
+    adapterManifestsMap;
+    servicesMap;
     validateServiceManifest;
     validateAdapterManifest;
     validateAdapterConfig;
@@ -43051,6 +43076,10 @@ class Modules {
         this.serviceManifests = {};
         this.adapterManifests = {};
         this.services = {};
+        this.adapterConstructorsMap = {};
+        this.serviceManifestsMap = {};
+        this.adapterManifestsMap = {};
+        this.servicesMap = {};
         this.validateAdapterConfig = {};
         this.validateServiceConfig = {};
         this.validateServiceManifest = ajv.compile(schemaIServiceManifest);
@@ -43066,6 +43095,7 @@ class Modules {
             "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter,
             "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter
         };
+        this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
             "./adapter/LocalFileAdapter.ram.json": __default10,
             "./adapter/S3FileAdapter.ram.json": __default12,
@@ -43077,6 +43107,7 @@ class Modules {
             "./adapter/ElasticQueryAdapter.ram.json": __default18,
             "./adapter/FileLogReaderAdapter.ram.json": __default19
         };
+        this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
         Object.entries(this.adapterManifests).forEach(([url, v])=>{
             v.source = url;
             this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
@@ -43102,6 +43133,7 @@ class Modules {
             "./services/csvConverter.ts": service10,
             "./services/logReader.ts": service11
         };
+        this.serviceManifestsMap[""] = Object.keys(this.services);
         this.serviceManifests = {
             "./services/services.rsm.json": __default20,
             "./services/auth.rsm.json": __default21,
@@ -43124,12 +43156,23 @@ class Modules {
             "./services/query.rsm.json": __default38,
             "./services/csvConverter.rsm.json": __default39,
             "./services/logReader.rsm.json": __default40,
-            "./services/modules.rsm.json": __default41
+            "./services/service-store.rsm.json": __default41
         };
+        this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
             v.source = url;
             this.ensureServiceConfigValidator(url);
         });
+    }
+    addToDomainMap(map, url, tenant) {
+        const objUrl = new Url(url);
+        if (objUrl.domain) {
+            map[objUrl.domain] = map[objUrl.domain] || [];
+            map[objUrl.domain].push(url);
+        } else {
+            map[tenant] = map[tenant] || [];
+            map[tenant].push(url);
+        }
     }
     async getConfigAdapter(tenant) {
         const configStoreAdapterSpec = {
@@ -43140,44 +43183,49 @@ class Modules {
         const configAdapter = await config.modules.getAdapter(configStoreAdapterSpec.adapterSource, context, configStoreAdapterSpec);
         return configAdapter;
     }
-    async getAdapterConstructor(url) {
-        if (!this.adapterConstructors[url]) {
+    async getAdapterConstructor(sourceUrl, manifestUrl) {
+        if (manifestUrl) sourceUrl = this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter");
+        if (!this.adapterConstructors[sourceUrl]) {
             try {
-                const module = await import(url);
-                this.adapterConstructors[url] = module.default;
+                const module = await import(sourceUrl);
+                this.adapterConstructors[sourceUrl] = module.default;
             } catch (err) {
-                throw new Error(`failed to load adapter at ${url}: ${err}`);
+                throw new Error(`failed to load adapter at ${sourceUrl}: ${err}`);
             }
         }
-        return this.adapterConstructors[url];
+        return this.adapterConstructors[sourceUrl];
     }
-    async getAdapterManifest(url) {
-        if (!this.adapterManifests[url]) {
+    async getAdapterManifest(url, tenant, primaryDomain) {
+        const fullUrl = config.canonicaliseUrl(url, tenant, primaryDomain);
+        if (!this.adapterManifests[fullUrl]) {
             try {
-                const manifestJson = await Deno.readTextFile(url);
+                const manifestJson = await getSource(url, tenant);
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
-                this.adapterManifests[url] = manifest;
+                this.adapterManifests[fullUrl] = manifest;
             } catch (err) {
                 return `failed to load manifest at ${url}: ${err}`;
             }
-            if (!this.validateAdapterManifest(this.adapterManifests[url])) {
-                return `bad format manifest at ${url}: ${getErrors(this.validateAdapterManifest)}`;
+            if (!this.validateAdapterManifest(this.adapterManifests[fullUrl])) {
+                return `bad format manifest at ${fullUrl}: ${getErrors(this.validateAdapterManifest)}`;
             }
-            if (!this.validateAdapterConfig[url]) {
-                this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
+            if (!this.validateAdapterConfig[fullUrl]) {
+                this.validateAdapterConfig[fullUrl] = this.ajv.compile(this.adapterManifests[fullUrl].configSchema || {});
             }
         }
-        return this.adapterManifests[url];
+        return this.adapterManifests[fullUrl];
     }
-    async getAdapter(url, context, config) {
-        if (url.split('?')[0].endsWith('.ram.json')) {
-            const manifest = await this.getAdapterManifest(url);
+    async getAdapter(sourceUrl, context, adapterConfig) {
+        sourceUrl = config.canonicaliseUrl(sourceUrl, context.tenant);
+        let manifestUrl;
+        if (sourceUrl.split('?')[0].endsWith('.ram.json')) {
+            const manifest = await this.getAdapterManifest(sourceUrl, context.tenant);
             if (typeof manifest === 'string') throw new Error(manifest);
-            url = manifest.moduleUrl;
+            manifestUrl = sourceUrl;
+            sourceUrl = manifest.moduleUrl;
         }
-        const constr = await this.getAdapterConstructor(url);
-        return new constr(context, config);
+        const constr = await this.getAdapterConstructor(sourceUrl, manifestUrl);
+        return new constr(context, adapterConfig);
     }
     ensureServiceConfigValidator(url) {
         if (!this.validateServiceConfig[url]) {
@@ -43196,54 +43244,115 @@ class Modules {
             }
         }
     }
-    async getServiceManifest(url, tenant) {
-        if (!this.serviceManifests[url]) {
+    async getServiceManifest(url, tenant, primaryDomain) {
+        const fullUrl = config.canonicaliseUrl(url, tenant, primaryDomain);
+        if (!this.serviceManifests[fullUrl]) {
             try {
                 const manifestJson = await getSource(url, tenant);
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
-                this.serviceManifests[url] = manifest;
+                this.serviceManifests[fullUrl] = manifest;
             } catch (err) {
                 return `failed to load manifest at ${url}: ${err}`;
             }
-            if (!this.validateServiceManifest(this.serviceManifests[url])) {
-                return `bad format manifest at ${url}: ${(this.validateServiceManifest.errors || []).map((e)=>e.message).join('; ')}`;
+            if (!this.validateServiceManifest(this.serviceManifests[fullUrl])) {
+                return `bad format manifest at ${fullUrl}: ${(this.validateServiceManifest.errors || []).map((e)=>e.message).join('; ')}`;
             }
-            this.ensureServiceConfigValidator(url);
+            this.ensureServiceConfigValidator(fullUrl);
         }
-        return this.serviceManifests[url];
+        return this.serviceManifests[fullUrl];
     }
-    async getService(url, tenant) {
+    urlRelativeToManifest(manifestUrl, sourceUrl, type) {
+        if (manifestUrl.startsWith("https://") && sourceUrl) {
+            sourceUrl = new URL(sourceUrl, manifestUrl).toString();
+        } else if (manifestUrl.startsWith("/") && sourceUrl) {
+            throw new Error('Not allowed to have a site-relative source url for a manifest: ' + manifestUrl);
+        } else {
+            sourceUrl = sourceUrl || (type === "service" ? manifestUrl.replace('.rsm.json', '.ts') : manifestUrl.replace('.ram.json', '.ts'));
+        }
+        return sourceUrl;
+    }
+    async getService(url, tenant, primaryDomain) {
         if (url === undefined || tenant === undefined) {
             return Service.Identity;
         }
+        url = config.canonicaliseUrl(url, tenant, primaryDomain);
+        let sourceUrl = url;
         if (url.split('?')[0].endsWith('.rsm.json')) {
-            const manifest = await this.getServiceManifest(url, tenant);
+            const manifest = await this.getServiceManifest(url, tenant, primaryDomain);
             if (typeof manifest === 'string') throw new Error(manifest);
-            if (url.startsWith("https://") && manifest.moduleUrl) {
-                url = new URL(manifest.moduleUrl, url).toString();
-            } else if (url.startsWith("/") && manifest.moduleUrl) {
-                url = new URL(manifest.moduleUrl, 'http://x.org' + url).toString().replace('http://x.org', '');
-            } else {
-                url = manifest.moduleUrl;
-            }
-            if (url === undefined) return Service.Identity;
+            sourceUrl = this.urlRelativeToManifest(url, manifest.moduleUrl, "service");
+            if (sourceUrl === undefined) return Service.Identity;
         }
-        if (!this.services[url]) {
+        if (!this.services[sourceUrl]) {
             try {
                 config.logger.debug(`Start -- loading service at ${url}`);
-                if (url.startsWith("/")) {
-                    const primaryDomain = config.tenants[tenant].primaryDomain;
-                    url = `https://${primaryDomain}${url}`;
-                }
-                const module = await import(url);
-                this.services[url] = module.default;
+                const module = await import(sourceUrl);
+                this.services[sourceUrl] = module.default;
                 config.logger.debug(`End -- loading service at ${url}`);
             } catch (err) {
                 throw new Error(`failed to load module at ${url}: ${err}`);
             }
         }
-        return this.services[url];
+        return this.services[sourceUrl];
+    }
+    async loadManifestsFromDomain(domain, context) {
+        const urlBase = domain === config.tenants[context.tenant].primaryDomain ? '' : `https://${domain}`;
+        const servicesUrl = pathCombine(urlBase, '/.well-known/restspace/services');
+        const msg = new Message(servicesUrl, context);
+        const resp = await handleOutgoingRequest(msg);
+        if (!resp.ok || !resp.data) {
+            context.logger.error(`Error reading services from ${servicesUrl}: ${resp.status} ${resp.data?.asStringSync()}`);
+        }
+        const services = await resp.data?.asJson();
+        this.serviceManifestsMap[domain] = [];
+        this.adapterManifestsMap[domain] = [];
+        const serviceStoreServices = Object.values(services).filter((s)=>s.apis.includes("service-store"));
+        for (const s of serviceStoreServices){
+            await this.loadManifestsFromDirectory(pathCombine(urlBase, s.basePath + '/'), context);
+        }
+    }
+    async loadManifestsFromDirectory(url, context) {
+        url = upToLast(url, '?');
+        if (!url.endsWith('/')) throw new Error('Trying to load manifests from a non-directory URL');
+        const fetchUrl = url + '?$list=items,recursive';
+        const msg = new Message(fetchUrl, context, "GET");
+        const resp = await handleOutgoingRequest(msg);
+        if (!resp.ok || !resp.data || !resp.data.isDirectory) context.logger.error(`Error loading manifests from ${url}: ${resp.status} ${resp.data?.asStringSync()}`);
+        const dir = await resp.data?.asJson();
+        const fullUrl = config.canonicaliseUrl(url, context.tenant);
+        for (const [key, manifest] of Object.entries(dir)){
+            const itemUrl = fullUrl + key;
+            if (key.endsWith('.rsm.json')) {
+                try {
+                    manifest.source = itemUrl;
+                    if (!this.validateServiceManifest(manifest)) {
+                        const desc = (this.validateServiceManifest.errors || []).map((e)=>`${e.message} at ${e.instancePath}`).join('; ');
+                        throw new Error(`bad format manifest at ${itemUrl}: ${desc}`);
+                    }
+                    this.serviceManifests[itemUrl] = manifest;
+                    this.addToDomainMap(this.serviceManifestsMap, itemUrl, context.tenant);
+                    this.ensureServiceConfigValidator(itemUrl);
+                } catch (err) {
+                    context.logger.error(`failed to load manifest at ${itemUrl}: ${err}`);
+                }
+            } else if (key.endsWith('.ram.json')) {
+                try {
+                    manifest.source = itemUrl;
+                    if (!this.validateAdapterManifest(manifest)) {
+                        const desc = (this.validateAdapterManifest.errors || []).map((e)=>`${e.message} at ${e.instancePath}`).join('; ');
+                        throw new Error(`bad format manifest at ${itemUrl}: ${desc}`);
+                    }
+                    this.adapterManifests[itemUrl] = manifest;
+                    this.addToDomainMap(this.adapterManifestsMap, itemUrl, context.tenant);
+                    if (!this.validateAdapterConfig[itemUrl]) {
+                        this.validateAdapterConfig[itemUrl] = this.ajv.compile(this.adapterManifests[itemUrl].configSchema || {});
+                    }
+                } catch (err) {
+                    context.logger.error(`failed to load manifest at ${itemUrl}: ${err}`);
+                }
+            }
+        }
     }
 }
 (function(TokenVerification) {
@@ -43373,7 +43482,8 @@ const config = {
             }
         }
     }),
-    requestExternal: null
+    requestExternal: null,
+    canonicaliseUrl: (url, tenant, primaryDomain)=>url.startsWith('/') ? "https://" + (primaryDomain || config.tenants[tenant || ''].primaryDomain) + url : url
 };
 const setupLogging = async (level)=>{
     await setup1({
@@ -43399,6 +43509,220 @@ const setupLogging = async (level)=>{
         }
     });
     config.logger = getLogger1();
+};
+const serviceManifestAsCatalogue = (entry)=>{
+    const [name, serviceManifest] = entry;
+    const manifest = {
+        ...serviceManifest
+    };
+    deleteManifestProperties.forEach((prop)=>delete manifest[prop]);
+    manifest.source = name;
+    return [
+        name,
+        manifest
+    ];
+};
+const adapterManifestAsCatalogue = (entry)=>{
+    const [name, adapterManifest] = entry;
+    const manifest = adapterManifest;
+    manifest.source = name;
+    return [
+        name,
+        manifest
+    ];
+};
+const infraAsCatalogue = (entry)=>{
+    const [name, infra] = entry;
+    return [
+        name,
+        {
+            adapterSource: infra.adapterSource,
+            preconfigured: Object.keys(infra).filter((k)=>k !== 'adapterSource')
+        }
+    ];
+};
+const tenantLoads = {};
+const tenantLoadTimeoutMs = 500000;
+const getTenant = async (requestTenant, source = Source.External)=>{
+    const tenantLoad = tenantLoads[requestTenant];
+    if (tenantLoad !== undefined && source !== Source.Internal) {
+        await tenantLoads[requestTenant];
+    }
+    if (!config.tenants[requestTenant]) {
+        let resolveLoad = null;
+        let timeoutHandle = null;
+        try {
+            config.logger.debug(`Start -- load tenant ${requestTenant}`, requestTenant);
+            tenantLoads[requestTenant] = new Promise((resolve)=>resolveLoad = resolve);
+            timeoutHandle = setTimeout(()=>{
+                if (resolveLoad) {
+                    resolveLoad();
+                }
+                config.logger.error(`Timeout loading services for tenant ${requestTenant}`, requestTenant);
+                config.tenants[requestTenant] = new Tenant(requestTenant, {
+                    services: {}
+                }, []);
+                timeoutHandle = null;
+            }, tenantLoadTimeoutMs);
+            const tenantAdapter = await config.modules.getConfigAdapter(requestTenant);
+            const servicesRes = await tenantAdapter.read('services.json');
+            if (!servicesRes.ok) {
+                throw new Error('Could not read services.json');
+            }
+            const servicesConfig = await servicesRes.asJson();
+            const tenantDomains = Object.entries(config.server.domainMap).filter(([, ten])=>ten === requestTenant).map(([dom])=>dom);
+            config.tenants[requestTenant] = new Tenant(requestTenant, servicesConfig, tenantDomains);
+            await config.tenants[requestTenant].init();
+            config.logger.info(`Loaded tenant ${requestTenant} successfully`, requestTenant);
+        } catch (err) {
+            config.logger.error(`Failed to load services for tenant ${requestTenant}: ${err}`, requestTenant);
+            config.tenants[requestTenant] = new Tenant(requestTenant, {
+                services: {}
+            }, []);
+            throw err;
+        } finally{
+            if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+            if (resolveLoad) resolveLoad();
+        }
+    }
+    return config.tenants[requestTenant];
+};
+const fetchDomainCatalogue = (domainOrTenant)=>{
+    const serviceManifests = (config.modules.serviceManifestsMap[domainOrTenant] || []).map((url)=>[
+            url,
+            config.modules.serviceManifests[url]
+        ]);
+    const adapterManifests = (config.modules.adapterManifestsMap[domainOrTenant] || []).map((url)=>[
+            url,
+            config.modules.adapterManifests[url]
+        ]);
+    return {
+        services: Object.fromEntries(serviceManifests.map(serviceManifestAsCatalogue)),
+        adapters: Object.fromEntries(adapterManifests.map(adapterManifestAsCatalogue))
+    };
+};
+const tenantOrUrlToDomain = (dir)=>{
+    if (dir === '') return dir;
+    if (dir.startsWith('http://') || dir.startsWith('https://')) return new Url(dir).domain;
+    const domain = config.tenants[dir]?.primaryDomain;
+    if (!domain) throw new Error(`No tenant or domain found for ${dir}`);
+    return domain;
+};
+const ensureAllManifests = async (tenantOrUrl, context)=>{
+    const domain = tenantOrUrlToDomain(tenantOrUrl);
+    if (catalogue[domain]) return domain;
+    if (tenantOrUrl === "") {
+        catalogue[domain] = {
+            services: Object.fromEntries(Object.entries(config.modules.serviceManifests).map(serviceManifestAsCatalogue)),
+            adapters: Object.fromEntries(Object.entries(config.modules.adapterManifests).map(adapterManifestAsCatalogue)),
+            infra: Object.fromEntries(Object.entries(config.server.infra).map(infraAsCatalogue))
+        };
+    } else {
+        await config.modules.loadManifestsFromDomain(domain, context);
+        catalogue[domain] = fetchDomainCatalogue(domain);
+    }
+    return domain;
+};
+service12.getPath('catalogue', async (msg, context)=>{
+    const builtIns = "";
+    const local = context.tenant;
+    const extLibs = [
+        "https://lib.restspace.io"
+    ].filter((lib)=>config.tenants[context.tenant].primaryDomain !== new Url(lib).domain);
+    await ensureAllManifests(builtIns, context);
+    const localDomain = await ensureAllManifests(local, context);
+    const baseSchema = schemaIServiceConfig;
+    const allCat = {
+        services: {
+            ...catalogue[builtIns].services,
+            ...catalogue[localDomain].services
+        },
+        adapters: {
+            ...catalogue[builtIns].adapters,
+            ...catalogue[localDomain].adapters
+        },
+        infra: {
+            ...catalogue[builtIns].infra
+        }
+    };
+    for (const lib of extLibs){
+        const domain = await ensureAllManifests(lib, context);
+        allCat.services = {
+            ...allCat.services,
+            ...catalogue[domain]?.services || {}
+        };
+        allCat.adapters = {
+            ...allCat.adapters,
+            ...catalogue[domain]?.adapters || {}
+        };
+    }
+    baseSchema.properties.source.enum = Object.values(allCat.services).map((serv)=>serv.source);
+    return Promise.resolve(msg.setDataJson({
+        baseSchema: schemaIServiceConfig,
+        catalogue: allCat
+    }));
+});
+service12.getPath('services', async (msg, context)=>{
+    const tenant = config.tenants[context.tenant];
+    const manifestData = {};
+    for (const serv of Object.values(tenant.servicesConfig.services)){
+        if (!manifestData[serv.source]) {
+            const manifest = await config.modules.getServiceManifest(serv.source, tenant.name);
+            if (typeof manifest === 'string') {
+                context.logger.error(`Failed to get manifest for service ${serv.source}: ${manifest}`);
+                return msg.setStatus(500, 'Server error');
+            }
+            manifestData[serv.source] = {
+                exposedConfigProperties: manifest.exposedConfigProperties || [],
+                apis: manifest.apis
+            };
+        }
+    }
+    const services = {};
+    Object.entries(tenant.servicesConfig.services).forEach(([basePath, service])=>{
+        const sanitisedService = {};
+        const exposedProperties = schemaIServiceConfigExposedProperties.concat(manifestData[service.source].exposedConfigProperties || []);
+        Object.entries(service).filter(([k])=>exposedProperties.includes(k)).forEach(([k, v])=>sanitisedService[k] = v);
+        sanitisedService['apis'] = manifestData[service.source].apis;
+        services[basePath] = sanitisedService;
+    });
+    return msg.setDataJson(services);
+});
+const getRaw = (msg, context)=>{
+    const tenant = config.tenants[context.tenant];
+    return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
+};
+service12.getPath('raw', getRaw);
+service12.getPath('raw.json', getRaw);
+const rebuildConfig = async (rawServicesConfig, tenant)=>{
+    let newTenant;
+    try {
+        newTenant = new Tenant(tenant, rawServicesConfig, config.tenants[tenant].domains);
+        await newTenant.init();
+    } catch (err) {
+        return [
+            400,
+            `Bad config for tenant ${tenant}: ${err}`
+        ];
+    }
+    try {
+        await config.tenants[tenant].unload(newTenant);
+    } catch (err) {
+        config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, tenant);
+    }
+    config.tenants[tenant] = newTenant;
+    (async ()=>{
+        try {
+            const configAdapter = await config.modules.getConfigAdapter(tenant);
+            await configAdapter.write('services.json', MessageBody.fromObject(rawServicesConfig));
+        } catch (err) {
+            config.logger.error(`Failed to write back tenant config: ${tenant}`, tenant);
+        }
+    })();
+    return [
+        0,
+        ''
+    ];
 };
 class Tenant {
     name;
@@ -43434,7 +43758,8 @@ class Tenant {
                 if (!(this._state[basePath] instanceof cons)) throw new Error('Changed type of state attached to service');
                 return this._state[basePath];
             };
-        this.serviceFactory = new ServiceFactory(name);
+        const primaryDomain = domains[0] || (name === 'main' ? '' : name + '.') + config.server.mainDomain;
+        this.serviceFactory = new ServiceFactory(name, primaryDomain);
     }
     getSources(serviceRecord) {
         return Array.isArray(serviceRecord) ? serviceRecord.map((serv)=>serv.source) : Object.values(serviceRecord).map((serv)=>serv.source);
@@ -43462,7 +43787,7 @@ class Tenant {
         const servicesEntries = Object.entries(rawServicesConfig.services);
         const filteredConfig = {
             ...rawServicesConfig,
-            services: Object.fromEntries(servicesEntries.filter(([, s])=>isLocal === this.sourceIsLocalHttp(s.source)))
+            services: Object.fromEntries(servicesEntries.filter(([, s])=>isLocal === !!(this.sourceIsLocalHttp(s.source) || s.adapterSource && this.sourceIsLocalHttp(s.adapterSource))))
         };
         if (rawServicesConfig.chords) {
             const chordEntries = Object.entries(rawServicesConfig.chords);
@@ -43606,145 +43931,6 @@ class Tenant {
         return msg;
     }
 }
-const tenantLoads = {};
-const tenantLoadTimeoutMs = 5000;
-const getTenant = async (requestTenant, source = Source.External)=>{
-    const tenantLoad = tenantLoads[requestTenant];
-    if (tenantLoad !== undefined && source !== Source.Internal) {
-        await tenantLoads[requestTenant];
-    }
-    if (!config.tenants[requestTenant]) {
-        let resolveLoad = null;
-        let timeoutHandle = null;
-        try {
-            config.logger.debug(`Start -- load tenant ${requestTenant}`, requestTenant);
-            tenantLoads[requestTenant] = new Promise((resolve)=>resolveLoad = resolve);
-            timeoutHandle = setTimeout(()=>{
-                if (resolveLoad) {
-                    resolveLoad();
-                }
-                config.logger.error(`Timeout loading services for tenant ${requestTenant}`, requestTenant);
-                config.tenants[requestTenant] = new Tenant(requestTenant, {
-                    services: {}
-                }, []);
-                timeoutHandle = null;
-            }, tenantLoadTimeoutMs);
-            const tenantAdapter = await config.modules.getConfigAdapter(requestTenant);
-            const servicesRes = await tenantAdapter.read('services.json');
-            if (!servicesRes.ok) {
-                throw new Error('Could not read services.json');
-            }
-            const servicesConfig = await servicesRes.asJson();
-            const tenantDomains = Object.entries(config.server.domainMap).filter(([, ten])=>ten === requestTenant).map(([dom])=>dom);
-            config.tenants[requestTenant] = new Tenant(requestTenant, servicesConfig, tenantDomains);
-            await config.tenants[requestTenant].init();
-            config.logger.info(`Loaded tenant ${requestTenant} successfully`, requestTenant);
-        } catch (err) {
-            config.logger.error(`Failed to load services for tenant ${requestTenant}: ${err}`, requestTenant);
-            config.tenants[requestTenant] = new Tenant(requestTenant, {
-                services: {}
-            }, []);
-            throw err;
-        } finally{
-            if (timeoutHandle !== null) clearTimeout(timeoutHandle);
-            if (resolveLoad) resolveLoad();
-        }
-    }
-    return config.tenants[requestTenant];
-};
-service12.getPath('catalogue', (msg)=>{
-    if (catalogue === null) {
-        catalogue = {
-            services: {},
-            adapters: {},
-            infra: {}
-        };
-        for (const [name, serviceManifest] of Object.entries(config.modules.serviceManifests)){
-            const manifest = {
-                ...serviceManifest
-            };
-            deleteManifestProperties.forEach((prop)=>delete manifest[prop]);
-            manifest.source = name;
-            catalogue.services[manifest.name] = manifest;
-        }
-        for (const [name, adapterManifest] of Object.entries(config.modules.adapterManifests)){
-            const manifest = adapterManifest;
-            manifest.source = name;
-            catalogue.adapters[manifest.name] = manifest;
-        }
-        for (const [name, infra] of Object.entries(config.server.infra)){
-            catalogue.infra[name] = {
-                adapterSource: infra.adapterSource,
-                preconfigured: Object.keys(infra).filter((k)=>k !== 'adapterSource')
-            };
-        }
-    }
-    const baseSchema = schemaIServiceConfig;
-    baseSchema.properties.source.enum = Object.values(catalogue.services).map((serv)=>serv.source);
-    return Promise.resolve(msg.setDataJson({
-        baseSchema: schemaIServiceConfig,
-        catalogue
-    }));
-});
-service12.getPath('services', async (msg, context)=>{
-    const tenant = config.tenants[context.tenant];
-    const manifestData = {};
-    for (const serv of Object.values(tenant.servicesConfig.services)){
-        if (!manifestData[serv.source]) {
-            const manifest = await config.modules.getServiceManifest(serv.source, tenant.name);
-            if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
-            manifestData[serv.source] = {
-                exposedConfigProperties: manifest.exposedConfigProperties || [],
-                apis: manifest.apis
-            };
-        }
-    }
-    const services = {};
-    Object.entries(tenant.servicesConfig.services).forEach(([basePath, service])=>{
-        const sanitisedService = {};
-        const exposedProperties = schemaIServiceConfigExposedProperties.concat(manifestData[service.source].exposedConfigProperties || []);
-        Object.entries(service).filter(([k])=>exposedProperties.includes(k)).forEach(([k, v])=>sanitisedService[k] = v);
-        sanitisedService['apis'] = manifestData[service.source].apis;
-        services[basePath] = sanitisedService;
-    });
-    return msg.setDataJson(services);
-});
-const getRaw = (msg, context)=>{
-    const tenant = config.tenants[context.tenant];
-    return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
-};
-service12.getPath('raw', getRaw);
-service12.getPath('raw.json', getRaw);
-const rebuildConfig = async (rawServicesConfig, tenant)=>{
-    let newTenant;
-    try {
-        newTenant = new Tenant(tenant, rawServicesConfig, config.tenants[tenant].domains);
-        await newTenant.init();
-    } catch (err) {
-        return [
-            400,
-            `Bad config for tenant ${tenant}: ${err}`
-        ];
-    }
-    try {
-        await config.tenants[tenant].unload(newTenant);
-    } catch (err) {
-        config.logger.error(`Failed to unload tenant ${tenant} successfully, resources may have been leaked`, tenant);
-    }
-    config.tenants[tenant] = newTenant;
-    (async ()=>{
-        try {
-            const configAdapter = await config.modules.getConfigAdapter(tenant);
-            await configAdapter.write('services.json', MessageBody.fromObject(rawServicesConfig));
-        } catch (err) {
-            config.logger.error(`Failed to write back tenant config: ${tenant}`, tenant);
-        }
-    })();
-    return [
-        0,
-        ''
-    ];
-};
 class PipelineStep {
     step;
     condition;
@@ -43903,7 +44089,11 @@ const handleIncomingRequest = async (msg)=>{
         }
         return msgOut;
     } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
+        let errStack = '';
+        if (err instanceof Error) {
+            errStack = ` at \n${err.stack || ''}`;
+        }
+        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS' ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
     }
 };
@@ -43973,7 +44163,11 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
         }
         return msgOut;
     } catch (err) {
-        config.logger.warning(`request processing failed: ${err}`, ...msg.loggerArgs());
+        let errStack = '';
+        if (err instanceof Error) {
+            errStack = ` at \n${err.stack || ''}`;
+        }
+        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs());
         return originalMethod === 'OPTIONS' && tenantName ? config.server.setServerCors(msg).setStatus(204) : msg.setStatus(500, 'Server error');
     }
 };

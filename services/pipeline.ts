@@ -14,11 +14,40 @@ interface ManualMimeTypes {
 
 interface PipelineConfig extends IServiceConfig {
     pipeline: PipelineSpec;
-	manualMimeTypes: ManualMimeTypes;
+	manualMimeTypes?: ManualMimeTypes;
 	reauthenticate?: boolean;
 }
 
 const service = new Service<IAdapter, PipelineConfig>();
+
+service.getDirectory((msg, _context, { manualMimeTypes }) => {
+	if (msg.url.query["$requestSchema"]) {
+		if (!manualMimeTypes?.requestSchema) return msg.setStatus(404, "No request schema available");
+		msg.setDataJson(manualMimeTypes?.requestSchema);
+		msg.data!.setMimeType("application/schema+json");
+		return msg;
+	}
+	if (msg.url.query["$responseSchema"]) {
+		if (!manualMimeTypes?.responseSchema) return msg.setStatus(404, "No response schema available");
+		msg.setDataJson(manualMimeTypes?.responseSchema);
+		msg.data!.setMimeType("application/schema+json");
+		return msg;
+	}
+	msg.setDirectoryJson({
+		path: '/',
+		paths: [],
+		spec: {
+			pattern: "transform",
+			reqMimeType: manualMimeTypes?.requestSchema
+				? `application/json;schema=${msg.url.baseUrl}/?$requestSchema`
+				: manualMimeTypes?.requestMimeType,
+			respMimeType: manualMimeTypes?.responseSchema
+				? `application/json;schema=${msg.url.baseUrl}/?$responseSchema`
+				: manualMimeTypes?.responseMimeType
+		}
+	});
+	return msg;
+});
 
 service.all((msg, context, config) => {
 	let runPipeline = config.pipeline;

@@ -31,7 +31,7 @@ export default {
 					"responseSchema": { "type": "object" }
 				}
 			},
-			"reauthenticate": { "type": "boolean" }
+			"reauthenticate": { "type": "boolean", "description": "If true, checks authentication before calling any item of the pipeline" }
 		}
 	}
 }
