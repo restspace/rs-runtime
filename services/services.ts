@@ -267,7 +267,7 @@ const openApi = async (msg: Message, context: SimpleServiceContext) => {
             const manifest = await config.modules.getServiceManifest(serv.source, context.tenant);
             if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
             let apiPattern: ApiPattern = "store";
-            if (manifest.apis?.includes('store-transform')) apiPattern = "storeTransform"
+            if (manifest.apis?.includes('store-transform')) apiPattern = "store-transform"
             else if (manifest.apis?.includes('transform')) apiPattern = "transform"
             else if (manifest.apis?.includes('view')) apiPattern = "view"
             else if (manifest.apis?.includes('operation')) apiPattern = "operation";

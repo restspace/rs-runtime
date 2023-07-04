@@ -11,7 +11,6 @@ import { after, deepEqualIfPresent, mergeDeep, upTo } from "rs-core/utility/util
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
 import { SimpleServiceContext, StateClass, nullState, BaseStateClass } from "rs-core/ServiceContext.ts";
-import { p } from "https://cdn.skypack.dev/dayjs@1.10.4";
 import { applyServiceConfigTemplate } from "./Modules.ts";
 
 export interface IServicesConfig {

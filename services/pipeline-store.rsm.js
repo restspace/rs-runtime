@@ -24,6 +24,7 @@ export default {
     "privateServices": {
         "store": {
             "name": "'Pipeline Store'",
+            "storesTransforms": "true",
             "source": "./services/file.rsm.json",
             "access": { "readRoles": "access.readRoles", "writeRoles": "access.writeRoles" },
             "adapterInterface": "IFileAdapter",

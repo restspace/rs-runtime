@@ -14,6 +14,7 @@
         "bundle": "deno bundle --no-check --unstable --import-map=importMap.json server.ts bundled.js",
         "ssh": "ssh -i C:\\dev\\keys\\stagingpac.pem ubuntu@ec2-35-176-233-252.eu-west-2.compute.amazonaws.com",
         "ssh-adem": "ssh -i C:\\dev\\keys\\ost-server-keys.pem ubuntu@ec2-18-132-142-210.eu-west-2.compute.amazonaws.com",
+        "ssh-old": "ssh -i C:\\dev\\keys\\stagingpac.pem ubuntu@ec2-3-10-91-198.eu-west-2.compute.amazonaws.com",
         "deploy": "scp -i C:\\dev\\keys\\stagingpac.pem -r ..\\rs-publish\\* ubuntu@ec2-35-176-233-252.eu-west-2.compute.amazonaws.com:/var/www/rs-runtime",
         "deploy-adem": "scp -i C:\\dev\\keys\\ost-server-keys.pem -r ..\\rs-publish\\* ubuntu@ec2-18-132-142-210.eu-west-2.compute.amazonaws.com:/var/www/rs-runtime",
         "remote-restart": "ssh -i C:\\dev\\keys\\stagingpac.pem ubuntu@ec2-35-176-233-252.eu-west-2.compute.amazonaws.com \"sudo pm2 restart rsrt\"",

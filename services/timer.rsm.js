@@ -39,12 +39,7 @@ export default {
             "infraName": "store.infraName",
             "adapterConfig": "store.adapterConfig",
             "extensions": "[ store.extension ]",
-            "parentIfMissing": "store.parentIfMissing === false ? false : true",
-            "storesTransforms": "true",
-            "manualMimeTypes": {
-                "requestMimeType": "'application/json'",
-                "responseMimeType": "'text/plain'"
-            }
+            "parentIfMissing": "store.parentIfMissing === false ? false : true"
         }
     }
 }

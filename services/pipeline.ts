@@ -1,16 +1,9 @@
 import { Service } from "rs-core/Service.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
-import { IServiceConfig } from "rs-core/IServiceConfig.ts";
+import { IServiceConfig, ManualMimeTypes } from "rs-core/IServiceConfig.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { pipeline } from "../pipeline/pipeline.ts";
 import { Source } from "rs-core/Source.ts";
-
-interface ManualMimeTypes {
-	requestMimeType: string;
-	requestSchema: Record<string, unknown>;
-	responseMimeType: string;
-	responseSchema: Record<string, unknown>;
-}
 
 interface PipelineConfig extends IServiceConfig {
     pipeline: PipelineSpec;
@@ -33,16 +26,30 @@ service.getDirectory((msg, _context, { manualMimeTypes }) => {
 		msg.data!.setMimeType("application/schema+json");
 		return msg;
 	}
+	let pattern = "transform";
+	if (manualMimeTypes) {
+		let isSend = true;
+		if (manualMimeTypes.requestMimeType === "none" || manualMimeTypes.requestSchema?.type === "null") {
+			isSend = false;
+		}
+		let isReceive = true;
+		if (manualMimeTypes.responseMimeType === "none" || manualMimeTypes.responseSchema?.type === "null") {
+			isReceive = false;
+		}
+		if (!isReceive && isSend) pattern = "operation";
+		else if (isReceive && !isSend) pattern = "view";
+	}
+
 	msg.setDirectoryJson({
 		path: '/',
 		paths: [],
 		spec: {
-			pattern: "transform",
+			pattern,
 			reqMimeType: manualMimeTypes?.requestSchema
-				? `application/json;schema=${msg.url.baseUrl}/?$requestSchema`
+				? `application/json;schema=${msg.url.baseUrl()}/?$requestSchema`
 				: manualMimeTypes?.requestMimeType,
 			respMimeType: manualMimeTypes?.responseSchema
-				? `application/json;schema=${msg.url.baseUrl}/?$responseSchema`
+				? `application/json;schema=${msg.url.baseUrl()}/?$responseSchema`
 				: manualMimeTypes?.responseMimeType
 		}
 	});
