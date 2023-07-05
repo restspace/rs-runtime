@@ -335,7 +335,7 @@ POST https://restspace.local:3131/pipelines/change-role
 GET https://lib.restspace.io/.well-known/restspace/services
 
 ###
-GEt https://restspace.local:3131/.well-known/restspace/catalogue
+GET https://restspace.local:3131/.well-known/restspace/catalogue
 
 ###
 

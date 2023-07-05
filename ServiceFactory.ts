@@ -214,6 +214,23 @@ export class ServiceFactory {
         }
     }
 
+    basePathFromUrl(url: Url) {
+        const pathParts = [ ...url.pathElements ];
+        let basePath = '/' + pathParts.join('/') + '.';
+        let serviceConfig = this.serviceConfigs![basePath];
+        if (serviceConfig) return basePath;
+
+        while (true) {
+            basePath = '/' + pathParts.join('/');
+            serviceConfig = this.serviceConfigs![basePath];
+            if (serviceConfig) return basePath;
+            if (pathParts.length === 0) break;
+            pathParts.pop();
+        }
+
+        return null;
+    }
+
     /** select service with longest path match */
     async getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => StateFunction, source: Source): Promise<MessageFunction> {
         if (this.serviceConfigs!['()'] && source === Source.External) {
@@ -227,23 +244,12 @@ export class ServiceFactory {
             return this.getMessageFunctionForService(this.serviceConfigs!['()'], newServiceContext, source);
         }
 
-        const pathParts = [ ...url.pathElements ];
-
-        let exactPath = '/' + pathParts.join('/') + '.';
-        let serviceConfig = this.serviceConfigs![exactPath];
-        if (serviceConfig) return this.getMessageFunctionForService(serviceConfig, serviceContext, source); 
-
-        while (true) {
-            exactPath = '/' + pathParts.join('/');
-            serviceConfig = this.serviceConfigs![exactPath];
-            if (serviceConfig) {
-                serviceContext.state = stateByBasePath(exactPath);
-                const innerFunc = await this.getMessageFunctionForService(serviceConfig, serviceContext, source);
-                return await this.attachFilter(url, innerFunc, serviceContext)
-            } else {
-                if (pathParts.length === 0) break;
-                pathParts.pop();
-            }
+        const configPath = this.basePathFromUrl(url);
+        if (configPath) {
+            const serviceConfig = this.serviceConfigs![configPath];
+            serviceContext.state = stateByBasePath(configPath);
+            const innerFunc = await this.getMessageFunctionForService(serviceConfig, serviceContext, source);
+            return await this.attachFilter(url, innerFunc, serviceContext);
         }
 
         return Promise.resolve((msg: Message) => 

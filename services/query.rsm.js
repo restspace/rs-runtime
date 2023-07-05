@@ -28,6 +28,7 @@ export default {
     "privateServices": {
         "store": {
             "name": "'Query Store'",
+            "storesTransforms": "true",
             "source": "./services/file.rsm.json",
             "access": { "readRoles": "access.readRoles", "writeRoles": "access.writeRoles" },
             "adapterInterface": "IFileAdapter",

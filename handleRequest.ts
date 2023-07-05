@@ -3,6 +3,7 @@ import { Source } from "rs-core/Source.ts";
 import { IServiceConfig, PrePost } from "rs-core/IServiceConfig.ts";
 import { config } from "./config.ts";
 import { IRawServicesConfig, Tenant } from "./tenant.ts";
+import { Url } from "rs-core/Url.ts";
 
 const tenantLoads = {} as Record<string, Promise<void>>;
 
@@ -10,13 +11,14 @@ const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 const tenantLoadTimeoutMs = 500000;
 
-const getTenant = async (requestTenant: string, source = Source.External) => {
+const getTenant = async (url: Url, requestTenant: string) => {
     const tenantLoad = tenantLoads[requestTenant];
 
     // if we're not the first getTenant call for this tenant, wait for the first call to complete
     // unless we're triggered as part of the first call i.e. source is internal
-    if (tenantLoad !== undefined && source !== Source.Internal) {
-        await tenantLoads[requestTenant];
+    if (tenantLoad !== undefined) {
+        const urlIsReady = config.tenants[requestTenant]?.pathIsReady(url);
+        if (!urlIsReady) await tenantLoads[requestTenant];
     }
 
     if (!config.tenants[requestTenant]) {
@@ -85,8 +87,7 @@ export const handleIncomingRequest = async (msg: Message) => {
     try {
         const tenantName = tenantFromHostname(msg.getHeader('host') || 'none');
         if (tenantName === null) return msg.setStatus(404, 'Not found');
-        const source = msg.url.query['$x-rs-source']?.[0] === 'internal' ? Source.Internal : Source.External;
-        const tenant = await getTenant(tenantName || 'main', source);
+        const tenant = await getTenant(msg.url, tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
         config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
@@ -126,7 +127,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         let tenant: Tenant;
         if (tenantName !== null) {
             try {
-                tenant = await getTenant(tenantName || 'main', source);
+                tenant = await getTenant(msg.url, tenantName || 'main');
                 if (tenant.isEmpty) tenantName = null;
             } catch {
                 tenantName = null;

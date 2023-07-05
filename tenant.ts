@@ -42,6 +42,7 @@ export class Tenant {
     servicesConfig = null as IServicesConfig | null;
     chordMap: Record<string, Record<string, string>> = {};
     _state: Record<string, BaseStateClass> = {};
+    readyBasePaths: string[] = [];
 
     state = (basePath: string) => async <T extends BaseStateClass>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => {
         if (this._state[basePath] === undefined) {
@@ -225,8 +226,14 @@ export class Tenant {
         }
     }
 
+    pathIsReady(url: Url): boolean {
+        const basePath = this.serviceFactory.basePathFromUrl(url);
+        return !!basePath && this.readyBasePaths.includes(basePath);
+    }
+
     async init(oldTenant?: Tenant) {
         await this.loadConfig(this.filterConfigByLocalSource(this.rawServicesConfig, false), oldTenant);
+        this.readyBasePaths = Object.keys(this.filterConfigByLocalSource(this.rawServicesConfig, false).services);
         await this.loadConfig(this.filterConfigByLocalSource(this.rawServicesConfig, true), oldTenant);
     }
 
