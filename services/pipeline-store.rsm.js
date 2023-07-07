@@ -2,7 +2,7 @@ export default {
 	"name": "Pipeline store",
     "description": "Run a pipeline whose specification is stored at the request url",
     "moduleUrl": "./services/pipeline-store.ts",
-    "apis": [ "store-transform" ],
+    "apis": [ "store-transform", "file.base" ],
 	"isFilter": true,
     "configSchema": {
         "type": "object",

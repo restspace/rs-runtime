@@ -2,7 +2,7 @@ export default {
 	"name": "Query",
     "description": "Stores queries as text files and runs the query in the file parameterised with a POST body to produce the response",
     "moduleUrl": "./services/query.ts",
-    "apis": [ "store-transform" ],
+    "apis": [ "store-transform", "file.base" ],
     "adapterInterface": "IQueryAdapter",
 	"isFilter": true,
     "configSchema": {

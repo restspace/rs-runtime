@@ -12,8 +12,10 @@ import { pipeline } from "./pipeline/pipeline.ts";
 export function makeServiceContext(tenantName: string, state: StateFunction, prePost?: PrePost): ServiceContext<IAdapter> {
 	const context = {
 		tenant: tenantName,
-		makeRequest: (msg: Message, source?: Source) =>
-			source === Source.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg, source),
+		makeRequest: (msg: Message, source?: Source) => {
+			if (!msg.url.domain) msg.url.domain = config.tenants[tenantName].primaryDomain;
+			return source === Source.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg, source)
+		},
 		runPipeline: (msg: Message, pipelineSpec: PipelineSpec, contextUrl?: Url) => {
 			pipeline(msg, pipelineSpec, contextUrl);
 		},
