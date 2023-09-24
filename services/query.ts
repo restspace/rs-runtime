@@ -21,35 +21,41 @@ service.post(async (msg: Message, context: ServiceContext<IQueryAdapter>) => {
 
 	let error = null as Error | null;
 
-	query = query.replace(/\$\{([^}]*)\}/gi, (_, p1) => {
-		const quoted = context.adapter.quote(getProp(params, p1.split('.')) || '');
-		if (quoted instanceof Error) {
-			error = quoted;
-			return '';
-		} else {
-			return quoted;
-		}
-	});
-	if (error === null) {
-		query = query.replace(/\$([0-9]+)/gi, (_, p1) => {
-			const idx = parseInt(p1);
-			if (idx < (contextUrl.subPathElementCount || 0)) {
-				const quoted = context.adapter.quote(contextUrl.subPathElements[idx]);
-				if (quoted instanceof Error) {
-					error = quoted;
-					return '';
-				} else {
-					return quoted;
-				}
-			} else {
+	const quote = context.adapter.quote;
+	if (quote) {
+		query = query.replace(/\$\{([^}]*)\}/gi, (_, p1) => {
+			const quoted = quote(getProp(params, p1.split('.')) || '');
+			if (quoted instanceof Error) {
+				error = quoted;
 				return '';
+			} else {
+				return quoted;
 			}
 		});
+		if (error === null) {
+			query = query.replace(/\$([0-9]+)/gi, (_, p1) => {
+				const idx = parseInt(p1);
+				if (idx < (contextUrl.subPathElementCount || 0)) {
+					const quoted = quote(contextUrl.subPathElements[idx]);
+					if (quoted instanceof Error) {
+						error = quoted;
+						return '';
+					} else {
+						return quoted;
+					}
+				} else {
+					return '';
+				}
+			});
+		}
+		if (error !== null) return msg.setStatus(400, error.toString());
 	}
-	if (error !== null) return msg.setStatus(400, error.toString());
 
 	context.logger.info(`Query: ${query}`);
-	const result = await context.adapter.runQuery(query);
+	for (let i=0; i < (contextUrl.subPathElementCount || 0); i++) {
+		params['p' + i.toString()] = contextUrl.subPathElements[i];
+	}
+	const result = await context.adapter.runQuery(query, params);
 	if (typeof result === 'number') return msg.setStatus(result);
 	msg.setDataJson(result);
 	return msg;

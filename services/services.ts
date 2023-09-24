@@ -14,7 +14,7 @@ import { Url } from "../../rs-core/Url.ts";
 
 type InfraDetails = Record<string, unknown> & Infra;
 
-let catalogue: Record<string, {
+const catalogue: Record<string, {
     services: Record<string, IServiceManifest & { source: string }>,
     adapters: Record<string, IAdapterManifest & { source: string }>,
     infra?: Record<string, InfraDetails>
@@ -85,6 +85,19 @@ const ensureAllManifests = async (tenantOrUrl: string, context: SimpleServiceCon
 
     return domain;
 };
+
+service.constantDirectory('/', {
+    path: '/',
+    paths: [
+        [ 'catalogue', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
+        [ 'services', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
+        [ 'raw', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}],
+        [ 'raw.json', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}]
+    ],
+    spec: {
+        pattern: 'directory'
+    }
+});
 
 service.getPath('catalogue', async (msg, context) => {
     // load basic manifest set
@@ -164,6 +177,9 @@ service.getPath('raw', getRaw);
 service.getPath('raw.json', getRaw);
 
 const rebuildConfig = async (rawServicesConfig: IRawServicesConfig, tenant: string): Promise<[ number, string ]> => {
+    // Remove cached code from this tenant so that all code stored on the tenant is reloaded to latest version
+    config.modules.purgeTenantModules(config.tenants[tenant].primaryDomain);
+
     let newTenant: Tenant;
     try {
         newTenant = new Tenant(tenant, rawServicesConfig, config.tenants[tenant].domains);

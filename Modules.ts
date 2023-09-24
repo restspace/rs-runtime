@@ -29,6 +29,8 @@ import ElasticQueryAdapter from "./adapter/ElasticQueryAdapter.ts";
 import ElasticQueryAdapterManifest from "./adapter/ElasticQueryAdapter.ram.js";
 import FileLogReaderAdapter from "./adapter/FileLogReaderAdapter.ts";
 import FileLogReaderAdapterManifest from "./adapter/FileLogReaderAdapter.ram.js";
+import GraphQlQueryAdapter from "./adapter/GraphQlQueryAdapter.ts";
+import GraphQlQueryAdapterManifest from "./adapter/GraphQlQueryAdapter.ram.js";
 
 import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
@@ -150,16 +152,18 @@ export type AdapterConstructor = new (context: AdapterContext, config: unknown) 
 /** Modules is a singleton which holds compiled services and adapters for all tenants */
 export class Modules {
     // keyed by source as full url with domain or file path
+    services: Record<string, Service> = {};
     adapterConstructors: Record<string, AdapterConstructor>= {};
     serviceManifests: Record<string, IServiceManifest> = {};
     adapterManifests: Record<string, IAdapterManifest> = {};
-    services: Record<string, Service> = {};
 
     // These map domain to the full url on that domain (or file path) of the service/adapter
+    servicesMap: Record<string, string[]> = {};
     adapterConstructorsMap: Record<string, string[]> = {};
     serviceManifestsMap: Record<string, string[]> = {};
     adapterManifestsMap: Record<string, string[]> = {};
-    servicesMap: Record<string, string[]> = {};
+    manifestsAllLoaded = new Set<string>();
+
 
     validateServiceManifest: ValidateFunction<IServiceManifest>;
     validateAdapterManifest: ValidateFunction<IAdapterManifest>;
@@ -183,7 +187,8 @@ export class Modules {
             "./adapter/ElasticProxyAdapter.ts": ElasticProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/ElasticDataAdapter.ts": ElasticDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter as new (context: AdapterContext, props: unknown) => IAdapter
+            "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
+            "./adapter/GraphQlQueryAdapter.ts": GraphQlQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
@@ -196,7 +201,8 @@ export class Modules {
             "./adapter/ElasticProxyAdapter.ram.json": ElasticProxyAdapterManifest,
             "./adapter/ElasticDataAdapter.ram.json": ElasticDataAdapterManifest,
             "./adapter/ElasticQueryAdapter.ram.json": ElasticQueryAdapterManifest,
-            "./adapter/FileLogReaderAdapter.ram.json": FileLogReaderAdapterManifest
+            "./adapter/FileLogReaderAdapter.ram.json": FileLogReaderAdapterManifest,
+            "./adapter/GraphQlQueryAdapter.ram.json": GraphQlQueryAdapterManifest
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
 
@@ -229,7 +235,7 @@ export class Modules {
             "./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>,
             "./services/timer.ts": Timer as unknown as Service<IAdapter, IServiceConfig>
         };
-        this.serviceManifestsMap[""] = Object.keys(this.services);
+        this.servicesMap[""] = Object.keys(this.services);
 
         this.serviceManifests = {
             "./services/mock.rsm.json": MockManifest,
@@ -270,10 +276,28 @@ export class Modules {
         const objUrl = new Url(url);
         if (objUrl.domain) {
             map[objUrl.domain] = map[objUrl.domain] || [];
-            map[objUrl.domain].push(url);
+            if (!map[objUrl.domain].includes(url)) {
+                map[objUrl.domain].push(url);
+            }
         } else {
             map[tenant] = map[tenant] || [];
-            map[tenant].push(url);
+            if (!map[tenant].includes(url)) {
+                map[tenant].push(url);
+            }
+        }
+    }
+
+    /** Remove from cache all code modules stored in a tenant */
+    purgeTenantModules(tenant: string) {
+        const adapterUrls = this.adapterConstructorsMap[tenant];
+        if (adapterUrls) {
+            adapterUrls.forEach(url => delete this.adapterConstructors[url]);
+            delete this.adapterConstructorsMap[tenant];
+        }
+        const serviceUrls = this.servicesMap[tenant];
+        if (serviceUrls) {
+            serviceUrls.forEach(url => delete this.services[url]);
+            delete this.servicesMap[tenant];
         }
     }
 
@@ -291,15 +315,19 @@ export class Modules {
      * @param manifestUrl the url of the manifest that references the adapter
      * @returns the adapter constructor
      */
-    async getAdapterConstructor<T extends IAdapter>(sourceUrl: string, manifestUrl?: string): Promise<new (context: AdapterContext, config: unknown) => T> {
-        if (manifestUrl) sourceUrl = this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter");
+    async getAdapterConstructor<T extends IAdapter>(sourceUrl: string, tenant: string, manifestUrl?: string): Promise<new (context: AdapterContext, config: unknown) => T> {
+        let moduleReqUrl: Url;
+        if (manifestUrl) {
+            moduleReqUrl = new Url(this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter"));
+        } else {
+            moduleReqUrl = new Url(sourceUrl);
+        }
         if (!this.adapterConstructors[sourceUrl]) {
             try {
-                const moduleReqUrl = new Url(sourceUrl);
                 moduleReqUrl.query['$x-rs-source'] = [ 'internal']
                 const module = await import(moduleReqUrl.toString());
                 this.adapterConstructors[sourceUrl] = module.default;
-                //this.addToDomainMap(this.adapterConstructorsMap, url, tenant);
+                this.addToDomainMap(this.adapterConstructorsMap, sourceUrl, tenant);
             } catch (err) {
                 throw new Error(`failed to load adapter at ${sourceUrl}: ${err}`);
             }
@@ -315,8 +343,7 @@ export class Modules {
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
                 this.adapterManifests[fullUrl] = manifest;
-                // don't add to domain map as it has to map all services or none
-                //this.addToDomainMap(this.adapterManifestsMap, url, tenant);
+                this.addToDomainMap(this.adapterManifestsMap, url, tenant);
             } catch (err) {
                 return `failed to load manifest at ${url}: ${err}`;
             }
@@ -344,7 +371,7 @@ export class Modules {
         }
 
         context.logger.debug(`Loading adapter at ${sourceUrl}`);
-        const constr = await this.getAdapterConstructor(sourceUrl, manifestUrl);
+        const constr = await this.getAdapterConstructor(sourceUrl, context.tenant, manifestUrl);
         return new constr(context, adapterConfig) as T;
     }
 
@@ -375,7 +402,7 @@ export class Modules {
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
                 this.serviceManifests[fullUrl] = manifest;
-                //this.addToDomainMap(this.serviceManifestsMap, url, tenant);
+                this.addToDomainMap(this.serviceManifestsMap, url, tenant);
             } catch (err) {
                 return `failed to load manifest at ${url}: ${err}`;
             }
@@ -424,10 +451,13 @@ export class Modules {
             try {
                 config.logger.debug(`Start -- loading service at ${url}`);
                 const moduleReqUrl = new Url(sourceUrl);
-                moduleReqUrl.query['$x-rs-source'] = [ 'internal']
+                moduleReqUrl.query['$x-rs-source'] = [ 'internal'];
+                if (moduleReqUrl.domain === primaryDomain) {
+                    moduleReqUrl.query['$no-cache'] = [ crypto.randomUUID() ];
+                }
                 const module = await import(moduleReqUrl.toString());
                 this.services[sourceUrl] = module.default;
-                //this.addToDomainMap(this.servicesMap, url, tenant);
+                this.addToDomainMap(this.servicesMap, sourceUrl, tenant);
                 config.logger.debug(`End -- loading service at ${url}`);
             } catch (err) {
                 throw new Error(`failed to load module at ${url}: ${err}`);
@@ -451,6 +481,7 @@ export class Modules {
         for (const s of serviceStoreServices) {
             await this.loadManifestsFromDirectory(pathCombine(urlBase, s.basePath + '/'), context);
         }
+        this.manifestsAllLoaded.add(domain);
     }
 
     async loadManifestsFromDirectory(url: string, context: SimpleServiceContext) {

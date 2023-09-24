@@ -31,7 +31,7 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		return await this.context.makeRequest(sendMsg);
 	}
 
-	async runQuery(query: string, take = 1000, skip = 0): Promise<number | Record<string,unknown>[]> {
+	async runQuery(query: string, _: Record<string, unknown>, take = 1000, skip = 0): Promise<number | Record<string,unknown>[]> {
 		await this.ensureProxyAdapter();
 		let index = '';
 		
