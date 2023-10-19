@@ -75,8 +75,8 @@ import CSVConverterManifest from "./services/csvConverter.rsm.js";
 import LogReader from "./services/logReader.ts";
 import LogReaderManifest from "./services/logReader.rsm.js";
 import ServiceStoreManifest from "./services/service-store.rsm.js"
-import EvmEventer from "./services/evmEventer.ts";
-import EvmEventerManifest from "./services/evmEventer.rsm.js";
+//import EvmEventer from "./services/evmEventer.ts";
+//import EvmEventerManifest from "./services/evmEventer.rsm.js";
 import Timer from "./services/timer.ts";
 import TimerManifest from "./services/timer.rsm.js";
 
@@ -232,7 +232,7 @@ export class Modules {
             "./services/query.ts": Query as unknown as Service<IAdapter, IServiceConfig>,
             "./services/csvConverter.ts": CSVConverter as unknown as Service<IAdapter, IServiceConfig>,
             "./services/logReader.ts": LogReader as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>,
+            //"./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>,
             "./services/timer.ts": Timer as unknown as Service<IAdapter, IServiceConfig>
         };
         this.servicesMap[""] = Object.keys(this.services);
@@ -261,7 +261,7 @@ export class Modules {
             "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest,
             "./services/logReader.rsm.json": LogReaderManifest as unknown as IServiceManifest,
             "./services/service-store.rsm.json": ServiceStoreManifest as unknown as IServiceManifest,
-            "./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest,
+            //"./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest,
             "./services/timer.rsm.json": TimerManifest as unknown as IServiceManifest
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);

@@ -46,9 +46,14 @@ const getTenant = async (url: Url, requestTenant: string) => {
                 throw new Error('Could not read services.json');
             }
             const servicesConfig = await servicesRes.asJson() as IRawServicesConfig;
+            
+            // specified domains for tenant
             const tenantDomains = Object.entries(config.server.domainMap)
                 .filter(([,ten]) => ten === requestTenant)
                 .map(([dom,]) => dom);
+            // tenant's subdomain of main domain
+            tenantDomains.push(`${requestTenant}.${config.server.mainDomain}`);
+
             config.tenants[requestTenant] = new Tenant(requestTenant, servicesConfig, tenantDomains);
             await config.tenants[requestTenant].init();
             config.logger.info(`Loaded tenant ${requestTenant} successfully`, requestTenant);

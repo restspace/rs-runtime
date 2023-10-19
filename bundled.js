@@ -3,11 +3,11 @@
 // This code was bundled using `deno bundle` and it's not recommended to edit it manually
 
 const osType = (()=>{
-    const { Deno: Deno1  } = globalThis;
+    const { Deno: Deno1 } = globalThis;
     if (typeof Deno1?.build?.os === "string") {
         return Deno1.build.os;
     }
-    const { navigator  } = globalThis;
+    const { navigator } = globalThis;
     if (navigator?.appVersion?.includes?.("Win")) {
         return "windows";
     }
@@ -164,7 +164,7 @@ function resolve(...pathSegments) {
     let resolvedAbsolute = false;
     for(let i = pathSegments.length - 1; i >= -1; i--){
         let path;
-        const { Deno: Deno1  } = globalThis;
+        const { Deno: Deno1 } = globalThis;
         if (i >= 0) {
             path = pathSegments[i];
         } else if (!resolvedDevice) {
@@ -760,7 +760,7 @@ function resolve1(...pathSegments) {
         let path;
         if (i >= 0) path = pathSegments[i];
         else {
-            const { Deno: Deno1  } = globalThis;
+            const { Deno: Deno1 } = globalThis;
             if (typeof Deno1?.cwd !== "function") {
                 throw new TypeError("Resolved a relative path without a CWD.");
             }
@@ -1038,9 +1038,9 @@ const mod1 = {
     toFileUrl: toFileUrl1
 };
 const path = isWindows ? mod : mod1;
-const { join: join2 , normalize: normalize2  } = path;
+const { join: join2, normalize: normalize2 } = path;
 const path1 = isWindows ? mod : mod1;
-const { basename: basename2 , delimiter: delimiter2 , dirname: dirname2 , extname: extname2 , format: format2 , fromFileUrl: fromFileUrl2 , isAbsolute: isAbsolute2 , join: join3 , normalize: normalize3 , parse: parse2 , relative: relative2 , resolve: resolve2 , sep: sep2 , toFileUrl: toFileUrl2 , toNamespacedPath: toNamespacedPath2  } = path1;
+const { basename: basename2, delimiter: delimiter2, dirname: dirname2, extname: extname2, format: format2, fromFileUrl: fromFileUrl2, isAbsolute: isAbsolute2, join: join3, normalize: normalize3, parse: parse2, relative: relative2, resolve: resolve2, sep: sep2, toFileUrl: toFileUrl2, toNamespacedPath: toNamespacedPath2 } = path1;
 function slashTrim(s) {
     let start = 0;
     let end = s.length;
@@ -1562,7 +1562,9 @@ class Url {
         return s.replace('&', '%26').replace('=', '%3D').replace('#', '%23');
     }
     get queryString() {
-        return Object.entries(this.query).flatMap(([key, vals])=>vals.map((val)=>`${key}=${this.encodeQueryValue(val)}`)).join('&') || '';
+        return Object.entries(this.query).flatMap(([key, vals])=>vals.length == 0 ? [
+                key
+            ] : vals.map((val)=>`${key}=${this.encodeQueryValue(val)}`)).join('&') || '';
     }
     set queryString(qs) {
         this.query = !qs ? {} : qs.split('&').filter((part)=>!!part).reduce((res, queryPart)=>{
@@ -15558,7 +15560,7 @@ var scope = createCommonjsModule2(function(module, exports) {
         var: new code.Name("var")
     };
     class Scope {
-        constructor({ prefixes , parent  } = {}){
+        constructor({ prefixes, parent } = {}){
             this._names = {};
             this._prefixes = prefixes;
             this._parent = parent;
@@ -15590,7 +15592,7 @@ var scope = createCommonjsModule2(function(module, exports) {
             super(nameStr);
             this.prefix = prefix;
         }
-        setValue(value, { property , itemIndex  }) {
+        setValue(value, { property, itemIndex }) {
             this.value = value;
             this.scopePath = code._`.${new code.Name(property)}[${itemIndex}]`;
         }
@@ -15617,7 +15619,7 @@ var scope = createCommonjsModule2(function(module, exports) {
             var _a;
             if (value.ref === void 0) throw new Error("CodeGen: ref must be passed in value");
             const name = this.toName(nameOrPrefix);
-            const { prefix  } = name;
+            const { prefix } = name;
             const valueKey = (_a = value.key) !== null && _a !== void 0 ? _a : value.ref;
             let vs = this._values[prefix];
             if (vs) {
@@ -15785,7 +15787,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             this.name = name;
             this.rhs = rhs;
         }
-        render({ es5 , _n  }) {
+        render({ es5, _n }) {
             const varKind = es5 ? scope.varKinds.var : this.varKind;
             const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
             return `${varKind} ${this.name}${rhs};` + _n;
@@ -15806,7 +15808,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             this.rhs = rhs;
             this.sideEffects = sideEffects;
         }
-        render({ _n  }) {
+        render({ _n }) {
             return `${this.lhs} = ${this.rhs};` + _n;
         }
         optimizeNames(names, constants) {
@@ -15826,7 +15828,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             super(lhs, rhs, sideEffects);
             this.op = op;
         }
-        render({ _n  }) {
+        render({ _n }) {
             return `${this.lhs} ${this.op}= ${this.rhs};` + _n;
         }
     }
@@ -15836,7 +15838,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             this.label = label;
             this.names = {};
         }
-        render({ _n  }) {
+        render({ _n }) {
             return `${this.label}:` + _n;
         }
     }
@@ -15846,7 +15848,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             this.label = label;
             this.names = {};
         }
-        render({ _n  }) {
+        render({ _n }) {
             const label = this.label ? ` ${this.label}` : "";
             return `break${label};` + _n;
         }
@@ -15856,7 +15858,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             super();
             this.error = error;
         }
-        render({ _n  }) {
+        render({ _n }) {
             return `throw ${this.error};` + _n;
         }
         get names() {
@@ -15868,7 +15870,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             super();
             this.code = code2;
         }
-        render({ _n  }) {
+        render({ _n }) {
             return `${this.code};` + _n;
         }
         optimizeNodes() {
@@ -15891,7 +15893,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             return this.nodes.reduce((code2, n)=>code2 + n.render(opts), "");
         }
         optimizeNodes() {
-            const { nodes  } = this;
+            const { nodes } = this;
             let i = nodes.length;
             while(i--){
                 const n = nodes[i].optimizeNodes();
@@ -15902,7 +15904,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
             return nodes.length > 0 ? this : void 0;
         }
         optimizeNames(names, constants) {
-            const { nodes  } = this;
+            const { nodes } = this;
             let i = nodes.length;
             while(i--){
                 const n = nodes[i];
@@ -16000,7 +16002,7 @@ var codegen = createCommonjsModule2(function(module, exports) {
         }
         render(opts) {
             const varKind = opts.es5 ? scope.varKinds.var : this.varKind;
-            const { name , from , to  } = this;
+            const { name, from, to } = this;
             return `for(${varKind} ${name}=${from}; ${name}<${to}; ${name}++)` + super.render(opts);
         }
         get names() {
@@ -16393,7 +16395,7 @@ var util = createCommonjsModule2(function(module, exports) {
     }
     exports.alwaysValidSchema = alwaysValidSchema;
     function checkUnknownRules(it, schema = it.schema) {
-        const { opts , self: self1  } = it;
+        const { opts, self: self1 } = it;
         if (!opts.strictSchema) return;
         if (typeof schema === "boolean") return;
         const rules2 = self1.RULES.keywords;
@@ -16414,7 +16416,7 @@ var util = createCommonjsModule2(function(module, exports) {
         return false;
     }
     exports.schemaHasRulesButRef = schemaHasRulesButRef;
-    function schemaRefOrVal({ topSchemaRef , schemaPath  }, schema, keyword2, $data) {
+    function schemaRefOrVal({ topSchemaRef, schemaPath }, schema, keyword2, $data) {
         if (!$data) {
             if (typeof schema == "number" || typeof schema == "boolean") return schema;
             if (typeof schema == "string") return codegen._`${schema}`;
@@ -16447,7 +16449,7 @@ var util = createCommonjsModule2(function(module, exports) {
         }
     }
     exports.eachItem = eachItem;
-    function makeMergeEvaluated({ mergeNames , mergeToName , mergeValues , resultToName  }) {
+    function makeMergeEvaluated({ mergeNames, mergeToName, mergeValues, resultToName }) {
         return (gen, from, to, toName)=>{
             const res = to === void 0 ? from : to instanceof codegen.Name ? (from instanceof codegen.Name ? mergeNames(gen, from, to) : mergeToName(gen, from, to), to) : from instanceof codegen.Name ? (mergeToName(gen, to, from), from) : mergeValues(from, to);
             return toName === codegen.Name && !(res instanceof codegen.Name) ? resultToName(gen, res) : res;
@@ -16549,14 +16551,14 @@ var errors = createCommonjsModule2(function(module, exports) {
     });
     exports.extendErrors = exports.resetErrorsCount = exports.reportExtraError = exports.reportError = exports.keyword$DataError = exports.keywordError = void 0;
     exports.keywordError = {
-        message: ({ keyword: keyword2  })=>codegen.str`must pass "${keyword2}" keyword validation`
+        message: ({ keyword: keyword2 })=>codegen.str`must pass "${keyword2}" keyword validation`
     };
     exports.keyword$DataError = {
-        message: ({ keyword: keyword2 , schemaType  })=>schemaType ? codegen.str`"${keyword2}" keyword must be ${schemaType} ($data)` : codegen.str`"${keyword2}" keyword is invalid ($data)`
+        message: ({ keyword: keyword2, schemaType })=>schemaType ? codegen.str`"${keyword2}" keyword must be ${schemaType} ($data)` : codegen.str`"${keyword2}" keyword is invalid ($data)`
     };
     function reportError(cxt, error = exports.keywordError, errorPaths, overrideAllErrors) {
-        const { it  } = cxt;
-        const { gen , compositeRule , allErrors  } = it;
+        const { it } = cxt;
+        const { gen, compositeRule, allErrors } = it;
         const errObj = errorObjectCode(cxt, error, errorPaths);
         if (overrideAllErrors !== null && overrideAllErrors !== void 0 ? overrideAllErrors : compositeRule || allErrors) {
             addError(gen, errObj);
@@ -16566,8 +16568,8 @@ var errors = createCommonjsModule2(function(module, exports) {
     }
     exports.reportError = reportError;
     function reportExtraError(cxt, error = exports.keywordError, errorPaths) {
-        const { it  } = cxt;
-        const { gen , compositeRule , allErrors  } = it;
+        const { it } = cxt;
+        const { gen, compositeRule, allErrors } = it;
         const errObj = errorObjectCode(cxt, error, errorPaths);
         addError(gen, errObj);
         if (!(compositeRule || allErrors)) {
@@ -16580,7 +16582,7 @@ var errors = createCommonjsModule2(function(module, exports) {
         gen.if(codegen._`${names_1.default.vErrors} !== null`, ()=>gen.if(errsCount, ()=>gen.assign(codegen._`${names_1.default.vErrors}.length`, errsCount), ()=>gen.assign(names_1.default.vErrors, null)));
     }
     exports.resetErrorsCount = resetErrorsCount;
-    function extendErrors({ gen , keyword: keyword2 , schemaValue , data , errsCount , it  }) {
+    function extendErrors({ gen, keyword: keyword2, schemaValue, data, errsCount, it }) {
         if (errsCount === void 0) throw new Error("ajv implementation error");
         const err = gen.name("err");
         gen.forRange("i", errsCount, names_1.default.errors, (i)=>{
@@ -16600,7 +16602,7 @@ var errors = createCommonjsModule2(function(module, exports) {
         gen.code(codegen._`${names_1.default.errors}++`);
     }
     function returnErrors(it, errs) {
-        const { gen , validateName , schemaEnv  } = it;
+        const { gen, validateName, schemaEnv } = it;
         if (schemaEnv.$async) {
             gen.throw(codegen._`new ${it.ValidationError}(${errs})`);
         } else {
@@ -16618,12 +16620,12 @@ var errors = createCommonjsModule2(function(module, exports) {
         parentSchema: new codegen.Name("parentSchema")
     };
     function errorObjectCode(cxt, error, errorPaths) {
-        const { createErrors  } = cxt.it;
+        const { createErrors } = cxt.it;
         if (createErrors === false) return codegen._`{}`;
         return errorObject(cxt, error, errorPaths);
     }
     function errorObject(cxt, error, errorPaths = {}) {
-        const { gen , it  } = cxt;
+        const { gen, it } = cxt;
         const keyValues = [
             errorInstancePath(it, errorPaths),
             errorSchemaPath(cxt, errorPaths)
@@ -16631,14 +16633,14 @@ var errors = createCommonjsModule2(function(module, exports) {
         extraErrorProps(cxt, error, keyValues);
         return gen.object(...keyValues);
     }
-    function errorInstancePath({ errorPath  }, { instancePath  }) {
+    function errorInstancePath({ errorPath }, { instancePath }) {
         const instPath = instancePath ? codegen.str`${errorPath}${(0, util.getErrorPath)(instancePath, util.Type.Str)}` : errorPath;
         return [
             names_1.default.instancePath,
             (0, codegen.strConcat)(names_1.default.instancePath, instPath)
         ];
     }
-    function errorSchemaPath({ keyword: keyword2 , it: { errSchemaPath  }  }, { schemaPath , parentSchema  }) {
+    function errorSchemaPath({ keyword: keyword2, it: { errSchemaPath } }, { schemaPath, parentSchema }) {
         let schPath = parentSchema ? errSchemaPath : codegen.str`${errSchemaPath}/${keyword2}`;
         if (schemaPath) {
             schPath = codegen.str`${schPath}${(0, util.getErrorPath)(schemaPath, util.Type.Str)}`;
@@ -16648,9 +16650,9 @@ var errors = createCommonjsModule2(function(module, exports) {
             schPath
         ];
     }
-    function extraErrorProps(cxt, { params , message  }, keyValues) {
-        const { keyword: keyword2 , data , schemaValue , it  } = cxt;
-        const { opts , propertyName , topSchemaRef , schemaPath  } = it;
+    function extraErrorProps(cxt, { params, message }, keyValues) {
+        const { keyword: keyword2, data, schemaValue, it } = cxt;
+        const { opts, propertyName, topSchemaRef, schemaPath } = it;
         keyValues.push([
             E.keyword,
             keyword2
@@ -16691,7 +16693,7 @@ var boolSchema = createCommonjsModule2(function(module, exports) {
         message: "boolean schema is false"
     };
     function topBoolOrEmptySchema(it) {
-        const { gen , schema , validateName  } = it;
+        const { gen, schema, validateName } = it;
         if (schema === false) {
             falseSchemaError(it, false);
         } else if (typeof schema == "object" && schema.$async === true) {
@@ -16703,7 +16705,7 @@ var boolSchema = createCommonjsModule2(function(module, exports) {
     }
     exports.topBoolOrEmptySchema = topBoolOrEmptySchema;
     function boolOrEmptySchema(it, valid) {
-        const { gen , schema  } = it;
+        const { gen, schema } = it;
         if (schema === false) {
             gen.var(valid, false);
             falseSchemaError(it);
@@ -16713,7 +16715,7 @@ var boolSchema = createCommonjsModule2(function(module, exports) {
     }
     exports.boolOrEmptySchema = boolOrEmptySchema;
     function falseSchemaError(it, overrideAllErrors) {
-        const { gen , data  } = it;
+        const { gen, data } = it;
         const cxt = {
             gen,
             keyword: "false schema",
@@ -16795,7 +16797,7 @@ var applicability = createCommonjsModule2(function(module, exports) {
         value: true
     });
     exports.shouldUseRule = exports.shouldUseGroup = exports.schemaHasRulesForType = void 0;
-    function schemaHasRulesForType({ schema , self: self1  }, type2) {
+    function schemaHasRulesForType({ schema, self: self1 }, type2) {
         const group = self1.RULES.types[type2];
         return group && group !== true && shouldUseGroup(schema, group);
     }
@@ -16843,7 +16845,7 @@ var dataType = createCommonjsModule2(function(module, exports) {
     }
     exports.getJSONTypes = getJSONTypes;
     function coerceAndCheckDataType(it, types2) {
-        const { gen , data , opts  } = it;
+        const { gen, data, opts } = it;
         const coerceTo = coerceToTypes(types2, opts.coerceTypes);
         const checkTypes = types2.length > 0 && !(coerceTo.length === 0 && types2.length === 1 && (0, applicability.schemaHasRulesForType)(it, types2[0]));
         if (checkTypes) {
@@ -16867,7 +16869,7 @@ var dataType = createCommonjsModule2(function(module, exports) {
         return coerceTypes ? types2.filter((t)=>COERCIBLE.has(t) || coerceTypes === "array" && t === "array") : [];
     }
     function coerceData(it, types2, coerceTo) {
-        const { gen , data , opts  } = it;
+        const { gen, data, opts } = it;
         const dataType2 = gen.let("dataType", codegen._`typeof ${data}`);
         const coerced = gen.let("coerced", codegen._`undefined`);
         if (opts.coerceTypes === "array") {
@@ -16912,7 +16914,7 @@ var dataType = createCommonjsModule2(function(module, exports) {
             }
         }
     }
-    function assignParentData({ gen , parentData , parentDataProperty  }, expr) {
+    function assignParentData({ gen, parentData, parentDataProperty }, expr) {
         gen.if(codegen._`${parentData} !== undefined`, ()=>gen.assign(codegen._`${parentData}[${parentDataProperty}]`, expr));
     }
     function checkDataType(dataType2, data, strictNums, correct = DataType.Correct) {
@@ -16963,8 +16965,8 @@ var dataType = createCommonjsModule2(function(module, exports) {
     }
     exports.checkDataTypes = checkDataTypes;
     const typeError = {
-        message: ({ schema  })=>`must be ${schema}`,
-        params: ({ schema , schemaValue  })=>typeof schema == "string" ? codegen._`{type: ${schema}}` : codegen._`{type: ${schemaValue}}`
+        message: ({ schema })=>`must be ${schema}`,
+        params: ({ schema, schemaValue })=>typeof schema == "string" ? codegen._`{type: ${schema}}` : codegen._`{type: ${schemaValue}}`
     };
     function reportTypeError(it) {
         const cxt = getTypeErrorContext(it);
@@ -16972,7 +16974,7 @@ var dataType = createCommonjsModule2(function(module, exports) {
     }
     exports.reportTypeError = reportTypeError;
     function getTypeErrorContext(it) {
-        const { gen , data , schema  } = it;
+        const { gen, data, schema } = it;
         const schemaCode = (0, util.schemaRefOrVal)(it, schema, "type");
         return {
             gen,
@@ -16993,7 +16995,7 @@ var defaults = createCommonjsModule2(function(module, exports) {
     });
     exports.assignDefaults = void 0;
     function assignDefaults(it, ty) {
-        const { properties: properties2 , items: items2  } = it.schema;
+        const { properties: properties2, items: items2 } = it.schema;
         if (ty === "object" && properties2) {
             for(const key in properties2){
                 assignDefault(it, key, properties2[key].default);
@@ -17004,7 +17006,7 @@ var defaults = createCommonjsModule2(function(module, exports) {
     }
     exports.assignDefaults = assignDefaults;
     function assignDefault(it, prop, defaultValue) {
-        const { gen , compositeRule , data , opts  } = it;
+        const { gen, compositeRule, data, opts } = it;
         if (defaultValue === void 0) return;
         const childData = codegen._`${data}${(0, codegen.getProperty)(prop)}`;
         if (compositeRule) {
@@ -17025,7 +17027,7 @@ var code$1 = createCommonjsModule2(function(module, exports) {
     exports.validateUnion = exports.validateArray = exports.usePattern = exports.callValidateCode = exports.schemaProperties = exports.allSchemaProperties = exports.noPropertyInData = exports.propertyInData = exports.isOwnProperty = exports.hasPropFunc = exports.reportMissingProp = exports.checkMissingProp = exports.checkReportMissingProp = void 0;
     const util_2 = util;
     function checkReportMissingProp(cxt, prop) {
-        const { gen , data , it  } = cxt;
+        const { gen, data, it } = cxt;
         gen.if(noPropertyInData(gen, data, prop, it.opts.ownProperties), ()=>{
             cxt.setParams({
                 missingProperty: codegen._`${prop}`
@@ -17034,7 +17036,7 @@ var code$1 = createCommonjsModule2(function(module, exports) {
         });
     }
     exports.checkReportMissingProp = checkReportMissingProp;
-    function checkMissingProp({ gen , data , it: { opts  }  }, properties2, missing) {
+    function checkMissingProp({ gen, data, it: { opts } }, properties2, missing) {
         return (0, codegen.or)(...properties2.map((prop)=>(0, codegen.and)(noPropertyInData(gen, data, prop, opts.ownProperties), codegen._`${missing} = ${prop}`)));
     }
     exports.checkMissingProp = checkMissingProp;
@@ -17074,7 +17076,7 @@ var code$1 = createCommonjsModule2(function(module, exports) {
         return allSchemaProperties(schemaMap).filter((p)=>!(0, util.alwaysValidSchema)(it, schemaMap[p]));
     }
     exports.schemaProperties = schemaProperties;
-    function callValidateCode({ schemaCode , data , it: { gen , topSchemaRef , schemaPath , errorPath  } , it  }, func, context, passSchema) {
+    function callValidateCode({ schemaCode, data, it: { gen, topSchemaRef, schemaPath, errorPath }, it }, func, context, passSchema) {
         const dataAndSchema = passSchema ? codegen._`${schemaCode}, ${data}, ${topSchemaRef}${schemaPath}` : data;
         const valCxt = [
             [
@@ -17103,9 +17105,9 @@ var code$1 = createCommonjsModule2(function(module, exports) {
     }
     exports.callValidateCode = callValidateCode;
     const newRegExp = codegen._`new RegExp`;
-    function usePattern({ gen , it: { opts  }  }, pattern2) {
+    function usePattern({ gen, it: { opts } }, pattern2) {
         const u = opts.unicodeRegExp ? "u" : "";
-        const { regExp  } = opts.code;
+        const { regExp } = opts.code;
         const rx = regExp(pattern2, u);
         return gen.scopeValue("pattern", {
             key: rx.toString(),
@@ -17115,7 +17117,7 @@ var code$1 = createCommonjsModule2(function(module, exports) {
     }
     exports.usePattern = usePattern;
     function validateArray(cxt) {
-        const { gen , data , keyword: keyword2 , it  } = cxt;
+        const { gen, data, keyword: keyword2, it } = cxt;
         const valid = gen.name("valid");
         if (it.allErrors) {
             const validArr = gen.let("valid", true);
@@ -17139,7 +17141,7 @@ var code$1 = createCommonjsModule2(function(module, exports) {
     }
     exports.validateArray = validateArray;
     function validateUnion(cxt) {
-        const { gen , schema , keyword: keyword2 , it  } = cxt;
+        const { gen, schema, keyword: keyword2, it } = cxt;
         if (!Array.isArray(schema)) throw new Error("ajv implementation error");
         const alwaysValid = schema.some((sch)=>(0, util.alwaysValidSchema)(it, sch));
         if (alwaysValid && !it.opts.unevaluated) return;
@@ -17165,7 +17167,7 @@ var keyword = createCommonjsModule2(function(module, exports) {
     });
     exports.validateKeywordUsage = exports.validSchemaType = exports.funcKeywordCode = exports.macroKeywordCode = void 0;
     function macroKeywordCode(cxt, def) {
-        const { gen , keyword: keyword2 , schema , parentSchema , it  } = cxt;
+        const { gen, keyword: keyword2, schema, parentSchema, it } = cxt;
         const macroSchema = def.macro.call(it.self, schema, parentSchema, it);
         const schemaRef = useKeyword(gen, keyword2, macroSchema);
         if (it.opts.validateSchema !== false) it.self.validateSchema(macroSchema, true);
@@ -17182,7 +17184,7 @@ var keyword = createCommonjsModule2(function(module, exports) {
     exports.macroKeywordCode = macroKeywordCode;
     function funcKeywordCode(cxt, def) {
         var _a;
-        const { gen , keyword: keyword2 , schema , parentSchema , $data , it  } = cxt;
+        const { gen, keyword: keyword2, schema, parentSchema, $data, it } = cxt;
         checkAsyncKeyword(it, def);
         const validate2 = !$data && def.compile ? def.compile.call(it.self, schema, parentSchema, it) : def.validate;
         const validateRef = useKeyword(gen, keyword2, validate2);
@@ -17223,17 +17225,17 @@ var keyword = createCommonjsModule2(function(module, exports) {
     }
     exports.funcKeywordCode = funcKeywordCode;
     function modifyData(cxt) {
-        const { gen , data , it  } = cxt;
+        const { gen, data, it } = cxt;
         gen.if(it.parentData, ()=>gen.assign(data, codegen._`${it.parentData}[${it.parentDataProperty}]`));
     }
     function addErrs(cxt, errs) {
-        const { gen  } = cxt;
+        const { gen } = cxt;
         gen.if(codegen._`Array.isArray(${errs})`, ()=>{
             gen.assign(names_1.default.vErrors, codegen._`${names_1.default.vErrors} === null ? ${errs} : ${names_1.default.vErrors}.concat(${errs})`).assign(names_1.default.errors, codegen._`${names_1.default.vErrors}.length`);
             (0, errors.extendErrors)(cxt);
         }, ()=>cxt.error());
     }
-    function checkAsyncKeyword({ schemaEnv  }, def) {
+    function checkAsyncKeyword({ schemaEnv }, def) {
         if (def.async && !schemaEnv.$async) throw new Error("async keyword in sync schema");
     }
     function useKeyword(gen, keyword2, result) {
@@ -17249,7 +17251,7 @@ var keyword = createCommonjsModule2(function(module, exports) {
         return !schemaType.length || schemaType.some((st)=>st === "array" ? Array.isArray(schema) : st === "object" ? schema && typeof schema == "object" && !Array.isArray(schema) : typeof schema == st || allowUndefined && typeof schema == "undefined");
     }
     exports.validSchemaType = validSchemaType;
-    function validateKeywordUsage({ schema , opts , self: self1 , errSchemaPath  }, def, keyword2) {
+    function validateKeywordUsage({ schema, opts, self: self1, errSchemaPath }, def, keyword2) {
         if (Array.isArray(def.keyword) ? !def.keyword.includes(keyword2) : def.keyword !== keyword2) {
             throw new Error("ajv implementation error");
         }
@@ -17273,7 +17275,7 @@ var subschema = createCommonjsModule2(function(module, exports) {
         value: true
     });
     exports.extendSubschemaMode = exports.extendSubschemaData = exports.getSubschema = void 0;
-    function getSubschema(it, { keyword: keyword2 , schemaProp , schema , schemaPath , errSchemaPath , topSchemaRef  }) {
+    function getSubschema(it, { keyword: keyword2, schemaProp, schema, schemaPath, errSchemaPath, topSchemaRef }) {
         if (keyword2 !== void 0 && schema !== void 0) {
             throw new Error('both "keyword" and "schema" passed, only one allowed');
         }
@@ -17303,13 +17305,13 @@ var subschema = createCommonjsModule2(function(module, exports) {
         throw new Error('either "keyword" or "schema" must be passed');
     }
     exports.getSubschema = getSubschema;
-    function extendSubschemaData(subschema2, it, { dataProp , dataPropType: dpType , data , dataTypes , propertyName  }) {
+    function extendSubschemaData(subschema2, it, { dataProp, dataPropType: dpType, data, dataTypes, propertyName }) {
         if (data !== void 0 && dataProp !== void 0) {
             throw new Error('both "data" and "dataProp" passed, only one allowed');
         }
-        const { gen  } = it;
+        const { gen } = it;
         if (dataProp !== void 0) {
-            const { errorPath , dataPathArr , opts  } = it;
+            const { errorPath, dataPathArr, opts } = it;
             const nextData = gen.let("data", codegen._`${it.data}${(0, codegen.getProperty)(dataProp)}`, true);
             dataContextProps(nextData);
             subschema2.errorPath = codegen.str`${errorPath}${(0, util.getErrorPath)(dataProp, dpType, opts.jsPropertySyntax)}`;
@@ -17338,7 +17340,7 @@ var subschema = createCommonjsModule2(function(module, exports) {
         }
     }
     exports.extendSubschemaData = extendSubschemaData;
-    function extendSubschemaMode(subschema2, { jtdDiscriminator , jtdMetadata , compositeRule , createErrors , allErrors  }) {
+    function extendSubschemaMode(subschema2, { jtdDiscriminator, jtdMetadata, compositeRule, createErrors, allErrors }) {
         if (compositeRule !== void 0) subschema2.compositeRule = compositeRule;
         if (createErrors !== void 0) subschema2.createErrors = createErrors;
         if (allErrors !== void 0) subschema2.allErrors = allErrors;
@@ -17430,7 +17432,7 @@ var resolve3 = createCommonjsModule2(function(module, exports) {
     const ANCHOR = /^[a-z_][-a-z0-9._]*$/i;
     function getSchemaRefs(schema, baseId) {
         if (typeof schema == "boolean") return {};
-        const { schemaId , uriResolver  } = this.opts;
+        const { schemaId, uriResolver } = this.opts;
         const schId = normalizeId(schema[schemaId] || baseId);
         const baseIds = {
             "": schId
@@ -17501,7 +17503,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         validateFunction(it, ()=>(0, boolSchema.topBoolOrEmptySchema)(it));
     }
     exports.validateFunctionCode = validateFunctionCode;
-    function validateFunction({ gen , validateName , schema , schemaEnv , opts  }, body) {
+    function validateFunction({ gen, validateName, schema, schemaEnv, opts }, body) {
         if (opts.code.es5) {
             gen.func(validateName, codegen._`${names_1.default.data}, ${names_1.default.valCxt}`, schemaEnv.$async, ()=>{
                 gen.code(codegen._`"use strict"; ${funcSourceUrl(schema, opts)}`);
@@ -17531,7 +17533,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         });
     }
     function topSchemaObjCode(it) {
-        const { schema , opts , gen  } = it;
+        const { schema, opts, gen } = it;
         validateFunction(it, ()=>{
             if (opts.$comment && schema.$comment) commentKeyword(it);
             checkNoDefault(it);
@@ -17544,7 +17546,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         return;
     }
     function resetEvaluated(it) {
-        const { gen , validateName  } = it;
+        const { gen, validateName } = it;
         it.evaluated = gen.const("evaluated", codegen._`${validateName}.evaluated`);
         gen.if(codegen._`${it.evaluated}.dynamicProps`, ()=>gen.assign(codegen._`${it.evaluated}.props`, codegen._`undefined`));
         gen.if(codegen._`${it.evaluated}.dynamicItems`, ()=>gen.assign(codegen._`${it.evaluated}.items`, codegen._`undefined`));
@@ -17563,7 +17565,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         }
         (0, boolSchema.boolOrEmptySchema)(it, valid);
     }
-    function schemaCxtHasRules({ schema , self: self1  }) {
+    function schemaCxtHasRules({ schema, self: self1 }) {
         if (typeof schema == "boolean") return !schema;
         for(const key in schema)if (self1.RULES.all[key]) return true;
         return false;
@@ -17572,7 +17574,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         return typeof it.schema != "boolean";
     }
     function subSchemaObjCode(it, valid) {
-        const { schema , gen , opts  } = it;
+        const { schema, gen, opts } = it;
         if (opts.$comment && schema.$comment) commentKeyword(it);
         updateContext(it);
         checkAsyncSchema(it);
@@ -17591,13 +17593,13 @@ var validate = createCommonjsModule2(function(module, exports) {
         schemaKeywords(it, types2, !checkedTypes, errsCount);
     }
     function checkRefsAndKeywords(it) {
-        const { schema , errSchemaPath , opts , self: self1  } = it;
+        const { schema, errSchemaPath, opts, self: self1 } = it;
         if (schema.$ref && opts.ignoreKeywordsWithRef && (0, util.schemaHasRulesButRef)(schema, self1.RULES)) {
             self1.logger.warn(`$ref: keywords ignored in schema at path "${errSchemaPath}"`);
         }
     }
     function checkNoDefault(it) {
-        const { schema , opts  } = it;
+        const { schema, opts } = it;
         if (schema.default !== void 0 && opts.useDefaults && opts.strictSchema) {
             (0, util.checkStrictMode)(it, "default is ignored in the schema root");
         }
@@ -17609,7 +17611,7 @@ var validate = createCommonjsModule2(function(module, exports) {
     function checkAsyncSchema(it) {
         if (it.schema.$async && !it.schemaEnv.$async) throw new Error("async schema in sync schema");
     }
-    function commentKeyword({ gen , schemaEnv , schema , errSchemaPath , opts  }) {
+    function commentKeyword({ gen, schemaEnv, schema, errSchemaPath, opts }) {
         const msg = schema.$comment;
         if (opts.$comment === true) {
             gen.code(codegen._`${names_1.default.self}.logger.log(${msg})`);
@@ -17622,7 +17624,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         }
     }
     function returnResults(it) {
-        const { gen , schemaEnv , validateName , ValidationError: ValidationError2 , opts  } = it;
+        const { gen, schemaEnv, validateName, ValidationError: ValidationError2, opts } = it;
         if (schemaEnv.$async) {
             gen.if(codegen._`${names_1.default.errors} === 0`, ()=>gen.return(names_1.default.data), ()=>gen.throw(codegen._`new ${ValidationError2}(${names_1.default.vErrors})`));
         } else {
@@ -17631,13 +17633,13 @@ var validate = createCommonjsModule2(function(module, exports) {
             gen.return(codegen._`${names_1.default.errors} === 0`);
         }
     }
-    function assignEvaluated({ gen , evaluated , props , items: items2  }) {
+    function assignEvaluated({ gen, evaluated, props, items: items2 }) {
         if (props instanceof codegen.Name) gen.assign(codegen._`${evaluated}.props`, props);
         if (items2 instanceof codegen.Name) gen.assign(codegen._`${evaluated}.items`, items2);
     }
     function schemaKeywords(it, types2, typeErrors, errsCount) {
-        const { gen , schema , data , allErrors , opts , self: self1  } = it;
-        const { RULES  } = self1;
+        const { gen, schema, data, allErrors, opts, self: self1 } = it;
+        const { RULES } = self1;
         if (schema.$ref && (opts.ignoreKeywordsWithRef || !(0, util.schemaHasRulesButRef)(schema, RULES))) {
             gen.block(()=>keywordCode(it, "$ref", RULES.all.$ref.definition));
             return;
@@ -17664,7 +17666,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         }
     }
     function iterateKeywords(it, group) {
-        const { gen , schema , opts: { useDefaults  }  } = it;
+        const { gen, schema, opts: { useDefaults } } = it;
         if (useDefaults) (0, defaults.assignDefaults)(it, group.type);
         gen.block(()=>{
             for (const rule of group.rules){
@@ -17703,7 +17705,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         for(const keyword2 in rules2){
             const rule = rules2[keyword2];
             if (typeof rule == "object" && (0, applicability.shouldUseRule)(it.schema, rule)) {
-                const { type: type2  } = rule.definition;
+                const { type: type2 } = rule.definition;
                 if (type2.length && !type2.some((t)=>hasApplicableType(ts, t))) {
                     strictTypesError(it, `missing type "${type2.join(",")}" for keyword "${keyword2}"`);
                 }
@@ -17788,7 +17790,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         }
         fail$data(condition) {
             if (!this.$data) return this.fail(condition);
-            const { schemaCode  } = this;
+            const { schemaCode } = this;
             this.fail(codegen._`${schemaCode} !== undefined && (${(0, codegen.or)(this.invalid$data(), condition)})`);
         }
         error(append, errorParams, errorPaths) {
@@ -17825,7 +17827,7 @@ var validate = createCommonjsModule2(function(module, exports) {
         }
         check$data(valid = codegen.nil, $dataValid = codegen.nil) {
             if (!this.$data) return;
-            const { gen , schemaCode , schemaType , def  } = this;
+            const { gen, schemaCode, schemaType, def } = this;
             gen.if((0, codegen.or)(codegen._`${schemaCode} === undefined`, $dataValid));
             if (valid !== codegen.nil) gen.assign(valid, true);
             if (schemaType.length || def.validateSchema) {
@@ -17836,7 +17838,7 @@ var validate = createCommonjsModule2(function(module, exports) {
             gen.else();
         }
         invalid$data() {
-            const { gen , schemaCode , schemaType , def , it  } = this;
+            const { gen, schemaCode, schemaType, def, it } = this;
             return (0, codegen.or)(wrong$DataType(), invalid$DataSchema());
             function wrong$DataType() {
                 if (schemaType.length) {
@@ -17872,7 +17874,7 @@ var validate = createCommonjsModule2(function(module, exports) {
             return nextContext;
         }
         mergeEvaluated(schemaCxt, toName) {
-            const { it , gen  } = this;
+            const { it, gen } = this;
             if (!it.opts.unevaluated) return;
             if (it.props !== true && schemaCxt.props !== void 0) {
                 it.props = util.mergeEvaluated.props(gen, schemaCxt.props, it.props, toName);
@@ -17882,7 +17884,7 @@ var validate = createCommonjsModule2(function(module, exports) {
             }
         }
         mergeValidEvaluated(schemaCxt, valid) {
-            const { it , gen  } = this;
+            const { it, gen } = this;
             if (it.opts.unevaluated && (it.props !== true || it.items !== true)) {
                 gen.if(valid, ()=>this.mergeEvaluated(schemaCxt, codegen.Name));
                 return true;
@@ -17904,7 +17906,7 @@ var validate = createCommonjsModule2(function(module, exports) {
     }
     const JSON_POINTER = /^\/(?:[^~]|~0|~1)*$/;
     const RELATIVE_JSON_POINTER = /^([0-9]+)(#|\/(?:[^~]|~0|~1)*)?$/;
-    function getData($data, { dataLevel , dataNames , dataPathArr  }) {
+    function getData($data, { dataLevel, dataNames, dataPathArr }) {
         let jsonPointer;
         let data;
         if ($data === "") return names_1.default.rootData;
@@ -17994,8 +17996,8 @@ var compile = createCommonjsModule2(function(module, exports) {
         const _sch = getCompilingSchema.call(this, sch);
         if (_sch) return _sch;
         const rootId = (0, resolve3.getFullPath)(this.opts.uriResolver, sch.root.baseId);
-        const { es5 , lines  } = this.opts.code;
-        const { ownProperties  } = this.opts;
+        const { es5, lines } = this.opts.code;
+        const { ownProperties } = this.opts;
         const gen = new codegen.CodeGen(this.scope, {
             es5,
             lines,
@@ -18068,7 +18070,7 @@ var compile = createCommonjsModule2(function(module, exports) {
                 };
             }
             if (this.opts.unevaluated) {
-                const { props , items: items2  } = schemaCxt;
+                const { props, items: items2 } = schemaCxt;
                 validate$1.evaluated = {
                     props: props instanceof codegen.Name ? void 0 : props,
                     items: items2 instanceof codegen.Name ? void 0 : items2,
@@ -18097,7 +18099,7 @@ var compile = createCommonjsModule2(function(module, exports) {
         let _sch = resolve$1.call(this, root, ref2);
         if (_sch === void 0) {
             const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref2];
-            const { schemaId  } = this.opts;
+            const { schemaId } = this.opts;
             if (schema) _sch = new SchemaEnv({
                 schema,
                 schemaId,
@@ -18144,8 +18146,8 @@ var compile = createCommonjsModule2(function(module, exports) {
         if (typeof (schOrRef === null || schOrRef === void 0 ? void 0 : schOrRef.schema) !== "object") return;
         if (!schOrRef.validate) compileSchema.call(this, schOrRef);
         if (id2 === (0, resolve3.normalizeId)(ref2)) {
-            const { schema  } = schOrRef;
-            const { schemaId  } = this.opts;
+            const { schema } = schOrRef;
+            const { schemaId } = this.opts;
             const schId = schema[schemaId];
             if (schId) baseId = (0, resolve3.resolveUrl)(this.opts.uriResolver, baseId, schId);
             return new SchemaEnv({
@@ -18165,7 +18167,7 @@ var compile = createCommonjsModule2(function(module, exports) {
         "dependencies",
         "definitions"
     ]);
-    function getJsonPointer(parsedRef, { baseId , schema , root  }) {
+    function getJsonPointer(parsedRef, { baseId, schema, root }) {
         var _a;
         if (((_a = parsedRef.fragment) === null || _a === void 0 ? void 0 : _a[0]) !== "/") return;
         for (const part of parsedRef.fragment.slice(1).split("/")){
@@ -18183,7 +18185,7 @@ var compile = createCommonjsModule2(function(module, exports) {
             const $ref = (0, resolve3.resolveUrl)(this.opts.uriResolver, baseId, schema.$ref);
             env = resolveSchema.call(this, root, $ref);
         }
-        const { schemaId  } = this.opts;
+        const { schemaId } = this.opts;
         env = env || new SchemaEnv({
             schema,
             schemaId,
@@ -18367,7 +18369,7 @@ var core = createCommonjsModule2(function(module, exports) {
                 ...opts,
                 ...requiredOptions(opts)
             };
-            const { es5 , lines  } = this.opts.code;
+            const { es5, lines } = this.opts.code;
             this.scope = new codegen_2.ValueScope({
                 scope: {},
                 prefixes: EXT_SCOPE_NAMES,
@@ -18393,7 +18395,7 @@ var core = createCommonjsModule2(function(module, exports) {
             this.addKeyword("$async");
         }
         _addDefaultMetaSchema() {
-            const { $data , meta , schemaId  } = this.opts;
+            const { $data, meta, schemaId } = this.opts;
             let _dataRefSchema = $dataRefSchema;
             if (schemaId === "id") {
                 _dataRefSchema = {
@@ -18405,7 +18407,7 @@ var core = createCommonjsModule2(function(module, exports) {
             if (meta && $data) this.addMetaSchema(_dataRefSchema, _dataRefSchema[schemaId], false);
         }
         defaultMeta() {
-            const { meta , schemaId  } = this.opts;
+            const { meta, schemaId } = this.opts;
             return this.opts.defaultMeta = typeof meta == "object" ? meta[schemaId] || meta : void 0;
         }
         validate(schemaKeyRef, data) {
@@ -18428,7 +18430,7 @@ var core = createCommonjsModule2(function(module, exports) {
             if (typeof this.opts.loadSchema != "function") {
                 throw new Error("options.loadSchema should be a function");
             }
-            const { loadSchema  } = this.opts;
+            const { loadSchema } = this.opts;
             return runCompileAsync.call(this, schema, meta);
             async function runCompileAsync(_schema, _meta) {
                 await loadMetaSchema.call(this, _schema.$schema);
@@ -18452,7 +18454,7 @@ var core = createCommonjsModule2(function(module, exports) {
                     return _compileAsync.call(this, sch);
                 }
             }
-            function checkLoaded({ missingSchema: ref2 , missingRef  }) {
+            function checkLoaded({ missingSchema: ref2, missingRef }) {
                 if (this.refs[ref2]) {
                     throw new Error(`AnySchema ${ref2} is loaded but ${missingRef} cannot be resolved`);
                 }
@@ -18479,7 +18481,7 @@ var core = createCommonjsModule2(function(module, exports) {
             }
             let id2;
             if (typeof schema === "object") {
-                const { schemaId  } = this.opts;
+                const { schemaId } = this.opts;
                 id2 = schema[schemaId];
                 if (id2 !== void 0 && typeof id2 != "string") {
                     throw new Error(`schema ${schemaId} must be string`);
@@ -18519,7 +18521,7 @@ var core = createCommonjsModule2(function(module, exports) {
             let sch;
             while(typeof (sch = getSchEnv.call(this, keyRef)) == "string")keyRef = sch;
             if (sch === void 0) {
-                const { schemaId  } = this.opts;
+                const { schemaId } = this.opts;
                 const root = new compile.SchemaEnv({
                     schema: {},
                     schemaId
@@ -18606,7 +18608,7 @@ var core = createCommonjsModule2(function(module, exports) {
             return typeof rule == "object" ? rule.definition : !!rule;
         }
         removeKeyword(keyword2) {
-            const { RULES  } = this;
+            const { RULES } = this;
             delete RULES.keywords[keyword2];
             delete RULES.all[keyword2];
             for (const group of RULES.rules){
@@ -18620,7 +18622,7 @@ var core = createCommonjsModule2(function(module, exports) {
             this.formats[name] = format2;
             return this;
         }
-        errorsText(errors2 = this.errors, { separator =", " , dataVar ="data"  } = {}) {
+        errorsText(errors2 = this.errors, { separator = ", ", dataVar = "data" } = {}) {
             if (!errors2 || errors2.length === 0) return "No errors";
             return errors2.map((e)=>`${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg)=>text + separator + msg);
         }
@@ -18634,7 +18636,7 @@ var core = createCommonjsModule2(function(module, exports) {
                 for(const key in rules2){
                     const rule = rules2[key];
                     if (typeof rule != "object") continue;
-                    const { $data  } = rule.definition;
+                    const { $data } = rule.definition;
                     const schema = keywords[key];
                     if ($data && schema) keywords[key] = schemaOrData(schema);
                 }
@@ -18656,7 +18658,7 @@ var core = createCommonjsModule2(function(module, exports) {
         }
         _addSchema(schema, meta, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
             let id2;
-            const { schemaId  } = this.opts;
+            const { schemaId } = this.opts;
             if (typeof schema == "object") {
                 id2 = schema[schemaId];
             } else {
@@ -18760,7 +18762,7 @@ var core = createCommonjsModule2(function(module, exports) {
     }
     const KEYWORD_NAME = /^[a-z_$][a-z0-9_$:-]*$/i;
     function checkKeyword(keyword2, def) {
-        const { RULES  } = this;
+        const { RULES } = this;
         (0, util.eachItem)(keyword2, (kwd)=>{
             if (RULES.keywords[kwd]) throw new Error(`Keyword ${kwd} is already defined`);
             if (!KEYWORD_NAME.test(kwd)) throw new Error(`Keyword ${kwd} has invalid name`);
@@ -18774,8 +18776,8 @@ var core = createCommonjsModule2(function(module, exports) {
         var _a;
         const post = definition === null || definition === void 0 ? void 0 : definition.post;
         if (dataType$1 && post) throw new Error('keyword with "post" flag cannot have "type"');
-        const { RULES  } = this;
-        let ruleGroup = post ? RULES.post : RULES.rules.find(({ type: t  })=>t === dataType$1);
+        const { RULES } = this;
+        let ruleGroup = post ? RULES.post : RULES.rules.find(({ type: t })=>t === dataType$1);
         if (!ruleGroup) {
             ruleGroup = {
                 type: dataType$1,
@@ -18808,7 +18810,7 @@ var core = createCommonjsModule2(function(module, exports) {
         }
     }
     function keywordMetaschema(def) {
-        let { metaSchema  } = def;
+        let { metaSchema } = def;
         if (metaSchema === void 0) return;
         if (def.$data && this.opts.$data) metaSchema = schemaOrData(metaSchema);
         def.validateSchema = this.compile(metaSchema, true);
@@ -18846,9 +18848,9 @@ var ref = createCommonjsModule2(function(module, exports) {
         keyword: "$ref",
         schemaType: "string",
         code (cxt) {
-            const { gen , schema: $ref , it  } = cxt;
-            const { baseId , schemaEnv: env , validateName , opts , self: self1  } = it;
-            const { root  } = env;
+            const { gen, schema: $ref, it } = cxt;
+            const { baseId, schemaEnv: env, validateName, opts, self: self1 } = it;
+            const { root } = env;
             if (($ref === "#" || $ref === "#/") && baseId === root.baseId) return callRootRef();
             const schOrEnv = compile.resolveRef.call(self1, root, baseId, $ref);
             if (schOrEnv === void 0) throw new ref_error.default(it.opts.uriResolver, baseId, $ref);
@@ -18886,7 +18888,7 @@ var ref = createCommonjsModule2(function(module, exports) {
         }
     };
     function getValidate(cxt, sch) {
-        const { gen  } = cxt;
+        const { gen } = cxt;
         return sch.validate ? gen.scopeValue("validate", {
             ref: sch.validate
         }) : codegen._`${gen.scopeValue("wrapper", {
@@ -18895,8 +18897,8 @@ var ref = createCommonjsModule2(function(module, exports) {
     }
     exports.getValidate = getValidate;
     function callRef(cxt, v, sch, $async) {
-        const { gen , it  } = cxt;
-        const { allErrors , schemaEnv: env , opts  } = it;
+        const { gen, it } = cxt;
+        const { allErrors, schemaEnv: env, opts } = it;
         const passCxt = opts.passContext ? names_1.default.this : codegen.nil;
         if ($async) callAsyncRef();
         else callSyncRef();
@@ -18997,8 +18999,8 @@ var limitNumber = createCommonjsModule2(function(module, exports) {
         }
     };
     const error = {
-        message: ({ keyword: keyword2 , schemaCode  })=>codegen.str`must be ${KWDs[keyword2].okStr} ${schemaCode}`,
-        params: ({ keyword: keyword2 , schemaCode  })=>codegen._`{comparison: ${KWDs[keyword2].okStr}, limit: ${schemaCode}}`
+        message: ({ keyword: keyword2, schemaCode })=>codegen.str`must be ${KWDs[keyword2].okStr} ${schemaCode}`,
+        params: ({ keyword: keyword2, schemaCode })=>codegen._`{comparison: ${KWDs[keyword2].okStr}, limit: ${schemaCode}}`
     };
     const def = {
         keyword: Object.keys(KWDs),
@@ -19007,7 +19009,7 @@ var limitNumber = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { keyword: keyword2 , data , schemaCode  } = cxt;
+            const { keyword: keyword2, data, schemaCode } = cxt;
             cxt.fail$data(codegen._`${data} ${KWDs[keyword2].fail} ${schemaCode} || isNaN(${data})`);
         }
     };
@@ -19018,8 +19020,8 @@ var multipleOf = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ schemaCode  })=>codegen.str`must be multiple of ${schemaCode}`,
-        params: ({ schemaCode  })=>codegen._`{multipleOf: ${schemaCode}}`
+        message: ({ schemaCode })=>codegen.str`must be multiple of ${schemaCode}`,
+        params: ({ schemaCode })=>codegen._`{multipleOf: ${schemaCode}}`
     };
     const def = {
         keyword: "multipleOf",
@@ -19028,7 +19030,7 @@ var multipleOf = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { gen , data , schemaCode , it  } = cxt;
+            const { gen, data, schemaCode, it } = cxt;
             const prec = it.opts.multipleOfPrecision;
             const res = gen.let("res");
             const invalid = prec ? codegen._`Math.abs(Math.round(${res}) - ${res}) > 1e-${prec}` : codegen._`${res} !== parseInt(${res})`;
@@ -19064,11 +19066,11 @@ var limitLength = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message ({ keyword: keyword2 , schemaCode  }) {
+        message ({ keyword: keyword2, schemaCode }) {
             const comp = keyword2 === "maxLength" ? "more" : "fewer";
             return codegen.str`must NOT have ${comp} than ${schemaCode} characters`;
         },
-        params: ({ schemaCode  })=>codegen._`{limit: ${schemaCode}}`
+        params: ({ schemaCode })=>codegen._`{limit: ${schemaCode}}`
     };
     const def = {
         keyword: [
@@ -19080,7 +19082,7 @@ var limitLength = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { keyword: keyword2 , data , schemaCode , it  } = cxt;
+            const { keyword: keyword2, data, schemaCode, it } = cxt;
             const op = keyword2 === "maxLength" ? codegen.operators.GT : codegen.operators.LT;
             const len = it.opts.unicode === false ? codegen._`${data}.length` : codegen._`${(0, util.useFunc)(cxt.gen, ucs2length_1.default)}(${data})`;
             cxt.fail$data(codegen._`${len} ${op} ${schemaCode}`);
@@ -19093,8 +19095,8 @@ var pattern = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ schemaCode  })=>codegen.str`must match pattern "${schemaCode}"`,
-        params: ({ schemaCode  })=>codegen._`{pattern: ${schemaCode}}`
+        message: ({ schemaCode })=>codegen.str`must match pattern "${schemaCode}"`,
+        params: ({ schemaCode })=>codegen._`{pattern: ${schemaCode}}`
     };
     const def = {
         keyword: "pattern",
@@ -19103,7 +19105,7 @@ var pattern = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { data , $data , schema , schemaCode , it  } = cxt;
+            const { data, $data, schema, schemaCode, it } = cxt;
             const u = it.opts.unicodeRegExp ? "u" : "";
             const regExp = $data ? codegen._`(new RegExp(${schemaCode}, ${u}))` : (0, code$1.usePattern)(cxt, schema);
             cxt.fail$data(codegen._`!${regExp}.test(${data})`);
@@ -19116,11 +19118,11 @@ var limitProperties = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message ({ keyword: keyword2 , schemaCode  }) {
+        message ({ keyword: keyword2, schemaCode }) {
             const comp = keyword2 === "maxProperties" ? "more" : "fewer";
             return codegen.str`must NOT have ${comp} than ${schemaCode} properties`;
         },
-        params: ({ schemaCode  })=>codegen._`{limit: ${schemaCode}}`
+        params: ({ schemaCode })=>codegen._`{limit: ${schemaCode}}`
     };
     const def = {
         keyword: [
@@ -19132,7 +19134,7 @@ var limitProperties = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { keyword: keyword2 , data , schemaCode  } = cxt;
+            const { keyword: keyword2, data, schemaCode } = cxt;
             const op = keyword2 === "maxProperties" ? codegen.operators.GT : codegen.operators.LT;
             cxt.fail$data(codegen._`Object.keys(${data}).length ${op} ${schemaCode}`);
         }
@@ -19144,8 +19146,8 @@ var required$1 = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ params: { missingProperty  }  })=>codegen.str`must have required property '${missingProperty}'`,
-        params: ({ params: { missingProperty  }  })=>codegen._`{missingProperty: ${missingProperty}}`
+        message: ({ params: { missingProperty } })=>codegen.str`must have required property '${missingProperty}'`,
+        params: ({ params: { missingProperty } })=>codegen._`{missingProperty: ${missingProperty}}`
     };
     const def = {
         keyword: "required",
@@ -19154,15 +19156,15 @@ var required$1 = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { gen , schema , schemaCode , data , $data , it  } = cxt;
-            const { opts  } = it;
+            const { gen, schema, schemaCode, data, $data, it } = cxt;
+            const { opts } = it;
             if (!$data && schema.length === 0) return;
             const useLoop = schema.length >= opts.loopRequired;
             if (it.allErrors) allErrorsMode();
             else exitOnErrorMode();
             if (opts.strictRequired) {
                 const props = cxt.parentSchema.properties;
-                const { definedProperties  } = cxt.it;
+                const { definedProperties } = cxt.it;
                 for (const requiredKey of schema){
                     if ((props === null || props === void 0 ? void 0 : props[requiredKey]) === void 0 && !definedProperties.has(requiredKey)) {
                         const schemaPath = it.schemaEnv.baseId + it.errSchemaPath;
@@ -19221,11 +19223,11 @@ var limitItems = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message ({ keyword: keyword2 , schemaCode  }) {
+        message ({ keyword: keyword2, schemaCode }) {
             const comp = keyword2 === "maxItems" ? "more" : "fewer";
             return codegen.str`must NOT have ${comp} than ${schemaCode} items`;
         },
-        params: ({ schemaCode  })=>codegen._`{limit: ${schemaCode}}`
+        params: ({ schemaCode })=>codegen._`{limit: ${schemaCode}}`
     };
     const def = {
         keyword: [
@@ -19237,7 +19239,7 @@ var limitItems = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { keyword: keyword2 , data , schemaCode  } = cxt;
+            const { keyword: keyword2, data, schemaCode } = cxt;
             const op = keyword2 === "maxItems" ? codegen.operators.GT : codegen.operators.LT;
             cxt.fail$data(codegen._`${data}.length ${op} ${schemaCode}`);
         }
@@ -19256,8 +19258,8 @@ var uniqueItems = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ params: { i , j  }  })=>codegen.str`must NOT have duplicate items (items ## ${j} and ${i} are identical)`,
-        params: ({ params: { i , j  }  })=>codegen._`{i: ${i}, j: ${j}}`
+        message: ({ params: { i, j } })=>codegen.str`must NOT have duplicate items (items ## ${j} and ${i} are identical)`,
+        params: ({ params: { i, j } })=>codegen._`{i: ${i}, j: ${j}}`
     };
     const def = {
         keyword: "uniqueItems",
@@ -19266,7 +19268,7 @@ var uniqueItems = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { gen , data , $data , schema , parentSchema , schemaCode , it  } = cxt;
+            const { gen, data, $data, schema, parentSchema, schemaCode, it } = cxt;
             if (!$data && !schema) return;
             const valid = gen.let("valid");
             const itemTypes = parentSchema.items ? (0, dataType.getSchemaTypes)(parentSchema.items) : [];
@@ -19318,14 +19320,14 @@ var _const = createCommonjsModule2(function(module, exports) {
     });
     const error = {
         message: "must be equal to constant",
-        params: ({ schemaCode  })=>codegen._`{allowedValue: ${schemaCode}}`
+        params: ({ schemaCode })=>codegen._`{allowedValue: ${schemaCode}}`
     };
     const def = {
         keyword: "const",
         $data: true,
         error,
         code (cxt) {
-            const { gen , data , $data , schemaCode , schema  } = cxt;
+            const { gen, data, $data, schemaCode, schema } = cxt;
             if ($data || schema && typeof schema == "object") {
                 cxt.fail$data(codegen._`!${(0, util.useFunc)(gen, equal_1.default)}(${data}, ${schemaCode})`);
             } else {
@@ -19341,7 +19343,7 @@ var _enum = createCommonjsModule2(function(module, exports) {
     });
     const error = {
         message: "must be equal to one of the allowed values",
-        params: ({ schemaCode  })=>codegen._`{allowedValues: ${schemaCode}}`
+        params: ({ schemaCode })=>codegen._`{allowedValues: ${schemaCode}}`
     };
     const def = {
         keyword: "enum",
@@ -19349,7 +19351,7 @@ var _enum = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt) {
-            const { gen , data , $data , schema , schemaCode , it  } = cxt;
+            const { gen, data, $data, schema, schemaCode, it } = cxt;
             if (!$data && schema.length === 0) throw new Error("enum must have non-empty array");
             const useLoop = schema.length >= it.opts.loopEnum;
             let eql;
@@ -19411,8 +19413,8 @@ var additionalItems = createCommonjsModule2(function(module, exports) {
     });
     exports.validateAdditionalItems = void 0;
     const error = {
-        message: ({ params: { len  }  })=>codegen.str`must NOT have more than ${len} items`,
-        params: ({ params: { len  }  })=>codegen._`{limit: ${len}}`
+        message: ({ params: { len } })=>codegen.str`must NOT have more than ${len} items`,
+        params: ({ params: { len } })=>codegen._`{limit: ${len}}`
     };
     const def = {
         keyword: "additionalItems",
@@ -19424,8 +19426,8 @@ var additionalItems = createCommonjsModule2(function(module, exports) {
         before: "uniqueItems",
         error,
         code (cxt) {
-            const { parentSchema , it  } = cxt;
-            const { items: items2  } = parentSchema;
+            const { parentSchema, it } = cxt;
+            const { items: items2 } = parentSchema;
             if (!Array.isArray(items2)) {
                 (0, util.checkStrictMode)(it, '"additionalItems" is ignored when "items" is not an array of schemas');
                 return;
@@ -19434,7 +19436,7 @@ var additionalItems = createCommonjsModule2(function(module, exports) {
         }
     };
     function validateAdditionalItems(cxt, items2) {
-        const { gen , schema , data , keyword: keyword2 , it  } = cxt;
+        const { gen, schema, data, keyword: keyword2, it } = cxt;
         it.items = true;
         const len = gen.const("len", codegen._`${data}.length`);
         if (schema === false) {
@@ -19476,7 +19478,7 @@ var items = createCommonjsModule2(function(module, exports) {
         ],
         before: "uniqueItems",
         code (cxt) {
-            const { schema , it  } = cxt;
+            const { schema, it } = cxt;
             if (Array.isArray(schema)) return validateTuple(cxt, "additionalItems", schema);
             it.items = true;
             if ((0, util.alwaysValidSchema)(it, schema)) return;
@@ -19484,7 +19486,7 @@ var items = createCommonjsModule2(function(module, exports) {
         }
     };
     function validateTuple(cxt, extraItems, schArr = cxt.schema) {
-        const { gen , parentSchema , data , keyword: keyword2 , it  } = cxt;
+        const { gen, parentSchema, data, keyword: keyword2, it } = cxt;
         checkStrictTuple(parentSchema);
         if (it.opts.unevaluated && schArr.length && it.items !== true) {
             it.items = util.mergeEvaluated.items(gen, schArr.length, it.items);
@@ -19501,7 +19503,7 @@ var items = createCommonjsModule2(function(module, exports) {
             cxt.ok(valid);
         });
         function checkStrictTuple(sch) {
-            const { opts , errSchemaPath  } = it;
+            const { opts, errSchemaPath } = it;
             const l = schArr.length;
             const fullTuple = l === sch.minItems && (l === sch.maxItems || sch[extraItems] === false);
             if (opts.strictTuples && !fullTuple) {
@@ -19533,8 +19535,8 @@ var items2020 = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ params: { len  }  })=>codegen.str`must NOT have more than ${len} items`,
-        params: ({ params: { len  }  })=>codegen._`{limit: ${len}}`
+        message: ({ params: { len } })=>codegen.str`must NOT have more than ${len} items`,
+        params: ({ params: { len } })=>codegen._`{limit: ${len}}`
     };
     const def = {
         keyword: "items",
@@ -19546,8 +19548,8 @@ var items2020 = createCommonjsModule2(function(module, exports) {
         before: "uniqueItems",
         error,
         code (cxt) {
-            const { schema , parentSchema , it  } = cxt;
-            const { prefixItems: prefixItems2  } = parentSchema;
+            const { schema, parentSchema, it } = cxt;
+            const { prefixItems: prefixItems2 } = parentSchema;
             it.items = true;
             if ((0, util.alwaysValidSchema)(it, schema)) return;
             if (prefixItems2) (0, additionalItems.validateAdditionalItems)(cxt, prefixItems2);
@@ -19561,8 +19563,8 @@ var contains = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ params: { min , max  }  })=>max === void 0 ? codegen.str`must contain at least ${min} valid item(s)` : codegen.str`must contain at least ${min} and no more than ${max} valid item(s)`,
-        params: ({ params: { min , max  }  })=>max === void 0 ? codegen._`{minContains: ${min}}` : codegen._`{minContains: ${min}, maxContains: ${max}}`
+        message: ({ params: { min, max } })=>max === void 0 ? codegen.str`must contain at least ${min} valid item(s)` : codegen.str`must contain at least ${min} and no more than ${max} valid item(s)`,
+        params: ({ params: { min, max } })=>max === void 0 ? codegen._`{minContains: ${min}}` : codegen._`{minContains: ${min}, maxContains: ${max}}`
     };
     const def = {
         keyword: "contains",
@@ -19575,10 +19577,10 @@ var contains = createCommonjsModule2(function(module, exports) {
         trackErrors: true,
         error,
         code (cxt) {
-            const { gen , schema , parentSchema , data , it  } = cxt;
+            const { gen, schema, parentSchema, data, it } = cxt;
             let min;
             let max;
-            const { minContains , maxContains  } = parentSchema;
+            const { minContains, maxContains } = parentSchema;
             if (it.opts.next) {
                 min = minContains === void 0 ? 1 : minContains;
                 max = maxContains;
@@ -19653,11 +19655,11 @@ var dependencies = createCommonjsModule2(function(module, exports) {
     });
     exports.validateSchemaDeps = exports.validatePropertyDeps = exports.error = void 0;
     exports.error = {
-        message: ({ params: { property , depsCount , deps  }  })=>{
+        message: ({ params: { property, depsCount, deps } })=>{
             const property_ies = depsCount === 1 ? "property" : "properties";
             return codegen.str`must have ${property_ies} ${deps} when property ${property} is present`;
         },
-        params: ({ params: { property , depsCount , deps , missingProperty  }  })=>codegen._`{property: ${property},
+        params: ({ params: { property, depsCount, deps, missingProperty } })=>codegen._`{property: ${property},
     missingProperty: ${missingProperty},
     depsCount: ${depsCount},
     deps: ${deps}}`
@@ -19673,7 +19675,7 @@ var dependencies = createCommonjsModule2(function(module, exports) {
             validateSchemaDeps(cxt, schDeps);
         }
     };
-    function splitDependencies({ schema  }) {
+    function splitDependencies({ schema }) {
         const propertyDeps = {};
         const schemaDeps = {};
         for(const key in schema){
@@ -19687,7 +19689,7 @@ var dependencies = createCommonjsModule2(function(module, exports) {
         ];
     }
     function validatePropertyDeps(cxt, propertyDeps = cxt.schema) {
-        const { gen , data , it  } = cxt;
+        const { gen, data, it } = cxt;
         if (Object.keys(propertyDeps).length === 0) return;
         const missing = gen.let("missing");
         for(const prop in propertyDeps){
@@ -19714,7 +19716,7 @@ var dependencies = createCommonjsModule2(function(module, exports) {
     }
     exports.validatePropertyDeps = validatePropertyDeps;
     function validateSchemaDeps(cxt, schemaDeps = cxt.schema) {
-        const { gen , data , keyword: keyword2 , it  } = cxt;
+        const { gen, data, keyword: keyword2, it } = cxt;
         const valid = gen.name("valid");
         for(const prop in schemaDeps){
             if ((0, util.alwaysValidSchema)(it, schemaDeps[prop])) continue;
@@ -19737,7 +19739,7 @@ var propertyNames = createCommonjsModule2(function(module, exports) {
     });
     const error = {
         message: "property name must be valid",
-        params: ({ params  })=>codegen._`{propertyName: ${params.propertyName}}`
+        params: ({ params })=>codegen._`{propertyName: ${params.propertyName}}`
     };
     const def = {
         keyword: "propertyNames",
@@ -19748,7 +19750,7 @@ var propertyNames = createCommonjsModule2(function(module, exports) {
         ],
         error,
         code (cxt) {
-            const { gen , schema , data , it  } = cxt;
+            const { gen, schema, data, it } = cxt;
             if ((0, util.alwaysValidSchema)(it, schema)) return;
             const valid = gen.name("valid");
             gen.forIn("key", data, (key)=>{
@@ -19780,7 +19782,7 @@ var additionalProperties$1 = createCommonjsModule2(function(module, exports) {
     });
     const error = {
         message: "must NOT have additional properties",
-        params: ({ params  })=>codegen._`{additionalProperty: ${params.additionalProperty}}`
+        params: ({ params })=>codegen._`{additionalProperty: ${params.additionalProperty}}`
     };
     const def = {
         keyword: "additionalProperties",
@@ -19795,9 +19797,9 @@ var additionalProperties$1 = createCommonjsModule2(function(module, exports) {
         trackErrors: true,
         error,
         code (cxt) {
-            const { gen , schema , parentSchema , data , errsCount , it  } = cxt;
+            const { gen, schema, parentSchema, data, errsCount, it } = cxt;
             if (!errsCount) throw new Error("ajv implementation error");
-            const { allErrors , opts  } = it;
+            const { allErrors, opts } = it;
             it.props = true;
             if (opts.removeAdditional !== "all" && (0, util.alwaysValidSchema)(it, schema)) return;
             const props = (0, code$1.allSchemaProperties)(parentSchema.properties);
@@ -19883,7 +19885,7 @@ var properties$1 = createCommonjsModule2(function(module, exports) {
         type: "object",
         schemaType: "object",
         code (cxt) {
-            const { gen , schema , parentSchema , data , it  } = cxt;
+            const { gen, schema, parentSchema, data, it } = cxt;
             if (it.opts.removeAdditional === "all" && parentSchema.additionalProperties === void 0) {
                 additionalProperties$1.default.code(new validate.KeywordCxt(it, additionalProperties$1.default, "additionalProperties"));
             }
@@ -19933,8 +19935,8 @@ var patternProperties = createCommonjsModule2(function(module, exports) {
         type: "object",
         schemaType: "object",
         code (cxt) {
-            const { gen , schema , data , parentSchema , it  } = cxt;
-            const { opts  } = it;
+            const { gen, schema, data, parentSchema, it } = cxt;
+            const { opts } = it;
             const patterns = (0, code$1.allSchemaProperties)(schema);
             const alwaysValidPatterns = patterns.filter((p)=>(0, util.alwaysValidSchema)(it, schema[p]));
             if (patterns.length === 0 || alwaysValidPatterns.length === patterns.length && (!it.opts.unevaluated || it.props === true)) {
@@ -19945,7 +19947,7 @@ var patternProperties = createCommonjsModule2(function(module, exports) {
             if (it.props !== true && !(it.props instanceof codegen.Name)) {
                 it.props = (0, util_2.evaluatedPropsToName)(gen, it.props);
             }
-            const { props  } = it;
+            const { props } = it;
             validatePatternProperties();
             function validatePatternProperties() {
                 for (const pat of patterns){
@@ -20002,7 +20004,7 @@ var not = createCommonjsModule2(function(module, exports) {
         ],
         trackErrors: true,
         code (cxt) {
-            const { gen , schema , it  } = cxt;
+            const { gen, schema, it } = cxt;
             if ((0, util.alwaysValidSchema)(it, schema)) {
                 cxt.fail();
                 return;
@@ -20043,7 +20045,7 @@ var oneOf = createCommonjsModule2(function(module, exports) {
     });
     const error = {
         message: "must match exactly one schema in oneOf",
-        params: ({ params  })=>codegen._`{passingSchemas: ${params.passing}}`
+        params: ({ params })=>codegen._`{passingSchemas: ${params.passing}}`
     };
     const def = {
         keyword: "oneOf",
@@ -20051,7 +20053,7 @@ var oneOf = createCommonjsModule2(function(module, exports) {
         trackErrors: true,
         error,
         code (cxt) {
-            const { gen , schema , parentSchema , it  } = cxt;
+            const { gen, schema, parentSchema, it } = cxt;
             if (!Array.isArray(schema)) throw new Error("ajv implementation error");
             if (it.opts.discriminator && parentSchema.discriminator) return;
             const schArr = schema;
@@ -20097,7 +20099,7 @@ var allOf = createCommonjsModule2(function(module, exports) {
         keyword: "allOf",
         schemaType: "array",
         code (cxt) {
-            const { gen , schema , it  } = cxt;
+            const { gen, schema, it } = cxt;
             if (!Array.isArray(schema)) throw new Error("ajv implementation error");
             const valid = gen.name("valid");
             schema.forEach((sch, i)=>{
@@ -20118,8 +20120,8 @@ var _if = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ params  })=>codegen.str`must match "${params.ifClause}" schema`,
-        params: ({ params  })=>codegen._`{failingKeyword: ${params.ifClause}}`
+        message: ({ params })=>codegen.str`must match "${params.ifClause}" schema`,
+        params: ({ params })=>codegen._`{failingKeyword: ${params.ifClause}}`
     };
     const def = {
         keyword: "if",
@@ -20130,7 +20132,7 @@ var _if = createCommonjsModule2(function(module, exports) {
         trackErrors: true,
         error,
         code (cxt) {
-            const { gen , parentSchema , it  } = cxt;
+            const { gen, parentSchema, it } = cxt;
             if (parentSchema.then === void 0 && parentSchema.else === void 0) {
                 (0, util.checkStrictMode)(it, '"if" without "then" and "else" is ignored');
             }
@@ -20196,7 +20198,7 @@ var thenElse = createCommonjsModule2(function(module, exports) {
             "object",
             "boolean"
         ],
-        code ({ keyword: keyword2 , parentSchema , it  }) {
+        code ({ keyword: keyword2, parentSchema, it }) {
             if (parentSchema.if === void 0) (0, util.checkStrictMode)(it, `"${keyword2}" without "if" is ignored`);
         }
     };
@@ -20232,8 +20234,8 @@ var format3 = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ schemaCode  })=>codegen.str`must match format "${schemaCode}"`,
-        params: ({ schemaCode  })=>codegen._`{format: ${schemaCode}}`
+        message: ({ schemaCode })=>codegen.str`must match format "${schemaCode}"`,
+        params: ({ schemaCode })=>codegen._`{format: ${schemaCode}}`
     };
     const def = {
         keyword: "format",
@@ -20245,8 +20247,8 @@ var format3 = createCommonjsModule2(function(module, exports) {
         $data: true,
         error,
         code (cxt, ruleType) {
-            const { gen , data , $data , schema , schemaCode , it  } = cxt;
-            const { opts , errSchemaPath , schemaEnv , self: self1  } = it;
+            const { gen, data, $data, schema, schemaCode, it } = cxt;
+            const { opts, errSchemaPath, schemaEnv, self: self1 } = it;
             if (!opts.validateFormats) return;
             if ($data) validate$DataFormat();
             else validateFormat();
@@ -20379,8 +20381,8 @@ var discriminator = createCommonjsModule2(function(module, exports) {
         value: true
     });
     const error = {
-        message: ({ params: { discrError , tagName  }  })=>discrError === types1.DiscrError.Tag ? `tag "${tagName}" must be string` : `value of tag "${tagName}" must be in oneOf`,
-        params: ({ params: { discrError , tag , tagName  }  })=>codegen._`{error: ${discrError}, tag: ${tagName}, tagValue: ${tag}}`
+        message: ({ params: { discrError, tagName } })=>discrError === types1.DiscrError.Tag ? `tag "${tagName}" must be string` : `value of tag "${tagName}" must be in oneOf`,
+        params: ({ params: { discrError, tag, tagName } })=>codegen._`{error: ${discrError}, tag: ${tagName}, tagValue: ${tag}}`
     };
     const def = {
         keyword: "discriminator",
@@ -20388,8 +20390,8 @@ var discriminator = createCommonjsModule2(function(module, exports) {
         schemaType: "object",
         error,
         code (cxt) {
-            const { gen , data , schema , parentSchema , it  } = cxt;
-            const { oneOf: oneOf2  } = parentSchema;
+            const { gen, data, schema, parentSchema, it } = cxt;
+            const { oneOf: oneOf2 } = parentSchema;
             if (!it.opts.discriminator) {
                 throw new Error("discriminator: requires discriminator option");
             }
@@ -20449,7 +20451,7 @@ var discriminator = createCommonjsModule2(function(module, exports) {
                 }
                 if (!tagRequired) throw new Error(`discriminator: "${tagName}" must be required`);
                 return oneOfMapping;
-                function hasRequired({ required: required2  }) {
+                function hasRequired({ required: required2 }) {
                     return Array.isArray(required2) && required2.includes(tagName);
                 }
                 function addMappings(sch, i) {
@@ -20967,6 +20969,12 @@ class Service {
             this.enhanceContext(context, config);
             return initFunc(context, config, oldState);
         };
+    }
+    constantDirectory(path, dirSpec) {
+        return this.setMethodPath('getDirectory', path, (msg)=>{
+            msg.setDirectoryJson(dirSpec);
+            return msg;
+        });
     }
     get = (func)=>this.setMethodPath('get', '/', func);
     getPath = (path, func)=>this.setMethodPath('get', path, func);
@@ -22701,7 +22709,7 @@ class ExactBytesTransformStream extends TransformStream {
     }
 }
 function write(entries, options = {}) {
-    const { signal  } = options;
+    const { signal } = options;
     const ts = new TransformStream();
     async function run() {
         const centralDirectoryFileHeaders = [];
@@ -23006,7 +23014,7 @@ async function jsonObject(msgs) {
         first = await msgs.next();
     }
     if (first.done) return null;
-    const { readable , writable  } = new TransformStream();
+    const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const writeString = (data)=>writer.write(new TextEncoder().encode(data));
     let length = -1;
@@ -23353,7 +23361,7 @@ class BYOBPartialReader extends PartialReader {
 }
 function parseExtraField(extraField) {
     const result = {};
-    for (const { tag , data  } of splitExtraFieldParts(extraField)){
+    for (const { tag, data } of splitExtraFieldParts(extraField)){
         switch(tag){
             case 0x1:
                 {
@@ -23409,7 +23417,7 @@ function* splitExtraFieldParts(extraField) {
     }
 }
 async function* read(stream, options = {}) {
-    const { signal  } = options;
+    const { signal } = options;
     const textDecoder = new TextDecoder();
     const partialReader = PartialReader.fromStream(stream);
     const cancelPartialReader = (err)=>{
@@ -24461,7 +24469,7 @@ class BytesList {
             if (i < 0 || this.#chunks.length <= i) {
                 return -1;
             }
-            const { offset , start , end  } = this.#chunks[i];
+            const { offset, start, end } = this.#chunks[i];
             const len = end - start;
             if (offset <= pos && pos < offset + len) {
                 return i;
@@ -24477,7 +24485,7 @@ class BytesList {
             throw new Error("out of range");
         }
         const idx = this.getChunkIndex(i);
-        const { value , offset , start  } = this.#chunks[idx];
+        const { value, offset, start } = this.#chunks[idx];
         return value[start + i - offset];
     }
     *iterator(start = 0) {
@@ -24503,7 +24511,7 @@ class BytesList {
         const endIdx = this.getChunkIndex(end - 1);
         let written = 0;
         for(let i = startIdx; i <= endIdx; i++){
-            const { value: chunkValue , start: chunkStart , end: chunkEnd , offset: chunkOffset  } = this.#chunks[i];
+            const { value: chunkValue, start: chunkStart, end: chunkEnd, offset: chunkOffset } = this.#chunks[i];
             const readStart = chunkStart + (i === startIdx ? start - chunkOffset : 0);
             const readEnd = i === endIdx ? end - chunkOffset + chunkStart : chunkEnd;
             const len = readEnd - readStart;
@@ -24515,7 +24523,7 @@ class BytesList {
     concat() {
         const result = new Uint8Array(this.#len);
         let sum = 0;
-        for (const { value , start , end  } of this.#chunks){
+        for (const { value, start, end } of this.#chunks){
             result.set(value.subarray(start, end), sum);
             sum += end - start;
         }
@@ -24582,7 +24590,7 @@ function readableStreamFromIterable(iterable) {
     const iterator = iterable[Symbol.asyncIterator]?.() ?? iterable[Symbol.iterator]?.();
     return new ReadableStream({
         async pull (controller) {
-            const { value , done  } = await iterator.next();
+            const { value, done } = await iterator.next();
             if (done) {
                 controller.close();
             } else {
@@ -24656,7 +24664,7 @@ async function* toBlockChunks(stringItbl) {
 }
 async function* toLines(stringItbl) {
     const iterator = stringItbl[Symbol.asyncIterator]();
-    let { value: chunk , done: readerDone  } = await iterator.next();
+    let { value: chunk, done: readerDone } = await iterator.next();
     const re = /\r\n|\n|\r/gm;
     let startIndex = 0;
     for(;;){
@@ -24705,7 +24713,7 @@ async function readFileStream(path, startByte = 0, endByte = -1) {
     const stream = new ReadableStream({
         async pull (controller) {
             try {
-                const { value , done  } = await itbl.next();
+                const { value, done } = await itbl.next();
                 if (done) {
                     controller.close();
                     f.close();
@@ -28193,7 +28201,7 @@ function common(paths, sep = SEP) {
     return prefix.endsWith(sep) ? prefix : `${prefix}${sep}`;
 }
 const path2 = isWindows1 ? mod3 : mod4;
-const { join: join6 , normalize: normalize6  } = path2;
+const { join: join6, normalize: normalize6 } = path2;
 const regExpEscapeChars = [
     "!",
     "$",
@@ -28215,7 +28223,7 @@ const rangeEscapeChars = [
     "\\",
     "]"
 ];
-function globToRegExp(glob, { extended =true , globstar: globstarOption = true , os =osType1 , caseInsensitive =false  } = {}) {
+function globToRegExp(glob, { extended = true, globstar: globstarOption = true, os = osType1, caseInsensitive = false } = {}) {
     if (glob == "") {
         return /(?!)/;
     }
@@ -28438,7 +28446,7 @@ function isGlob(str) {
     }
     return false;
 }
-function normalizeGlob(glob, { globstar =false  } = {}) {
+function normalizeGlob(glob, { globstar = false } = {}) {
     if (glob.match(/\0/g)) {
         throw new Error(`Glob contains invalid characters: "${glob}"`);
     }
@@ -28449,7 +28457,7 @@ function normalizeGlob(glob, { globstar =false  } = {}) {
     const badParentPattern = new RegExp(`(?<=(${s}|^)\\*\\*${s})\\.\\.(?=${s}|$)`, "g");
     return normalize6(glob.replace(badParentPattern, "\0")).replace(/\0/g, "..");
 }
-function joinGlobs(globs, { extended =false , globstar =false  } = {}) {
+function joinGlobs(globs, { extended = false, globstar = false } = {}) {
     if (!globstar || globs.length == 0) {
         return join6(...globs);
     }
@@ -28469,7 +28477,7 @@ function joinGlobs(globs, { extended =false , globstar =false  } = {}) {
     });
 }
 const path3 = isWindows1 ? mod3 : mod4;
-const { basename: basename5 , delimiter: delimiter5 , dirname: dirname5 , extname: extname5 , format: format6 , fromFileUrl: fromFileUrl5 , isAbsolute: isAbsolute5 , join: join7 , normalize: normalize7 , parse: parse5 , relative: relative5 , resolve: resolve6 , sep: sep5 , toFileUrl: toFileUrl5 , toNamespacedPath: toNamespacedPath5  } = path3;
+const { basename: basename5, delimiter: delimiter5, dirname: dirname5, extname: extname5, format: format6, fromFileUrl: fromFileUrl5, isAbsolute: isAbsolute5, join: join7, normalize: normalize7, parse: parse5, relative: relative5, resolve: resolve6, sep: sep5, toFileUrl: toFileUrl5, toNamespacedPath: toNamespacedPath5 } = path3;
 const mod5 = {
     SEP: SEP,
     SEP_PATTERN: SEP_PATTERN,
@@ -30445,7 +30453,7 @@ function fromIterator(arr) {
         return arr;
     }
 }
-const { inOperator: inOperator1 , isArray: isArray1 , keys  } = mod2;
+const { inOperator: inOperator1, isArray: isArray1, keys } = mod2;
 const mod6 = {
     asyncAll: asyncAll,
     asyncEach: asyncEach,
@@ -32094,7 +32102,7 @@ function express(env, app) {
     app.set("nunjucksEnv", env);
     return env;
 }
-const { handleError: handleError1 , Frame: Frame1  } = mod6;
+const { handleError: handleError1, Frame: Frame1 } = mod6;
 function callbackAsap(cb, err, res) {
     queueMicrotask(()=>{
         cb(err, res);
@@ -33237,7 +33245,7 @@ function validate1([header, payload, signature]) {
     }
 }
 async function verify2(jwt, key) {
-    const { header , payload , signature  } = validate1(decode2(jwt));
+    const { header, payload, signature } = validate1(decode2(jwt));
     if (verify(header.alg, key)) {
         if (!await verify1(signature, key, header.alg, jwt.slice(0, jwt.lastIndexOf(".")))) {
             throw new Error("The jwt's signature does not match the verification signature.");
@@ -33283,6 +33291,46 @@ const assignProperties = (schema, schema2)=>{
         newSchema.definitions = Object.assign(newSchema.definitions || {}, schema2.definitions);
     }
     return newSchema;
+};
+const testServicesConfig = {};
+class TestConfigFileAdapter {
+    context;
+    constructor(context){
+        this.context = context;
+        this.readDirectory = ()=>Promise.resolve(new MessageBody(null));
+        this.write = ()=>Promise.resolve(0);
+        this.delete = ()=>Promise.resolve(0);
+        this.deleteDirectory = ()=>Promise.resolve(0);
+        this.check = ()=>Promise.resolve({
+                status: 'none'
+            });
+    }
+    readDirectory;
+    write;
+    delete;
+    deleteDirectory;
+    check;
+    read() {
+        let res;
+        if (testServicesConfig[this.context.tenant]) {
+            res = MessageBody.fromObject(testServicesConfig[this.context.tenant]);
+        } else {
+            res = MessageBody.fromError(404, 'Not found');
+        }
+        return Promise.resolve(res);
+    }
+}
+const __default9 = {
+    "name": "Test Config File Adapter",
+    "description": "Mock file adapter to read test services.json",
+    "moduleUrl": "./test/TestConfigFileAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {}
+    },
+    "adapterInterfaces": [
+        "IFileAdapter"
+    ]
 };
 async function exists(path, options) {
     try {
@@ -33580,8 +33628,8 @@ class LocalFileAdapterBase {
         return 200;
     }
 }
-const __default9 = dataToSchemaAdapter(fileToDataAdapter(LocalFileAdapterBase));
-const __default10 = {
+const __default10 = dataToSchemaAdapter(fileToDataAdapter(LocalFileAdapterBase));
+const __default11 = {
     "name": "Local File Adapter",
     "description": "Reads and writes files on the file system local to the runtime",
     "moduleUrl": "./adapter/LocalFileAdapter.ts",
@@ -33741,7 +33789,7 @@ class Parser1 {
     constructor(stream, options = {}){
         this.#stream = stream;
         this.#options = options;
-        this.#options.reviver ??= function({ value  }) {
+        this.#options.reviver ??= function({ value }) {
             return value;
         };
     }
@@ -33835,7 +33883,7 @@ class Parser1 {
             throw error;
         }
     }
-    #node({ document , path  }) {
+    #node({ document, path }) {
         if (this.#options.progress) {
             this.#options.progress(this.#stream.cursor);
         }
@@ -33851,7 +33899,7 @@ class Parser1 {
             path
         });
     }
-    #prolog({ path  }) {
+    #prolog({ path }) {
         this.#debug(path, "parsing prolog");
         const prolog = this.#make.node({
             name: "xml",
@@ -33871,7 +33919,7 @@ class Parser1 {
             xml: prolog
         };
     }
-    #stylesheet({ path  }) {
+    #stylesheet({ path }) {
         this.#debug(path, "parsing stylesheet");
         const stylesheet = this.#make.node({
             name: "xml-stylesheet",
@@ -33891,7 +33939,7 @@ class Parser1 {
             stylesheet
         };
     }
-    #doctype({ path  }) {
+    #doctype({ path }) {
         this.#debug(path, "parsing doctype");
         const doctype = this.#make.node({
             name: "doctype",
@@ -33924,7 +33972,7 @@ class Parser1 {
             doctype
         };
     }
-    #doctypeElement({ path  }) {
+    #doctypeElement({ path }) {
         this.#debug(path, "parsing doctype element");
         this.#consume(tokens.doctype.element.start);
         const element = Object.keys(this.#property({
@@ -33940,7 +33988,7 @@ class Parser1 {
             [element]: value
         };
     }
-    #tag({ document , path  }) {
+    #tag({ document, path }) {
         this.#debug(path, "parsing tag");
         const tag = this.#make.node({
             path
@@ -34059,7 +34107,7 @@ class Parser1 {
             [name]: tag
         };
     }
-    #attribute({ path  }) {
+    #attribute({ path }) {
         this.#debug(path, "parsing attribute");
         const attribute = this.#capture(tokens.tag.attribute.regex.name);
         this.#debug(path, `found attribute "${attribute}"`);
@@ -34080,7 +34128,7 @@ class Parser1 {
             })
         };
     }
-    #property({ path  }) {
+    #property({ path }) {
         this.#debug(path, "parsing property");
         const quote = this.#stream.peek();
         const delimiter = /["']/.test(quote) ? quote : " ";
@@ -34099,7 +34147,7 @@ class Parser1 {
             [`${schema.property.prefix}${property}`]: true
         };
     }
-    #text({ document , close , path , trim  }) {
+    #text({ document, close, path, trim }) {
         this.#debug(path, "parsing text");
         const tag = this.#make.node({
             name: schema.text,
@@ -34164,21 +34212,21 @@ class Parser1 {
         });
         return tag;
     }
-    #cdata({ path  }) {
+    #cdata({ path }) {
         this.#debug(path, "parsing cdata");
         this.#consume(tokens.cdata.start);
         const data = this.#capture(tokens.cdata.regex.end);
         this.#consume(tokens.cdata.end);
         return data;
     }
-    #comment({ path  }) {
+    #comment({ path }) {
         this.#debug(path, "parsing comment");
         this.#consume(tokens.comment.start);
         const comment = this.#capture(tokens.comment.regex.end).trim();
         this.#consume(tokens.comment.end);
         return comment;
     }
-    #revive({ key , value , tag  }) {
+    #revive({ key, value, tag }) {
         return this.#options.reviver.call(tag, {
             key,
             tag: tag[$XML].name,
@@ -34209,7 +34257,7 @@ class Parser1 {
         });
     }
     #make = {
-        node ({ name ="" , path =[]  }) {
+        node ({ name = "", path = [] }) {
             const node = {
                 [$XML]: {
                     name,
@@ -34245,13 +34293,13 @@ class Parser1 {
         }
         return true;
     }
-    #consume(token, { trim  } = {}) {
+    #consume(token, { trim } = {}) {
         return this.#stream.consume({
             content: token,
             trim
         });
     }
-    #capture(token, { trim  } = {}) {
+    #capture(token, { trim } = {}) {
         return this.#stream.capture({
             ...token,
             trim
@@ -34290,7 +34338,7 @@ class Stream {
         }
         throw new Deno.errors.UnexpectedEof();
     }
-    capture({ until , bytes , trim =true , length =bytes  }) {
+    capture({ until, bytes, trim = true, length = bytes }) {
         if (trim) {
             this.trim();
         }
@@ -34306,7 +34354,7 @@ class Stream {
         }
         return this.#decoder.decode(Uint8Array.from(buffer));
     }
-    consume({ content , trim =true  }) {
+    consume({ content, trim = true }) {
         if (trim) {
             this.trim();
         }
@@ -34610,8 +34658,8 @@ class S3FileAdapterBase {
         }
     }
 }
-const __default11 = dataToSchemaAdapter(fileToDataAdapter(S3FileAdapterBase));
-const __default12 = {
+const __default12 = dataToSchemaAdapter(fileToDataAdapter(S3FileAdapterBase));
+const __default13 = {
     "name": "S3 File Adapter",
     "description": "Reads and writes files on the AWS S3",
     "moduleUrl": "./adapter/S3FileAdapter.ts",
@@ -34652,7 +34700,7 @@ const __default12 = {
         "IDataAdapter"
     ]
 };
-const __default13 = {
+const __default14 = {
     "name": "Nunjucks Template Adapter",
     "description": "Supplies Nunjucks template processing",
     "moduleUrl": "./adapter/NunjucksTemplateAdapter.ts",
@@ -34673,7 +34721,7 @@ class SimpleProxyAdapter {
         return Promise.resolve(msg.setUrl(resolvePathPatternWithUrl(this.urlPattern, msg.url, msg.data)));
     }
 }
-const __default14 = {
+const __default15 = {
     "name": "Simple Proxy Adapter",
     "description": "Forwards a request to a configured path pattern without adding headers",
     "moduleUrl": "./adapter/SimpleProxyAdapter.ts",
@@ -34797,7 +34845,7 @@ class AWSSignerV4 {
         signedHeaders = signedHeaders.substring(0, signedHeaders.length - 1);
         const body = request.body ? new Uint8Array(await request.arrayBuffer()) : null;
         const payloadHash = await sha256Hex(body ?? new Uint8Array(0));
-        const { awsAccessKeyId , awsSecretKey  } = this.credentials;
+        const { awsAccessKeyId, awsSecretKey } = this.credentials;
         const canonicalRequest = `${request.method}\n${pathname}\n${canonicalQuerystring}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
         const canonicalRequestDigest = await sha256Hex(canonicalRequest);
         const algorithm = "AWS4-HMAC-SHA256";
@@ -34856,7 +34904,7 @@ class AWS4ProxyAdapter {
         if (!(props.accessKeyId && props.secretAccessKey) && !props.ec2IamRole) {
             throw new Error('Must supply access keys or an EC2 IAM role');
         }
-        const { accessKeyId , secretAccessKey  } = props;
+        const { accessKeyId, secretAccessKey } = props;
         if (accessKeyId && secretAccessKey) {
             this.setSigner(accessKeyId, secretAccessKey);
         }
@@ -34878,7 +34926,7 @@ class AWS4ProxyAdapter {
             });
             if (!keysResp.ok) throw new Error('Failed to get AWS temporary credentials');
             const keys = await keysResp.json();
-            const { AccessKeyId: accessKeyId , SecretAccessKey: secretAccessKey , Token: sessionToken  } = keys;
+            const { AccessKeyId: accessKeyId, SecretAccessKey: secretAccessKey, Token: sessionToken } = keys;
             this.setSigner(accessKeyId, secretAccessKey);
             this.expiration = new Date(keys.expiration);
             this.sessionToken = sessionToken;
@@ -34898,7 +34946,7 @@ class AWS4ProxyAdapter {
         return msgOut;
     }
 }
-const __default15 = {
+const __default16 = {
     "name": "AWS 4 Proxy Adapter",
     "description": "Forwards a request to a configured path pattern after signing using AWS-4 signature",
     "moduleUrl": "./adapter/AWS4ProxyAdapter.ts",
@@ -34960,7 +35008,7 @@ class ElasticProxyAdapter {
         return Promise.resolve(msg.setUrl(newUrl));
     }
 }
-const __default16 = {
+const __default17 = {
     "name": "Elasticsearch Proxy Adapter",
     "description": "Forwards a request to a configured elasticsearch node using provided user and password",
     "moduleUrl": "./adapter/ElasticProxyAdapter.ts",
@@ -35321,7 +35369,7 @@ class ElasticDataAdapter {
         return Promise.resolve(`application/json; schema="${url}"`);
     }
 }
-const __default17 = {
+const __default18 = {
     "name": "Elasticsearch Data Adapter",
     "description": "Reads and writes data to Elasticsearch",
     "moduleUrl": "./adapter/ElasticDataAdapter.ts",
@@ -35373,7 +35421,7 @@ class ElasticQueryAdapter {
         const sendMsg = await this.elasticProxyAdapter.buildMessage(msg);
         return await this.context.makeRequest(sendMsg);
     }
-    async runQuery(query, take = 1000, skip = 0) {
+    async runQuery(query, _, take = 1000, skip = 0) {
         await this.ensureProxyAdapter();
         let index = '';
         let queryObj = {};
@@ -35411,7 +35459,7 @@ class ElasticQueryAdapter {
         }
     }
 }
-const __default18 = {
+const __default19 = {
     "name": "Elasticsearch Query Adapter",
     "description": "Stores and runs Elasticsearch queries",
     "moduleUrl": "./adapter/ElasticQueryAdapter.ts",
@@ -35526,7 +35574,7 @@ class FileLogReaderAdapter {
         return lines;
     }
 }
-const __default19 = {
+const __default20 = {
     "name": "Local File Log Reader Adapter",
     "description": "Scans a log file on the local file system",
     "moduleUrl": "./adapter/FileLogReaderAdapter.ts",
@@ -35543,7 +35591,4916 @@ const __default19 = {
         "ILogReaderAdapter"
     ]
 };
-const __default20 = {
+Object.freeze({
+    major: 15,
+    minor: 0,
+    patch: 0,
+    preReleaseTag: null
+});
+const nodejsCustomInspectSymbol = typeof Symbol === 'function' && typeof Symbol.for === 'function' ? Symbol.for('nodejs.util.inspect.custom') : undefined;
+function inspect(value) {
+    return formatValue(value, []);
+}
+function formatValue(value, seenValues) {
+    switch(typeof value){
+        case 'string':
+            return JSON.stringify(value);
+        case 'function':
+            return value.name ? `[function ${value.name}]` : '[function]';
+        case 'object':
+            if (value === null) {
+                return 'null';
+            }
+            return formatObjectValue(value, seenValues);
+        default:
+            return String(value);
+    }
+}
+function formatObjectValue(value, previouslySeenValues) {
+    if (previouslySeenValues.indexOf(value) !== -1) {
+        return '[Circular]';
+    }
+    const seenValues = [
+        ...previouslySeenValues,
+        value
+    ];
+    const customInspectFn = getCustomFn(value);
+    if (customInspectFn !== undefined) {
+        const customValue = customInspectFn.call(value);
+        if (customValue !== value) {
+            return typeof customValue === 'string' ? customValue : formatValue(customValue, seenValues);
+        }
+    } else if (Array.isArray(value)) {
+        return formatArray(value, seenValues);
+    }
+    return formatObject(value, seenValues);
+}
+function formatObject(object, seenValues) {
+    const keys = Object.keys(object);
+    if (keys.length === 0) {
+        return '{}';
+    }
+    if (seenValues.length > 2) {
+        return '[' + getObjectTag(object) + ']';
+    }
+    const properties = keys.map((key)=>{
+        const value = formatValue(object[key], seenValues);
+        return key + ': ' + value;
+    });
+    return '{ ' + properties.join(', ') + ' }';
+}
+function formatArray(array, seenValues) {
+    if (array.length === 0) {
+        return '[]';
+    }
+    if (seenValues.length > 2) {
+        return '[Array]';
+    }
+    const len = Math.min(10, array.length);
+    const remaining = array.length - len;
+    const items = [];
+    for(let i = 0; i < len; ++i){
+        items.push(formatValue(array[i], seenValues));
+    }
+    if (remaining === 1) {
+        items.push('... 1 more item');
+    } else if (remaining > 1) {
+        items.push(`... ${remaining} more items`);
+    }
+    return '[' + items.join(', ') + ']';
+}
+function getCustomFn(object) {
+    const customInspectFn = object[String(nodejsCustomInspectSymbol)];
+    if (typeof customInspectFn === 'function') {
+        return customInspectFn;
+    }
+    if (typeof object.inspect === 'function') {
+        return object.inspect;
+    }
+}
+function getObjectTag(object) {
+    const tag = Object.prototype.toString.call(object).replace(/^\[object /, '').replace(/]$/, '');
+    if (tag === 'Object' && typeof object.constructor === 'function') {
+        const name = object.constructor.name;
+        if (typeof name === 'string' && name !== '') {
+            return name;
+        }
+    }
+    return tag;
+}
+function devAssert(condition, message) {
+    const booleanCondition = Boolean(condition);
+    if (!booleanCondition) {
+        throw new Error(message);
+    }
+}
+function isObjectLike(value) {
+    return typeof value == 'object' && value !== null;
+}
+const SYMBOL_ITERATOR = typeof Symbol === 'function' ? Symbol.iterator : '@@iterator';
+typeof Symbol === 'function' ? Symbol.asyncIterator : '@@asyncIterator';
+const SYMBOL_TO_STRING_TAG = typeof Symbol === 'function' ? Symbol.toStringTag : '@@toStringTag';
+function getLocation(source, position) {
+    const lineRegexp = /\r\n|[\n\r]/g;
+    let line = 1;
+    let column = position + 1;
+    let match;
+    while((match = lineRegexp.exec(source.body)) && match.index < position){
+        line += 1;
+        column = position + 1 - (match.index + match[0].length);
+    }
+    return {
+        line,
+        column
+    };
+}
+function printLocation(location) {
+    return printSourceLocation(location.source, getLocation(location.source, location.start));
+}
+function printSourceLocation(source, sourceLocation) {
+    const firstLineColumnOffset = source.locationOffset.column - 1;
+    const body = whitespace(firstLineColumnOffset) + source.body;
+    const lineIndex = sourceLocation.line - 1;
+    const lineOffset = source.locationOffset.line - 1;
+    const lineNum = sourceLocation.line + lineOffset;
+    const columnOffset = sourceLocation.line === 1 ? firstLineColumnOffset : 0;
+    const columnNum = sourceLocation.column + columnOffset;
+    const locationStr = `${source.name}:${lineNum}:${columnNum}\n`;
+    const lines = body.split(/\r\n|[\n\r]/g);
+    const locationLine = lines[lineIndex];
+    if (locationLine.length > 120) {
+        const subLineIndex = Math.floor(columnNum / 80);
+        const subLineColumnNum = columnNum % 80;
+        const subLines = [];
+        for(let i = 0; i < locationLine.length; i += 80){
+            subLines.push(locationLine.slice(i, i + 80));
+        }
+        return locationStr + printPrefixedLines([
+            [
+                `${lineNum}`,
+                subLines[0]
+            ],
+            ...subLines.slice(1, subLineIndex + 1).map((subLine)=>[
+                    '',
+                    subLine
+                ]),
+            [
+                ' ',
+                whitespace(subLineColumnNum - 1) + '^'
+            ],
+            [
+                '',
+                subLines[subLineIndex + 1]
+            ]
+        ]);
+    }
+    return locationStr + printPrefixedLines([
+        [
+            `${lineNum - 1}`,
+            lines[lineIndex - 1]
+        ],
+        [
+            `${lineNum}`,
+            locationLine
+        ],
+        [
+            '',
+            whitespace(columnNum - 1) + '^'
+        ],
+        [
+            `${lineNum + 1}`,
+            lines[lineIndex + 1]
+        ]
+    ]);
+}
+function printPrefixedLines(lines) {
+    const existingLines = lines.filter(([_, line])=>line !== undefined);
+    const padLen = Math.max(...existingLines.map(([prefix])=>prefix.length));
+    return existingLines.map(([prefix, line])=>leftPad(padLen, prefix) + (line ? ' | ' + line : ' |')).join('\n');
+}
+function whitespace(len) {
+    return Array(len + 1).join(' ');
+}
+function leftPad(len, str) {
+    return whitespace(len - str.length) + str;
+}
+class GraphQLError extends Error {
+    constructor(message, nodes, source, positions, path, originalError, extensions){
+        super(message);
+        const _nodes = Array.isArray(nodes) ? nodes.length !== 0 ? nodes : undefined : nodes ? [
+            nodes
+        ] : undefined;
+        let _source = source;
+        if (!_source && _nodes) {
+            _source = _nodes[0].loc?.source;
+        }
+        let _positions = positions;
+        if (!_positions && _nodes) {
+            _positions = _nodes.reduce((list, node)=>{
+                if (node.loc) {
+                    list.push(node.loc.start);
+                }
+                return list;
+            }, []);
+        }
+        if (_positions && _positions.length === 0) {
+            _positions = undefined;
+        }
+        let _locations;
+        if (positions && source) {
+            _locations = positions.map((pos)=>getLocation(source, pos));
+        } else if (_nodes) {
+            _locations = _nodes.reduce((list, node)=>{
+                if (node.loc) {
+                    list.push(getLocation(node.loc.source, node.loc.start));
+                }
+                return list;
+            }, []);
+        }
+        let _extensions = extensions;
+        if (_extensions == null && originalError != null) {
+            const originalExtensions = originalError.extensions;
+            if (isObjectLike(originalExtensions)) {
+                _extensions = originalExtensions;
+            }
+        }
+        Object.defineProperties(this, {
+            name: {
+                value: 'GraphQLError'
+            },
+            message: {
+                value: message,
+                enumerable: true,
+                writable: true
+            },
+            locations: {
+                value: _locations ?? undefined,
+                enumerable: _locations != null
+            },
+            path: {
+                value: path ?? undefined,
+                enumerable: path != null
+            },
+            nodes: {
+                value: _nodes ?? undefined
+            },
+            source: {
+                value: _source ?? undefined
+            },
+            positions: {
+                value: _positions ?? undefined
+            },
+            originalError: {
+                value: originalError
+            },
+            extensions: {
+                value: _extensions ?? undefined,
+                enumerable: _extensions != null
+            }
+        });
+        if (originalError?.stack) {
+            Object.defineProperty(this, 'stack', {
+                value: originalError.stack,
+                writable: true,
+                configurable: true
+            });
+            return;
+        }
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, GraphQLError);
+        } else {
+            Object.defineProperty(this, 'stack', {
+                value: Error().stack,
+                writable: true,
+                configurable: true
+            });
+        }
+    }
+    toString() {
+        return printError(this);
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'Object';
+    }
+}
+function printError(error) {
+    let output = error.message;
+    if (error.nodes) {
+        for (const node of error.nodes){
+            if (node.loc) {
+                output += '\n\n' + printLocation(node.loc);
+            }
+        }
+    } else if (error.source && error.locations) {
+        for (const location of error.locations){
+            output += '\n\n' + printSourceLocation(error.source, location);
+        }
+    }
+    return output;
+}
+const Kind = Object.freeze({
+    NAME: 'Name',
+    DOCUMENT: 'Document',
+    OPERATION_DEFINITION: 'OperationDefinition',
+    VARIABLE_DEFINITION: 'VariableDefinition',
+    SELECTION_SET: 'SelectionSet',
+    FIELD: 'Field',
+    ARGUMENT: 'Argument',
+    FRAGMENT_SPREAD: 'FragmentSpread',
+    INLINE_FRAGMENT: 'InlineFragment',
+    FRAGMENT_DEFINITION: 'FragmentDefinition',
+    VARIABLE: 'Variable',
+    INT: 'IntValue',
+    FLOAT: 'FloatValue',
+    STRING: 'StringValue',
+    BOOLEAN: 'BooleanValue',
+    NULL: 'NullValue',
+    ENUM: 'EnumValue',
+    LIST: 'ListValue',
+    OBJECT: 'ObjectValue',
+    OBJECT_FIELD: 'ObjectField',
+    DIRECTIVE: 'Directive',
+    NAMED_TYPE: 'NamedType',
+    LIST_TYPE: 'ListType',
+    NON_NULL_TYPE: 'NonNullType',
+    SCHEMA_DEFINITION: 'SchemaDefinition',
+    OPERATION_TYPE_DEFINITION: 'OperationTypeDefinition',
+    SCALAR_TYPE_DEFINITION: 'ScalarTypeDefinition',
+    OBJECT_TYPE_DEFINITION: 'ObjectTypeDefinition',
+    FIELD_DEFINITION: 'FieldDefinition',
+    INPUT_VALUE_DEFINITION: 'InputValueDefinition',
+    INTERFACE_TYPE_DEFINITION: 'InterfaceTypeDefinition',
+    UNION_TYPE_DEFINITION: 'UnionTypeDefinition',
+    ENUM_TYPE_DEFINITION: 'EnumTypeDefinition',
+    ENUM_VALUE_DEFINITION: 'EnumValueDefinition',
+    INPUT_OBJECT_TYPE_DEFINITION: 'InputObjectTypeDefinition',
+    DIRECTIVE_DEFINITION: 'DirectiveDefinition',
+    SCHEMA_EXTENSION: 'SchemaExtension',
+    SCALAR_TYPE_EXTENSION: 'ScalarTypeExtension',
+    OBJECT_TYPE_EXTENSION: 'ObjectTypeExtension',
+    INTERFACE_TYPE_EXTENSION: 'InterfaceTypeExtension',
+    UNION_TYPE_EXTENSION: 'UnionTypeExtension',
+    ENUM_TYPE_EXTENSION: 'EnumTypeExtension',
+    INPUT_OBJECT_TYPE_EXTENSION: 'InputObjectTypeExtension'
+});
+class Source1 {
+    constructor(body, name = 'GraphQL request', locationOffset = {
+        line: 1,
+        column: 1
+    }){
+        this.body = body;
+        this.name = name;
+        this.locationOffset = locationOffset;
+        devAssert(this.locationOffset.line > 0, 'line in locationOffset is 1-indexed and must be positive.');
+        devAssert(this.locationOffset.column > 0, 'column in locationOffset is 1-indexed and must be positive.');
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'Source';
+    }
+}
+const DirectiveLocation = Object.freeze({
+    QUERY: 'QUERY',
+    MUTATION: 'MUTATION',
+    SUBSCRIPTION: 'SUBSCRIPTION',
+    FIELD: 'FIELD',
+    FRAGMENT_DEFINITION: 'FRAGMENT_DEFINITION',
+    FRAGMENT_SPREAD: 'FRAGMENT_SPREAD',
+    INLINE_FRAGMENT: 'INLINE_FRAGMENT',
+    VARIABLE_DEFINITION: 'VARIABLE_DEFINITION',
+    SCHEMA: 'SCHEMA',
+    SCALAR: 'SCALAR',
+    OBJECT: 'OBJECT',
+    FIELD_DEFINITION: 'FIELD_DEFINITION',
+    ARGUMENT_DEFINITION: 'ARGUMENT_DEFINITION',
+    INTERFACE: 'INTERFACE',
+    UNION: 'UNION',
+    ENUM: 'ENUM',
+    ENUM_VALUE: 'ENUM_VALUE',
+    INPUT_OBJECT: 'INPUT_OBJECT',
+    INPUT_FIELD_DEFINITION: 'INPUT_FIELD_DEFINITION'
+});
+Object.freeze({
+    SOF: '<SOF>',
+    EOF: '<EOF>',
+    BANG: '!',
+    DOLLAR: '$',
+    AMP: '&',
+    PAREN_L: '(',
+    PAREN_R: ')',
+    SPREAD: '...',
+    COLON: ':',
+    EQUALS: '=',
+    AT: '@',
+    BRACKET_L: '[',
+    BRACKET_R: ']',
+    BRACE_L: '{',
+    PIPE: '|',
+    BRACE_R: '}',
+    NAME: 'Name',
+    INT: 'Int',
+    FLOAT: 'Float',
+    STRING: 'String',
+    BLOCK_STRING: 'BlockString',
+    COMMENT: 'Comment'
+});
+function defineToJSON(classObject, fn = classObject.prototype.toString) {
+    classObject.prototype.toJSON = fn;
+    classObject.prototype.inspect = fn;
+    if (nodejsCustomInspectSymbol) {
+        classObject.prototype[nodejsCustomInspectSymbol] = fn;
+    }
+}
+class Location {
+    constructor(startToken, endToken, source){
+        this.start = startToken.start;
+        this.end = endToken.end;
+        this.startToken = startToken;
+        this.endToken = endToken;
+        this.source = source;
+    }
+}
+defineToJSON(Location, function() {
+    return {
+        start: this.start,
+        end: this.end
+    };
+});
+class Token {
+    constructor(kind, start, end, line, column, prev, value){
+        this.kind = kind;
+        this.start = start;
+        this.end = end;
+        this.line = line;
+        this.column = column;
+        this.value = value;
+        this.prev = prev;
+        this.next = null;
+    }
+}
+defineToJSON(Token, function() {
+    return {
+        kind: this.kind,
+        value: this.value,
+        line: this.line,
+        column: this.column
+    };
+});
+function isNode(maybeNode) {
+    return maybeNode != null && typeof maybeNode.kind === 'string';
+}
+function printBlockString(value, indentation = '', preferMultipleLines = false) {
+    const isSingleLine = value.indexOf('\n') === -1;
+    const hasLeadingSpace = value[0] === ' ' || value[0] === '\t';
+    const hasTrailingQuote = value[value.length - 1] === '"';
+    const printAsMultipleLines = !isSingleLine || hasTrailingQuote || preferMultipleLines;
+    let result = '';
+    if (printAsMultipleLines && !(isSingleLine && hasLeadingSpace)) {
+        result += '\n' + indentation;
+    }
+    result += indentation ? value.replace(/\n/g, '\n' + indentation) : value;
+    if (printAsMultipleLines) {
+        result += '\n';
+    }
+    return '"""' + result.replace(/"""/g, '\\"""') + '"""';
+}
+const QueryDocumentKeys = {
+    Name: [],
+    Document: [
+        'definitions'
+    ],
+    OperationDefinition: [
+        'name',
+        'variableDefinitions',
+        'directives',
+        'selectionSet'
+    ],
+    VariableDefinition: [
+        'variable',
+        'type',
+        'defaultValue',
+        'directives'
+    ],
+    Variable: [
+        'name'
+    ],
+    SelectionSet: [
+        'selections'
+    ],
+    Field: [
+        'alias',
+        'name',
+        'arguments',
+        'directives',
+        'selectionSet'
+    ],
+    Argument: [
+        'name',
+        'value'
+    ],
+    FragmentSpread: [
+        'name',
+        'directives'
+    ],
+    InlineFragment: [
+        'typeCondition',
+        'directives',
+        'selectionSet'
+    ],
+    FragmentDefinition: [
+        'name',
+        'variableDefinitions',
+        'typeCondition',
+        'directives',
+        'selectionSet'
+    ],
+    IntValue: [],
+    FloatValue: [],
+    StringValue: [],
+    BooleanValue: [],
+    NullValue: [],
+    EnumValue: [],
+    ListValue: [
+        'values'
+    ],
+    ObjectValue: [
+        'fields'
+    ],
+    ObjectField: [
+        'name',
+        'value'
+    ],
+    Directive: [
+        'name',
+        'arguments'
+    ],
+    NamedType: [
+        'name'
+    ],
+    ListType: [
+        'type'
+    ],
+    NonNullType: [
+        'type'
+    ],
+    SchemaDefinition: [
+        'description',
+        'directives',
+        'operationTypes'
+    ],
+    OperationTypeDefinition: [
+        'type'
+    ],
+    ScalarTypeDefinition: [
+        'description',
+        'name',
+        'directives'
+    ],
+    ObjectTypeDefinition: [
+        'description',
+        'name',
+        'interfaces',
+        'directives',
+        'fields'
+    ],
+    FieldDefinition: [
+        'description',
+        'name',
+        'arguments',
+        'type',
+        'directives'
+    ],
+    InputValueDefinition: [
+        'description',
+        'name',
+        'type',
+        'defaultValue',
+        'directives'
+    ],
+    InterfaceTypeDefinition: [
+        'description',
+        'name',
+        'interfaces',
+        'directives',
+        'fields'
+    ],
+    UnionTypeDefinition: [
+        'description',
+        'name',
+        'directives',
+        'types'
+    ],
+    EnumTypeDefinition: [
+        'description',
+        'name',
+        'directives',
+        'values'
+    ],
+    EnumValueDefinition: [
+        'description',
+        'name',
+        'directives'
+    ],
+    InputObjectTypeDefinition: [
+        'description',
+        'name',
+        'directives',
+        'fields'
+    ],
+    DirectiveDefinition: [
+        'description',
+        'name',
+        'arguments',
+        'locations'
+    ],
+    SchemaExtension: [
+        'directives',
+        'operationTypes'
+    ],
+    ScalarTypeExtension: [
+        'name',
+        'directives'
+    ],
+    ObjectTypeExtension: [
+        'name',
+        'interfaces',
+        'directives',
+        'fields'
+    ],
+    InterfaceTypeExtension: [
+        'name',
+        'interfaces',
+        'directives',
+        'fields'
+    ],
+    UnionTypeExtension: [
+        'name',
+        'directives',
+        'types'
+    ],
+    EnumTypeExtension: [
+        'name',
+        'directives',
+        'values'
+    ],
+    InputObjectTypeExtension: [
+        'name',
+        'directives',
+        'fields'
+    ]
+};
+const BREAK = Object.freeze({});
+function visit(root, visitor, visitorKeys = QueryDocumentKeys) {
+    let stack = undefined;
+    let inArray = Array.isArray(root);
+    let keys = [
+        root
+    ];
+    let index = -1;
+    let edits = [];
+    let node = undefined;
+    let key = undefined;
+    let parent = undefined;
+    const path = [];
+    const ancestors = [];
+    let newRoot = root;
+    do {
+        index++;
+        const isLeaving = index === keys.length;
+        const isEdited = isLeaving && edits.length !== 0;
+        if (isLeaving) {
+            key = ancestors.length === 0 ? undefined : path[path.length - 1];
+            node = parent;
+            parent = ancestors.pop();
+            if (isEdited) {
+                if (inArray) {
+                    node = node.slice();
+                } else {
+                    const clone = {};
+                    for (const k of Object.keys(node)){
+                        clone[k] = node[k];
+                    }
+                    node = clone;
+                }
+                let editOffset = 0;
+                for(let ii = 0; ii < edits.length; ii++){
+                    let editKey = edits[ii][0];
+                    const editValue = edits[ii][1];
+                    if (inArray) {
+                        editKey -= editOffset;
+                    }
+                    if (inArray && editValue === null) {
+                        node.splice(editKey, 1);
+                        editOffset++;
+                    } else {
+                        node[editKey] = editValue;
+                    }
+                }
+            }
+            index = stack.index;
+            keys = stack.keys;
+            edits = stack.edits;
+            inArray = stack.inArray;
+            stack = stack.prev;
+        } else {
+            key = parent ? inArray ? index : keys[index] : undefined;
+            node = parent ? parent[key] : newRoot;
+            if (node === null || node === undefined) {
+                continue;
+            }
+            if (parent) {
+                path.push(key);
+            }
+        }
+        let result;
+        if (!Array.isArray(node)) {
+            if (!isNode(node)) {
+                throw new Error(`Invalid AST Node: ${inspect(node)}.`);
+            }
+            const visitFn = getVisitFn(visitor, node.kind, isLeaving);
+            if (visitFn) {
+                result = visitFn.call(visitor, node, key, parent, path, ancestors);
+                if (result === BREAK) {
+                    break;
+                }
+                if (result === false) {
+                    if (!isLeaving) {
+                        path.pop();
+                        continue;
+                    }
+                } else if (result !== undefined) {
+                    edits.push([
+                        key,
+                        result
+                    ]);
+                    if (!isLeaving) {
+                        if (isNode(result)) {
+                            node = result;
+                        } else {
+                            path.pop();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+        if (result === undefined && isEdited) {
+            edits.push([
+                key,
+                node
+            ]);
+        }
+        if (isLeaving) {
+            path.pop();
+        } else {
+            stack = {
+                inArray,
+                index,
+                keys,
+                edits,
+                prev: stack
+            };
+            inArray = Array.isArray(node);
+            keys = inArray ? node : visitorKeys[node.kind] ?? [];
+            index = -1;
+            edits = [];
+            if (parent) {
+                ancestors.push(parent);
+            }
+            parent = node;
+        }
+    }while (stack !== undefined)
+    if (edits.length !== 0) {
+        newRoot = edits[edits.length - 1][1];
+    }
+    return newRoot;
+}
+function getVisitFn(visitor, kind, isLeaving) {
+    const kindVisitor = visitor[kind];
+    if (kindVisitor) {
+        if (!isLeaving && typeof kindVisitor === 'function') {
+            return kindVisitor;
+        }
+        const kindSpecificVisitor = isLeaving ? kindVisitor.leave : kindVisitor.enter;
+        if (typeof kindSpecificVisitor === 'function') {
+            return kindSpecificVisitor;
+        }
+    } else {
+        const specificVisitor = isLeaving ? visitor.leave : visitor.enter;
+        if (specificVisitor) {
+            if (typeof specificVisitor === 'function') {
+                return specificVisitor;
+            }
+            const specificKindVisitor = specificVisitor[kind];
+            if (typeof specificKindVisitor === 'function') {
+                return specificKindVisitor;
+            }
+        }
+    }
+}
+const find = Array.prototype.find ? function(list, predicate) {
+    return Array.prototype.find.call(list, predicate);
+} : function(list, predicate) {
+    for (const value of list){
+        if (predicate(value)) {
+            return value;
+        }
+    }
+};
+Array.prototype.flatMap;
+const objectValues = Object.values || ((obj)=>Object.keys(obj).map((key)=>obj[key]));
+const objectEntries = Object.entries || ((obj)=>Object.keys(obj).map((key)=>[
+            key,
+            obj[key]
+        ]));
+function keyMap(list, keyFn) {
+    return list.reduce((map, item)=>{
+        map[keyFn(item)] = item;
+        return map;
+    }, Object.create(null));
+}
+function mapValue(map, fn) {
+    const result = Object.create(null);
+    for (const [key, value] of objectEntries(map)){
+        result[key] = fn(value, key);
+    }
+    return result;
+}
+function toObjMap(obj) {
+    if (Object.getPrototypeOf(obj) === null) {
+        return obj;
+    }
+    const map = Object.create(null);
+    for (const [key, value] of objectEntries(obj)){
+        map[key] = value;
+    }
+    return map;
+}
+function keyValMap(list, keyFn, valFn) {
+    return list.reduce((map, item)=>{
+        map[keyFn(item)] = valFn(item);
+        return map;
+    }, Object.create(null));
+}
+const __default21 = Deno.env.NODE_ENV === 'production' ? function instanceOf(value, constructor) {
+    return value instanceof constructor;
+} : function instanceOf(value, constructor) {
+    if (value instanceof constructor) {
+        return true;
+    }
+    if (value) {
+        const valueClass = value.constructor;
+        const className = constructor.name;
+        if (className && valueClass && valueClass.name === className) {
+            throw new Error(`Cannot use ${className} "${value}" from another module or realm.
+
+Ensure that there is only one instance of "graphql" in the node_modules
+directory. If different versions of "graphql" are the dependencies of other
+relied on modules, use "resolutions" to ensure only one version is installed.
+
+https://yarnpkg.com/en/docs/selective-version-resolutions
+
+Duplicate "graphql" modules cannot be used at the same time since different
+versions may have different capabilities and behavior. The data from one
+version used in the function from another could produce confusing and
+spurious results.`);
+        }
+    }
+    return false;
+};
+function didYouMean(firstArg, secondArg) {
+    const [subMessage, suggestionsArg] = typeof firstArg === 'string' ? [
+        firstArg,
+        secondArg
+    ] : [
+        undefined,
+        firstArg
+    ];
+    let message = ' Did you mean ';
+    if (subMessage) {
+        message += subMessage + ' ';
+    }
+    const suggestions = suggestionsArg.map((x)=>`"${x}"`);
+    switch(suggestions.length){
+        case 0:
+            return '';
+        case 1:
+            return message + suggestions[0] + '?';
+        case 2:
+            return message + suggestions[0] + ' or ' + suggestions[1] + '?';
+    }
+    const selected = suggestions.slice(0, 5);
+    const lastItem = selected.pop();
+    return message + selected.join(', ') + ', or ' + lastItem + '?';
+}
+function identityFunc(x) {
+    return x;
+}
+function suggestionList(input, options) {
+    const optionsByDistance = Object.create(null);
+    const lexicalDistance = new LexicalDistance(input);
+    const threshold = Math.floor(input.length * 0.4) + 1;
+    for (const option of options){
+        const distance = lexicalDistance.measure(option, threshold);
+        if (distance !== undefined) {
+            optionsByDistance[option] = distance;
+        }
+    }
+    return Object.keys(optionsByDistance).sort((a, b)=>{
+        const distanceDiff = optionsByDistance[a] - optionsByDistance[b];
+        return distanceDiff !== 0 ? distanceDiff : a.localeCompare(b);
+    });
+}
+class LexicalDistance {
+    constructor(input){
+        this._input = input;
+        this._inputLowerCase = input.toLowerCase();
+        this._inputArray = stringToArray(this._inputLowerCase);
+        this._rows = [
+            new Array(input.length + 1).fill(0),
+            new Array(input.length + 1).fill(0),
+            new Array(input.length + 1).fill(0)
+        ];
+    }
+    measure(option, threshold) {
+        if (this._input === option) {
+            return 0;
+        }
+        const optionLowerCase = option.toLowerCase();
+        if (this._inputLowerCase === optionLowerCase) {
+            return 1;
+        }
+        let a = stringToArray(optionLowerCase);
+        let b = this._inputArray;
+        if (a.length < b.length) {
+            const tmp = a;
+            a = b;
+            b = tmp;
+        }
+        const aLength = a.length;
+        const bLength = b.length;
+        if (aLength - bLength > threshold) {
+            return undefined;
+        }
+        const rows = this._rows;
+        for(let j = 0; j <= bLength; j++){
+            rows[0][j] = j;
+        }
+        for(let i = 1; i <= aLength; i++){
+            const upRow = rows[(i - 1) % 3];
+            const currentRow = rows[i % 3];
+            let smallestCell = currentRow[0] = i;
+            for(let j = 1; j <= bLength; j++){
+                const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                let currentCell = Math.min(upRow[j] + 1, currentRow[j - 1] + 1, upRow[j - 1] + cost);
+                if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+                    const doubleDiagonalCell = rows[(i - 2) % 3][j - 2];
+                    currentCell = Math.min(currentCell, doubleDiagonalCell + 1);
+                }
+                if (currentCell < smallestCell) {
+                    smallestCell = currentCell;
+                }
+                currentRow[j] = currentCell;
+            }
+            if (smallestCell > threshold) {
+                return undefined;
+            }
+        }
+        const distance = rows[aLength % 3][bLength];
+        return distance <= threshold ? distance : undefined;
+    }
+}
+function stringToArray(str) {
+    const strLength = str.length;
+    const array = new Array(strLength);
+    for(let i = 0; i < strLength; ++i){
+        array[i] = str.charCodeAt(i);
+    }
+    return array;
+}
+function print1(ast) {
+    return visit(ast, {
+        leave: printDocASTReducer
+    });
+}
+const printDocASTReducer = {
+    Name: (node)=>node.value,
+    Variable: (node)=>'$' + node.name,
+    Document: (node)=>join9(node.definitions, '\n\n') + '\n',
+    OperationDefinition (node) {
+        const op = node.operation;
+        const name = node.name;
+        const varDefs = wrap('(', join9(node.variableDefinitions, ', '), ')');
+        const directives = join9(node.directives, ' ');
+        const selectionSet = node.selectionSet;
+        return !name && !directives && !varDefs && op === 'query' ? selectionSet : join9([
+            op,
+            join9([
+                name,
+                varDefs
+            ]),
+            directives,
+            selectionSet
+        ], ' ');
+    },
+    VariableDefinition: ({ variable, type, defaultValue, directives })=>variable + ': ' + type + wrap(' = ', defaultValue) + wrap(' ', join9(directives, ' ')),
+    SelectionSet: ({ selections })=>block(selections),
+    Field: ({ alias, name, arguments: args, directives, selectionSet })=>join9([
+            wrap('', alias, ': ') + name + wrap('(', join9(args, ', '), ')'),
+            join9(directives, ' '),
+            selectionSet
+        ], ' '),
+    Argument: ({ name, value })=>name + ': ' + value,
+    FragmentSpread: ({ name, directives })=>'...' + name + wrap(' ', join9(directives, ' ')),
+    InlineFragment: ({ typeCondition, directives, selectionSet })=>join9([
+            '...',
+            wrap('on ', typeCondition),
+            join9(directives, ' '),
+            selectionSet
+        ], ' '),
+    FragmentDefinition: ({ name, typeCondition, variableDefinitions, directives, selectionSet })=>`fragment ${name}${wrap('(', join9(variableDefinitions, ', '), ')')} ` + `on ${typeCondition} ${wrap('', join9(directives, ' '), ' ')}` + selectionSet,
+    IntValue: ({ value })=>value,
+    FloatValue: ({ value })=>value,
+    StringValue: ({ value, block: isBlockString }, key)=>isBlockString ? printBlockString(value, key === 'description' ? '' : '  ') : JSON.stringify(value),
+    BooleanValue: ({ value })=>value ? 'true' : 'false',
+    NullValue: ()=>'null',
+    EnumValue: ({ value })=>value,
+    ListValue: ({ values })=>'[' + join9(values, ', ') + ']',
+    ObjectValue: ({ fields })=>'{' + join9(fields, ', ') + '}',
+    ObjectField: ({ name, value })=>name + ': ' + value,
+    Directive: ({ name, arguments: args })=>'@' + name + wrap('(', join9(args, ', '), ')'),
+    NamedType: ({ name })=>name,
+    ListType: ({ type })=>'[' + type + ']',
+    NonNullType: ({ type })=>type + '!',
+    SchemaDefinition: addDescription(({ directives, operationTypes })=>join9([
+            'schema',
+            join9(directives, ' '),
+            block(operationTypes)
+        ], ' ')),
+    OperationTypeDefinition: ({ operation, type })=>operation + ': ' + type,
+    ScalarTypeDefinition: addDescription(({ name, directives })=>join9([
+            'scalar',
+            name,
+            join9(directives, ' ')
+        ], ' ')),
+    ObjectTypeDefinition: addDescription(({ name, interfaces, directives, fields })=>join9([
+            'type',
+            name,
+            wrap('implements ', join9(interfaces, ' & ')),
+            join9(directives, ' '),
+            block(fields)
+        ], ' ')),
+    FieldDefinition: addDescription(({ name, arguments: args, type, directives })=>name + (hasMultilineItems(args) ? wrap('(\n', indent1(join9(args, '\n')), '\n)') : wrap('(', join9(args, ', '), ')')) + ': ' + type + wrap(' ', join9(directives, ' '))),
+    InputValueDefinition: addDescription(({ name, type, defaultValue, directives })=>join9([
+            name + ': ' + type,
+            wrap('= ', defaultValue),
+            join9(directives, ' ')
+        ], ' ')),
+    InterfaceTypeDefinition: addDescription(({ name, interfaces, directives, fields })=>join9([
+            'interface',
+            name,
+            wrap('implements ', join9(interfaces, ' & ')),
+            join9(directives, ' '),
+            block(fields)
+        ], ' ')),
+    UnionTypeDefinition: addDescription(({ name, directives, types })=>join9([
+            'union',
+            name,
+            join9(directives, ' '),
+            types && types.length !== 0 ? '= ' + join9(types, ' | ') : ''
+        ], ' ')),
+    EnumTypeDefinition: addDescription(({ name, directives, values })=>join9([
+            'enum',
+            name,
+            join9(directives, ' '),
+            block(values)
+        ], ' ')),
+    EnumValueDefinition: addDescription(({ name, directives })=>join9([
+            name,
+            join9(directives, ' ')
+        ], ' ')),
+    InputObjectTypeDefinition: addDescription(({ name, directives, fields })=>join9([
+            'input',
+            name,
+            join9(directives, ' '),
+            block(fields)
+        ], ' ')),
+    DirectiveDefinition: addDescription(({ name, arguments: args, repeatable, locations })=>'directive @' + name + (hasMultilineItems(args) ? wrap('(\n', indent1(join9(args, '\n')), '\n)') : wrap('(', join9(args, ', '), ')')) + (repeatable ? ' repeatable' : '') + ' on ' + join9(locations, ' | ')),
+    SchemaExtension: ({ directives, operationTypes })=>join9([
+            'extend schema',
+            join9(directives, ' '),
+            block(operationTypes)
+        ], ' '),
+    ScalarTypeExtension: ({ name, directives })=>join9([
+            'extend scalar',
+            name,
+            join9(directives, ' ')
+        ], ' '),
+    ObjectTypeExtension: ({ name, interfaces, directives, fields })=>join9([
+            'extend type',
+            name,
+            wrap('implements ', join9(interfaces, ' & ')),
+            join9(directives, ' '),
+            block(fields)
+        ], ' '),
+    InterfaceTypeExtension: ({ name, interfaces, directives, fields })=>join9([
+            'extend interface',
+            name,
+            wrap('implements ', join9(interfaces, ' & ')),
+            join9(directives, ' '),
+            block(fields)
+        ], ' '),
+    UnionTypeExtension: ({ name, directives, types })=>join9([
+            'extend union',
+            name,
+            join9(directives, ' '),
+            types && types.length !== 0 ? '= ' + join9(types, ' | ') : ''
+        ], ' '),
+    EnumTypeExtension: ({ name, directives, values })=>join9([
+            'extend enum',
+            name,
+            join9(directives, ' '),
+            block(values)
+        ], ' '),
+    InputObjectTypeExtension: ({ name, directives, fields })=>join9([
+            'extend input',
+            name,
+            join9(directives, ' '),
+            block(fields)
+        ], ' ')
+};
+function addDescription(cb) {
+    return (node)=>join9([
+            node.description,
+            cb(node)
+        ], '\n');
+}
+function join9(maybeArray, separator = '') {
+    return maybeArray?.filter((x)=>x).join(separator) ?? '';
+}
+function block(array) {
+    return array && array.length !== 0 ? '{\n' + indent1(join9(array, '\n')) + '\n}' : '';
+}
+function wrap(start, maybeString, end = '') {
+    return maybeString ? start + maybeString + end : '';
+}
+function indent1(maybeString) {
+    return maybeString && '  ' + maybeString.replace(/\n/g, '\n  ');
+}
+function isMultiline(string) {
+    return string.indexOf('\n') !== -1;
+}
+function hasMultilineItems(maybeArray) {
+    return maybeArray && maybeArray.some(isMultiline);
+}
+function invariant(condition, message) {
+    const booleanCondition = Boolean(condition);
+    if (!booleanCondition) {
+        throw new Error(message != null ? message : 'Unexpected invariant triggered.');
+    }
+}
+function valueFromASTUntyped(valueNode, variables) {
+    switch(valueNode.kind){
+        case Kind.NULL:
+            return null;
+        case Kind.INT:
+            return parseInt(valueNode.value, 10);
+        case Kind.FLOAT:
+            return parseFloat(valueNode.value);
+        case Kind.STRING:
+        case Kind.ENUM:
+        case Kind.BOOLEAN:
+            return valueNode.value;
+        case Kind.LIST:
+            return valueNode.values.map((node)=>valueFromASTUntyped(node, variables));
+        case Kind.OBJECT:
+            return keyValMap(valueNode.fields, (field)=>field.name.value, (field)=>valueFromASTUntyped(field.value, variables));
+        case Kind.VARIABLE:
+            return variables?.[valueNode.name.value];
+    }
+    invariant(false, 'Unexpected value node: ' + inspect(valueNode));
+}
+function isType(type) {
+    return isScalarType(type) || isObjectType(type) || isInterfaceType(type) || isUnionType(type) || isEnumType(type) || isInputObjectType(type) || isListType(type) || isNonNullType(type);
+}
+function assertType(type) {
+    if (!isType(type)) {
+        throw new Error(`Expected ${inspect(type)} to be a GraphQL type.`);
+    }
+    return type;
+}
+function isScalarType(type) {
+    return __default21(type, GraphQLScalarType);
+}
+function isObjectType(type) {
+    return __default21(type, GraphQLObjectType);
+}
+function isInterfaceType(type) {
+    return __default21(type, GraphQLInterfaceType);
+}
+function isUnionType(type) {
+    return __default21(type, GraphQLUnionType);
+}
+function isEnumType(type) {
+    return __default21(type, GraphQLEnumType);
+}
+function isInputObjectType(type) {
+    return __default21(type, GraphQLInputObjectType);
+}
+function isListType(type) {
+    return __default21(type, GraphQLList);
+}
+function isNonNullType(type) {
+    return __default21(type, GraphQLNonNull);
+}
+function isInputType(type) {
+    return isScalarType(type) || isEnumType(type) || isInputObjectType(type) || isWrappingType(type) && isInputType(type.ofType);
+}
+function isLeafType(type) {
+    return isScalarType(type) || isEnumType(type);
+}
+function isCompositeType(type) {
+    return isObjectType(type) || isInterfaceType(type) || isUnionType(type);
+}
+function isAbstractType(type) {
+    return isInterfaceType(type) || isUnionType(type);
+}
+function GraphQLList(ofType) {
+    if (this instanceof GraphQLList) {
+        this.ofType = assertType(ofType);
+    } else {
+        return new GraphQLList(ofType);
+    }
+}
+GraphQLList.prototype.toString = function toString() {
+    return '[' + String(this.ofType) + ']';
+};
+Object.defineProperty(GraphQLList.prototype, SYMBOL_TO_STRING_TAG, {
+    get () {
+        return 'GraphQLList';
+    }
+});
+defineToJSON(GraphQLList);
+function GraphQLNonNull(ofType) {
+    if (this instanceof GraphQLNonNull) {
+        this.ofType = assertNullableType(ofType);
+    } else {
+        return new GraphQLNonNull(ofType);
+    }
+}
+GraphQLNonNull.prototype.toString = function toString() {
+    return String(this.ofType) + '!';
+};
+Object.defineProperty(GraphQLNonNull.prototype, SYMBOL_TO_STRING_TAG, {
+    get () {
+        return 'GraphQLNonNull';
+    }
+});
+defineToJSON(GraphQLNonNull);
+function isWrappingType(type) {
+    return isListType(type) || isNonNullType(type);
+}
+function isNullableType(type) {
+    return isType(type) && !isNonNullType(type);
+}
+function assertNullableType(type) {
+    if (!isNullableType(type)) {
+        throw new Error(`Expected ${inspect(type)} to be a GraphQL nullable type.`);
+    }
+    return type;
+}
+function getNullableType(type) {
+    if (type) {
+        return isNonNullType(type) ? type.ofType : type;
+    }
+}
+function getNamedType(type) {
+    if (type) {
+        let unwrappedType = type;
+        while(isWrappingType(unwrappedType)){
+            unwrappedType = unwrappedType.ofType;
+        }
+        return unwrappedType;
+    }
+}
+function resolveThunk(thunk) {
+    return typeof thunk === 'function' ? thunk() : thunk;
+}
+function undefineIfEmpty(arr) {
+    return arr && arr.length > 0 ? arr : undefined;
+}
+class GraphQLScalarType {
+    constructor(config){
+        const parseValue = config.parseValue ?? identityFunc;
+        this.name = config.name;
+        this.description = config.description;
+        this.serialize = config.serialize ?? identityFunc;
+        this.parseValue = parseValue;
+        this.parseLiteral = config.parseLiteral ?? ((node)=>parseValue(valueFromASTUntyped(node)));
+        this.extensions = config.extensions && toObjMap(config.extensions);
+        this.astNode = config.astNode;
+        this.extensionASTNodes = undefineIfEmpty(config.extensionASTNodes);
+        devAssert(typeof config.name === 'string', 'Must provide name.');
+        devAssert(config.serialize == null || typeof config.serialize === 'function', `${this.name} must provide "serialize" function. If this custom Scalar is also used as an input type, ensure "parseValue" and "parseLiteral" functions are also provided.`);
+        if (config.parseLiteral) {
+            devAssert(typeof config.parseValue === 'function' && typeof config.parseLiteral === 'function', `${this.name} must provide both "parseValue" and "parseLiteral" functions.`);
+        }
+    }
+    toConfig() {
+        return {
+            name: this.name,
+            description: this.description,
+            serialize: this.serialize,
+            parseValue: this.parseValue,
+            parseLiteral: this.parseLiteral,
+            extensions: this.extensions,
+            astNode: this.astNode,
+            extensionASTNodes: this.extensionASTNodes ?? []
+        };
+    }
+    toString() {
+        return this.name;
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'GraphQLScalarType';
+    }
+}
+defineToJSON(GraphQLScalarType);
+class GraphQLObjectType {
+    constructor(config){
+        this.name = config.name;
+        this.description = config.description;
+        this.isTypeOf = config.isTypeOf;
+        this.extensions = config.extensions && toObjMap(config.extensions);
+        this.astNode = config.astNode;
+        this.extensionASTNodes = undefineIfEmpty(config.extensionASTNodes);
+        this._fields = defineFieldMap.bind(undefined, config);
+        this._interfaces = defineInterfaces.bind(undefined, config);
+        devAssert(typeof config.name === 'string', 'Must provide name.');
+        devAssert(config.isTypeOf == null || typeof config.isTypeOf === 'function', `${this.name} must provide "isTypeOf" as a function, ` + `but got: ${inspect(config.isTypeOf)}.`);
+    }
+    getFields() {
+        if (typeof this._fields === 'function') {
+            this._fields = this._fields();
+        }
+        return this._fields;
+    }
+    getInterfaces() {
+        if (typeof this._interfaces === 'function') {
+            this._interfaces = this._interfaces();
+        }
+        return this._interfaces;
+    }
+    toConfig() {
+        return {
+            name: this.name,
+            description: this.description,
+            interfaces: this.getInterfaces(),
+            fields: fieldsToFieldsConfig(this.getFields()),
+            isTypeOf: this.isTypeOf,
+            extensions: this.extensions,
+            astNode: this.astNode,
+            extensionASTNodes: this.extensionASTNodes || []
+        };
+    }
+    toString() {
+        return this.name;
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'GraphQLObjectType';
+    }
+}
+defineToJSON(GraphQLObjectType);
+function defineInterfaces(config) {
+    const interfaces = resolveThunk(config.interfaces) ?? [];
+    devAssert(Array.isArray(interfaces), `${config.name} interfaces must be an Array or a function which returns an Array.`);
+    return interfaces;
+}
+function defineFieldMap(config) {
+    const fieldMap = resolveThunk(config.fields);
+    devAssert(isPlainObj(fieldMap), `${config.name} fields must be an object with field names as keys or a function which returns such an object.`);
+    return mapValue(fieldMap, (fieldConfig, fieldName)=>{
+        devAssert(isPlainObj(fieldConfig), `${config.name}.${fieldName} field config must be an object.`);
+        devAssert(!('isDeprecated' in fieldConfig), `${config.name}.${fieldName} should provide "deprecationReason" instead of "isDeprecated".`);
+        devAssert(fieldConfig.resolve == null || typeof fieldConfig.resolve === 'function', `${config.name}.${fieldName} field resolver must be a function if ` + `provided, but got: ${inspect(fieldConfig.resolve)}.`);
+        const argsConfig = fieldConfig.args ?? {};
+        devAssert(isPlainObj(argsConfig), `${config.name}.${fieldName} args must be an object with argument names as keys.`);
+        const args = objectEntries(argsConfig).map(([argName, argConfig])=>({
+                name: argName,
+                description: argConfig.description,
+                type: argConfig.type,
+                defaultValue: argConfig.defaultValue,
+                extensions: argConfig.extensions && toObjMap(argConfig.extensions),
+                astNode: argConfig.astNode
+            }));
+        return {
+            name: fieldName,
+            description: fieldConfig.description,
+            type: fieldConfig.type,
+            args,
+            resolve: fieldConfig.resolve,
+            subscribe: fieldConfig.subscribe,
+            isDeprecated: fieldConfig.deprecationReason != null,
+            deprecationReason: fieldConfig.deprecationReason,
+            extensions: fieldConfig.extensions && toObjMap(fieldConfig.extensions),
+            astNode: fieldConfig.astNode
+        };
+    });
+}
+function isPlainObj(obj) {
+    return isObjectLike(obj) && !Array.isArray(obj);
+}
+function fieldsToFieldsConfig(fields) {
+    return mapValue(fields, (field)=>({
+            description: field.description,
+            type: field.type,
+            args: argsToArgsConfig(field.args),
+            resolve: field.resolve,
+            subscribe: field.subscribe,
+            deprecationReason: field.deprecationReason,
+            extensions: field.extensions,
+            astNode: field.astNode
+        }));
+}
+function argsToArgsConfig(args) {
+    return keyValMap(args, (arg)=>arg.name, (arg)=>({
+            description: arg.description,
+            type: arg.type,
+            defaultValue: arg.defaultValue,
+            extensions: arg.extensions,
+            astNode: arg.astNode
+        }));
+}
+function isRequiredArgument(arg) {
+    return isNonNullType(arg.type) && arg.defaultValue === undefined;
+}
+class GraphQLInterfaceType {
+    constructor(config){
+        this.name = config.name;
+        this.description = config.description;
+        this.resolveType = config.resolveType;
+        this.extensions = config.extensions && toObjMap(config.extensions);
+        this.astNode = config.astNode;
+        this.extensionASTNodes = undefineIfEmpty(config.extensionASTNodes);
+        this._fields = defineFieldMap.bind(undefined, config);
+        this._interfaces = defineInterfaces.bind(undefined, config);
+        devAssert(typeof config.name === 'string', 'Must provide name.');
+        devAssert(config.resolveType == null || typeof config.resolveType === 'function', `${this.name} must provide "resolveType" as a function, ` + `but got: ${inspect(config.resolveType)}.`);
+    }
+    getFields() {
+        if (typeof this._fields === 'function') {
+            this._fields = this._fields();
+        }
+        return this._fields;
+    }
+    getInterfaces() {
+        if (typeof this._interfaces === 'function') {
+            this._interfaces = this._interfaces();
+        }
+        return this._interfaces;
+    }
+    toConfig() {
+        return {
+            name: this.name,
+            description: this.description,
+            interfaces: this.getInterfaces(),
+            fields: fieldsToFieldsConfig(this.getFields()),
+            resolveType: this.resolveType,
+            extensions: this.extensions,
+            astNode: this.astNode,
+            extensionASTNodes: this.extensionASTNodes ?? []
+        };
+    }
+    toString() {
+        return this.name;
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'GraphQLInterfaceType';
+    }
+}
+defineToJSON(GraphQLInterfaceType);
+class GraphQLUnionType {
+    constructor(config){
+        this.name = config.name;
+        this.description = config.description;
+        this.resolveType = config.resolveType;
+        this.extensions = config.extensions && toObjMap(config.extensions);
+        this.astNode = config.astNode;
+        this.extensionASTNodes = undefineIfEmpty(config.extensionASTNodes);
+        this._types = defineTypes.bind(undefined, config);
+        devAssert(typeof config.name === 'string', 'Must provide name.');
+        devAssert(config.resolveType == null || typeof config.resolveType === 'function', `${this.name} must provide "resolveType" as a function, ` + `but got: ${inspect(config.resolveType)}.`);
+    }
+    getTypes() {
+        if (typeof this._types === 'function') {
+            this._types = this._types();
+        }
+        return this._types;
+    }
+    toConfig() {
+        return {
+            name: this.name,
+            description: this.description,
+            types: this.getTypes(),
+            resolveType: this.resolveType,
+            extensions: this.extensions,
+            astNode: this.astNode,
+            extensionASTNodes: this.extensionASTNodes ?? []
+        };
+    }
+    toString() {
+        return this.name;
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'GraphQLUnionType';
+    }
+}
+defineToJSON(GraphQLUnionType);
+function defineTypes(config) {
+    const types = resolveThunk(config.types);
+    devAssert(Array.isArray(types), `Must provide Array of types or a function which returns such an array for Union ${config.name}.`);
+    return types;
+}
+class GraphQLEnumType {
+    constructor(config){
+        this.name = config.name;
+        this.description = config.description;
+        this.extensions = config.extensions && toObjMap(config.extensions);
+        this.astNode = config.astNode;
+        this.extensionASTNodes = undefineIfEmpty(config.extensionASTNodes);
+        this._values = defineEnumValues(this.name, config.values);
+        this._valueLookup = new Map(this._values.map((enumValue)=>[
+                enumValue.value,
+                enumValue
+            ]));
+        this._nameLookup = keyMap(this._values, (value)=>value.name);
+        devAssert(typeof config.name === 'string', 'Must provide name.');
+    }
+    getValues() {
+        return this._values;
+    }
+    getValue(name) {
+        return this._nameLookup[name];
+    }
+    serialize(outputValue) {
+        const enumValue = this._valueLookup.get(outputValue);
+        if (enumValue === undefined) {
+            throw new GraphQLError(`Enum "${this.name}" cannot represent value: ${inspect(outputValue)}`);
+        }
+        return enumValue.name;
+    }
+    parseValue(inputValue) {
+        if (typeof inputValue !== 'string') {
+            const valueStr = inspect(inputValue);
+            throw new GraphQLError(`Enum "${this.name}" cannot represent non-string value: ${valueStr}.` + didYouMeanEnumValue(this, valueStr));
+        }
+        const enumValue = this.getValue(inputValue);
+        if (enumValue == null) {
+            throw new GraphQLError(`Value "${inputValue}" does not exist in "${this.name}" enum.` + didYouMeanEnumValue(this, inputValue));
+        }
+        return enumValue.value;
+    }
+    parseLiteral(valueNode, _variables) {
+        if (valueNode.kind !== Kind.ENUM) {
+            const valueStr = print1(valueNode);
+            throw new GraphQLError(`Enum "${this.name}" cannot represent non-enum value: ${valueStr}.` + didYouMeanEnumValue(this, valueStr), valueNode);
+        }
+        const enumValue = this.getValue(valueNode.value);
+        if (enumValue == null) {
+            const valueStr = print1(valueNode);
+            throw new GraphQLError(`Value "${valueStr}" does not exist in "${this.name}" enum.` + didYouMeanEnumValue(this, valueStr), valueNode);
+        }
+        return enumValue.value;
+    }
+    toConfig() {
+        const values = keyValMap(this.getValues(), (value)=>value.name, (value)=>({
+                description: value.description,
+                value: value.value,
+                deprecationReason: value.deprecationReason,
+                extensions: value.extensions,
+                astNode: value.astNode
+            }));
+        return {
+            name: this.name,
+            description: this.description,
+            values,
+            extensions: this.extensions,
+            astNode: this.astNode,
+            extensionASTNodes: this.extensionASTNodes ?? []
+        };
+    }
+    toString() {
+        return this.name;
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'GraphQLEnumType';
+    }
+}
+defineToJSON(GraphQLEnumType);
+function didYouMeanEnumValue(enumType, unknownValueStr) {
+    const allNames = enumType.getValues().map((value)=>value.name);
+    const suggestedValues = suggestionList(unknownValueStr, allNames);
+    return didYouMean('the enum value', suggestedValues);
+}
+function defineEnumValues(typeName, valueMap) {
+    devAssert(isPlainObj(valueMap), `${typeName} values must be an object with value names as keys.`);
+    return objectEntries(valueMap).map(([valueName, valueConfig])=>{
+        devAssert(isPlainObj(valueConfig), `${typeName}.${valueName} must refer to an object with a "value" key ` + `representing an internal value but got: ${inspect(valueConfig)}.`);
+        devAssert(!('isDeprecated' in valueConfig), `${typeName}.${valueName} should provide "deprecationReason" instead of "isDeprecated".`);
+        return {
+            name: valueName,
+            description: valueConfig.description,
+            value: valueConfig.value !== undefined ? valueConfig.value : valueName,
+            isDeprecated: valueConfig.deprecationReason != null,
+            deprecationReason: valueConfig.deprecationReason,
+            extensions: valueConfig.extensions && toObjMap(valueConfig.extensions),
+            astNode: valueConfig.astNode
+        };
+    });
+}
+class GraphQLInputObjectType {
+    constructor(config){
+        this.name = config.name;
+        this.description = config.description;
+        this.extensions = config.extensions && toObjMap(config.extensions);
+        this.astNode = config.astNode;
+        this.extensionASTNodes = undefineIfEmpty(config.extensionASTNodes);
+        this._fields = defineInputFieldMap.bind(undefined, config);
+        devAssert(typeof config.name === 'string', 'Must provide name.');
+    }
+    getFields() {
+        if (typeof this._fields === 'function') {
+            this._fields = this._fields();
+        }
+        return this._fields;
+    }
+    toConfig() {
+        const fields = mapValue(this.getFields(), (field)=>({
+                description: field.description,
+                type: field.type,
+                defaultValue: field.defaultValue,
+                extensions: field.extensions,
+                astNode: field.astNode
+            }));
+        return {
+            name: this.name,
+            description: this.description,
+            fields,
+            extensions: this.extensions,
+            astNode: this.astNode,
+            extensionASTNodes: this.extensionASTNodes ?? []
+        };
+    }
+    toString() {
+        return this.name;
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'GraphQLInputObjectType';
+    }
+}
+defineToJSON(GraphQLInputObjectType);
+function defineInputFieldMap(config) {
+    const fieldMap = resolveThunk(config.fields);
+    devAssert(isPlainObj(fieldMap), `${config.name} fields must be an object with field names as keys or a function which returns such an object.`);
+    return mapValue(fieldMap, (fieldConfig, fieldName)=>{
+        devAssert(!('resolve' in fieldConfig), `${config.name}.${fieldName} field has a resolve property, but Input Types cannot define resolvers.`);
+        return {
+            name: fieldName,
+            description: fieldConfig.description,
+            type: fieldConfig.type,
+            defaultValue: fieldConfig.defaultValue,
+            extensions: fieldConfig.extensions && toObjMap(fieldConfig.extensions),
+            astNode: fieldConfig.astNode
+        };
+    });
+}
+function isRequiredInputField(field) {
+    return isNonNullType(field.type) && field.defaultValue === undefined;
+}
+function isTypeSubTypeOf(schema, maybeSubType, superType) {
+    if (maybeSubType === superType) {
+        return true;
+    }
+    if (isNonNullType(superType)) {
+        if (isNonNullType(maybeSubType)) {
+            return isTypeSubTypeOf(schema, maybeSubType.ofType, superType.ofType);
+        }
+        return false;
+    }
+    if (isNonNullType(maybeSubType)) {
+        return isTypeSubTypeOf(schema, maybeSubType.ofType, superType);
+    }
+    if (isListType(superType)) {
+        if (isListType(maybeSubType)) {
+            return isTypeSubTypeOf(schema, maybeSubType.ofType, superType.ofType);
+        }
+        return false;
+    }
+    if (isListType(maybeSubType)) {
+        return false;
+    }
+    return isAbstractType(superType) && (isInterfaceType(maybeSubType) || isObjectType(maybeSubType)) && schema.isSubType(superType, maybeSubType);
+}
+function doTypesOverlap(schema, typeA, typeB) {
+    if (typeA === typeB) {
+        return true;
+    }
+    if (isAbstractType(typeA)) {
+        if (isAbstractType(typeB)) {
+            return schema.getPossibleTypes(typeA).some((type)=>schema.isSubType(typeB, type));
+        }
+        return schema.isSubType(typeA, typeB);
+    }
+    if (isAbstractType(typeB)) {
+        return schema.isSubType(typeB, typeA);
+    }
+    return false;
+}
+const isFinitePolyfill = Number.isFinite || function(value) {
+    return typeof value === 'number' && isFinite(value);
+};
+const isInteger = Number.isInteger || function(value) {
+    return typeof value === 'number' && isFinite(value) && Math.floor(value) === value;
+};
+const MIN_INT = -2147483648;
+function serializeInt(outputValue) {
+    const coercedValue = serializeObject(outputValue);
+    if (typeof coercedValue === 'boolean') {
+        return coercedValue ? 1 : 0;
+    }
+    let num = coercedValue;
+    if (typeof coercedValue === 'string' && coercedValue !== '') {
+        num = Number(coercedValue);
+    }
+    if (!isInteger(num)) {
+        throw new GraphQLError(`Int cannot represent non-integer value: ${inspect(coercedValue)}`);
+    }
+    if (num > 2147483647 || num < MIN_INT) {
+        throw new GraphQLError('Int cannot represent non 32-bit signed integer value: ' + inspect(coercedValue));
+    }
+    return num;
+}
+function coerceInt(inputValue) {
+    if (!isInteger(inputValue)) {
+        throw new GraphQLError(`Int cannot represent non-integer value: ${inspect(inputValue)}`);
+    }
+    if (inputValue > 2147483647 || inputValue < MIN_INT) {
+        throw new GraphQLError(`Int cannot represent non 32-bit signed integer value: ${inputValue}`);
+    }
+    return inputValue;
+}
+const GraphQLInt = new GraphQLScalarType({
+    name: 'Int',
+    description: 'The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1.',
+    serialize: serializeInt,
+    parseValue: coerceInt,
+    parseLiteral (valueNode) {
+        if (valueNode.kind !== Kind.INT) {
+            throw new GraphQLError(`Int cannot represent non-integer value: ${print1(valueNode)}`, valueNode);
+        }
+        const num = parseInt(valueNode.value, 10);
+        if (num > 2147483647 || num < MIN_INT) {
+            throw new GraphQLError(`Int cannot represent non 32-bit signed integer value: ${valueNode.value}`, valueNode);
+        }
+        return num;
+    }
+});
+function serializeFloat(outputValue) {
+    const coercedValue = serializeObject(outputValue);
+    if (typeof coercedValue === 'boolean') {
+        return coercedValue ? 1 : 0;
+    }
+    let num = coercedValue;
+    if (typeof coercedValue === 'string' && coercedValue !== '') {
+        num = Number(coercedValue);
+    }
+    if (!isFinitePolyfill(num)) {
+        throw new GraphQLError(`Float cannot represent non numeric value: ${inspect(coercedValue)}`);
+    }
+    return num;
+}
+function coerceFloat(inputValue) {
+    if (!isFinitePolyfill(inputValue)) {
+        throw new GraphQLError(`Float cannot represent non numeric value: ${inspect(inputValue)}`);
+    }
+    return inputValue;
+}
+const GraphQLFloat = new GraphQLScalarType({
+    name: 'Float',
+    description: 'The `Float` scalar type represents signed double-precision fractional values as specified by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point).',
+    serialize: serializeFloat,
+    parseValue: coerceFloat,
+    parseLiteral (valueNode) {
+        if (valueNode.kind !== Kind.FLOAT && valueNode.kind !== Kind.INT) {
+            throw new GraphQLError(`Float cannot represent non numeric value: ${print1(valueNode)}`, valueNode);
+        }
+        return parseFloat(valueNode.value);
+    }
+});
+function serializeObject(outputValue) {
+    if (isObjectLike(outputValue)) {
+        if (typeof outputValue.valueOf === 'function') {
+            const valueOfResult = outputValue.valueOf();
+            if (!isObjectLike(valueOfResult)) {
+                return valueOfResult;
+            }
+        }
+        if (typeof outputValue.toJSON === 'function') {
+            return outputValue.toJSON();
+        }
+    }
+    return outputValue;
+}
+function serializeString(outputValue) {
+    const coercedValue = serializeObject(outputValue);
+    if (typeof coercedValue === 'string') {
+        return coercedValue;
+    }
+    if (typeof coercedValue === 'boolean') {
+        return coercedValue ? 'true' : 'false';
+    }
+    if (isFinitePolyfill(coercedValue)) {
+        return coercedValue.toString();
+    }
+    throw new GraphQLError(`String cannot represent value: ${inspect(outputValue)}`);
+}
+function coerceString(inputValue) {
+    if (typeof inputValue !== 'string') {
+        throw new GraphQLError(`String cannot represent a non string value: ${inspect(inputValue)}`);
+    }
+    return inputValue;
+}
+const GraphQLString = new GraphQLScalarType({
+    name: 'String',
+    description: 'The `String` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.',
+    serialize: serializeString,
+    parseValue: coerceString,
+    parseLiteral (valueNode) {
+        if (valueNode.kind !== Kind.STRING) {
+            throw new GraphQLError(`String cannot represent a non string value: ${print1(valueNode)}`, valueNode);
+        }
+        return valueNode.value;
+    }
+});
+function serializeBoolean(outputValue) {
+    const coercedValue = serializeObject(outputValue);
+    if (typeof coercedValue === 'boolean') {
+        return coercedValue;
+    }
+    if (isFinitePolyfill(coercedValue)) {
+        return coercedValue !== 0;
+    }
+    throw new GraphQLError(`Boolean cannot represent a non boolean value: ${inspect(coercedValue)}`);
+}
+function coerceBoolean(inputValue) {
+    if (typeof inputValue !== 'boolean') {
+        throw new GraphQLError(`Boolean cannot represent a non boolean value: ${inspect(inputValue)}`);
+    }
+    return inputValue;
+}
+const GraphQLBoolean = new GraphQLScalarType({
+    name: 'Boolean',
+    description: 'The `Boolean` scalar type represents `true` or `false`.',
+    serialize: serializeBoolean,
+    parseValue: coerceBoolean,
+    parseLiteral (valueNode) {
+        if (valueNode.kind !== Kind.BOOLEAN) {
+            throw new GraphQLError(`Boolean cannot represent a non boolean value: ${print1(valueNode)}`, valueNode);
+        }
+        return valueNode.value;
+    }
+});
+function serializeID(outputValue) {
+    const coercedValue = serializeObject(outputValue);
+    if (typeof coercedValue === 'string') {
+        return coercedValue;
+    }
+    if (isInteger(coercedValue)) {
+        return String(coercedValue);
+    }
+    throw new GraphQLError(`ID cannot represent value: ${inspect(outputValue)}`);
+}
+function coerceID(inputValue) {
+    if (typeof inputValue === 'string') {
+        return inputValue;
+    }
+    if (isInteger(inputValue)) {
+        return inputValue.toString();
+    }
+    throw new GraphQLError(`ID cannot represent value: ${inspect(inputValue)}`);
+}
+const GraphQLID = new GraphQLScalarType({
+    name: 'ID',
+    description: 'The `ID` scalar type represents a unique identifier, often used to refetch an object or as key for a cache. The ID type appears in a JSON response as a String; however, it is not intended to be human-readable. When expected as an input type, any string (such as `"4"`) or integer (such as `4`) input value will be accepted as an ID.',
+    serialize: serializeID,
+    parseValue: coerceID,
+    parseLiteral (valueNode) {
+        if (valueNode.kind !== Kind.STRING && valueNode.kind !== Kind.INT) {
+            throw new GraphQLError('ID cannot represent a non-string and non-integer value: ' + print1(valueNode), valueNode);
+        }
+        return valueNode.value;
+    }
+});
+const specifiedScalarTypes = Object.freeze([
+    GraphQLString,
+    GraphQLInt,
+    GraphQLFloat,
+    GraphQLBoolean,
+    GraphQLID
+]);
+function isDirective(directive) {
+    return __default21(directive, GraphQLDirective);
+}
+class GraphQLDirective {
+    constructor(config){
+        this.name = config.name;
+        this.description = config.description;
+        this.locations = config.locations;
+        this.isRepeatable = config.isRepeatable ?? false;
+        this.extensions = config.extensions && toObjMap(config.extensions);
+        this.astNode = config.astNode;
+        devAssert(config.name, 'Directive must be named.');
+        devAssert(Array.isArray(config.locations), `@${config.name} locations must be an Array.`);
+        const args = config.args ?? {};
+        devAssert(isObjectLike(args) && !Array.isArray(args), `@${config.name} args must be an object with argument names as keys.`);
+        this.args = objectEntries(args).map(([argName, argConfig])=>({
+                name: argName,
+                description: argConfig.description,
+                type: argConfig.type,
+                defaultValue: argConfig.defaultValue,
+                extensions: argConfig.extensions && toObjMap(argConfig.extensions),
+                astNode: argConfig.astNode
+            }));
+    }
+    toConfig() {
+        return {
+            name: this.name,
+            description: this.description,
+            locations: this.locations,
+            args: argsToArgsConfig(this.args),
+            isRepeatable: this.isRepeatable,
+            extensions: this.extensions,
+            astNode: this.astNode
+        };
+    }
+    toString() {
+        return '@' + this.name;
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'GraphQLDirective';
+    }
+}
+defineToJSON(GraphQLDirective);
+const GraphQLIncludeDirective = new GraphQLDirective({
+    name: 'include',
+    description: 'Directs the executor to include this field or fragment only when the `if` argument is true.',
+    locations: [
+        DirectiveLocation.FIELD,
+        DirectiveLocation.FRAGMENT_SPREAD,
+        DirectiveLocation.INLINE_FRAGMENT
+    ],
+    args: {
+        if: {
+            type: GraphQLNonNull(GraphQLBoolean),
+            description: 'Included when true.'
+        }
+    }
+});
+const GraphQLSkipDirective = new GraphQLDirective({
+    name: 'skip',
+    description: 'Directs the executor to skip this field or fragment when the `if` argument is true.',
+    locations: [
+        DirectiveLocation.FIELD,
+        DirectiveLocation.FRAGMENT_SPREAD,
+        DirectiveLocation.INLINE_FRAGMENT
+    ],
+    args: {
+        if: {
+            type: GraphQLNonNull(GraphQLBoolean),
+            description: 'Skipped when true.'
+        }
+    }
+});
+const DEFAULT_DEPRECATION_REASON = 'No longer supported';
+const GraphQLDeprecatedDirective = new GraphQLDirective({
+    name: 'deprecated',
+    description: 'Marks an element of a GraphQL schema as no longer supported.',
+    locations: [
+        DirectiveLocation.FIELD_DEFINITION,
+        DirectiveLocation.ENUM_VALUE
+    ],
+    args: {
+        reason: {
+            type: GraphQLString,
+            description: 'Explains why this element was deprecated, usually also including a suggestion for how to access supported similar data. Formatted using the Markdown syntax, as specified by [CommonMark](https://commonmark.org/).',
+            defaultValue: DEFAULT_DEPRECATION_REASON
+        }
+    }
+});
+const specifiedDirectives = Object.freeze([
+    GraphQLIncludeDirective,
+    GraphQLSkipDirective,
+    GraphQLDeprecatedDirective
+]);
+const arrayFrom1 = Array.from || function(obj, mapFn, thisArg) {
+    if (obj == null) {
+        throw new TypeError('Array.from requires an array-like object - not null or undefined');
+    }
+    const iteratorMethod = obj[SYMBOL_ITERATOR];
+    if (typeof iteratorMethod === 'function') {
+        const iterator = iteratorMethod.call(obj);
+        const result = [];
+        let step;
+        for(let i = 0; !(step = iterator.next()).done; ++i){
+            result.push(mapFn.call(thisArg, step.value, i));
+            if (i > 9999999) {
+                throw new TypeError('Near-infinite iteration.');
+            }
+        }
+        return result;
+    }
+    const length = obj.length;
+    if (typeof length === 'number' && length >= 0 && length % 1 === 0) {
+        const result = [];
+        for(let i = 0; i < length; ++i){
+            if (Object.prototype.hasOwnProperty.call(obj, i)) {
+                result.push(mapFn.call(thisArg, obj[i], i));
+            }
+        }
+        return result;
+    }
+    return [];
+};
+function isCollection(obj) {
+    if (obj == null || typeof obj !== 'object') {
+        return false;
+    }
+    const length = obj.length;
+    if (typeof length === 'number' && length >= 0 && length % 1 === 0) {
+        return true;
+    }
+    return typeof obj[SYMBOL_ITERATOR] === 'function';
+}
+function astFromValue(value, type) {
+    if (isNonNullType(type)) {
+        const astValue = astFromValue(value, type.ofType);
+        if (astValue?.kind === Kind.NULL) {
+            return null;
+        }
+        return astValue;
+    }
+    if (value === null) {
+        return {
+            kind: Kind.NULL
+        };
+    }
+    if (value === undefined) {
+        return null;
+    }
+    if (isListType(type)) {
+        const itemType = type.ofType;
+        if (isCollection(value)) {
+            const valuesNodes = [];
+            for (const item of arrayFrom1(value)){
+                const itemNode = astFromValue(item, itemType);
+                if (itemNode != null) {
+                    valuesNodes.push(itemNode);
+                }
+            }
+            return {
+                kind: Kind.LIST,
+                values: valuesNodes
+            };
+        }
+        return astFromValue(value, itemType);
+    }
+    if (isInputObjectType(type)) {
+        if (!isObjectLike(value)) {
+            return null;
+        }
+        const fieldNodes = [];
+        for (const field of objectValues(type.getFields())){
+            const fieldValue = astFromValue(value[field.name], field.type);
+            if (fieldValue) {
+                fieldNodes.push({
+                    kind: Kind.OBJECT_FIELD,
+                    name: {
+                        kind: Kind.NAME,
+                        value: field.name
+                    },
+                    value: fieldValue
+                });
+            }
+        }
+        return {
+            kind: Kind.OBJECT,
+            fields: fieldNodes
+        };
+    }
+    if (isLeafType(type)) {
+        const serialized = type.serialize(value);
+        if (serialized == null) {
+            return null;
+        }
+        if (typeof serialized === 'boolean') {
+            return {
+                kind: Kind.BOOLEAN,
+                value: serialized
+            };
+        }
+        if (typeof serialized === 'number' && isFinitePolyfill(serialized)) {
+            const stringNum = String(serialized);
+            return integerStringRegExp.test(stringNum) ? {
+                kind: Kind.INT,
+                value: stringNum
+            } : {
+                kind: Kind.FLOAT,
+                value: stringNum
+            };
+        }
+        if (typeof serialized === 'string') {
+            if (isEnumType(type)) {
+                return {
+                    kind: Kind.ENUM,
+                    value: serialized
+                };
+            }
+            if (type === GraphQLID && integerStringRegExp.test(serialized)) {
+                return {
+                    kind: Kind.INT,
+                    value: serialized
+                };
+            }
+            return {
+                kind: Kind.STRING,
+                value: serialized
+            };
+        }
+        throw new TypeError(`Cannot convert value to AST: ${inspect(serialized)}.`);
+    }
+    invariant(false, 'Unexpected input type: ' + inspect(type));
+}
+const integerStringRegExp = /^-?(?:0|[1-9][0-9]*)$/;
+const __Schema = new GraphQLObjectType({
+    name: '__Schema',
+    description: 'A GraphQL Schema defines the capabilities of a GraphQL server. It exposes all available types and directives on the server, as well as the entry points for query, mutation, and subscription operations.',
+    fields: ()=>({
+            description: {
+                type: GraphQLString,
+                resolve: (schema)=>schema.description
+            },
+            types: {
+                description: 'A list of all types supported by this server.',
+                type: GraphQLNonNull(GraphQLList(GraphQLNonNull(__Type))),
+                resolve (schema) {
+                    return objectValues(schema.getTypeMap());
+                }
+            },
+            queryType: {
+                description: 'The type that query operations will be rooted at.',
+                type: GraphQLNonNull(__Type),
+                resolve: (schema)=>schema.getQueryType()
+            },
+            mutationType: {
+                description: 'If this server supports mutation, the type that mutation operations will be rooted at.',
+                type: __Type,
+                resolve: (schema)=>schema.getMutationType()
+            },
+            subscriptionType: {
+                description: 'If this server support subscription, the type that subscription operations will be rooted at.',
+                type: __Type,
+                resolve: (schema)=>schema.getSubscriptionType()
+            },
+            directives: {
+                description: 'A list of all directives supported by this server.',
+                type: GraphQLNonNull(GraphQLList(GraphQLNonNull(__Directive))),
+                resolve: (schema)=>schema.getDirectives()
+            }
+        })
+});
+const __Directive = new GraphQLObjectType({
+    name: '__Directive',
+    description: "A Directive provides a way to describe alternate runtime execution and type validation behavior in a GraphQL document.\n\nIn some cases, you need to provide options to alter GraphQL's execution behavior in ways field arguments will not suffice, such as conditionally including or skipping a field. Directives provide this by describing additional information to the executor.",
+    fields: ()=>({
+            name: {
+                type: GraphQLNonNull(GraphQLString),
+                resolve: (directive)=>directive.name
+            },
+            description: {
+                type: GraphQLString,
+                resolve: (directive)=>directive.description
+            },
+            isRepeatable: {
+                type: GraphQLNonNull(GraphQLBoolean),
+                resolve: (directive)=>directive.isRepeatable
+            },
+            locations: {
+                type: GraphQLNonNull(GraphQLList(GraphQLNonNull(__DirectiveLocation))),
+                resolve: (directive)=>directive.locations
+            },
+            args: {
+                type: GraphQLNonNull(GraphQLList(GraphQLNonNull(__InputValue))),
+                resolve: (directive)=>directive.args
+            }
+        })
+});
+const __DirectiveLocation = new GraphQLEnumType({
+    name: '__DirectiveLocation',
+    description: 'A Directive can be adjacent to many parts of the GraphQL language, a __DirectiveLocation describes one such possible adjacencies.',
+    values: {
+        QUERY: {
+            value: DirectiveLocation.QUERY,
+            description: 'Location adjacent to a query operation.'
+        },
+        MUTATION: {
+            value: DirectiveLocation.MUTATION,
+            description: 'Location adjacent to a mutation operation.'
+        },
+        SUBSCRIPTION: {
+            value: DirectiveLocation.SUBSCRIPTION,
+            description: 'Location adjacent to a subscription operation.'
+        },
+        FIELD: {
+            value: DirectiveLocation.FIELD,
+            description: 'Location adjacent to a field.'
+        },
+        FRAGMENT_DEFINITION: {
+            value: DirectiveLocation.FRAGMENT_DEFINITION,
+            description: 'Location adjacent to a fragment definition.'
+        },
+        FRAGMENT_SPREAD: {
+            value: DirectiveLocation.FRAGMENT_SPREAD,
+            description: 'Location adjacent to a fragment spread.'
+        },
+        INLINE_FRAGMENT: {
+            value: DirectiveLocation.INLINE_FRAGMENT,
+            description: 'Location adjacent to an inline fragment.'
+        },
+        VARIABLE_DEFINITION: {
+            value: DirectiveLocation.VARIABLE_DEFINITION,
+            description: 'Location adjacent to a variable definition.'
+        },
+        SCHEMA: {
+            value: DirectiveLocation.SCHEMA,
+            description: 'Location adjacent to a schema definition.'
+        },
+        SCALAR: {
+            value: DirectiveLocation.SCALAR,
+            description: 'Location adjacent to a scalar definition.'
+        },
+        OBJECT: {
+            value: DirectiveLocation.OBJECT,
+            description: 'Location adjacent to an object type definition.'
+        },
+        FIELD_DEFINITION: {
+            value: DirectiveLocation.FIELD_DEFINITION,
+            description: 'Location adjacent to a field definition.'
+        },
+        ARGUMENT_DEFINITION: {
+            value: DirectiveLocation.ARGUMENT_DEFINITION,
+            description: 'Location adjacent to an argument definition.'
+        },
+        INTERFACE: {
+            value: DirectiveLocation.INTERFACE,
+            description: 'Location adjacent to an interface definition.'
+        },
+        UNION: {
+            value: DirectiveLocation.UNION,
+            description: 'Location adjacent to a union definition.'
+        },
+        ENUM: {
+            value: DirectiveLocation.ENUM,
+            description: 'Location adjacent to an enum definition.'
+        },
+        ENUM_VALUE: {
+            value: DirectiveLocation.ENUM_VALUE,
+            description: 'Location adjacent to an enum value definition.'
+        },
+        INPUT_OBJECT: {
+            value: DirectiveLocation.INPUT_OBJECT,
+            description: 'Location adjacent to an input object type definition.'
+        },
+        INPUT_FIELD_DEFINITION: {
+            value: DirectiveLocation.INPUT_FIELD_DEFINITION,
+            description: 'Location adjacent to an input object field definition.'
+        }
+    }
+});
+const __Type = new GraphQLObjectType({
+    name: '__Type',
+    description: 'The fundamental unit of any GraphQL Schema is the type. There are many kinds of types in GraphQL as represented by the `__TypeKind` enum.\n\nDepending on the kind of a type, certain fields describe information about that type. Scalar types provide no information beyond a name and description, while Enum types provide their values. Object and Interface types provide the fields they describe. Abstract types, Union and Interface, provide the Object types possible at runtime. List and NonNull types compose other types.',
+    fields: ()=>({
+            kind: {
+                type: GraphQLNonNull(__TypeKind),
+                resolve (type) {
+                    if (isScalarType(type)) {
+                        return TypeKind.SCALAR;
+                    }
+                    if (isObjectType(type)) {
+                        return TypeKind.OBJECT;
+                    }
+                    if (isInterfaceType(type)) {
+                        return TypeKind.INTERFACE;
+                    }
+                    if (isUnionType(type)) {
+                        return TypeKind.UNION;
+                    }
+                    if (isEnumType(type)) {
+                        return TypeKind.ENUM;
+                    }
+                    if (isInputObjectType(type)) {
+                        return TypeKind.INPUT_OBJECT;
+                    }
+                    if (isListType(type)) {
+                        return TypeKind.LIST;
+                    }
+                    if (isNonNullType(type)) {
+                        return TypeKind.NON_NULL;
+                    }
+                    invariant(false, `Unexpected type: "${inspect(type)}".`);
+                }
+            },
+            name: {
+                type: GraphQLString,
+                resolve: (type)=>type.name !== undefined ? type.name : undefined
+            },
+            description: {
+                type: GraphQLString,
+                resolve: (type)=>type.description !== undefined ? type.description : undefined
+            },
+            fields: {
+                type: GraphQLList(GraphQLNonNull(__Field)),
+                args: {
+                    includeDeprecated: {
+                        type: GraphQLBoolean,
+                        defaultValue: false
+                    }
+                },
+                resolve (type, { includeDeprecated }) {
+                    if (isObjectType(type) || isInterfaceType(type)) {
+                        let fields = objectValues(type.getFields());
+                        if (!includeDeprecated) {
+                            fields = fields.filter((field)=>!field.isDeprecated);
+                        }
+                        return fields;
+                    }
+                    return null;
+                }
+            },
+            interfaces: {
+                type: GraphQLList(GraphQLNonNull(__Type)),
+                resolve (type) {
+                    if (isObjectType(type) || isInterfaceType(type)) {
+                        return type.getInterfaces();
+                    }
+                }
+            },
+            possibleTypes: {
+                type: GraphQLList(GraphQLNonNull(__Type)),
+                resolve (type, _args, _context, { schema }) {
+                    if (isAbstractType(type)) {
+                        return schema.getPossibleTypes(type);
+                    }
+                }
+            },
+            enumValues: {
+                type: GraphQLList(GraphQLNonNull(__EnumValue)),
+                args: {
+                    includeDeprecated: {
+                        type: GraphQLBoolean,
+                        defaultValue: false
+                    }
+                },
+                resolve (type, { includeDeprecated }) {
+                    if (isEnumType(type)) {
+                        let values = type.getValues();
+                        if (!includeDeprecated) {
+                            values = values.filter((value)=>!value.isDeprecated);
+                        }
+                        return values;
+                    }
+                }
+            },
+            inputFields: {
+                type: GraphQLList(GraphQLNonNull(__InputValue)),
+                resolve (type) {
+                    if (isInputObjectType(type)) {
+                        return objectValues(type.getFields());
+                    }
+                }
+            },
+            ofType: {
+                type: __Type,
+                resolve: (type)=>type.ofType !== undefined ? type.ofType : undefined
+            }
+        })
+});
+const __Field = new GraphQLObjectType({
+    name: '__Field',
+    description: 'Object and Interface types are described by a list of Fields, each of which has a name, potentially a list of arguments, and a return type.',
+    fields: ()=>({
+            name: {
+                type: GraphQLNonNull(GraphQLString),
+                resolve: (field)=>field.name
+            },
+            description: {
+                type: GraphQLString,
+                resolve: (field)=>field.description
+            },
+            args: {
+                type: GraphQLNonNull(GraphQLList(GraphQLNonNull(__InputValue))),
+                resolve: (field)=>field.args
+            },
+            type: {
+                type: GraphQLNonNull(__Type),
+                resolve: (field)=>field.type
+            },
+            isDeprecated: {
+                type: GraphQLNonNull(GraphQLBoolean),
+                resolve: (field)=>field.isDeprecated
+            },
+            deprecationReason: {
+                type: GraphQLString,
+                resolve: (field)=>field.deprecationReason
+            }
+        })
+});
+const __InputValue = new GraphQLObjectType({
+    name: '__InputValue',
+    description: 'Arguments provided to Fields or Directives and the input fields of an InputObject are represented as Input Values which describe their type and optionally a default value.',
+    fields: ()=>({
+            name: {
+                type: GraphQLNonNull(GraphQLString),
+                resolve: (inputValue)=>inputValue.name
+            },
+            description: {
+                type: GraphQLString,
+                resolve: (inputValue)=>inputValue.description
+            },
+            type: {
+                type: GraphQLNonNull(__Type),
+                resolve: (inputValue)=>inputValue.type
+            },
+            defaultValue: {
+                type: GraphQLString,
+                description: 'A GraphQL-formatted string representing the default value for this input value.',
+                resolve (inputValue) {
+                    const { type, defaultValue } = inputValue;
+                    const valueAST = astFromValue(defaultValue, type);
+                    return valueAST ? print1(valueAST) : null;
+                }
+            }
+        })
+});
+const __EnumValue = new GraphQLObjectType({
+    name: '__EnumValue',
+    description: 'One possible value for a given Enum. Enum values are unique values, not a placeholder for a string or numeric value. However an Enum value is returned in a JSON response as a string.',
+    fields: ()=>({
+            name: {
+                type: GraphQLNonNull(GraphQLString),
+                resolve: (enumValue)=>enumValue.name
+            },
+            description: {
+                type: GraphQLString,
+                resolve: (enumValue)=>enumValue.description
+            },
+            isDeprecated: {
+                type: GraphQLNonNull(GraphQLBoolean),
+                resolve: (enumValue)=>enumValue.isDeprecated
+            },
+            deprecationReason: {
+                type: GraphQLString,
+                resolve: (enumValue)=>enumValue.deprecationReason
+            }
+        })
+});
+const TypeKind = Object.freeze({
+    SCALAR: 'SCALAR',
+    OBJECT: 'OBJECT',
+    INTERFACE: 'INTERFACE',
+    UNION: 'UNION',
+    ENUM: 'ENUM',
+    INPUT_OBJECT: 'INPUT_OBJECT',
+    LIST: 'LIST',
+    NON_NULL: 'NON_NULL'
+});
+const __TypeKind = new GraphQLEnumType({
+    name: '__TypeKind',
+    description: 'An enum describing what kind of type a given `__Type` is.',
+    values: {
+        SCALAR: {
+            value: TypeKind.SCALAR,
+            description: 'Indicates this type is a scalar.'
+        },
+        OBJECT: {
+            value: TypeKind.OBJECT,
+            description: 'Indicates this type is an object. `fields` and `interfaces` are valid fields.'
+        },
+        INTERFACE: {
+            value: TypeKind.INTERFACE,
+            description: 'Indicates this type is an interface. `fields`, `interfaces`, and `possibleTypes` are valid fields.'
+        },
+        UNION: {
+            value: TypeKind.UNION,
+            description: 'Indicates this type is a union. `possibleTypes` is a valid field.'
+        },
+        ENUM: {
+            value: TypeKind.ENUM,
+            description: 'Indicates this type is an enum. `enumValues` is a valid field.'
+        },
+        INPUT_OBJECT: {
+            value: TypeKind.INPUT_OBJECT,
+            description: 'Indicates this type is an input object. `inputFields` is a valid field.'
+        },
+        LIST: {
+            value: TypeKind.LIST,
+            description: 'Indicates this type is a list. `ofType` is a valid field.'
+        },
+        NON_NULL: {
+            value: TypeKind.NON_NULL,
+            description: 'Indicates this type is a non-null. `ofType` is a valid field.'
+        }
+    }
+});
+({
+    name: '__schema',
+    type: GraphQLNonNull(__Schema),
+    description: 'Access the current type schema of this server.',
+    args: [],
+    resolve: (_source, _args, _context, { schema })=>schema,
+    isDeprecated: false,
+    deprecationReason: undefined,
+    extensions: undefined,
+    astNode: undefined
+});
+({
+    name: '__type',
+    type: __Type,
+    description: 'Request the type information of a single type.',
+    args: [
+        {
+            name: 'name',
+            description: undefined,
+            type: GraphQLNonNull(GraphQLString),
+            defaultValue: undefined,
+            extensions: undefined,
+            astNode: undefined
+        }
+    ],
+    resolve: (_source, { name }, _context, { schema })=>schema.getType(name),
+    isDeprecated: false,
+    deprecationReason: undefined,
+    extensions: undefined,
+    astNode: undefined
+});
+({
+    name: '__typename',
+    type: GraphQLNonNull(GraphQLString),
+    description: 'The name of the current Object type at runtime.',
+    args: [],
+    resolve: (_source, _args, _context, { parentType })=>parentType.name,
+    isDeprecated: false,
+    deprecationReason: undefined,
+    extensions: undefined,
+    astNode: undefined
+});
+const introspectionTypes = Object.freeze([
+    __Schema,
+    __Directive,
+    __DirectiveLocation,
+    __Type,
+    __Field,
+    __InputValue,
+    __EnumValue,
+    __TypeKind
+]);
+class GraphQLSchema {
+    constructor(config){
+        this.__validationErrors = config.assumeValid === true ? [] : undefined;
+        devAssert(isObjectLike(config), 'Must provide configuration object.');
+        devAssert(!config.types || Array.isArray(config.types), `"types" must be Array if provided but got: ${inspect(config.types)}.`);
+        devAssert(!config.directives || Array.isArray(config.directives), '"directives" must be Array if provided but got: ' + `${inspect(config.directives)}.`);
+        this.description = config.description;
+        this.extensions = config.extensions && toObjMap(config.extensions);
+        this.astNode = config.astNode;
+        this.extensionASTNodes = config.extensionASTNodes;
+        this._queryType = config.query;
+        this._mutationType = config.mutation;
+        this._subscriptionType = config.subscription;
+        this._directives = config.directives ?? specifiedDirectives;
+        const allReferencedTypes = new Set(config.types);
+        if (config.types != null) {
+            for (const type of config.types){
+                allReferencedTypes.delete(type);
+                collectReferencedTypes(type, allReferencedTypes);
+            }
+        }
+        if (this._queryType != null) {
+            collectReferencedTypes(this._queryType, allReferencedTypes);
+        }
+        if (this._mutationType != null) {
+            collectReferencedTypes(this._mutationType, allReferencedTypes);
+        }
+        if (this._subscriptionType != null) {
+            collectReferencedTypes(this._subscriptionType, allReferencedTypes);
+        }
+        for (const directive of this._directives){
+            if (isDirective(directive)) {
+                for (const arg of directive.args){
+                    collectReferencedTypes(arg.type, allReferencedTypes);
+                }
+            }
+        }
+        collectReferencedTypes(__Schema, allReferencedTypes);
+        this._typeMap = Object.create(null);
+        this._subTypeMap = Object.create(null);
+        this._implementationsMap = Object.create(null);
+        for (const namedType of arrayFrom1(allReferencedTypes)){
+            if (namedType == null) {
+                continue;
+            }
+            const typeName = namedType.name;
+            devAssert(typeName, 'One of the provided types for building the Schema is missing a name.');
+            if (this._typeMap[typeName] !== undefined) {
+                throw new Error(`Schema must contain uniquely named types but contains multiple types named "${typeName}".`);
+            }
+            this._typeMap[typeName] = namedType;
+            if (isInterfaceType(namedType)) {
+                for (const iface of namedType.getInterfaces()){
+                    if (isInterfaceType(iface)) {
+                        let implementations = this._implementationsMap[iface.name];
+                        if (implementations === undefined) {
+                            implementations = this._implementationsMap[iface.name] = {
+                                objects: [],
+                                interfaces: []
+                            };
+                        }
+                        implementations.interfaces.push(namedType);
+                    }
+                }
+            } else if (isObjectType(namedType)) {
+                for (const iface of namedType.getInterfaces()){
+                    if (isInterfaceType(iface)) {
+                        let implementations = this._implementationsMap[iface.name];
+                        if (implementations === undefined) {
+                            implementations = this._implementationsMap[iface.name] = {
+                                objects: [],
+                                interfaces: []
+                            };
+                        }
+                        implementations.objects.push(namedType);
+                    }
+                }
+            }
+        }
+    }
+    getQueryType() {
+        return this._queryType;
+    }
+    getMutationType() {
+        return this._mutationType;
+    }
+    getSubscriptionType() {
+        return this._subscriptionType;
+    }
+    getTypeMap() {
+        return this._typeMap;
+    }
+    getType(name) {
+        return this.getTypeMap()[name];
+    }
+    getPossibleTypes(abstractType) {
+        return isUnionType(abstractType) ? abstractType.getTypes() : this.getImplementations(abstractType).objects;
+    }
+    getImplementations(interfaceType) {
+        const implementations = this._implementationsMap[interfaceType.name];
+        return implementations ?? {
+            objects: [],
+            interfaces: []
+        };
+    }
+    isPossibleType(abstractType, possibleType) {
+        return this.isSubType(abstractType, possibleType);
+    }
+    isSubType(abstractType, maybeSubType) {
+        let map = this._subTypeMap[abstractType.name];
+        if (map === undefined) {
+            map = Object.create(null);
+            if (isUnionType(abstractType)) {
+                for (const type of abstractType.getTypes()){
+                    map[type.name] = true;
+                }
+            } else {
+                const implementations = this.getImplementations(abstractType);
+                for (const type of implementations.objects){
+                    map[type.name] = true;
+                }
+                for (const type of implementations.interfaces){
+                    map[type.name] = true;
+                }
+            }
+            this._subTypeMap[abstractType.name] = map;
+        }
+        return map[maybeSubType.name] !== undefined;
+    }
+    getDirectives() {
+        return this._directives;
+    }
+    getDirective(name) {
+        return find(this.getDirectives(), (directive)=>directive.name === name);
+    }
+    toConfig() {
+        return {
+            description: this.description,
+            query: this.getQueryType(),
+            mutation: this.getMutationType(),
+            subscription: this.getSubscriptionType(),
+            types: objectValues(this.getTypeMap()),
+            directives: this.getDirectives().slice(),
+            extensions: this.extensions,
+            astNode: this.astNode,
+            extensionASTNodes: this.extensionASTNodes ?? [],
+            assumeValid: this.__validationErrors !== undefined
+        };
+    }
+    get [SYMBOL_TO_STRING_TAG]() {
+        return 'GraphQLSchema';
+    }
+}
+function collectReferencedTypes(type, typeSet) {
+    const namedType = getNamedType(type);
+    if (!typeSet.has(namedType)) {
+        typeSet.add(namedType);
+        if (isUnionType(namedType)) {
+            for (const memberType of namedType.getTypes()){
+                collectReferencedTypes(memberType, typeSet);
+            }
+        } else if (isObjectType(namedType) || isInterfaceType(namedType)) {
+            for (const interfaceType of namedType.getInterfaces()){
+                collectReferencedTypes(interfaceType, typeSet);
+            }
+            for (const field of objectValues(namedType.getFields())){
+                collectReferencedTypes(field.type, typeSet);
+                for (const arg of field.args){
+                    collectReferencedTypes(arg.type, typeSet);
+                }
+            }
+        } else if (isInputObjectType(namedType)) {
+            for (const field of objectValues(namedType.getFields())){
+                collectReferencedTypes(field.type, typeSet);
+            }
+        }
+    }
+    return typeSet;
+}
+function typeFromAST(schema, typeNode) {
+    let innerType;
+    if (typeNode.kind === Kind.LIST_TYPE) {
+        innerType = typeFromAST(schema, typeNode.type);
+        return innerType && GraphQLList(innerType);
+    }
+    if (typeNode.kind === Kind.NON_NULL_TYPE) {
+        innerType = typeFromAST(schema, typeNode.type);
+        return innerType && GraphQLNonNull(innerType);
+    }
+    if (typeNode.kind === Kind.NAMED_TYPE) {
+        return schema.getType(typeNode.name.value);
+    }
+    invariant(false, 'Unexpected type node: ' + inspect(typeNode));
+}
+function isExecutableDefinitionNode(node) {
+    return node.kind === Kind.OPERATION_DEFINITION || node.kind === Kind.FRAGMENT_DEFINITION;
+}
+function isTypeSystemDefinitionNode(node) {
+    return node.kind === Kind.SCHEMA_DEFINITION || isTypeDefinitionNode(node) || node.kind === Kind.DIRECTIVE_DEFINITION;
+}
+function isTypeDefinitionNode(node) {
+    return node.kind === Kind.SCALAR_TYPE_DEFINITION || node.kind === Kind.OBJECT_TYPE_DEFINITION || node.kind === Kind.INTERFACE_TYPE_DEFINITION || node.kind === Kind.UNION_TYPE_DEFINITION || node.kind === Kind.ENUM_TYPE_DEFINITION || node.kind === Kind.INPUT_OBJECT_TYPE_DEFINITION;
+}
+function isTypeSystemExtensionNode(node) {
+    return node.kind === Kind.SCHEMA_EXTENSION || isTypeExtensionNode(node);
+}
+function isTypeExtensionNode(node) {
+    return node.kind === Kind.SCALAR_TYPE_EXTENSION || node.kind === Kind.OBJECT_TYPE_EXTENSION || node.kind === Kind.INTERFACE_TYPE_EXTENSION || node.kind === Kind.UNION_TYPE_EXTENSION || node.kind === Kind.ENUM_TYPE_EXTENSION || node.kind === Kind.INPUT_OBJECT_TYPE_EXTENSION;
+}
+function ExecutableDefinitionsRule(context) {
+    return {
+        Document (node) {
+            for (const definition of node.definitions){
+                if (!isExecutableDefinitionNode(definition)) {
+                    const defName = definition.kind === Kind.SCHEMA_DEFINITION || definition.kind === Kind.SCHEMA_EXTENSION ? 'schema' : '"' + definition.name.value + '"';
+                    context.reportError(new GraphQLError(`The ${defName} definition is not executable.`, definition));
+                }
+            }
+            return false;
+        }
+    };
+}
+function UniqueOperationNamesRule(context) {
+    const knownOperationNames = Object.create(null);
+    return {
+        OperationDefinition (node) {
+            const operationName = node.name;
+            if (operationName) {
+                if (knownOperationNames[operationName.value]) {
+                    context.reportError(new GraphQLError(`There can be only one operation named "${operationName.value}".`, [
+                        knownOperationNames[operationName.value],
+                        operationName
+                    ]));
+                } else {
+                    knownOperationNames[operationName.value] = operationName;
+                }
+            }
+            return false;
+        },
+        FragmentDefinition: ()=>false
+    };
+}
+function LoneAnonymousOperationRule(context) {
+    let operationCount = 0;
+    return {
+        Document (node) {
+            operationCount = node.definitions.filter((definition)=>definition.kind === Kind.OPERATION_DEFINITION).length;
+        },
+        OperationDefinition (node) {
+            if (!node.name && operationCount > 1) {
+                context.reportError(new GraphQLError('This anonymous operation must be the only defined operation.', node));
+            }
+        }
+    };
+}
+function SingleFieldSubscriptionsRule(context) {
+    return {
+        OperationDefinition (node) {
+            if (node.operation === 'subscription') {
+                if (node.selectionSet.selections.length !== 1) {
+                    context.reportError(new GraphQLError(node.name ? `Subscription "${node.name.value}" must select only one top level field.` : 'Anonymous Subscription must select only one top level field.', node.selectionSet.selections.slice(1)));
+                }
+            }
+        }
+    };
+}
+function KnownTypeNamesRule(context) {
+    const schema = context.getSchema();
+    const existingTypesMap = schema ? schema.getTypeMap() : Object.create(null);
+    const definedTypes = Object.create(null);
+    for (const def of context.getDocument().definitions){
+        if (isTypeDefinitionNode(def)) {
+            definedTypes[def.name.value] = true;
+        }
+    }
+    const typeNames = Object.keys(existingTypesMap).concat(Object.keys(definedTypes));
+    return {
+        NamedType (node, _1, parent, _2, ancestors) {
+            const typeName = node.name.value;
+            if (!existingTypesMap[typeName] && !definedTypes[typeName]) {
+                const definitionNode = ancestors[2] ?? parent;
+                const isSDL = definitionNode != null && isSDLNode(definitionNode);
+                if (isSDL && isSpecifiedScalarName(typeName)) {
+                    return;
+                }
+                const suggestedTypes = suggestionList(typeName, isSDL ? specifiedScalarsNames.concat(typeNames) : typeNames);
+                context.reportError(new GraphQLError(`Unknown type "${typeName}".` + didYouMean(suggestedTypes), node));
+            }
+        }
+    };
+}
+const specifiedScalarsNames = specifiedScalarTypes.map((type)=>type.name);
+function isSpecifiedScalarName(typeName) {
+    return specifiedScalarsNames.indexOf(typeName) !== -1;
+}
+function isSDLNode(value) {
+    return !Array.isArray(value) && (isTypeSystemDefinitionNode(value) || isTypeSystemExtensionNode(value));
+}
+function FragmentsOnCompositeTypesRule(context) {
+    return {
+        InlineFragment (node) {
+            const typeCondition = node.typeCondition;
+            if (typeCondition) {
+                const type = typeFromAST(context.getSchema(), typeCondition);
+                if (type && !isCompositeType(type)) {
+                    const typeStr = print1(typeCondition);
+                    context.reportError(new GraphQLError(`Fragment cannot condition on non composite type "${typeStr}".`, typeCondition));
+                }
+            }
+        },
+        FragmentDefinition (node) {
+            const type = typeFromAST(context.getSchema(), node.typeCondition);
+            if (type && !isCompositeType(type)) {
+                const typeStr = print1(node.typeCondition);
+                context.reportError(new GraphQLError(`Fragment "${node.name.value}" cannot condition on non composite type "${typeStr}".`, node.typeCondition));
+            }
+        }
+    };
+}
+function VariablesAreInputTypesRule(context) {
+    return {
+        VariableDefinition (node) {
+            const type = typeFromAST(context.getSchema(), node.type);
+            if (type && !isInputType(type)) {
+                const variableName = node.variable.name.value;
+                const typeName = print1(node.type);
+                context.reportError(new GraphQLError(`Variable "$${variableName}" cannot be non-input type "${typeName}".`, node.type));
+            }
+        }
+    };
+}
+function ScalarLeafsRule(context) {
+    return {
+        Field (node) {
+            const type = context.getType();
+            const selectionSet = node.selectionSet;
+            if (type) {
+                if (isLeafType(getNamedType(type))) {
+                    if (selectionSet) {
+                        const fieldName = node.name.value;
+                        const typeStr = inspect(type);
+                        context.reportError(new GraphQLError(`Field "${fieldName}" must not have a selection since type "${typeStr}" has no subfields.`, selectionSet));
+                    }
+                } else if (!selectionSet) {
+                    const fieldName = node.name.value;
+                    const typeStr = inspect(type);
+                    context.reportError(new GraphQLError(`Field "${fieldName}" of type "${typeStr}" must have a selection of subfields. Did you mean "${fieldName} { ... }"?`, node));
+                }
+            }
+        }
+    };
+}
+function FieldsOnCorrectTypeRule(context) {
+    return {
+        Field (node) {
+            const type = context.getParentType();
+            if (type) {
+                const fieldDef = context.getFieldDef();
+                if (!fieldDef) {
+                    const schema = context.getSchema();
+                    const fieldName = node.name.value;
+                    let suggestion = didYouMean('to use an inline fragment on', getSuggestedTypeNames(schema, type, fieldName));
+                    if (suggestion === '') {
+                        suggestion = didYouMean(getSuggestedFieldNames(type, fieldName));
+                    }
+                    context.reportError(new GraphQLError(`Cannot query field "${fieldName}" on type "${type.name}".` + suggestion, node));
+                }
+            }
+        }
+    };
+}
+function getSuggestedTypeNames(schema, type, fieldName) {
+    if (!isAbstractType(type)) {
+        return [];
+    }
+    const suggestedTypes = new Set();
+    const usageCount = Object.create(null);
+    for (const possibleType of schema.getPossibleTypes(type)){
+        if (!possibleType.getFields()[fieldName]) {
+            continue;
+        }
+        suggestedTypes.add(possibleType);
+        usageCount[possibleType.name] = 1;
+        for (const possibleInterface of possibleType.getInterfaces()){
+            if (!possibleInterface.getFields()[fieldName]) {
+                continue;
+            }
+            suggestedTypes.add(possibleInterface);
+            usageCount[possibleInterface.name] = (usageCount[possibleInterface.name] ?? 0) + 1;
+        }
+    }
+    return arrayFrom1(suggestedTypes).sort((typeA, typeB)=>{
+        const usageCountDiff = usageCount[typeB.name] - usageCount[typeA.name];
+        if (usageCountDiff !== 0) {
+            return usageCountDiff;
+        }
+        if (isInterfaceType(typeA) && schema.isSubType(typeA, typeB)) {
+            return -1;
+        }
+        if (isInterfaceType(typeB) && schema.isSubType(typeB, typeA)) {
+            return 1;
+        }
+        return typeA.name.localeCompare(typeB.name);
+    }).map((x)=>x.name);
+}
+function getSuggestedFieldNames(type, fieldName) {
+    if (isObjectType(type) || isInterfaceType(type)) {
+        const possibleFieldNames = Object.keys(type.getFields());
+        return suggestionList(fieldName, possibleFieldNames);
+    }
+    return [];
+}
+function UniqueFragmentNamesRule(context) {
+    const knownFragmentNames = Object.create(null);
+    return {
+        OperationDefinition: ()=>false,
+        FragmentDefinition (node) {
+            const fragmentName = node.name.value;
+            if (knownFragmentNames[fragmentName]) {
+                context.reportError(new GraphQLError(`There can be only one fragment named "${fragmentName}".`, [
+                    knownFragmentNames[fragmentName],
+                    node.name
+                ]));
+            } else {
+                knownFragmentNames[fragmentName] = node.name;
+            }
+            return false;
+        }
+    };
+}
+function KnownFragmentNamesRule(context) {
+    return {
+        FragmentSpread (node) {
+            const fragmentName = node.name.value;
+            const fragment = context.getFragment(fragmentName);
+            if (!fragment) {
+                context.reportError(new GraphQLError(`Unknown fragment "${fragmentName}".`, node.name));
+            }
+        }
+    };
+}
+function NoUnusedFragmentsRule(context) {
+    const operationDefs = [];
+    const fragmentDefs = [];
+    return {
+        OperationDefinition (node) {
+            operationDefs.push(node);
+            return false;
+        },
+        FragmentDefinition (node) {
+            fragmentDefs.push(node);
+            return false;
+        },
+        Document: {
+            leave () {
+                const fragmentNameUsed = Object.create(null);
+                for (const operation of operationDefs){
+                    for (const fragment of context.getRecursivelyReferencedFragments(operation)){
+                        fragmentNameUsed[fragment.name.value] = true;
+                    }
+                }
+                for (const fragmentDef of fragmentDefs){
+                    const fragName = fragmentDef.name.value;
+                    if (fragmentNameUsed[fragName] !== true) {
+                        context.reportError(new GraphQLError(`Fragment "${fragName}" is never used.`, fragmentDef));
+                    }
+                }
+            }
+        }
+    };
+}
+function PossibleFragmentSpreadsRule(context) {
+    return {
+        InlineFragment (node) {
+            const fragType = context.getType();
+            const parentType = context.getParentType();
+            if (isCompositeType(fragType) && isCompositeType(parentType) && !doTypesOverlap(context.getSchema(), fragType, parentType)) {
+                const parentTypeStr = inspect(parentType);
+                const fragTypeStr = inspect(fragType);
+                context.reportError(new GraphQLError(`Fragment cannot be spread here as objects of type "${parentTypeStr}" can never be of type "${fragTypeStr}".`, node));
+            }
+        },
+        FragmentSpread (node) {
+            const fragName = node.name.value;
+            const fragType = getFragmentType(context, fragName);
+            const parentType = context.getParentType();
+            if (fragType && parentType && !doTypesOverlap(context.getSchema(), fragType, parentType)) {
+                const parentTypeStr = inspect(parentType);
+                const fragTypeStr = inspect(fragType);
+                context.reportError(new GraphQLError(`Fragment "${fragName}" cannot be spread here as objects of type "${parentTypeStr}" can never be of type "${fragTypeStr}".`, node));
+            }
+        }
+    };
+}
+function getFragmentType(context, name) {
+    const frag = context.getFragment(name);
+    if (frag) {
+        const type = typeFromAST(context.getSchema(), frag.typeCondition);
+        if (isCompositeType(type)) {
+            return type;
+        }
+    }
+}
+function NoFragmentCyclesRule(context) {
+    const visitedFrags = Object.create(null);
+    const spreadPath = [];
+    const spreadPathIndexByName = Object.create(null);
+    return {
+        OperationDefinition: ()=>false,
+        FragmentDefinition (node) {
+            detectCycleRecursive(node);
+            return false;
+        }
+    };
+    function detectCycleRecursive(fragment) {
+        if (visitedFrags[fragment.name.value]) {
+            return;
+        }
+        const fragmentName = fragment.name.value;
+        visitedFrags[fragmentName] = true;
+        const spreadNodes = context.getFragmentSpreads(fragment.selectionSet);
+        if (spreadNodes.length === 0) {
+            return;
+        }
+        spreadPathIndexByName[fragmentName] = spreadPath.length;
+        for (const spreadNode of spreadNodes){
+            const spreadName = spreadNode.name.value;
+            const cycleIndex = spreadPathIndexByName[spreadName];
+            spreadPath.push(spreadNode);
+            if (cycleIndex === undefined) {
+                const spreadFragment = context.getFragment(spreadName);
+                if (spreadFragment) {
+                    detectCycleRecursive(spreadFragment);
+                }
+            } else {
+                const cyclePath = spreadPath.slice(cycleIndex);
+                const viaPath = cyclePath.slice(0, -1).map((s)=>'"' + s.name.value + '"').join(', ');
+                context.reportError(new GraphQLError(`Cannot spread fragment "${spreadName}" within itself` + (viaPath !== '' ? ` via ${viaPath}.` : '.'), cyclePath));
+            }
+            spreadPath.pop();
+        }
+        spreadPathIndexByName[fragmentName] = undefined;
+    }
+}
+function UniqueVariableNamesRule(context) {
+    let knownVariableNames = Object.create(null);
+    return {
+        OperationDefinition () {
+            knownVariableNames = Object.create(null);
+        },
+        VariableDefinition (node) {
+            const variableName = node.variable.name.value;
+            if (knownVariableNames[variableName]) {
+                context.reportError(new GraphQLError(`There can be only one variable named "$${variableName}".`, [
+                    knownVariableNames[variableName],
+                    node.variable.name
+                ]));
+            } else {
+                knownVariableNames[variableName] = node.variable.name;
+            }
+        }
+    };
+}
+function NoUndefinedVariablesRule(context) {
+    let variableNameDefined = Object.create(null);
+    return {
+        OperationDefinition: {
+            enter () {
+                variableNameDefined = Object.create(null);
+            },
+            leave (operation) {
+                const usages = context.getRecursiveVariableUsages(operation);
+                for (const { node } of usages){
+                    const varName = node.name.value;
+                    if (variableNameDefined[varName] !== true) {
+                        context.reportError(new GraphQLError(operation.name ? `Variable "$${varName}" is not defined by operation "${operation.name.value}".` : `Variable "$${varName}" is not defined.`, [
+                            node,
+                            operation
+                        ]));
+                    }
+                }
+            }
+        },
+        VariableDefinition (node) {
+            variableNameDefined[node.variable.name.value] = true;
+        }
+    };
+}
+function NoUnusedVariablesRule(context) {
+    let variableDefs = [];
+    return {
+        OperationDefinition: {
+            enter () {
+                variableDefs = [];
+            },
+            leave (operation) {
+                const variableNameUsed = Object.create(null);
+                const usages = context.getRecursiveVariableUsages(operation);
+                for (const { node } of usages){
+                    variableNameUsed[node.name.value] = true;
+                }
+                for (const variableDef of variableDefs){
+                    const variableName = variableDef.variable.name.value;
+                    if (variableNameUsed[variableName] !== true) {
+                        context.reportError(new GraphQLError(operation.name ? `Variable "$${variableName}" is never used in operation "${operation.name.value}".` : `Variable "$${variableName}" is never used.`, variableDef));
+                    }
+                }
+            }
+        },
+        VariableDefinition (def) {
+            variableDefs.push(def);
+        }
+    };
+}
+function KnownDirectivesRule(context) {
+    const locationsMap = Object.create(null);
+    const schema = context.getSchema();
+    const definedDirectives = schema ? schema.getDirectives() : specifiedDirectives;
+    for (const directive of definedDirectives){
+        locationsMap[directive.name] = directive.locations;
+    }
+    const astDefinitions = context.getDocument().definitions;
+    for (const def of astDefinitions){
+        if (def.kind === Kind.DIRECTIVE_DEFINITION) {
+            locationsMap[def.name.value] = def.locations.map((name)=>name.value);
+        }
+    }
+    return {
+        Directive (node, _key, _parent, _path, ancestors) {
+            const name = node.name.value;
+            const locations = locationsMap[name];
+            if (!locations) {
+                context.reportError(new GraphQLError(`Unknown directive "@${name}".`, node));
+                return;
+            }
+            const candidateLocation = getDirectiveLocationForASTPath(ancestors);
+            if (candidateLocation && locations.indexOf(candidateLocation) === -1) {
+                context.reportError(new GraphQLError(`Directive "@${name}" may not be used on ${candidateLocation}.`, node));
+            }
+        }
+    };
+}
+function getDirectiveLocationForASTPath(ancestors) {
+    const appliedTo = ancestors[ancestors.length - 1];
+    invariant(!Array.isArray(appliedTo));
+    switch(appliedTo.kind){
+        case Kind.OPERATION_DEFINITION:
+            return getDirectiveLocationForOperation(appliedTo.operation);
+        case Kind.FIELD:
+            return DirectiveLocation.FIELD;
+        case Kind.FRAGMENT_SPREAD:
+            return DirectiveLocation.FRAGMENT_SPREAD;
+        case Kind.INLINE_FRAGMENT:
+            return DirectiveLocation.INLINE_FRAGMENT;
+        case Kind.FRAGMENT_DEFINITION:
+            return DirectiveLocation.FRAGMENT_DEFINITION;
+        case Kind.VARIABLE_DEFINITION:
+            return DirectiveLocation.VARIABLE_DEFINITION;
+        case Kind.SCHEMA_DEFINITION:
+        case Kind.SCHEMA_EXTENSION:
+            return DirectiveLocation.SCHEMA;
+        case Kind.SCALAR_TYPE_DEFINITION:
+        case Kind.SCALAR_TYPE_EXTENSION:
+            return DirectiveLocation.SCALAR;
+        case Kind.OBJECT_TYPE_DEFINITION:
+        case Kind.OBJECT_TYPE_EXTENSION:
+            return DirectiveLocation.OBJECT;
+        case Kind.FIELD_DEFINITION:
+            return DirectiveLocation.FIELD_DEFINITION;
+        case Kind.INTERFACE_TYPE_DEFINITION:
+        case Kind.INTERFACE_TYPE_EXTENSION:
+            return DirectiveLocation.INTERFACE;
+        case Kind.UNION_TYPE_DEFINITION:
+        case Kind.UNION_TYPE_EXTENSION:
+            return DirectiveLocation.UNION;
+        case Kind.ENUM_TYPE_DEFINITION:
+        case Kind.ENUM_TYPE_EXTENSION:
+            return DirectiveLocation.ENUM;
+        case Kind.ENUM_VALUE_DEFINITION:
+            return DirectiveLocation.ENUM_VALUE;
+        case Kind.INPUT_OBJECT_TYPE_DEFINITION:
+        case Kind.INPUT_OBJECT_TYPE_EXTENSION:
+            return DirectiveLocation.INPUT_OBJECT;
+        case Kind.INPUT_VALUE_DEFINITION:
+            {
+                const parentNode = ancestors[ancestors.length - 3];
+                return parentNode.kind === Kind.INPUT_OBJECT_TYPE_DEFINITION ? DirectiveLocation.INPUT_FIELD_DEFINITION : DirectiveLocation.ARGUMENT_DEFINITION;
+            }
+    }
+}
+function getDirectiveLocationForOperation(operation) {
+    switch(operation){
+        case 'query':
+            return DirectiveLocation.QUERY;
+        case 'mutation':
+            return DirectiveLocation.MUTATION;
+        case 'subscription':
+            return DirectiveLocation.SUBSCRIPTION;
+    }
+    invariant(false, 'Unexpected operation: ' + inspect(operation));
+}
+function UniqueDirectivesPerLocationRule(context) {
+    const uniqueDirectiveMap = Object.create(null);
+    const schema = context.getSchema();
+    const definedDirectives = schema ? schema.getDirectives() : specifiedDirectives;
+    for (const directive of definedDirectives){
+        uniqueDirectiveMap[directive.name] = !directive.isRepeatable;
+    }
+    const astDefinitions = context.getDocument().definitions;
+    for (const def of astDefinitions){
+        if (def.kind === Kind.DIRECTIVE_DEFINITION) {
+            uniqueDirectiveMap[def.name.value] = !def.repeatable;
+        }
+    }
+    const schemaDirectives = Object.create(null);
+    const typeDirectivesMap = Object.create(null);
+    return {
+        enter (node) {
+            if (node.directives == null) {
+                return;
+            }
+            let seenDirectives;
+            if (node.kind === Kind.SCHEMA_DEFINITION || node.kind === Kind.SCHEMA_EXTENSION) {
+                seenDirectives = schemaDirectives;
+            } else if (isTypeDefinitionNode(node) || isTypeExtensionNode(node)) {
+                const typeName = node.name.value;
+                seenDirectives = typeDirectivesMap[typeName];
+                if (seenDirectives === undefined) {
+                    typeDirectivesMap[typeName] = seenDirectives = Object.create(null);
+                }
+            } else {
+                seenDirectives = Object.create(null);
+            }
+            for (const directive of node.directives){
+                const directiveName = directive.name.value;
+                if (uniqueDirectiveMap[directiveName]) {
+                    if (seenDirectives[directiveName]) {
+                        context.reportError(new GraphQLError(`The directive "@${directiveName}" can only be used once at this location.`, [
+                            seenDirectives[directiveName],
+                            directive
+                        ]));
+                    } else {
+                        seenDirectives[directiveName] = directive;
+                    }
+                }
+            }
+        }
+    };
+}
+function KnownArgumentNamesRule(context) {
+    return {
+        ...KnownArgumentNamesOnDirectivesRule(context),
+        Argument (argNode) {
+            const argDef = context.getArgument();
+            const fieldDef = context.getFieldDef();
+            const parentType = context.getParentType();
+            if (!argDef && fieldDef && parentType) {
+                const argName = argNode.name.value;
+                const knownArgsNames = fieldDef.args.map((arg)=>arg.name);
+                const suggestions = suggestionList(argName, knownArgsNames);
+                context.reportError(new GraphQLError(`Unknown argument "${argName}" on field "${parentType.name}.${fieldDef.name}".` + didYouMean(suggestions), argNode));
+            }
+        }
+    };
+}
+function KnownArgumentNamesOnDirectivesRule(context) {
+    const directiveArgs = Object.create(null);
+    const schema = context.getSchema();
+    const definedDirectives = schema ? schema.getDirectives() : specifiedDirectives;
+    for (const directive of definedDirectives){
+        directiveArgs[directive.name] = directive.args.map((arg)=>arg.name);
+    }
+    const astDefinitions = context.getDocument().definitions;
+    for (const def of astDefinitions){
+        if (def.kind === Kind.DIRECTIVE_DEFINITION) {
+            const argsNodes = def.arguments ?? [];
+            directiveArgs[def.name.value] = argsNodes.map((arg)=>arg.name.value);
+        }
+    }
+    return {
+        Directive (directiveNode) {
+            const directiveName = directiveNode.name.value;
+            const knownArgs = directiveArgs[directiveName];
+            if (directiveNode.arguments && knownArgs) {
+                for (const argNode of directiveNode.arguments){
+                    const argName = argNode.name.value;
+                    if (knownArgs.indexOf(argName) === -1) {
+                        const suggestions = suggestionList(argName, knownArgs);
+                        context.reportError(new GraphQLError(`Unknown argument "${argName}" on directive "@${directiveName}".` + didYouMean(suggestions), argNode));
+                    }
+                }
+            }
+            return false;
+        }
+    };
+}
+function UniqueArgumentNamesRule(context) {
+    let knownArgNames = Object.create(null);
+    return {
+        Field () {
+            knownArgNames = Object.create(null);
+        },
+        Directive () {
+            knownArgNames = Object.create(null);
+        },
+        Argument (node) {
+            const argName = node.name.value;
+            if (knownArgNames[argName]) {
+                context.reportError(new GraphQLError(`There can be only one argument named "${argName}".`, [
+                    knownArgNames[argName],
+                    node.name
+                ]));
+            } else {
+                knownArgNames[argName] = node.name;
+            }
+            return false;
+        }
+    };
+}
+function ValuesOfCorrectTypeRule(context) {
+    return {
+        ListValue (node) {
+            const type = getNullableType(context.getParentInputType());
+            if (!isListType(type)) {
+                isValidValueNode(context, node);
+                return false;
+            }
+        },
+        ObjectValue (node) {
+            const type = getNamedType(context.getInputType());
+            if (!isInputObjectType(type)) {
+                isValidValueNode(context, node);
+                return false;
+            }
+            const fieldNodeMap = keyMap(node.fields, (field)=>field.name.value);
+            for (const fieldDef of objectValues(type.getFields())){
+                const fieldNode = fieldNodeMap[fieldDef.name];
+                if (!fieldNode && isRequiredInputField(fieldDef)) {
+                    const typeStr = inspect(fieldDef.type);
+                    context.reportError(new GraphQLError(`Field "${type.name}.${fieldDef.name}" of required type "${typeStr}" was not provided.`, node));
+                }
+            }
+        },
+        ObjectField (node) {
+            const parentType = getNamedType(context.getParentInputType());
+            const fieldType = context.getInputType();
+            if (!fieldType && isInputObjectType(parentType)) {
+                const suggestions = suggestionList(node.name.value, Object.keys(parentType.getFields()));
+                context.reportError(new GraphQLError(`Field "${node.name.value}" is not defined by type "${parentType.name}".` + didYouMean(suggestions), node));
+            }
+        },
+        NullValue (node) {
+            const type = context.getInputType();
+            if (isNonNullType(type)) {
+                context.reportError(new GraphQLError(`Expected value of type "${inspect(type)}", found ${print1(node)}.`, node));
+            }
+        },
+        EnumValue: (node)=>isValidValueNode(context, node),
+        IntValue: (node)=>isValidValueNode(context, node),
+        FloatValue: (node)=>isValidValueNode(context, node),
+        StringValue: (node)=>isValidValueNode(context, node),
+        BooleanValue: (node)=>isValidValueNode(context, node)
+    };
+}
+function isValidValueNode(context, node) {
+    const locationType = context.getInputType();
+    if (!locationType) {
+        return;
+    }
+    const type = getNamedType(locationType);
+    if (!isLeafType(type)) {
+        const typeStr = inspect(locationType);
+        context.reportError(new GraphQLError(`Expected value of type "${typeStr}", found ${print1(node)}.`, node));
+        return;
+    }
+    try {
+        const parseResult = type.parseLiteral(node, undefined);
+        if (parseResult === undefined) {
+            const typeStr = inspect(locationType);
+            context.reportError(new GraphQLError(`Expected value of type "${typeStr}", found ${print1(node)}.`, node));
+        }
+    } catch (error) {
+        const typeStr = inspect(locationType);
+        if (error instanceof GraphQLError) {
+            context.reportError(error);
+        } else {
+            context.reportError(new GraphQLError(`Expected value of type "${typeStr}", found ${print1(node)}; ` + error.message, node, undefined, undefined, undefined, error));
+        }
+    }
+}
+function ProvidedRequiredArgumentsRule(context) {
+    return {
+        ...ProvidedRequiredArgumentsOnDirectivesRule(context),
+        Field: {
+            leave (fieldNode) {
+                const fieldDef = context.getFieldDef();
+                if (!fieldDef) {
+                    return false;
+                }
+                const argNodes = fieldNode.arguments ?? [];
+                const argNodeMap = keyMap(argNodes, (arg)=>arg.name.value);
+                for (const argDef of fieldDef.args){
+                    const argNode = argNodeMap[argDef.name];
+                    if (!argNode && isRequiredArgument(argDef)) {
+                        const argTypeStr = inspect(argDef.type);
+                        context.reportError(new GraphQLError(`Field "${fieldDef.name}" argument "${argDef.name}" of type "${argTypeStr}" is required, but it was not provided.`, fieldNode));
+                    }
+                }
+            }
+        }
+    };
+}
+function ProvidedRequiredArgumentsOnDirectivesRule(context) {
+    const requiredArgsMap = Object.create(null);
+    const schema = context.getSchema();
+    const definedDirectives = schema ? schema.getDirectives() : specifiedDirectives;
+    for (const directive of definedDirectives){
+        requiredArgsMap[directive.name] = keyMap(directive.args.filter(isRequiredArgument), (arg)=>arg.name);
+    }
+    const astDefinitions = context.getDocument().definitions;
+    for (const def of astDefinitions){
+        if (def.kind === Kind.DIRECTIVE_DEFINITION) {
+            const argNodes = def.arguments ?? [];
+            requiredArgsMap[def.name.value] = keyMap(argNodes.filter(isRequiredArgumentNode), (arg)=>arg.name.value);
+        }
+    }
+    return {
+        Directive: {
+            leave (directiveNode) {
+                const directiveName = directiveNode.name.value;
+                const requiredArgs = requiredArgsMap[directiveName];
+                if (requiredArgs) {
+                    const argNodes = directiveNode.arguments ?? [];
+                    const argNodeMap = keyMap(argNodes, (arg)=>arg.name.value);
+                    for (const argName of Object.keys(requiredArgs)){
+                        if (!argNodeMap[argName]) {
+                            const argType = requiredArgs[argName].type;
+                            const argTypeStr = isType(argType) ? inspect(argType) : print1(argType);
+                            context.reportError(new GraphQLError(`Directive "@${directiveName}" argument "${argName}" of type "${argTypeStr}" is required, but it was not provided.`, directiveNode));
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+function isRequiredArgumentNode(arg) {
+    return arg.type.kind === Kind.NON_NULL_TYPE && arg.defaultValue == null;
+}
+function VariablesInAllowedPositionRule(context) {
+    let varDefMap = Object.create(null);
+    return {
+        OperationDefinition: {
+            enter () {
+                varDefMap = Object.create(null);
+            },
+            leave (operation) {
+                const usages = context.getRecursiveVariableUsages(operation);
+                for (const { node, type, defaultValue } of usages){
+                    const varName = node.name.value;
+                    const varDef = varDefMap[varName];
+                    if (varDef && type) {
+                        const schema = context.getSchema();
+                        const varType = typeFromAST(schema, varDef.type);
+                        if (varType && !allowedVariableUsage(schema, varType, varDef.defaultValue, type, defaultValue)) {
+                            const varTypeStr = inspect(varType);
+                            const typeStr = inspect(type);
+                            context.reportError(new GraphQLError(`Variable "$${varName}" of type "${varTypeStr}" used in position expecting type "${typeStr}".`, [
+                                varDef,
+                                node
+                            ]));
+                        }
+                    }
+                }
+            }
+        },
+        VariableDefinition (node) {
+            varDefMap[node.variable.name.value] = node;
+        }
+    };
+}
+function allowedVariableUsage(schema, varType, varDefaultValue, locationType, locationDefaultValue) {
+    if (isNonNullType(locationType) && !isNonNullType(varType)) {
+        const hasNonNullVariableDefaultValue = varDefaultValue != null && varDefaultValue.kind !== Kind.NULL;
+        const hasLocationDefaultValue = locationDefaultValue !== undefined;
+        if (!hasNonNullVariableDefaultValue && !hasLocationDefaultValue) {
+            return false;
+        }
+        const nullableLocationType = locationType.ofType;
+        return isTypeSubTypeOf(schema, varType, nullableLocationType);
+    }
+    return isTypeSubTypeOf(schema, varType, locationType);
+}
+function reasonMessage(reason) {
+    if (Array.isArray(reason)) {
+        return reason.map(([responseName, subReason])=>`subfields "${responseName}" conflict because ` + reasonMessage(subReason)).join(' and ');
+    }
+    return reason;
+}
+function OverlappingFieldsCanBeMergedRule(context) {
+    const comparedFragmentPairs = new PairSet();
+    const cachedFieldsAndFragmentNames = new Map();
+    return {
+        SelectionSet (selectionSet) {
+            const conflicts = findConflictsWithinSelectionSet(context, cachedFieldsAndFragmentNames, comparedFragmentPairs, context.getParentType(), selectionSet);
+            for (const [[responseName, reason], fields1, fields2] of conflicts){
+                const reasonMsg = reasonMessage(reason);
+                context.reportError(new GraphQLError(`Fields "${responseName}" conflict because ${reasonMsg}. Use different aliases on the fields to fetch both if this was intentional.`, fields1.concat(fields2)));
+            }
+        }
+    };
+}
+function findConflictsWithinSelectionSet(context, cachedFieldsAndFragmentNames, comparedFragmentPairs, parentType, selectionSet) {
+    const conflicts = [];
+    const [fieldMap, fragmentNames] = getFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, parentType, selectionSet);
+    collectConflictsWithin(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, fieldMap);
+    if (fragmentNames.length !== 0) {
+        for(let i = 0; i < fragmentNames.length; i++){
+            collectConflictsBetweenFieldsAndFragment(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, false, fieldMap, fragmentNames[i]);
+            for(let j = i + 1; j < fragmentNames.length; j++){
+                collectConflictsBetweenFragments(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, false, fragmentNames[i], fragmentNames[j]);
+            }
+        }
+    }
+    return conflicts;
+}
+function collectConflictsBetweenFieldsAndFragment(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fieldMap, fragmentName) {
+    const fragment = context.getFragment(fragmentName);
+    if (!fragment) {
+        return;
+    }
+    const [fieldMap2, fragmentNames2] = getReferencedFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, fragment);
+    if (fieldMap === fieldMap2) {
+        return;
+    }
+    collectConflictsBetween(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fieldMap, fieldMap2);
+    for(let i = 0; i < fragmentNames2.length; i++){
+        collectConflictsBetweenFieldsAndFragment(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fieldMap, fragmentNames2[i]);
+    }
+}
+function collectConflictsBetweenFragments(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fragmentName1, fragmentName2) {
+    if (fragmentName1 === fragmentName2) {
+        return;
+    }
+    if (comparedFragmentPairs.has(fragmentName1, fragmentName2, areMutuallyExclusive)) {
+        return;
+    }
+    comparedFragmentPairs.add(fragmentName1, fragmentName2, areMutuallyExclusive);
+    const fragment1 = context.getFragment(fragmentName1);
+    const fragment2 = context.getFragment(fragmentName2);
+    if (!fragment1 || !fragment2) {
+        return;
+    }
+    const [fieldMap1, fragmentNames1] = getReferencedFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, fragment1);
+    const [fieldMap2, fragmentNames2] = getReferencedFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, fragment2);
+    collectConflictsBetween(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fieldMap1, fieldMap2);
+    for(let j = 0; j < fragmentNames2.length; j++){
+        collectConflictsBetweenFragments(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fragmentName1, fragmentNames2[j]);
+    }
+    for(let i = 0; i < fragmentNames1.length; i++){
+        collectConflictsBetweenFragments(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fragmentNames1[i], fragmentName2);
+    }
+}
+function findConflictsBetweenSubSelectionSets(context, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, parentType1, selectionSet1, parentType2, selectionSet2) {
+    const conflicts = [];
+    const [fieldMap1, fragmentNames1] = getFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, parentType1, selectionSet1);
+    const [fieldMap2, fragmentNames2] = getFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, parentType2, selectionSet2);
+    collectConflictsBetween(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fieldMap1, fieldMap2);
+    if (fragmentNames2.length !== 0) {
+        for(let j = 0; j < fragmentNames2.length; j++){
+            collectConflictsBetweenFieldsAndFragment(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fieldMap1, fragmentNames2[j]);
+        }
+    }
+    if (fragmentNames1.length !== 0) {
+        for(let i = 0; i < fragmentNames1.length; i++){
+            collectConflictsBetweenFieldsAndFragment(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fieldMap2, fragmentNames1[i]);
+        }
+    }
+    for(let i = 0; i < fragmentNames1.length; i++){
+        for(let j = 0; j < fragmentNames2.length; j++){
+            collectConflictsBetweenFragments(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, fragmentNames1[i], fragmentNames2[j]);
+        }
+    }
+    return conflicts;
+}
+function collectConflictsWithin(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, fieldMap) {
+    for (const [responseName, fields] of objectEntries(fieldMap)){
+        if (fields.length > 1) {
+            for(let i = 0; i < fields.length; i++){
+                for(let j = i + 1; j < fields.length; j++){
+                    const conflict = findConflict(context, cachedFieldsAndFragmentNames, comparedFragmentPairs, false, responseName, fields[i], fields[j]);
+                    if (conflict) {
+                        conflicts.push(conflict);
+                    }
+                }
+            }
+        }
+    }
+}
+function collectConflictsBetween(context, conflicts, cachedFieldsAndFragmentNames, comparedFragmentPairs, parentFieldsAreMutuallyExclusive, fieldMap1, fieldMap2) {
+    for (const responseName of Object.keys(fieldMap1)){
+        const fields2 = fieldMap2[responseName];
+        if (fields2) {
+            const fields1 = fieldMap1[responseName];
+            for(let i = 0; i < fields1.length; i++){
+                for(let j = 0; j < fields2.length; j++){
+                    const conflict = findConflict(context, cachedFieldsAndFragmentNames, comparedFragmentPairs, parentFieldsAreMutuallyExclusive, responseName, fields1[i], fields2[j]);
+                    if (conflict) {
+                        conflicts.push(conflict);
+                    }
+                }
+            }
+        }
+    }
+}
+function findConflict(context, cachedFieldsAndFragmentNames, comparedFragmentPairs, parentFieldsAreMutuallyExclusive, responseName, field1, field2) {
+    const [parentType1, node1, def1] = field1;
+    const [parentType2, node2, def2] = field2;
+    const areMutuallyExclusive = parentFieldsAreMutuallyExclusive || parentType1 !== parentType2 && isObjectType(parentType1) && isObjectType(parentType2);
+    if (!areMutuallyExclusive) {
+        const name1 = node1.name.value;
+        const name2 = node2.name.value;
+        if (name1 !== name2) {
+            return [
+                [
+                    responseName,
+                    `"${name1}" and "${name2}" are different fields`
+                ],
+                [
+                    node1
+                ],
+                [
+                    node2
+                ]
+            ];
+        }
+        const args1 = node1.arguments ?? [];
+        const args2 = node2.arguments ?? [];
+        if (!sameArguments(args1, args2)) {
+            return [
+                [
+                    responseName,
+                    'they have differing arguments'
+                ],
+                [
+                    node1
+                ],
+                [
+                    node2
+                ]
+            ];
+        }
+    }
+    const type1 = def1?.type;
+    const type2 = def2?.type;
+    if (type1 && type2 && doTypesConflict(type1, type2)) {
+        return [
+            [
+                responseName,
+                `they return conflicting types "${inspect(type1)}" and "${inspect(type2)}"`
+            ],
+            [
+                node1
+            ],
+            [
+                node2
+            ]
+        ];
+    }
+    const selectionSet1 = node1.selectionSet;
+    const selectionSet2 = node2.selectionSet;
+    if (selectionSet1 && selectionSet2) {
+        const conflicts = findConflictsBetweenSubSelectionSets(context, cachedFieldsAndFragmentNames, comparedFragmentPairs, areMutuallyExclusive, getNamedType(type1), selectionSet1, getNamedType(type2), selectionSet2);
+        return subfieldConflicts(conflicts, responseName, node1, node2);
+    }
+}
+function sameArguments(arguments1, arguments2) {
+    if (arguments1.length !== arguments2.length) {
+        return false;
+    }
+    return arguments1.every((argument1)=>{
+        const argument2 = find(arguments2, (argument)=>argument.name.value === argument1.name.value);
+        if (!argument2) {
+            return false;
+        }
+        return sameValue(argument1.value, argument2.value);
+    });
+}
+function sameValue(value1, value2) {
+    return print1(value1) === print1(value2);
+}
+function doTypesConflict(type1, type2) {
+    if (isListType(type1)) {
+        return isListType(type2) ? doTypesConflict(type1.ofType, type2.ofType) : true;
+    }
+    if (isListType(type2)) {
+        return true;
+    }
+    if (isNonNullType(type1)) {
+        return isNonNullType(type2) ? doTypesConflict(type1.ofType, type2.ofType) : true;
+    }
+    if (isNonNullType(type2)) {
+        return true;
+    }
+    if (isLeafType(type1) || isLeafType(type2)) {
+        return type1 !== type2;
+    }
+    return false;
+}
+function getFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, parentType, selectionSet) {
+    let cached = cachedFieldsAndFragmentNames.get(selectionSet);
+    if (!cached) {
+        const nodeAndDefs = Object.create(null);
+        const fragmentNames = Object.create(null);
+        _collectFieldsAndFragmentNames(context, parentType, selectionSet, nodeAndDefs, fragmentNames);
+        cached = [
+            nodeAndDefs,
+            Object.keys(fragmentNames)
+        ];
+        cachedFieldsAndFragmentNames.set(selectionSet, cached);
+    }
+    return cached;
+}
+function getReferencedFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, fragment) {
+    const cached = cachedFieldsAndFragmentNames.get(fragment.selectionSet);
+    if (cached) {
+        return cached;
+    }
+    const fragmentType = typeFromAST(context.getSchema(), fragment.typeCondition);
+    return getFieldsAndFragmentNames(context, cachedFieldsAndFragmentNames, fragmentType, fragment.selectionSet);
+}
+function _collectFieldsAndFragmentNames(context, parentType, selectionSet, nodeAndDefs, fragmentNames) {
+    for (const selection of selectionSet.selections){
+        switch(selection.kind){
+            case Kind.FIELD:
+                {
+                    const fieldName = selection.name.value;
+                    let fieldDef;
+                    if (isObjectType(parentType) || isInterfaceType(parentType)) {
+                        fieldDef = parentType.getFields()[fieldName];
+                    }
+                    const responseName = selection.alias ? selection.alias.value : fieldName;
+                    if (!nodeAndDefs[responseName]) {
+                        nodeAndDefs[responseName] = [];
+                    }
+                    nodeAndDefs[responseName].push([
+                        parentType,
+                        selection,
+                        fieldDef
+                    ]);
+                    break;
+                }
+            case Kind.FRAGMENT_SPREAD:
+                fragmentNames[selection.name.value] = true;
+                break;
+            case Kind.INLINE_FRAGMENT:
+                {
+                    const typeCondition = selection.typeCondition;
+                    const inlineFragmentType = typeCondition ? typeFromAST(context.getSchema(), typeCondition) : parentType;
+                    _collectFieldsAndFragmentNames(context, inlineFragmentType, selection.selectionSet, nodeAndDefs, fragmentNames);
+                    break;
+                }
+        }
+    }
+}
+function subfieldConflicts(conflicts, responseName, node1, node2) {
+    if (conflicts.length > 0) {
+        return [
+            [
+                responseName,
+                conflicts.map(([reason])=>reason)
+            ],
+            conflicts.reduce((allFields, [, fields1])=>allFields.concat(fields1), [
+                node1
+            ]),
+            conflicts.reduce((allFields, [, , fields2])=>allFields.concat(fields2), [
+                node2
+            ])
+        ];
+    }
+}
+class PairSet {
+    constructor(){
+        this._data = Object.create(null);
+    }
+    has(a, b, areMutuallyExclusive) {
+        const first = this._data[a];
+        const result = first && first[b];
+        if (result === undefined) {
+            return false;
+        }
+        if (areMutuallyExclusive === false) {
+            return result === false;
+        }
+        return true;
+    }
+    add(a, b, areMutuallyExclusive) {
+        _pairSetAdd(this._data, a, b, areMutuallyExclusive);
+        _pairSetAdd(this._data, b, a, areMutuallyExclusive);
+    }
+}
+function _pairSetAdd(data, a, b, areMutuallyExclusive) {
+    let map = data[a];
+    if (!map) {
+        map = Object.create(null);
+        data[a] = map;
+    }
+    map[b] = areMutuallyExclusive;
+}
+function UniqueInputFieldNamesRule(context) {
+    const knownNameStack = [];
+    let knownNames = Object.create(null);
+    return {
+        ObjectValue: {
+            enter () {
+                knownNameStack.push(knownNames);
+                knownNames = Object.create(null);
+            },
+            leave () {
+                knownNames = knownNameStack.pop();
+            }
+        },
+        ObjectField (node) {
+            const fieldName = node.name.value;
+            if (knownNames[fieldName]) {
+                context.reportError(new GraphQLError(`There can be only one input field named "${fieldName}".`, [
+                    knownNames[fieldName],
+                    node.name
+                ]));
+            } else {
+                knownNames[fieldName] = node.name;
+            }
+        }
+    };
+}
+function LoneSchemaDefinitionRule(context) {
+    const oldSchema = context.getSchema();
+    const alreadyDefined = oldSchema?.astNode ?? oldSchema?.getQueryType() ?? oldSchema?.getMutationType() ?? oldSchema?.getSubscriptionType();
+    let schemaDefinitionsCount = 0;
+    return {
+        SchemaDefinition (node) {
+            if (alreadyDefined) {
+                context.reportError(new GraphQLError('Cannot define a new schema within a schema extension.', node));
+                return;
+            }
+            if (schemaDefinitionsCount > 0) {
+                context.reportError(new GraphQLError('Must provide only one schema definition.', node));
+            }
+            ++schemaDefinitionsCount;
+        }
+    };
+}
+function UniqueOperationTypesRule(context) {
+    const schema = context.getSchema();
+    const definedOperationTypes = Object.create(null);
+    const existingOperationTypes = schema ? {
+        query: schema.getQueryType(),
+        mutation: schema.getMutationType(),
+        subscription: schema.getSubscriptionType()
+    } : {};
+    return {
+        SchemaDefinition: checkOperationTypes,
+        SchemaExtension: checkOperationTypes
+    };
+    function checkOperationTypes(node) {
+        const operationTypesNodes = node.operationTypes ?? [];
+        for (const operationType of operationTypesNodes){
+            const operation = operationType.operation;
+            const alreadyDefinedOperationType = definedOperationTypes[operation];
+            if (existingOperationTypes[operation]) {
+                context.reportError(new GraphQLError(`Type for ${operation} already defined in the schema. It cannot be redefined.`, operationType));
+            } else if (alreadyDefinedOperationType) {
+                context.reportError(new GraphQLError(`There can be only one ${operation} type in schema.`, [
+                    alreadyDefinedOperationType,
+                    operationType
+                ]));
+            } else {
+                definedOperationTypes[operation] = operationType;
+            }
+        }
+        return false;
+    }
+}
+function UniqueTypeNamesRule(context) {
+    const knownTypeNames = Object.create(null);
+    const schema = context.getSchema();
+    return {
+        ScalarTypeDefinition: checkTypeName,
+        ObjectTypeDefinition: checkTypeName,
+        InterfaceTypeDefinition: checkTypeName,
+        UnionTypeDefinition: checkTypeName,
+        EnumTypeDefinition: checkTypeName,
+        InputObjectTypeDefinition: checkTypeName
+    };
+    function checkTypeName(node) {
+        const typeName = node.name.value;
+        if (schema?.getType(typeName)) {
+            context.reportError(new GraphQLError(`Type "${typeName}" already exists in the schema. It cannot also be defined in this type definition.`, node.name));
+            return;
+        }
+        if (knownTypeNames[typeName]) {
+            context.reportError(new GraphQLError(`There can be only one type named "${typeName}".`, [
+                knownTypeNames[typeName],
+                node.name
+            ]));
+        } else {
+            knownTypeNames[typeName] = node.name;
+        }
+        return false;
+    }
+}
+function UniqueEnumValueNamesRule(context) {
+    const schema = context.getSchema();
+    const existingTypeMap = schema ? schema.getTypeMap() : Object.create(null);
+    const knownValueNames = Object.create(null);
+    return {
+        EnumTypeDefinition: checkValueUniqueness,
+        EnumTypeExtension: checkValueUniqueness
+    };
+    function checkValueUniqueness(node) {
+        const typeName = node.name.value;
+        if (!knownValueNames[typeName]) {
+            knownValueNames[typeName] = Object.create(null);
+        }
+        const valueNodes = node.values ?? [];
+        const valueNames = knownValueNames[typeName];
+        for (const valueDef of valueNodes){
+            const valueName = valueDef.name.value;
+            const existingType = existingTypeMap[typeName];
+            if (isEnumType(existingType) && existingType.getValue(valueName)) {
+                context.reportError(new GraphQLError(`Enum value "${typeName}.${valueName}" already exists in the schema. It cannot also be defined in this type extension.`, valueDef.name));
+            } else if (valueNames[valueName]) {
+                context.reportError(new GraphQLError(`Enum value "${typeName}.${valueName}" can only be defined once.`, [
+                    valueNames[valueName],
+                    valueDef.name
+                ]));
+            } else {
+                valueNames[valueName] = valueDef.name;
+            }
+        }
+        return false;
+    }
+}
+function UniqueFieldDefinitionNamesRule(context) {
+    const schema = context.getSchema();
+    const existingTypeMap = schema ? schema.getTypeMap() : Object.create(null);
+    const knownFieldNames = Object.create(null);
+    return {
+        InputObjectTypeDefinition: checkFieldUniqueness,
+        InputObjectTypeExtension: checkFieldUniqueness,
+        InterfaceTypeDefinition: checkFieldUniqueness,
+        InterfaceTypeExtension: checkFieldUniqueness,
+        ObjectTypeDefinition: checkFieldUniqueness,
+        ObjectTypeExtension: checkFieldUniqueness
+    };
+    function checkFieldUniqueness(node) {
+        const typeName = node.name.value;
+        if (!knownFieldNames[typeName]) {
+            knownFieldNames[typeName] = Object.create(null);
+        }
+        const fieldNodes = node.fields ?? [];
+        const fieldNames = knownFieldNames[typeName];
+        for (const fieldDef of fieldNodes){
+            const fieldName = fieldDef.name.value;
+            if (hasField(existingTypeMap[typeName], fieldName)) {
+                context.reportError(new GraphQLError(`Field "${typeName}.${fieldName}" already exists in the schema. It cannot also be defined in this type extension.`, fieldDef.name));
+            } else if (fieldNames[fieldName]) {
+                context.reportError(new GraphQLError(`Field "${typeName}.${fieldName}" can only be defined once.`, [
+                    fieldNames[fieldName],
+                    fieldDef.name
+                ]));
+            } else {
+                fieldNames[fieldName] = fieldDef.name;
+            }
+        }
+        return false;
+    }
+}
+function hasField(type, fieldName) {
+    if (isObjectType(type) || isInterfaceType(type) || isInputObjectType(type)) {
+        return type.getFields()[fieldName];
+    }
+    return false;
+}
+function UniqueDirectiveNamesRule(context) {
+    const knownDirectiveNames = Object.create(null);
+    const schema = context.getSchema();
+    return {
+        DirectiveDefinition (node) {
+            const directiveName = node.name.value;
+            if (schema?.getDirective(directiveName)) {
+                context.reportError(new GraphQLError(`Directive "@${directiveName}" already exists in the schema. It cannot be redefined.`, node.name));
+                return;
+            }
+            if (knownDirectiveNames[directiveName]) {
+                context.reportError(new GraphQLError(`There can be only one directive named "@${directiveName}".`, [
+                    knownDirectiveNames[directiveName],
+                    node.name
+                ]));
+            } else {
+                knownDirectiveNames[directiveName] = node.name;
+            }
+            return false;
+        }
+    };
+}
+function PossibleTypeExtensionsRule(context) {
+    const schema = context.getSchema();
+    const definedTypes = Object.create(null);
+    for (const def of context.getDocument().definitions){
+        if (isTypeDefinitionNode(def)) {
+            definedTypes[def.name.value] = def;
+        }
+    }
+    return {
+        ScalarTypeExtension: checkExtension,
+        ObjectTypeExtension: checkExtension,
+        InterfaceTypeExtension: checkExtension,
+        UnionTypeExtension: checkExtension,
+        EnumTypeExtension: checkExtension,
+        InputObjectTypeExtension: checkExtension
+    };
+    function checkExtension(node) {
+        const typeName = node.name.value;
+        const defNode = definedTypes[typeName];
+        const existingType = schema?.getType(typeName);
+        let expectedKind;
+        if (defNode) {
+            expectedKind = defKindToExtKind[defNode.kind];
+        } else if (existingType) {
+            expectedKind = typeToExtKind(existingType);
+        }
+        if (expectedKind) {
+            if (expectedKind !== node.kind) {
+                const kindStr = extensionKindToTypeName(node.kind);
+                context.reportError(new GraphQLError(`Cannot extend non-${kindStr} type "${typeName}".`, defNode ? [
+                    defNode,
+                    node
+                ] : node));
+            }
+        } else {
+            let allTypeNames = Object.keys(definedTypes);
+            if (schema) {
+                allTypeNames = allTypeNames.concat(Object.keys(schema.getTypeMap()));
+            }
+            const suggestedTypes = suggestionList(typeName, allTypeNames);
+            context.reportError(new GraphQLError(`Cannot extend type "${typeName}" because it is not defined.` + didYouMean(suggestedTypes), node.name));
+        }
+    }
+}
+const defKindToExtKind = {
+    [Kind.SCALAR_TYPE_DEFINITION]: Kind.SCALAR_TYPE_EXTENSION,
+    [Kind.OBJECT_TYPE_DEFINITION]: Kind.OBJECT_TYPE_EXTENSION,
+    [Kind.INTERFACE_TYPE_DEFINITION]: Kind.INTERFACE_TYPE_EXTENSION,
+    [Kind.UNION_TYPE_DEFINITION]: Kind.UNION_TYPE_EXTENSION,
+    [Kind.ENUM_TYPE_DEFINITION]: Kind.ENUM_TYPE_EXTENSION,
+    [Kind.INPUT_OBJECT_TYPE_DEFINITION]: Kind.INPUT_OBJECT_TYPE_EXTENSION
+};
+function typeToExtKind(type) {
+    if (isScalarType(type)) {
+        return Kind.SCALAR_TYPE_EXTENSION;
+    }
+    if (isObjectType(type)) {
+        return Kind.OBJECT_TYPE_EXTENSION;
+    }
+    if (isInterfaceType(type)) {
+        return Kind.INTERFACE_TYPE_EXTENSION;
+    }
+    if (isUnionType(type)) {
+        return Kind.UNION_TYPE_EXTENSION;
+    }
+    if (isEnumType(type)) {
+        return Kind.ENUM_TYPE_EXTENSION;
+    }
+    if (isInputObjectType(type)) {
+        return Kind.INPUT_OBJECT_TYPE_EXTENSION;
+    }
+    invariant(false, 'Unexpected type: ' + inspect(type));
+}
+function extensionKindToTypeName(kind) {
+    switch(kind){
+        case Kind.SCALAR_TYPE_EXTENSION:
+            return 'scalar';
+        case Kind.OBJECT_TYPE_EXTENSION:
+            return 'object';
+        case Kind.INTERFACE_TYPE_EXTENSION:
+            return 'interface';
+        case Kind.UNION_TYPE_EXTENSION:
+            return 'union';
+        case Kind.ENUM_TYPE_EXTENSION:
+            return 'enum';
+        case Kind.INPUT_OBJECT_TYPE_EXTENSION:
+            return 'input object';
+    }
+    invariant(false, 'Unexpected kind: ' + inspect(kind));
+}
+Object.freeze([
+    ExecutableDefinitionsRule,
+    UniqueOperationNamesRule,
+    LoneAnonymousOperationRule,
+    SingleFieldSubscriptionsRule,
+    KnownTypeNamesRule,
+    FragmentsOnCompositeTypesRule,
+    VariablesAreInputTypesRule,
+    ScalarLeafsRule,
+    FieldsOnCorrectTypeRule,
+    UniqueFragmentNamesRule,
+    KnownFragmentNamesRule,
+    NoUnusedFragmentsRule,
+    PossibleFragmentSpreadsRule,
+    NoFragmentCyclesRule,
+    UniqueVariableNamesRule,
+    NoUndefinedVariablesRule,
+    NoUnusedVariablesRule,
+    KnownDirectivesRule,
+    UniqueDirectivesPerLocationRule,
+    KnownArgumentNamesRule,
+    UniqueArgumentNamesRule,
+    ValuesOfCorrectTypeRule,
+    ProvidedRequiredArgumentsRule,
+    VariablesInAllowedPositionRule,
+    OverlappingFieldsCanBeMergedRule,
+    UniqueInputFieldNamesRule
+]);
+Object.freeze([
+    LoneSchemaDefinitionRule,
+    UniqueOperationTypesRule,
+    UniqueTypeNamesRule,
+    UniqueEnumValueNamesRule,
+    UniqueFieldDefinitionNamesRule,
+    UniqueDirectiveNamesRule,
+    KnownTypeNamesRule,
+    KnownDirectivesRule,
+    UniqueDirectivesPerLocationRule,
+    PossibleTypeExtensionsRule,
+    KnownArgumentNamesOnDirectivesRule,
+    UniqueArgumentNamesRule,
+    UniqueInputFieldNamesRule,
+    ProvidedRequiredArgumentsOnDirectivesRule
+]);
+function memoize3(fn) {
+    let cache0;
+    function memoized(a1, a2, a3) {
+        if (!cache0) {
+            cache0 = new WeakMap();
+        }
+        let cache1 = cache0.get(a1);
+        let cache2;
+        if (cache1) {
+            cache2 = cache1.get(a2);
+            if (cache2) {
+                const cachedValue = cache2.get(a3);
+                if (cachedValue !== undefined) {
+                    return cachedValue;
+                }
+            }
+        } else {
+            cache1 = new WeakMap();
+            cache0.set(a1, cache1);
+        }
+        if (!cache2) {
+            cache2 = new WeakMap();
+            cache1.set(a2, cache2);
+        }
+        const newValue = fn(a1, a2, a3);
+        cache2.set(a3, newValue);
+        return newValue;
+    }
+    return memoized;
+}
+function valueFromAST(valueNode, type, variables) {
+    if (!valueNode) {
+        return;
+    }
+    if (valueNode.kind === Kind.VARIABLE) {
+        const variableName = valueNode.name.value;
+        if (variables == null || variables[variableName] === undefined) {
+            return;
+        }
+        const variableValue = variables[variableName];
+        if (variableValue === null && isNonNullType(type)) {
+            return;
+        }
+        return variableValue;
+    }
+    if (isNonNullType(type)) {
+        if (valueNode.kind === Kind.NULL) {
+            return;
+        }
+        return valueFromAST(valueNode, type.ofType, variables);
+    }
+    if (valueNode.kind === Kind.NULL) {
+        return null;
+    }
+    if (isListType(type)) {
+        const itemType = type.ofType;
+        if (valueNode.kind === Kind.LIST) {
+            const coercedValues = [];
+            for (const itemNode of valueNode.values){
+                if (isMissingVariable(itemNode, variables)) {
+                    if (isNonNullType(itemType)) {
+                        return;
+                    }
+                    coercedValues.push(null);
+                } else {
+                    const itemValue = valueFromAST(itemNode, itemType, variables);
+                    if (itemValue === undefined) {
+                        return;
+                    }
+                    coercedValues.push(itemValue);
+                }
+            }
+            return coercedValues;
+        }
+        const coercedValue = valueFromAST(valueNode, itemType, variables);
+        if (coercedValue === undefined) {
+            return;
+        }
+        return [
+            coercedValue
+        ];
+    }
+    if (isInputObjectType(type)) {
+        if (valueNode.kind !== Kind.OBJECT) {
+            return;
+        }
+        const coercedObj = Object.create(null);
+        const fieldNodes = keyMap(valueNode.fields, (field)=>field.name.value);
+        for (const field of objectValues(type.getFields())){
+            const fieldNode = fieldNodes[field.name];
+            if (!fieldNode || isMissingVariable(fieldNode.value, variables)) {
+                if (field.defaultValue !== undefined) {
+                    coercedObj[field.name] = field.defaultValue;
+                } else if (isNonNullType(field.type)) {
+                    return;
+                }
+                continue;
+            }
+            const fieldValue = valueFromAST(fieldNode.value, field.type, variables);
+            if (fieldValue === undefined) {
+                return;
+            }
+            coercedObj[field.name] = fieldValue;
+        }
+        return coercedObj;
+    }
+    if (isLeafType(type)) {
+        let result;
+        try {
+            result = type.parseLiteral(valueNode, variables);
+        } catch (_error) {
+            return;
+        }
+        if (result === undefined) {
+            return;
+        }
+        return result;
+    }
+    invariant(false, 'Unexpected input type: ' + inspect(type));
+}
+function isMissingVariable(valueNode, variables) {
+    return valueNode.kind === Kind.VARIABLE && (variables == null || variables[valueNode.name.value] === undefined);
+}
+function getArgumentValues(def, node, variableValues) {
+    const coercedValues = {};
+    const argumentNodes = node.arguments ?? [];
+    const argNodeMap = keyMap(argumentNodes, (arg)=>arg.name.value);
+    for (const argDef of def.args){
+        const name = argDef.name;
+        const argType = argDef.type;
+        const argumentNode = argNodeMap[name];
+        if (!argumentNode) {
+            if (argDef.defaultValue !== undefined) {
+                coercedValues[name] = argDef.defaultValue;
+            } else if (isNonNullType(argType)) {
+                throw new GraphQLError(`Argument "${name}" of required type "${inspect(argType)}" ` + 'was not provided.', node);
+            }
+            continue;
+        }
+        const valueNode = argumentNode.value;
+        let isNull = valueNode.kind === Kind.NULL;
+        if (valueNode.kind === Kind.VARIABLE) {
+            const variableName = valueNode.name.value;
+            if (variableValues == null || !hasOwnProperty(variableValues, variableName)) {
+                if (argDef.defaultValue !== undefined) {
+                    coercedValues[name] = argDef.defaultValue;
+                } else if (isNonNullType(argType)) {
+                    throw new GraphQLError(`Argument "${name}" of required type "${inspect(argType)}" ` + `was provided the variable "$${variableName}" which was not provided a runtime value.`, valueNode);
+                }
+                continue;
+            }
+            isNull = variableValues[variableName] == null;
+        }
+        if (isNull && isNonNullType(argType)) {
+            throw new GraphQLError(`Argument "${name}" of non-null type "${inspect(argType)}" ` + 'must not be null.', valueNode);
+        }
+        const coercedValue = valueFromAST(valueNode, argType, variableValues);
+        if (coercedValue === undefined) {
+            throw new GraphQLError(`Argument "${name}" has invalid value ${print1(valueNode)}.`, valueNode);
+        }
+        coercedValues[name] = coercedValue;
+    }
+    return coercedValues;
+}
+function getDirectiveValues(directiveDef, node, variableValues) {
+    const directiveNode = node.directives && find(node.directives, (directive)=>directive.name.value === directiveDef.name);
+    if (directiveNode) {
+        return getArgumentValues(directiveDef, directiveNode, variableValues);
+    }
+}
+function hasOwnProperty(obj, prop) {
+    return Object.prototype.hasOwnProperty.call(obj, prop);
+}
+function collectFields(exeContext, runtimeType, selectionSet, fields, visitedFragmentNames) {
+    for (const selection of selectionSet.selections){
+        switch(selection.kind){
+            case Kind.FIELD:
+                {
+                    if (!shouldIncludeNode(exeContext, selection)) {
+                        continue;
+                    }
+                    const name = getFieldEntryKey(selection);
+                    if (!fields[name]) {
+                        fields[name] = [];
+                    }
+                    fields[name].push(selection);
+                    break;
+                }
+            case Kind.INLINE_FRAGMENT:
+                {
+                    if (!shouldIncludeNode(exeContext, selection) || !doesFragmentConditionMatch(exeContext, selection, runtimeType)) {
+                        continue;
+                    }
+                    collectFields(exeContext, runtimeType, selection.selectionSet, fields, visitedFragmentNames);
+                    break;
+                }
+            case Kind.FRAGMENT_SPREAD:
+                {
+                    const fragName = selection.name.value;
+                    if (visitedFragmentNames[fragName] || !shouldIncludeNode(exeContext, selection)) {
+                        continue;
+                    }
+                    visitedFragmentNames[fragName] = true;
+                    const fragment = exeContext.fragments[fragName];
+                    if (!fragment || !doesFragmentConditionMatch(exeContext, fragment, runtimeType)) {
+                        continue;
+                    }
+                    collectFields(exeContext, runtimeType, fragment.selectionSet, fields, visitedFragmentNames);
+                    break;
+                }
+        }
+    }
+    return fields;
+}
+function shouldIncludeNode(exeContext, node) {
+    const skip = getDirectiveValues(GraphQLSkipDirective, node, exeContext.variableValues);
+    if (skip?.if === true) {
+        return false;
+    }
+    const include = getDirectiveValues(GraphQLIncludeDirective, node, exeContext.variableValues);
+    if (include?.if === false) {
+        return false;
+    }
+    return true;
+}
+function doesFragmentConditionMatch(exeContext, fragment, type) {
+    const typeConditionNode = fragment.typeCondition;
+    if (!typeConditionNode) {
+        return true;
+    }
+    const conditionalType = typeFromAST(exeContext.schema, typeConditionNode);
+    if (conditionalType === type) {
+        return true;
+    }
+    if (isAbstractType(conditionalType)) {
+        return exeContext.schema.isSubType(conditionalType, type);
+    }
+    return false;
+}
+function getFieldEntryKey(node) {
+    return node.alias ? node.alias.value : node.name.value;
+}
+memoize3(_collectSubfields);
+function _collectSubfields(exeContext, returnType, fieldNodes) {
+    let subFieldNodes = Object.create(null);
+    const visitedFragmentNames = Object.create(null);
+    for (const node of fieldNodes){
+        if (node.selectionSet) {
+            subFieldNodes = collectFields(exeContext, returnType, node.selectionSet, subFieldNodes, visitedFragmentNames);
+        }
+    }
+    return subFieldNodes;
+}
+keyMap(specifiedScalarTypes.concat(introspectionTypes), (type)=>type.name);
+new GraphQLSchema({
+    directives: []
+}).toConfig();
+Object.freeze({
+    TYPE_REMOVED: 'TYPE_REMOVED',
+    TYPE_CHANGED_KIND: 'TYPE_CHANGED_KIND',
+    TYPE_REMOVED_FROM_UNION: 'TYPE_REMOVED_FROM_UNION',
+    VALUE_REMOVED_FROM_ENUM: 'VALUE_REMOVED_FROM_ENUM',
+    REQUIRED_INPUT_FIELD_ADDED: 'REQUIRED_INPUT_FIELD_ADDED',
+    IMPLEMENTED_INTERFACE_REMOVED: 'IMPLEMENTED_INTERFACE_REMOVED',
+    FIELD_REMOVED: 'FIELD_REMOVED',
+    FIELD_CHANGED_KIND: 'FIELD_CHANGED_KIND',
+    REQUIRED_ARG_ADDED: 'REQUIRED_ARG_ADDED',
+    ARG_REMOVED: 'ARG_REMOVED',
+    ARG_CHANGED_KIND: 'ARG_CHANGED_KIND',
+    DIRECTIVE_REMOVED: 'DIRECTIVE_REMOVED',
+    DIRECTIVE_ARG_REMOVED: 'DIRECTIVE_ARG_REMOVED',
+    REQUIRED_DIRECTIVE_ARG_ADDED: 'REQUIRED_DIRECTIVE_ARG_ADDED',
+    DIRECTIVE_REPEATABLE_REMOVED: 'DIRECTIVE_REPEATABLE_REMOVED',
+    DIRECTIVE_LOCATION_REMOVED: 'DIRECTIVE_LOCATION_REMOVED'
+});
+Object.freeze({
+    VALUE_ADDED_TO_ENUM: 'VALUE_ADDED_TO_ENUM',
+    TYPE_ADDED_TO_UNION: 'TYPE_ADDED_TO_UNION',
+    OPTIONAL_INPUT_FIELD_ADDED: 'OPTIONAL_INPUT_FIELD_ADDED',
+    OPTIONAL_ARG_ADDED: 'OPTIONAL_ARG_ADDED',
+    IMPLEMENTED_INTERFACE_ADDED: 'IMPLEMENTED_INTERFACE_ADDED',
+    ARG_DEFAULT_VALUE_CHANGE: 'ARG_DEFAULT_VALUE_CHANGE'
+});
+function e1(t) {
+    if (typeof t != "object" || t === null) return !1;
+    let o = Object.getPrototypeOf(t);
+    return (o === null || o === Object.prototype || Object.getPrototypeOf(o) === null) && !(Symbol.toStringTag in t) && !(Symbol.iterator in t);
+}
+function A(g, p, u = "") {
+    if (!arguments.length) throw new TypeError("Argument 1 `value` is required.");
+    if (typeof p != "function") throw new TypeError("Argument 2 `isExtractable` must be a function.");
+    if (typeof u != "string") throw new TypeError("Argument 3 `path` must be a string.");
+    let l = new Map, o = new Map;
+    function i(e, r, m) {
+        if (p(e)) {
+            let t = o.get(e);
+            return t ? t.push(r) : o.set(e, [
+                r
+            ]), null;
+        }
+        let s = Array.isArray(e) || typeof FileList < "u" && e instanceof FileList, d = e1(e);
+        if (s || d) {
+            let t = l.get(e), c = !t;
+            if (c && (t = s ? [] : e instanceof Object ? {} : Object.create(null), l.set(e, t)), !m.has(e)) {
+                let w = r ? `${r}.` : "", y = new Set(m).add(e);
+                if (s) {
+                    let n = 0;
+                    for (let f of e){
+                        let b = i(f, w + n++, y);
+                        c && t.push(b);
+                    }
+                } else for(let n in e){
+                    let f = i(e[n], w + n, y);
+                    c && (t[n] = f);
+                }
+            }
+            return t;
+        }
+        return e;
+    }
+    return {
+        clone: i(g, u, new Set),
+        files: o
+    };
+}
+function n(e) {
+    return typeof File < "u" && e instanceof File || typeof Blob < "u" && e instanceof Blob;
+}
+const isExtractableFileEnhanced = (value)=>n(value) || value !== null && typeof value === 'object' && typeof value.pipe === 'function';
+function createRequestBody(query, variables, operationName) {
+    const { clone, files } = A({
+        query,
+        variables,
+        operationName
+    }, isExtractableFileEnhanced, '');
+    if (files.size === 0) {
+        if (!Array.isArray(query)) {
+            return JSON.stringify(clone);
+        }
+        if (typeof variables !== 'undefined' && !Array.isArray(variables)) {
+            throw new Error('Cannot create request body with given variable type, array expected');
+        }
+        const payload = query.reduce((accu, currentQuery, index)=>{
+            accu.push({
+                query: currentQuery,
+                variables: variables ? variables[index] : undefined
+            });
+            return accu;
+        }, []);
+        return JSON.stringify(payload);
+    }
+    const Form = typeof FormData === 'undefined' ? FormData : FormData;
+    const form = new Form();
+    form.append('operations', JSON.stringify(clone));
+    const map = {};
+    let i = 0;
+    files.forEach((paths)=>{
+        map[++i] = paths;
+    });
+    form.append('map', JSON.stringify(map));
+    i = 0;
+    files.forEach((_paths, file)=>{
+        form.append(`${++i}`, file);
+    });
+    return form;
+}
+class ClientError extends Error {
+    response;
+    request;
+    constructor(response, request){
+        const message = `${ClientError.extractMessage(response)}: ${JSON.stringify({
+            response,
+            request
+        })}`;
+        super(message);
+        Object.setPrototypeOf(this, ClientError.prototype);
+        this.response = response;
+        this.request = request;
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, ClientError);
+        }
+    }
+    static extractMessage(response) {
+        try {
+            return response.errors[0].message;
+        } catch (_e) {
+            return `GraphQL Error (Code: ${response.status})`;
+        }
+    }
+}
+const crossFetch = fetch;
+const resolveHeaders = (headers)=>{
+    let oHeaders = {};
+    if (headers) {
+        if (typeof Headers !== 'undefined' && headers instanceof Headers || headers instanceof Headers) {
+            oHeaders = HeadersInstanceToPlainObject(headers);
+        } else if (Array.isArray(headers)) {
+            headers.forEach(([name, value])=>{
+                oHeaders[name] = value;
+            });
+        } else {
+            oHeaders = headers;
+        }
+    }
+    return oHeaders;
+};
+const queryCleanner = (str)=>str.replace(/([\s,]|#[^\n\r]+)+/g, ' ').trim();
+const buildGetQueryParams = ({ query, variables, operationName })=>{
+    if (!Array.isArray(query)) {
+        const search = [
+            `query=${encodeURIComponent(queryCleanner(query))}`
+        ];
+        if (variables) {
+            search.push(`variables=${encodeURIComponent(JSON.stringify(variables))}`);
+        }
+        if (operationName) {
+            search.push(`operationName=${encodeURIComponent(operationName)}`);
+        }
+        return search.join('&');
+    }
+    if (typeof variables !== 'undefined' && !Array.isArray(variables)) {
+        throw new Error('Cannot create query with given variable type, array expected');
+    }
+    const payload = query.reduce((accu, currentQuery, index)=>{
+        accu.push({
+            query: queryCleanner(currentQuery),
+            variables: variables ? JSON.stringify(variables[index]) : undefined
+        });
+        return accu;
+    }, []);
+    return `query=${encodeURIComponent(JSON.stringify(payload))}`;
+};
+const post = async ({ url, query, variables, operationName, headers, fetch: fetch1, fetchOptions })=>{
+    const body = createRequestBody(query, variables, operationName);
+    return await fetch1(url, {
+        method: 'POST',
+        headers: {
+            ...typeof body === 'string' ? {
+                'Content-Type': 'application/json'
+            } : {},
+            ...headers
+        },
+        body,
+        ...fetchOptions
+    });
+};
+const get = async ({ url, query, variables, operationName, headers, fetch: fetch1, fetchOptions })=>{
+    const queryParams = buildGetQueryParams({
+        query,
+        variables,
+        operationName
+    });
+    return await fetch1(`${url}?${queryParams}`, {
+        method: 'GET',
+        headers,
+        ...fetchOptions
+    });
+};
+class GraphQLClient {
+    url;
+    options;
+    constructor(url, options){
+        this.url = url;
+        this.options = options || {};
+    }
+    rawRequest(query, variables, requestHeaders) {
+        const { headers, fetch: fetch1 = crossFetch, method = 'POST', ...fetchOptions } = this.options;
+        const { url } = this;
+        return makeRequest({
+            url,
+            query,
+            variables,
+            headers: {
+                ...resolveHeaders(headers),
+                ...resolveHeaders(requestHeaders)
+            },
+            operationName: undefined,
+            fetch: fetch1,
+            method,
+            fetchOptions
+        });
+    }
+    async request(document, variables, requestHeaders) {
+        const { headers, fetch: fetch1 = crossFetch, method = 'POST', ...fetchOptions } = this.options;
+        const { url } = this;
+        const { query, operationName } = resolveRequestDocument(document);
+        const { data } = await makeRequest({
+            url,
+            query,
+            variables,
+            headers: {
+                ...resolveHeaders(headers),
+                ...resolveHeaders(requestHeaders)
+            },
+            operationName,
+            fetch: fetch1,
+            method,
+            fetchOptions
+        });
+        return data;
+    }
+    async batchRequests(documents, requestHeaders) {
+        const { headers, fetch: fetch1 = crossFetch, method = 'POST', ...fetchOptions } = this.options;
+        const { url } = this;
+        const queries = documents.map(({ document })=>resolveRequestDocument(document).query);
+        const variables = documents.map(({ variables })=>variables);
+        const { data } = await makeRequest({
+            url,
+            query: queries,
+            variables,
+            headers: {
+                ...resolveHeaders(headers),
+                ...resolveHeaders(requestHeaders)
+            },
+            operationName: undefined,
+            fetch: fetch1,
+            method,
+            fetchOptions
+        });
+        return data;
+    }
+    setHeaders(headers) {
+        this.options.headers = headers;
+        return this;
+    }
+    setHeader(key, value) {
+        const { headers } = this.options;
+        if (headers) {
+            headers[key] = value;
+        } else {
+            this.options.headers = {
+                [key]: value
+            };
+        }
+        return this;
+    }
+    setEndpoint(value) {
+        this.url = value;
+        return this;
+    }
+}
+async function makeRequest({ url, query, variables, headers, operationName, fetch: fetch1, method = 'POST', fetchOptions }) {
+    const fetcher = method.toUpperCase() === 'POST' ? post : get;
+    const isBathchingQuery = Array.isArray(query);
+    const response = await fetcher({
+        url,
+        query,
+        variables,
+        operationName,
+        headers: headers,
+        fetch: fetch1,
+        fetchOptions
+    });
+    const result = await getResult(response);
+    const successfullyReceivedData = isBathchingQuery && Array.isArray(result) ? !result.some(({ data })=>!data) : !!result.data;
+    if (response.ok && !result.errors && successfullyReceivedData) {
+        const { headers, status } = response;
+        return {
+            ...isBathchingQuery ? {
+                data: result
+            } : result,
+            headers,
+            status
+        };
+    } else {
+        const errorResult = typeof result === 'string' ? {
+            error: result
+        } : result;
+        throw new ClientError({
+            ...errorResult,
+            status: response.status,
+            headers: response.headers
+        }, {
+            query,
+            variables
+        });
+    }
+}
+async function request(url, document, variables, requestHeaders) {
+    const client = new GraphQLClient(url);
+    return await client.request(document, variables, requestHeaders);
+}
+function getResult(response) {
+    const contentType = response.headers.get('Content-Type');
+    if (contentType && contentType.startsWith('application/json')) {
+        return response.json();
+    } else {
+        return response.text();
+    }
+}
+function resolveRequestDocument(document) {
+    if (typeof document === 'string') return {
+        query: document
+    };
+    let operationName = undefined;
+    const operationDefinitions = document.definitions.filter((definition)=>definition.kind === 'OperationDefinition');
+    if (operationDefinitions.length === 1) {
+        operationName = operationDefinitions[0].name?.value;
+    }
+    return {
+        query: print1(document),
+        operationName
+    };
+}
+function HeadersInstanceToPlainObject(headers) {
+    const o = {};
+    headers.forEach((v, k)=>{
+        o[k] = v;
+    });
+    return o;
+}
+class ElasticQueryAdapter1 {
+    context;
+    props;
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+    }
+    async runQuery(query, variables, _take = 1000, _skip = 0) {
+        try {
+            const data = await request(this.props.endpointUrl, query, variables);
+            return data;
+        } catch (err) {
+            this.context.logger.error(`GraphQL query failed: ${err}`);
+            return 500;
+        }
+    }
+}
+const __default22 = {
+    "name": "GraphQL Query Adapter",
+    "description": "Stores and runs Elasticsearch queries",
+    "moduleUrl": "./adapter/ElasticQueryAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "username": {
+                "type": "string"
+            },
+            "password": {
+                "type": "string"
+            },
+            "host": {
+                "type": "string",
+                "description": "Elastic node host (starting http:// or https://)"
+            }
+        },
+        "required": [
+            "host"
+        ]
+    },
+    "adapterInterfaces": [
+        "IQueryAdapter"
+    ]
+};
+class MockHandler {
+    subhandlers = {};
+    handle(msg) {
+        const pathIdx = '/' + msg.url.servicePath;
+        const subhandler = this.subhandlers[pathIdx];
+        if (subhandler !== undefined) {
+            return new Promise((res)=>setTimeout(()=>res(this.subhandlers[pathIdx](msg)), 1));
+        } else {
+            return new Promise((res)=>setTimeout(()=>res(msg.setStatus(404, 'Not found')), 2));
+        }
+    }
+    getString(path, response) {
+        this.subhandlers[path] = (msg)=>Promise.resolve(msg.setData(response, "text/plain"));
+    }
+    getStringDelay(path, delayMs, response) {
+        this.subhandlers[path] = (msg)=>new Promise((res)=>setTimeout(()=>res(msg.setData(response, "text/plain")), delayMs));
+    }
+    getJson(path, obj) {
+        this.subhandlers[path] = (msg)=>Promise.resolve(msg.setDataJson(obj));
+    }
+    getError(path, code, message) {
+        this.subhandlers[path] = (msg)=>Promise.resolve(msg.setStatus(code, message));
+    }
+}
+const mockHandler = new MockHandler();
+const service = new Service();
+service.all((msg)=>mockHandler.handle(msg));
+const __default23 = {
+    "name": "Mock Service",
+    "description": "Routes under control of test construction",
+    "moduleUrl": "./services/mock.ts",
+    "apis": []
+};
+const __default24 = {
     "name": "Services Service",
     "description": "Provides discovery of configured services and service catalogue",
     "moduleUrl": "./services/services.ts",
@@ -35551,7 +40508,7 @@ const __default20 = {
         "services"
     ]
 };
-const __default21 = {
+const __default25 = {
     "name": "Authentication Service",
     "description": "Provides simple JWT authentication",
     "moduleUrl": "./services/auth.ts",
@@ -35579,14 +40536,14 @@ const __default21 = {
         ]
     }
 };
-const service = new Service();
+const service1 = new Service();
 const isSchema = (adapter)=>adapter.checkSchema !== undefined;
 const isWriteSchema = (adapter)=>adapter.writeSchema !== undefined;
 const normaliseKey = (key)=>{
     if (key.endsWith('.json')) return key.slice(0, -5);
     return key;
 };
-service.get(async (msg, { adapter  })=>{
+service1.get(async (msg, { adapter })=>{
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data GET request should have a service path like <dataset>/<key>');
     }
@@ -35617,7 +40574,7 @@ service.get(async (msg, { adapter  })=>{
     }
     return msg;
 });
-service.getDirectory(async (msg, { adapter  })=>{
+service1.getDirectory(async (msg, { adapter })=>{
     if (msg.url.servicePathElements.length > 1) {
         return msg.setStatus(400, 'Data GET directory request should be like <dataset>/ or just /');
     }
@@ -35740,10 +40697,10 @@ const write1 = async (msg, adapter, logger, isPatch)=>{
         return msg.setDateModified(details.dateModified).setHeader('Location', msg.url.toString()).setStatus(details.status === "none" ? 201 : 200, details.status === "none" ? "Created" : "OK");
     }
 };
-service.post((msg, { adapter , logger  })=>write1(msg, adapter, logger, false));
-service.put((msg, { adapter , logger  })=>write1(msg, adapter, logger, false));
-service.patch((msg, { adapter , logger  })=>write1(msg, adapter, logger, true));
-service.delete(async (msg, { adapter  })=>{
+service1.post((msg, { adapter, logger })=>write1(msg, adapter, logger, false));
+service1.put((msg, { adapter, logger })=>write1(msg, adapter, logger, false));
+service1.patch((msg, { adapter, logger })=>write1(msg, adapter, logger, true));
+service1.delete(async (msg, { adapter })=>{
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>');
     }
@@ -35772,7 +40729,7 @@ service.delete(async (msg, { adapter  })=>{
         return msg.setStatus(200);
     }
 });
-service.deleteDirectory(async (msg, { adapter  })=>{
+service1.deleteDirectory(async (msg, { adapter })=>{
     if (msg.url.servicePathElements.length !== 1) {
         return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>');
     }
@@ -35791,7 +40748,7 @@ service.deleteDirectory(async (msg, { adapter  })=>{
     }
     return msg;
 });
-const __default22 = {
+const __default26 = {
     "name": "Data Service",
     "description": "Reads and writes data from urls with the pattern datasource/key",
     "moduleUrl": "./services/data.ts",
@@ -35816,7 +40773,7 @@ const __default22 = {
         "uploadBaseUrl"
     ]
 };
-const service1 = new Service();
+const service2 = new Service();
 const isSchema1 = (adapter)=>adapter.checkSchema !== undefined;
 const isWriteSchema1 = (adapter)=>adapter.writeSchema !== undefined;
 const normaliseKey1 = (key)=>{
@@ -35827,7 +40784,7 @@ function configSchemaInstanceContentType(dataset, baseUrl) {
     const url = `${baseUrl}/.schema.json`;
     return Promise.resolve(`application/json; schema="${url}"`);
 }
-service1.get(async (msg, { adapter  }, config)=>{
+service2.get(async (msg, { adapter }, config)=>{
     if (msg.url.servicePathElements.length !== 1) {
         return msg.setStatus(400, 'Dataset GET request should have a service path like <key>');
     }
@@ -35866,7 +40823,7 @@ service1.get(async (msg, { adapter  }, config)=>{
     msg.data.mimeType = await getInstanceContentType('', msg.url.baseUrl());
     return msg;
 });
-service1.getDirectory(async (msg, { adapter  }, config)=>{
+service2.getDirectory(async (msg, { adapter }, config)=>{
     if (msg.url.servicePathElements.length !== 0) {
         return msg.setStatus(400, 'Dataset GET directory request should have no service path');
     }
@@ -35961,9 +40918,9 @@ const write2 = async (msg, adapter, config)=>{
         return msg.setDateModified(details.dateModified).setHeader('Location', msg.url.toString()).setStatus(details.status === "none" ? 201 : 200, details.status === "none" ? "Created" : "OK");
     }
 };
-service1.post((msg, { adapter  }, config)=>write2(msg, adapter, config));
-service1.put((msg, { adapter  }, config)=>write2(msg, adapter, config));
-service1.delete(async (msg, { adapter  })=>{
+service2.post((msg, { adapter }, config)=>write2(msg, adapter, config));
+service2.put((msg, { adapter }, config)=>write2(msg, adapter, config));
+service2.delete(async (msg, { adapter })=>{
     if (msg.url.servicePathElements.length !== 1) {
         return msg.setStatus(400, 'Dataset DELETE request should have a service path like <key>');
     }
@@ -35978,10 +40935,10 @@ service1.delete(async (msg, { adapter  })=>{
         return msg.setStatus(200);
     }
 });
-service1.deleteDirectory((msg)=>{
+service2.deleteDirectory((msg)=>{
     return Promise.resolve(msg.setStatus(400, 'Cannot delete the underlying dataset of a dataset service'));
 });
-const __default23 = {
+const __default27 = {
     "name": "Dataset Service",
     "description": "Reads and writes data with configured schema from urls by key",
     "moduleUrl": "./services/dataset.ts",
@@ -36042,33 +40999,41 @@ const findParent = async (url, context, config)=>{
         null
     ];
 };
-const service2 = new Service();
-const getDirectory = async (msg, { adapter  }, config)=>{
+const service3 = new Service();
+const getDirectory = async (msg, { adapter }, config)=>{
+    const spec = config.storesTransforms ? {
+        pattern: "store-transform",
+        storeMimeTypes: (config.extensions || []).map((ext)=>getType(ext)),
+        createDirectory: true,
+        createFiles: true,
+        reqMimeType: config.transformMimeTypes?.requestMimeType,
+        respMimeType: config.transformMimeTypes?.responseMimeType
+    } : {
+        pattern: "store",
+        storeMimeTypes: (config.extensions || []).map((ext)=>getType(ext)),
+        createDirectory: true,
+        createFiles: true
+    };
     const readDirPath = async (path)=>{
         const dirData = await adapter.readDirectory(path);
         const paths = dirData?.ok ? await dirData.asJson() || [] : [];
         return {
             path: msg.url.servicePath,
             paths,
-            spec: {
-                pattern: "store",
-                storeMimeTypes: (config.extensions || []).map((ext)=>getType(ext)),
-                createDirectory: true,
-                createFiles: true
-            }
+            spec
         };
     };
     const featureResult = await readDirPath(msg.url.servicePath);
     return msg.setDirectoryJson(featureResult);
 };
-service2.getDirectory(async (msg, context, config)=>{
+service3.getDirectory(async (msg, context, config)=>{
     if (config.defaultResource && msg.url.servicePathElements.length === 0 && !msg.isManageRequest) {
         msg.url.pathElements.push(config.defaultResource);
-        return await get(msg, context, config);
+        return await get1(msg, context, config);
     }
     return await getDirectory(msg, context, config);
 });
-const get = async (msg, context, config)=>{
+const get1 = async (msg, context, config)=>{
     let details = await context.adapter.check(msg.url.servicePath, config.extensions);
     if (details.status === "directory") {
         if (config.defaultResource) {
@@ -36112,9 +41077,9 @@ const get = async (msg, context, config)=>{
     msg.data.dateModified = details.dateModified;
     return msg;
 };
-service2.get(get);
+service3.get(get1);
 const writeAction = (returnData)=>async (msg, context, config)=>{
-        const { adapter  } = context;
+        const { adapter } = context;
         if (!msg.hasData()) return msg.setStatus(400, "No data to write");
         const details = await adapter.check(msg.url.servicePath, config.extensions);
         if (details.status === "directory" || details.status === "none" && msg.url.isDirectory) {
@@ -36143,9 +41108,9 @@ const writeAction = (returnData)=>async (msg, context, config)=>{
         }
         return msg.setHeader('Location', msg.url.toString()).setStatus(details.status === "none" ? 201 : 200);
     };
-service2.post(writeAction(true));
-service2.put(writeAction(false));
-service2.delete(async (msg, { adapter  }, config)=>{
+service3.post(writeAction(true));
+service3.put(writeAction(false));
+service3.delete(async (msg, { adapter }, config)=>{
     const res = await adapter.delete(msg.url.servicePath, config.extensions);
     msg.data = undefined;
     if (res === 404) {
@@ -36156,7 +41121,7 @@ service2.delete(async (msg, { adapter  }, config)=>{
         return msg.setStatus(200);
     }
 });
-service2.deleteDirectory(async (msg, { adapter  })=>{
+service3.deleteDirectory(async (msg, { adapter })=>{
     try {
         const status = await adapter.deleteDirectory(msg.url.servicePath, '.config.json');
         if (status === 400) {
@@ -36171,7 +41136,7 @@ service2.deleteDirectory(async (msg, { adapter  })=>{
     }
     return msg;
 });
-const __default24 = {
+const __default28 = {
     "name": "File Service",
     "description": "GET files from urls and PUT files to urls",
     "moduleUrl": "./services/file.ts",
@@ -36197,6 +41162,27 @@ const __default24 = {
             "defaultResource": {
                 "type": "string",
                 "description": "If a file which is a directory is requested, serve the file with this name in the directory instead"
+            },
+            "storesTransforms": {
+                "type": "boolean",
+                "description": "Set if the file service stores transforms"
+            },
+            "manualMimeTypes": {
+                "type": "object",
+                "properties": {
+                    "requestMimeType": {
+                        "type": "string"
+                    },
+                    "requestSchema": {
+                        "type": "object"
+                    },
+                    "responseMimeType": {
+                        "type": "string"
+                    },
+                    "responseSchema": {
+                        "type": "object"
+                    }
+                }
             }
         }
     }
@@ -36299,23 +41285,23 @@ function decode3(b64) {
     }
     return bytes;
 }
-const service3 = new Service();
-service3.postPath('/bypass', (msg)=>msg);
-service3.postPath('/destream', async (msg)=>{
+const service4 = new Service();
+service4.postPath('/bypass', (msg)=>msg);
+service4.postPath('/destream', async (msg)=>{
     await msg.data?.ensureDataIsArrayBuffer();
     return msg;
 });
-service3.postPath('/to-b64', async (msg)=>{
+service4.postPath('/to-b64', async (msg)=>{
     if (!msg.data) return msg;
     const arry = new Uint8Array(await msg.data.asArrayBuffer());
     return msg.setData(encode2(arry), msg.data.mimeType);
 });
-service3.postPath('/from-b64', async (msg)=>{
+service4.postPath('/from-b64', async (msg)=>{
     if (!msg.data) return msg;
     const str = new TextDecoder().decode(await msg.data.asArrayBuffer());
     return msg.setData(decode3(str).buffer, msg.data.mimeType);
 });
-service3.postPath('/selector-schema', async (msg)=>{
+service4.postPath('/selector-schema', async (msg)=>{
     if (!msg.data) return msg;
     if (msg.data.mimeType !== 'inode/directory+json') {
         return Promise.resolve(msg.setStatus(400, 'selector-schema only applies to a directory output (mime type inode/directory+json)'));
@@ -36328,33 +41314,33 @@ service3.postPath('/selector-schema', async (msg)=>{
     };
     return msg.setDataJson(schema, "application/schema+json");
 });
-service3.postPath('/redirect-permanent', (msg)=>{
+service4.postPath('/redirect-permanent', (msg)=>{
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
     return msg.setHeader('location', location).setStatus(301);
 });
-service3.postPath('/redirect-temporary', (msg)=>{
+service4.postPath('/redirect-temporary', (msg)=>{
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
     return msg.setHeader('location', location).setStatus(307);
 });
-service3.postPath('/see-other', (msg)=>{
+service4.postPath('/see-other', (msg)=>{
     const location = '/' + msg.url.servicePath;
     msg.exitConditionalMode();
     return msg.setHeader('location', location).setStatus(303);
 });
-service3.postPath('/reload-referer', (msg)=>{
+service4.postPath('/reload-referer', (msg)=>{
     const location = msg.getHeader('referer');
     if (!location) return Promise.resolve(msg);
     msg.exitConditionalMode();
     return msg.setHeader('location', location).setStatus(303);
 });
-service3.postPath('/log/body', async (msg, context)=>{
+service4.postPath('/log/body', async (msg, context)=>{
     const json = await msg.data?.asJson();
     context.logger.info('BODY ' + JSON.stringify(json || {}), ...msg.loggerArgs());
     return msg;
 });
-const __default25 = {
+const __default29 = {
     "name": "Library functions",
     "description": "A range of simple utility web functions",
     "moduleUrl": "./services/lib.ts",
@@ -36362,7 +41348,7 @@ const __default25 = {
         "sys.lib"
     ]
 };
-const __default26 = {
+const __default30 = {
     "name": "Pipeline",
     "description": "A pipeline of urls acting as request processors in parallel or serial",
     "moduleUrl": "./services/pipeline.ts",
@@ -36422,17 +41408,19 @@ const __default26 = {
                 }
             },
             "reauthenticate": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "If true, checks authentication before calling any item of the pipeline"
             }
         }
     }
 };
-const __default27 = {
+const __default31 = {
     "name": "Pipeline store",
     "description": "Run a pipeline whose specification is stored at the request url",
     "moduleUrl": "./services/pipeline-store.ts",
     "apis": [
-        "store-transform"
+        "store-transform",
+        "file.base"
     ],
     "isFilter": true,
     "configSchema": {
@@ -36471,6 +41459,7 @@ const __default27 = {
     "privateServices": {
         "store": {
             "name": "'Pipeline Store'",
+            "storesTransforms": "true",
             "source": "./services/file.rsm.json",
             "access": {
                 "readRoles": "access.readRoles",
@@ -36485,8 +41474,8 @@ const __default27 = {
         }
     }
 };
-const service4 = new Service();
-const processGet = async (msg, { adapter , logger  }, config)=>{
+const service5 = new Service();
+const processGet = async (msg, { adapter, logger }, config)=>{
     const targetPath = msg.url.servicePath || '/';
     const details = await adapter.check(targetPath);
     if (config.divertMissingToDefault && details.status === 'none' && !msg.isManageRequest) {
@@ -36495,8 +41484,8 @@ const processGet = async (msg, { adapter , logger  }, config)=>{
     }
     return msg;
 };
-service4.get(processGet);
-const __default28 = {
+service5.get(processGet);
+const __default32 = {
     "name": "Static site filter",
     "description": "Provide static site behaviour with options suitable for hosting SPAs",
     "moduleUrl": "./services/static-site-filter.ts",
@@ -36512,7 +41501,7 @@ const __default28 = {
         }
     }
 };
-const __default29 = {
+const __default33 = {
     "name": "Static site service",
     "description": "Hosts a static site with options suitable for SPA routing",
     "moduleUrl": "./services/file.ts",
@@ -36552,7 +41541,7 @@ const __default29 = {
         }
     }
 };
-const __default30 = {
+const __default34 = {
     "name": "User data service",
     "description": "Manages access to and stores user data",
     "moduleUrl": "./services/dataset.ts",
@@ -36578,15 +41567,15 @@ const __default30 = {
         }
     }
 };
-const __default31 = {
+const __default35 = {
     "name": "User filter",
     "description": "Manage passwords and restrict illegal operations to users",
     "moduleUrl": "./services/user-filter.ts",
     "apis": [],
     "isFilter": true
 };
-const service5 = new Service();
-service5.post(async (msg, context, config)=>{
+const service6 = new Service();
+service6.post(async (msg, context, config)=>{
     const data = await msg.data?.asJson() ?? {};
     if (config.metadataProperty) {
         data[config.metadataProperty] = {
@@ -36607,7 +41596,7 @@ service5.post(async (msg, context, config)=>{
     const output = await context.adapter.fillTemplate(data, template || "", contextUrl);
     return msg.setData(output, config.outputMime);
 });
-const __default32 = {
+const __default36 = {
     "name": "Template",
     "description": "Fill a template with data from the request",
     "moduleUrl": "./services/template.ts",
@@ -36679,13 +41668,18 @@ const __default32 = {
             "infraName": "store.infraName",
             "adapterConfig": "store.adapterConfig",
             "extensions": "[ store.extension ]",
-            "parentIfMissing": "store.parentIfMissing === false ? false : true"
+            "parentIfMissing": "store.parentIfMissing === false ? false : true",
+            "storesTransforms": "true",
+            "manualMimeTypes": {
+                "requestMimeType": "'application/json'",
+                "responseMimeType": "'text/plain'"
+            }
         }
     }
 };
-const service6 = new Service();
-service6.all(async (msg, context)=>{
-    const { adapter , makeRequest  } = context;
+const service7 = new Service();
+service7.all(async (msg, context)=>{
+    const { adapter, makeRequest } = context;
     let sendMsg = msg.copy();
     while(sendMsg.url.basePathElementCount > 0){
         sendMsg.url.pathElements.shift();
@@ -36695,7 +41689,7 @@ service6.all(async (msg, context)=>{
     context.logger.info(`Proxy, msg headers: ${JSON.stringify(sendMsg.headers)}`);
     return makeRequest(sendMsg);
 });
-const __default33 = {
+const __default37 = {
     "name": "Proxy Service",
     "description": "Forwards requests with server defined authentication or urls",
     "moduleUrl": "./services/proxy.ts",
@@ -37414,7 +42408,7 @@ function resolveAttachment(attachment) {
         return attachment;
     }
 }
-function resolveContent({ text , html , mimeContent  }) {
+function resolveContent({ text, html, mimeContent }) {
     const newContent = [
         ...mimeContent ?? []
     ];
@@ -37498,7 +42492,7 @@ function validateHeaders(headers) {
     return !(Object.keys(headers).some((v)=>v.includes("\n") || v.includes("\r")) || Object.values(headers).some((v)=>v.includes("\n") || v.includes("\r")));
 }
 function resolveSendConfig(config) {
-    const { to , cc =[] , bcc =[] , from , date =new Date().toUTCString().split(",")[1].slice(1) , subject , content , mimeContent , html , inReplyTo , replyTo , references , priority , attachments , internalTag , headers  } = config;
+    const { to, cc = [], bcc = [], from, date = new Date().toUTCString().split(",")[1].slice(1), subject, content, mimeContent, html, inReplyTo, replyTo, references, priority, attachments, internalTag, headers } = config;
     return {
         to: parseMailList(to),
         cc: parseMailList(cc),
@@ -37609,8 +42603,8 @@ class SMTPHandler {
         return this.#internalClient.close();
     }
 }
-const service7 = new Service();
-service7.post(async (msg, _context, config)=>{
+const service8 = new Service();
+service8.post(async (msg, _context, config)=>{
     const to = await msg.getParam("to", 0);
     if (!to) return msg.setStatus(400, 'No email address to send to');
     const client = new SMTPHandler({
@@ -37634,7 +42628,7 @@ service7.post(async (msg, _context, config)=>{
         priority: await msg.getParam("priority")
     };
     if (msg.data) {
-        const { mimeType  } = msg.data;
+        const { mimeType } = msg.data;
         if (mimeType === "text/html") {
             sendConfig.html = await msg.data.asString() || undefined;
         } else if (isText(mimeType)) {
@@ -37667,7 +42661,7 @@ service7.post(async (msg, _context, config)=>{
     }
     return msg.setData(null, "").setStatus(201);
 });
-const __default34 = {
+const __default38 = {
     "name": "Email Service",
     "description": "Send an email optionally with attachments",
     "moduleUrl": "./services/email.ts",
@@ -37707,7 +42701,7 @@ const __default34 = {
         ]
     }
 };
-const __default35 = {
+const __default39 = {
     "name": "Account Service",
     "description": "Provides password reset and email verification",
     "moduleUrl": "./services/account.ts",
@@ -37889,7 +42883,7 @@ const I = gf([
     0x2480,
     0x2b83
 ]);
-function A(o, a, b) {
+function A1(o, a, b) {
     for(let i = 0; i < 16; i++)o[i] = a[i] + b[i];
 }
 function Z(o, a, b) {
@@ -39022,7 +44016,7 @@ function unpackneg(r, p) {
     S(num, r[1]);
     M(den, num, D);
     Z(num, num, r[2]);
-    A(den, r[2], den);
+    A1(den, r[2], den);
     S(den2, den);
     S(den4, den2);
     M(den6, den4, den2);
@@ -39113,17 +44107,17 @@ function add(p, q) {
     Z(a, p[1], p[0]);
     Z(t, q[1], q[0]);
     M(a, a, t);
-    A(b, p[0], p[1]);
-    A(t, q[0], q[1]);
+    A1(b, p[0], p[1]);
+    A1(t, q[0], q[1]);
     M(b, b, t);
     M(c, p[3], q[3]);
     M(c, c, D2);
     M(d, p[2], q[2]);
-    A(d, d, d);
+    A1(d, d, d);
     Z(e, b, a);
     Z(f, d, c);
-    A(g, d, c);
-    A(h, b, a);
+    A1(g, d, c);
+    A1(h, b, a);
     M(p[0], e, f);
     M(p[1], h, g);
     M(p[2], g, f);
@@ -39191,7 +44185,7 @@ const schemaInstanceMime = (url)=>{
     const schemaUrl = pathCombine(url.baseUrl(), upToLast(url.servicePath, '/'), ".schema.json");
     return `application/json; schema="${schemaUrl}"`;
 };
-const buildDefaultDirectory = ({ basePath , service  })=>{
+const buildDefaultDirectory = ({ basePath, service })=>{
     service.getDirectoryPath(basePath, (msg)=>{
         const dirJson = {
             path: msg.url.servicePath,
@@ -39206,7 +44200,7 @@ const buildDefaultDirectory = ({ basePath , service  })=>{
         return Promise.resolve(msg);
     });
 };
-const buildStore = ({ basePath , service , schema , mapUrlRead , mapUrlWrite , mapUrlDelete , createTest , mapUrlCreate , mapUrlDirectoryRead , mapUrlDirectoryDelete , transformDirectory , transformRead , transformWrite  })=>{
+const buildStore = ({ basePath, service, schema, mapUrlRead, mapUrlWrite, mapUrlDelete, createTest, mapUrlCreate, mapUrlDirectoryRead, mapUrlDirectoryDelete, transformDirectory, transformRead, transformWrite })=>{
     service.getDirectoryPath(basePath, async (msg, context, config)=>{
         if (mapUrlDirectoryRead === undefined) return msg.setStatus(500, 'No mapping for directory read configured when building store');
         let dirJson;
@@ -39536,8 +44530,8 @@ class DiscordState extends BaseStateClass {
         return Promise.resolve();
     }
 }
-const service8 = new Service();
-service8.initializer(async (context, config)=>{
+const service9 = new Service();
+service9.initializer(async (context, config)=>{
     await context.state(DiscordState, context, config);
 });
 const commandSchema = {
@@ -39843,7 +44837,7 @@ const snowflakeToTimestamp = (snf)=>{
     const snfi = Number(BigInt(snf) >> 22n);
     return snfi + 1420070400000;
 };
-service8.postPath("interaction", async (msg, context, config)=>{
+service9.postPath("interaction", async (msg, context, config)=>{
     if (!await verify3(msg, config)) {
         console.log('Invalid');
         return msg.setStatus(401, 'invalid request signature');
@@ -39859,7 +44853,7 @@ service8.postPath("interaction", async (msg, context, config)=>{
     msg.setDataJson(intResp).setStatus(200);
     return msg;
 });
-service8.getPath("command/.schema.json", (msg)=>Promise.resolve(msg.setDataJson(commandSchema, "application/schema+json")));
+service9.getPath("command/.schema.json", (msg)=>Promise.resolve(msg.setDataJson(commandSchema, "application/schema+json")));
 const extractId = (msg)=>{
     const id = decodeURIComponent(msg.url.servicePathElements[1]?.replace(/.json$/, '')).split('|')?.[1];
     return id;
@@ -39913,7 +44907,7 @@ const guildsDirectory = (includeGlobal = false)=>(msg, _, config)=>{
 const applicationPath = 'applications/${proxyAdapterConfig.applicationId}';
 buildStore({
     basePath: "/command/global",
-    service: service8,
+    service: service9,
     schema: commandSchema,
     mapUrlRead: (msg)=>[
             `${applicationPath}/commands/${extractId(msg)}`,
@@ -39937,7 +44931,7 @@ buildStore({
 });
 buildStore({
     basePath: "/command",
-    service: service8,
+    service: service9,
     schema: commandSchema,
     mapUrlRead: (msg)=>[
             `${applicationPath}/guilds/$>0/commands/${extractId(msg)}`,
@@ -39959,10 +44953,10 @@ buildStore({
     mapUrlDirectoryRead: applicationPath + "/guilds/$>0/commands",
     transformDirectory: transformCommandDirectory
 });
-service8.getDirectoryPath("/command/.", guildsDirectory(true));
+service9.getDirectoryPath("/command/.", guildsDirectory(true));
 buildStore({
     basePath: "/members",
-    service: service8,
+    service: service9,
     schema: memberSchema,
     mapUrlRead: (msg)=>[
             `guilds/$>0/members/${extractId(msg)}`,
@@ -39984,10 +44978,10 @@ buildStore({
     mapUrlDirectoryRead: null,
     transformDirectory: getMemberDirectory
 });
-service8.getDirectoryPath("/members/.", guildsDirectory());
+service9.getDirectoryPath("/members/.", guildsDirectory());
 buildStore({
     basePath: "/roles",
-    service: service8,
+    service: service9,
     schema: roleSchema,
     mapUrlRead: (msg)=>[
             `guilds/$>0/roles/${extractId(msg)}`,
@@ -40009,7 +45003,7 @@ buildStore({
     mapUrlDirectoryRead: "guilds/$>0/roles",
     transformDirectory: transformRoleDirectory
 });
-service8.getPath("/roles", async (msg, context, config)=>{
+service9.getPath("/roles", async (msg, context, config)=>{
     if (msg.url.resourceName === ".schema.json" && msg.method === "GET") {
         return msg.setDataJson(roleSchema, "application/schema+json");
     }
@@ -40031,12 +45025,12 @@ service8.getPath("/roles", async (msg, context, config)=>{
     }
     return resp;
 });
-service8.getDirectoryPath("/roles/.", guildsDirectory());
+service9.getDirectoryPath("/roles/.", guildsDirectory());
 buildDefaultDirectory({
     basePath: "/",
-    service: service8
+    service: service9
 });
-const __default36 = {
+const __default40 = {
     "name": "Discord Service",
     "description": "Manages command creation for Discord",
     "moduleUrl": "./services/discord.ts",
@@ -40117,7 +45111,7 @@ const __default36 = {
     },
     "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts"
 };
-const __default37 = {
+const __default41 = {
     "name": "Temporary access service",
     "description": "Generates a token for temporary access to resources and then gives access",
     "moduleUrl": "./services/temporary-access.ts",
@@ -40138,8 +45132,8 @@ const __default37 = {
         }
     }
 };
-const service9 = new Service();
-service9.post(async (msg, context)=>{
+const service10 = new Service();
+service10.post(async (msg, context)=>{
     const params = await msg.data?.asJson() ?? {};
     const reqQuery = msg.copy().setMethod("GET");
     const msgQuery = await context.makeRequest(reqQuery);
@@ -40149,44 +45143,51 @@ service9.post(async (msg, context)=>{
     const contextUrl = msg.url.copy();
     contextUrl.setSubpathFromUrl(msgQuery.getHeader('location') || '');
     let error = null;
-    query = query.replace(/\$\{([^}]*)\}/gi, (_, p1)=>{
-        const quoted = context.adapter.quote(getProp(params, p1.split('.')) || '');
-        if (quoted instanceof Error) {
-            error = quoted;
-            return '';
-        } else {
-            return quoted;
-        }
-    });
-    if (error === null) {
-        query = query.replace(/\$([0-9]+)/gi, (_, p1)=>{
-            const idx = parseInt(p1);
-            if (idx < (contextUrl.subPathElementCount || 0)) {
-                const quoted = context.adapter.quote(contextUrl.subPathElements[idx]);
-                if (quoted instanceof Error) {
-                    error = quoted;
-                    return '';
-                } else {
-                    return quoted;
-                }
-            } else {
+    const quote = context.adapter.quote;
+    if (quote) {
+        query = query.replace(/\$\{([^}]*)\}/gi, (_, p1)=>{
+            const quoted = quote(getProp(params, p1.split('.')) || '');
+            if (quoted instanceof Error) {
+                error = quoted;
                 return '';
+            } else {
+                return quoted;
             }
         });
+        if (error === null) {
+            query = query.replace(/\$([0-9]+)/gi, (_, p1)=>{
+                const idx = parseInt(p1);
+                if (idx < (contextUrl.subPathElementCount || 0)) {
+                    const quoted = quote(contextUrl.subPathElements[idx]);
+                    if (quoted instanceof Error) {
+                        error = quoted;
+                        return '';
+                    } else {
+                        return quoted;
+                    }
+                } else {
+                    return '';
+                }
+            });
+        }
+        if (error !== null) return msg.setStatus(400, error.toString());
     }
-    if (error !== null) return msg.setStatus(400, error.toString());
     context.logger.info(`Query: ${query}`);
-    const result = await context.adapter.runQuery(query);
+    for(let i = 0; i < (contextUrl.subPathElementCount || 0); i++){
+        params['p' + i.toString()] = contextUrl.subPathElements[i];
+    }
+    const result = await context.adapter.runQuery(query, params);
     if (typeof result === 'number') return msg.setStatus(result);
     msg.setDataJson(result);
     return msg;
 });
-const __default38 = {
+const __default42 = {
     "name": "Query",
     "description": "Stores queries as text files and runs the query in the file parameterised with a POST body to produce the response",
     "moduleUrl": "./services/query.ts",
     "apis": [
-        "store-transform"
+        "store-transform",
+        "file.base"
     ],
     "adapterInterface": "IQueryAdapter",
     "isFilter": true,
@@ -40237,6 +45238,7 @@ const __default38 = {
     "privateServices": {
         "store": {
             "name": "'Query Store'",
+            "storesTransforms": "true",
             "source": "./services/file.rsm.json",
             "access": {
                 "readRoles": "access.readRoles",
@@ -40251,26 +45253,6 @@ const __default38 = {
         }
     }
 };
-function repeat1(source, count) {
-    if (count === 0) {
-        return new Uint8Array();
-    }
-    if (count < 0) {
-        throw new RangeError("bytes: negative repeat count");
-    } else if (source.length * count / count !== source.length) {
-        throw new Error("bytes: repeat count causes overflow");
-    }
-    const __int = Math.floor(count);
-    if (__int !== count) {
-        throw new Error("bytes: repeat count must be an integer");
-    }
-    const nb = new Uint8Array(source.length * count);
-    let bp = copy1(source, nb);
-    for(; bp < nb.length; bp *= 2){
-        copy1(nb.slice(0, bp), nb, bp);
-    }
-    return nb;
-}
 function concat(...buf) {
     let length = 0;
     for (const b of buf){
@@ -40292,6 +45274,23 @@ function copy1(src, dst, off = 0) {
     }
     dst.set(src, off);
     return src.byteLength;
+}
+function repeat1(source, count) {
+    if (count === 0) {
+        return new Uint8Array();
+    }
+    if (count < 0) {
+        throw new RangeError("bytes: negative repeat count");
+    }
+    if (!Number.isInteger(count)) {
+        throw new Error("bytes: repeat count must be an integer");
+    }
+    const nb = new Uint8Array(source.length * count);
+    let bp = copy1(source, nb);
+    for(; bp < nb.length; bp *= 2){
+        copy1(nb.slice(0, bp), nb, bp);
+    }
+    return nb;
 }
 var LogLevels;
 (function(LogLevels) {
@@ -40443,8 +45442,8 @@ class Logger {
         return this.#_log(LogLevels.CRITICAL, msg, ...args);
     }
 }
-const { Deno: Deno1  } = globalThis;
-const noColor = typeof Deno1?.noColor === "boolean" ? Deno1.noColor : true;
+const { Deno: Deno1 } = globalThis;
+const noColor = typeof Deno1?.noColor === "boolean" ? Deno1.noColor : false;
 let enabled = !noColor;
 function code1(open, close) {
     return {
@@ -40480,17 +45479,6 @@ new RegExp([
     "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
     "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"
 ].join("|"), "g");
-class DenoStdInternalError2 extends Error {
-    constructor(message){
-        super(message);
-        this.name = "DenoStdInternalError";
-    }
-}
-function assert2(expr, msg = "") {
-    if (!expr) {
-        throw new DenoStdInternalError2(msg);
-    }
-}
 class AbstractBufBase {
     buf;
     usedBufferBytes = 0;
@@ -40681,6 +45669,17 @@ class FileHandler extends WriterHandler {
         removeEventListener("unload", this.#unloadCallback);
     }
 }
+class AssertionError extends Error {
+    name = "AssertionError";
+    constructor(message){
+        super(message);
+    }
+}
+function assert2(expr, msg = "") {
+    if (!expr) {
+        throw new AssertionError(msg);
+    }
+}
 const DEFAULT_LEVEL = "INFO";
 const DEFAULT_CONFIG = {
     handlers: {
@@ -40780,6 +45779,11 @@ function hasPrefixFrom(a, prefix, offset) {
     return true;
 }
 function noop(_) {}
+const utfBom = new Uint8Array([
+    0xef,
+    0xbb,
+    0xbf
+]);
 const defaultCSVReaderOptions = {
     columnSeparator: ",",
     lineSeparator: "\n",
@@ -40917,7 +45921,7 @@ class CSVReader {
     async readMoreData() {
         this.stats.reads++;
         this.debug("read more data");
-        const { done , value  } = await this.readerIterator.next();
+        const { done, value } = await this.readerIterator.next();
         if (done) {
             this.readerEmpty = true;
         } else {
@@ -40974,10 +45978,14 @@ class CSVReader {
                 this.emptyLine = true;
                 continue;
             }
-            if (!this.inColumn && this.linesProcessed > this.toLine) {
+            if (!this.inColumn && this.linesProcessed >= this.toLine) {
                 this.debug("eof");
                 this.onEnd();
                 return;
+            }
+            if (!this.inColumn && this.currentPos === 0 && this.hasNext(utfBom)) {
+                this.skip(utfBom.length);
+                continue;
             }
             if (!this.inColumn && this.inputBufferUnprocessed === 0) {
                 this.debug("eof");
@@ -41054,12 +46062,12 @@ class CSVReader {
                 let lastLineStartPos = -1;
                 if (limit > 1) {
                     if (this.inQuote) {
-                        const { till , lineSeparatorsFound , lastLineSeparatorEndIndex  } = findReadTillIndexQuoted(slice, limit, this.quote, this.lineSeparator);
+                        const { till, lineSeparatorsFound, lastLineSeparatorEndIndex } = findReadTillIndexQuoted(slice, limit, this.quote, this.lineSeparator);
                         readTillIndex = till;
                         newLines = lineSeparatorsFound;
                         lastLineStartPos = this.currentPos + lastLineSeparatorEndIndex;
                     } else {
-                        const { till , type  } = findReadTillIndex(slice, limit, this.lineSeparator, this.columnSeparator, this.quote);
+                        const { till, type } = findReadTillIndex(slice, limit, this.lineSeparator, this.columnSeparator, this.quote);
                         if (till === 0 && type === FindReadTillIndexType.QUOTE) {
                             this.onError(new Error(`Unexpected quote in unquoted field (${this.getCurrentPos()})`));
                             return;
@@ -41272,7 +46280,7 @@ class RowIterator {
                 value: null
             };
         }
-        const { done , value  } = await this.onRequested();
+        const { done, value } = await this.onRequested();
         if (done || value === newLine) {
             this.done = true;
             return {
@@ -41533,7 +46541,7 @@ function findReadTillLineSeparatorIndex(a, lineSeparator) {
     }
     return null;
 }
-const service10 = new Service();
+const service11 = new Service();
 class CSVState extends BaseStateClass {
     validate = null;
     load(_context, config) {
@@ -41685,10 +46693,10 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
             return msg.setStatus(500, err.toString());
         }
     };
-service10.postPath("ndjson", csvToJson("ndjson"));
-service10.postPath("validate", csvToJson("validate"));
-service10.postPath("json", csvToJson("json"));
-const __default39 = {
+service11.postPath("ndjson", csvToJson("ndjson"));
+service11.postPath("validate", csvToJson("validate"));
+service11.postPath("json", csvToJson("json"));
+const __default43 = {
     "name": "CSV converter",
     "description": "Convert CSV files to and from JSON or NDJSON",
     "moduleUrl": "./services/csvConverter.ts",
@@ -41712,15 +46720,15 @@ const __default39 = {
         "lineSchema"
     ]
 };
-const service11 = new Service();
-service11.getPath("tail", async (msg, { adapter , logger  })=>{
+const service12 = new Service();
+service12.getPath("tail", async (msg, { adapter, logger })=>{
     logger.handlers[1].flush();
     const nLines = parseInt(msg.url.servicePathElements?.[0]);
     if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
     const lines = await adapter.tail(nLines);
     return msg.setData(lines.join('\n'), 'text/plain');
 });
-service11.getPath("json", async (msg, { adapter , logger  })=>{
+service12.getPath("json", async (msg, { adapter, logger })=>{
     logger.handlers[1].flush();
     const nLines = parseInt(msg.url.servicePathElements?.[0]);
     if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
@@ -41759,7 +46767,7 @@ service11.getPath("json", async (msg, { adapter , logger  })=>{
     }, {});
     return msg.setDataJson(json);
 });
-service11.getPath("search", async (msg, { adapter , logger  })=>{
+service12.getPath("search", async (msg, { adapter, logger })=>{
     logger.handlers[1].flush();
     const nLines = parseInt(msg.url.servicePathElements?.[0]);
     const search = msg.url.servicePathElements?.[1];
@@ -41768,7 +46776,7 @@ service11.getPath("search", async (msg, { adapter , logger  })=>{
     const lines = await adapter.search(nLines, search);
     return msg.setData(lines.join('\n'), 'text/plain');
 });
-const __default40 = {
+const __default44 = {
     "name": "Log Reader Service",
     "description": "Queries a log store for log information",
     "moduleUrl": "./services/logReader.ts",
@@ -41777,7 +46785,7 @@ const __default40 = {
     ],
     "adapterInterface": "ILogReaderAdapter"
 };
-const __default41 = {
+const __default45 = {
     "name": "Service store service",
     "description": "Stores files for service and adapter code and manifests",
     "moduleUrl": "./services/file.ts",
@@ -41795,6 +46803,289 @@ const __default41 = {
         ],
         "parentIfMissing": "false",
         "defaultResource": "''"
+    }
+};
+var commonjsGlobal2 = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
+function createCommonjsModule5(fn) {
+    var module = {
+        exports: {}
+    };
+    return fn(module, module.exports), module.exports;
+}
+var __VIRTUAL_FILE = createCommonjsModule5(function(module, exports) {
+    !function(t, s) {
+        module.exports = s();
+    }(commonjsGlobal2, function() {
+        var t, s, n = /\[([^\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS/g, i = /^(-|\+)?P(?:([-+]?[0-9,.]*)Y)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)W)?(?:([-+]?[0-9,.]*)D)?(?:T(?:([-+]?[0-9,.]*)H)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)S)?)?$/, e = {
+            years: 31536e6,
+            months: 2592e6,
+            days: 864e5,
+            hours: 36e5,
+            minutes: 6e4,
+            seconds: 1e3,
+            milliseconds: 1,
+            weeks: 6048e5
+        }, r = function(t2) {
+            return t2 instanceof c;
+        }, o = function(t2, s2, n2) {
+            return new c(t2, n2, s2.$l);
+        }, u = function(t2) {
+            return s.p(t2) + "s";
+        }, h = function(t2) {
+            return t2 < 0;
+        }, a = function(t2) {
+            return h(t2) ? Math.ceil(t2) : Math.floor(t2);
+        }, d = function(t2, s2) {
+            return t2 ? h(t2) ? {
+                negative: true,
+                format: "" + function(t3) {
+                    return Math.abs(t3);
+                }(t2) + s2
+            } : {
+                negative: false,
+                format: "" + t2 + s2
+            } : {
+                negative: false,
+                format: ""
+            };
+        }, c = function() {
+            function h2(t2, s2, n2) {
+                var r2 = this;
+                if (this.$d = {}, this.$l = n2, s2) return o(t2 * e[u(s2)], this);
+                if (typeof t2 == "number") return this.$ms = t2, this.parseFromMilliseconds(), this;
+                if (typeof t2 == "object") return Object.keys(t2).forEach(function(s3) {
+                    r2.$d[u(s3)] = t2[s3];
+                }), this.calMilliseconds(), this;
+                if (typeof t2 == "string") {
+                    var h3 = t2.match(i);
+                    if (h3) return this.$d.years = h3[2], this.$d.months = h3[3], this.$d.weeks = h3[4], this.$d.days = h3[5], this.$d.hours = h3[6], this.$d.minutes = h3[7], this.$d.seconds = h3[8], this.calMilliseconds(), this;
+                }
+                return this;
+            }
+            var c2 = h2.prototype;
+            return c2.calMilliseconds = function() {
+                var t2 = this;
+                this.$ms = Object.keys(this.$d).reduce(function(s2, n2) {
+                    return s2 + (t2.$d[n2] || 0) * e[n2];
+                }, 0);
+            }, c2.parseFromMilliseconds = function() {
+                var t2 = this.$ms;
+                this.$d.years = a(t2 / 31536e6), t2 %= 31536e6, this.$d.months = a(t2 / 2592e6), t2 %= 2592e6, this.$d.days = a(t2 / 864e5), t2 %= 864e5, this.$d.hours = a(t2 / 36e5), t2 %= 36e5, this.$d.minutes = a(t2 / 6e4), t2 %= 6e4, this.$d.seconds = a(t2 / 1e3), t2 %= 1e3, this.$d.milliseconds = t2;
+            }, c2.toISOString = function() {
+                var t2 = d(this.$d.years, "Y"), s2 = d(this.$d.months, "M"), n2 = +this.$d.days || 0;
+                this.$d.weeks && (n2 += 7 * this.$d.weeks);
+                var i2 = d(n2, "D"), e2 = d(this.$d.hours, "H"), r2 = d(this.$d.minutes, "M"), o2 = this.$d.seconds || 0;
+                this.$d.milliseconds && (o2 += this.$d.milliseconds / 1e3);
+                var u2 = d(o2, "S"), h3 = t2.negative || s2.negative || i2.negative || e2.negative || r2.negative || u2.negative, a2 = e2.format || r2.format || u2.format ? "T" : "", c3 = (h3 ? "-" : "") + "P" + t2.format + s2.format + i2.format + a2 + e2.format + r2.format + u2.format;
+                return c3 === "P" || c3 === "-P" ? "P0D" : c3;
+            }, c2.toJSON = function() {
+                return this.toISOString();
+            }, c2.format = function(t2) {
+                var i2 = t2 || "YYYY-MM-DDTHH:mm:ss", e2 = {
+                    Y: this.$d.years,
+                    YY: s.s(this.$d.years, 2, "0"),
+                    YYYY: s.s(this.$d.years, 4, "0"),
+                    M: this.$d.months,
+                    MM: s.s(this.$d.months, 2, "0"),
+                    D: this.$d.days,
+                    DD: s.s(this.$d.days, 2, "0"),
+                    H: this.$d.hours,
+                    HH: s.s(this.$d.hours, 2, "0"),
+                    m: this.$d.minutes,
+                    mm: s.s(this.$d.minutes, 2, "0"),
+                    s: this.$d.seconds,
+                    ss: s.s(this.$d.seconds, 2, "0"),
+                    SSS: s.s(this.$d.milliseconds, 3, "0")
+                };
+                return i2.replace(n, function(t3, s2) {
+                    return s2 || String(e2[t3]);
+                });
+            }, c2.as = function(t2) {
+                return this.$ms / e[u(t2)];
+            }, c2.get = function(t2) {
+                var s2 = this.$ms, n2 = u(t2);
+                return n2 === "milliseconds" ? s2 %= 1e3 : s2 = n2 === "weeks" ? a(s2 / e[n2]) : this.$d[n2], s2 === 0 ? 0 : s2;
+            }, c2.add = function(t2, s2, n2) {
+                var i2;
+                return i2 = s2 ? t2 * e[u(s2)] : r(t2) ? t2.$ms : o(t2, this).$ms, o(this.$ms + i2 * (n2 ? -1 : 1), this);
+            }, c2.subtract = function(t2, s2) {
+                return this.add(t2, s2, true);
+            }, c2.locale = function(t2) {
+                var s2 = this.clone();
+                return s2.$l = t2, s2;
+            }, c2.clone = function() {
+                return o(this.$ms, this);
+            }, c2.humanize = function(s2) {
+                return t().add(this.$ms, "ms").locale(this.$l).fromNow(!s2);
+            }, c2.milliseconds = function() {
+                return this.get("milliseconds");
+            }, c2.asMilliseconds = function() {
+                return this.as("milliseconds");
+            }, c2.seconds = function() {
+                return this.get("seconds");
+            }, c2.asSeconds = function() {
+                return this.as("seconds");
+            }, c2.minutes = function() {
+                return this.get("minutes");
+            }, c2.asMinutes = function() {
+                return this.as("minutes");
+            }, c2.hours = function() {
+                return this.get("hours");
+            }, c2.asHours = function() {
+                return this.as("hours");
+            }, c2.days = function() {
+                return this.get("days");
+            }, c2.asDays = function() {
+                return this.as("days");
+            }, c2.weeks = function() {
+                return this.get("weeks");
+            }, c2.asWeeks = function() {
+                return this.as("weeks");
+            }, c2.months = function() {
+                return this.get("months");
+            }, c2.asMonths = function() {
+                return this.as("months");
+            }, c2.years = function() {
+                return this.get("years");
+            }, c2.asYears = function() {
+                return this.as("years");
+            }, h2;
+        }();
+        return function(n2, i2, e2) {
+            t = e2, s = e2().$utils(), e2.duration = function(t2, s2) {
+                var n3 = e2.locale();
+                return o(t2, {
+                    $l: n3
+                }, s2);
+            }, e2.isDuration = r;
+            var u2 = i2.prototype.add, h2 = i2.prototype.subtract;
+            i2.prototype.add = function(t2, s2) {
+                return r(t2) && (t2 = t2.asMilliseconds()), u2.bind(this)(t2, s2);
+            }, i2.prototype.subtract = function(t2, s2) {
+                return r(t2) && (t2 = t2.asMilliseconds()), h2.bind(this)(t2, s2);
+            };
+        };
+    });
+});
+dayjs_min.extend(__VIRTUAL_FILE);
+class TimerState extends BaseStateClass {
+    paused = false;
+    ended = false;
+    count = 0;
+    timeout;
+    getNextRun(lastRun, config) {
+        const repeatDuration = dayjs_min.duration(config.repeatDuration);
+        const repeatMs = repeatDuration.asMilliseconds();
+        const maxRandomAdditionalMs = config.maxRandomAdditionalMs || 0;
+        const nextRun = lastRun.add(repeatMs + Math.floor(Math.random() * maxRandomAdditionalMs), "ms");
+        return nextRun;
+    }
+    async runLoop(context, config) {
+        let nextRun = this.getNextRun(dayjs_min(), config);
+        if (!config.autoStart) this.paused = true;
+        while(!this.ended){
+            const delayMs = nextRun.diff(dayjs_min(), "ms");
+            await new Promise((resolve)=>this.timeout = setTimeout(resolve, delayMs));
+            if (!this.paused && !this.ended) {
+                const data = {
+                    name: config.name,
+                    count: this.count++
+                };
+                const msg = new Message(config.triggerUrl, context, "POST").setDataJson(data);
+                const resp = await context.makeRequest(msg);
+                if (!resp.ok) context.logger.error(`Timer ${config.name} trigger failed: ${resp.status} ${await resp.data?.asString()}`);
+            }
+            nextRun = this.getNextRun(nextRun, config);
+        }
+    }
+    load(context, config) {
+        this.runLoop(context, config);
+        return Promise.resolve();
+    }
+    unload(_newState) {
+        this.ended = true;
+        if (this.timeout) clearTimeout(this.timeout);
+        return Promise.resolve();
+    }
+}
+const service13 = new Service();
+service13.initializer(async (context, config)=>{
+    await context.state(TimerState, context, config);
+});
+service13.postPath('start', async (msg, context, config)=>{
+    const state = await context.state(TimerState, context, config);
+    state.paused = false;
+    return msg.setStatus(200);
+});
+service13.postPath('pause', async (msg, context, config)=>{
+    const state = await context.state(TimerState, context, config);
+    state.paused = true;
+    return msg.setStatus(200);
+});
+service13.postPath('preempt', async (msg, context, config)=>{
+    const state = await context.state(TimerState, context, config);
+    if (state.timeout) clearTimeout(state.timeout);
+    return msg.setStatus(200);
+});
+service13.constantDirectory('/', {
+    path: '/',
+    paths: [
+        [
+            'start',
+            0,
+            {
+                pattern: "operation"
+            }
+        ],
+        [
+            'pause',
+            0,
+            {
+                pattern: "operation"
+            }
+        ],
+        [
+            'preempt',
+            0,
+            {
+                pattern: "operation"
+            }
+        ]
+    ],
+    spec: {
+        pattern: 'directory'
+    }
+});
+const __default46 = {
+    "name": "Timer",
+    "description": "Trigger a pipeline at regular intervals",
+    "moduleUrl": "./services/timer.ts",
+    "apis": [
+        "directory"
+    ],
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "triggerUrl": {
+                "type": "string",
+                "description": "Url receiving a POST request every second"
+            },
+            "repeatDuration": {
+                "type": "string",
+                "description": "ISO 8601 Duration between triggers"
+            },
+            "maxRandomAdditionalMs": {
+                "type": "number",
+                "description": "A random number between zero and this value in milliseconds is added to each repeat duration"
+            },
+            "autoStart": {
+                "type": "boolean",
+                "description": "whether the timer starts as soon as the server initialises (true)"
+            }
+        },
+        "required": [
+            "repeatDuration"
+        ]
     }
 };
 var LogLevels1;
@@ -41947,7 +47238,7 @@ class Logger1 {
         return this.#_log(LogLevels1.CRITICAL, msg, ...args);
     }
 }
-const { Deno: Deno2  } = globalThis;
+const { Deno: Deno2 } = globalThis;
 const noColor1 = typeof Deno2?.noColor === "boolean" ? Deno2.noColor : true;
 let enabled1 = !noColor1;
 function code2(open, close) {
@@ -42509,7 +47800,7 @@ class AuthUser {
     static noPasswordMask = '<no password>';
     static anon = new AuthUser({});
 }
-let catalogue = {};
+const catalogue = {};
 const baseChord = {
     id: 'sys.base',
     newServices: [
@@ -42724,6 +48015,22 @@ class ServiceFactory {
             return func;
         }
     }
+    basePathFromUrl(url) {
+        const pathParts = [
+            ...url.pathElements
+        ];
+        let basePath = '/' + pathParts.join('/') + '.';
+        let serviceConfig = this.serviceConfigs[basePath];
+        if (serviceConfig) return basePath;
+        while(true){
+            basePath = '/' + pathParts.join('/');
+            serviceConfig = this.serviceConfigs[basePath];
+            if (serviceConfig) return basePath;
+            if (pathParts.length === 0) break;
+            pathParts.pop();
+        }
+        return null;
+    }
     async getMessageFunctionByUrl(url, serviceContext, stateByBasePath, source) {
         if (this.serviceConfigs['()'] && source === Source.External) {
             const newServiceContext = {
@@ -42732,23 +48039,12 @@ class ServiceFactory {
             };
             return this.getMessageFunctionForService(this.serviceConfigs['()'], newServiceContext, source);
         }
-        const pathParts = [
-            ...url.pathElements
-        ];
-        let exactPath = '/' + pathParts.join('/') + '.';
-        let serviceConfig = this.serviceConfigs[exactPath];
-        if (serviceConfig) return this.getMessageFunctionForService(serviceConfig, serviceContext, source);
-        while(true){
-            exactPath = '/' + pathParts.join('/');
-            serviceConfig = this.serviceConfigs[exactPath];
-            if (serviceConfig) {
-                serviceContext.state = stateByBasePath(exactPath);
-                const innerFunc = await this.getMessageFunctionForService(serviceConfig, serviceContext, source);
-                return await this.attachFilter(url, innerFunc, serviceContext);
-            } else {
-                if (pathParts.length === 0) break;
-                pathParts.pop();
-            }
+        const configPath = this.basePathFromUrl(url);
+        if (configPath) {
+            const serviceConfig = this.serviceConfigs[configPath];
+            serviceContext.state = stateByBasePath(configPath);
+            const innerFunc = await this.getMessageFunctionForService(serviceConfig, serviceContext, source);
+            return await this.attachFilter(url, innerFunc, serviceContext);
         }
         return Promise.resolve((msg)=>Promise.resolve(msg.method === 'OPTIONS' ? config.server.setServerCors(msg).setStatus(204) : config.server.setServerCors(msg).setStatus(404, 'Not found')));
     }
@@ -42776,7 +48072,7 @@ class ServiceWrapper {
             msg.url.basePathElements = serviceConfig.basePath.split('/').filter((s)=>s !== '');
             let newMsg = msg.copy();
             try {
-                const { manifestConfig  } = serviceConfig;
+                const { manifestConfig } = serviceConfig;
                 const prePipeline = pipelineConcat(manifestConfig?.prePipeline || serviceConfig?.prePipeline);
                 const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
                 newMsg = await this.prePostPipeline("pre", newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
@@ -42835,7 +48131,7 @@ class ServiceWrapper {
         return msg;
     }
     internal;
-    async isPermitted(msg, { access  }) {
+    async isPermitted(msg, { access }) {
         if (!msg.user) return [
             false,
             false
@@ -42904,7 +48200,7 @@ class ServiceWrapper {
         }
         return msg;
     }
-    setCache(msg, { caching  }, isPublic) {
+    setCache(msg, { caching }, isPublic) {
         if (msg.method !== 'GET' || msg.url.isDirectory || !msg.ok) {
             msg.setCaching('none');
             return msg;
@@ -42973,10 +48269,10 @@ class NunjucksTemplateAdapter {
 const deleteManifestProperties = [
     'exposedConfigProperties'
 ];
-const service12 = new Service();
-const service13 = new AuthService();
 const service14 = new Service();
-const service15 = new Service();
+const service15 = new AuthService();
+const service16 = new Service();
+const service17 = new Service();
 function mapLegalChanges(msg, oldValues, newUser) {
     const currentUserObj = msg.user || AuthUser.anon;
     const current = new AuthUser(currentUserObj);
@@ -43049,63 +48345,69 @@ async function validateChange(msg, context) {
     msg.setDataJson(updatedUser);
     return msg;
 }
-const service16 = new Service();
-const service17 = new Service();
+const service18 = new Service();
+const service19 = new Service();
 class TemporaryAccessState extends BaseStateClass {
     validTokenExpiries = [];
     tokenBaseUrls = {};
 }
-const service18 = new Service();
+const service20 = new Service();
 class Modules {
     ajv;
+    services;
     adapterConstructors;
     serviceManifests;
     adapterManifests;
-    services;
+    servicesMap;
     adapterConstructorsMap;
     serviceManifestsMap;
     adapterManifestsMap;
-    servicesMap;
+    manifestsAllLoaded;
     validateServiceManifest;
     validateAdapterManifest;
     validateAdapterConfig;
     validateServiceConfig;
     constructor(ajv){
         this.ajv = ajv;
+        this.services = {};
         this.adapterConstructors = {};
         this.serviceManifests = {};
         this.adapterManifests = {};
-        this.services = {};
+        this.servicesMap = {};
         this.adapterConstructorsMap = {};
         this.serviceManifestsMap = {};
         this.adapterManifestsMap = {};
-        this.servicesMap = {};
+        this.manifestsAllLoaded = new Set();
         this.validateAdapterConfig = {};
         this.validateServiceConfig = {};
         this.validateServiceManifest = ajv.compile(schemaIServiceManifest);
         this.validateAdapterManifest = ajv.compile(schemaIAdapterManifest);
         this.adapterConstructors = {
-            "./adapter/LocalFileAdapter.ts": __default9,
-            "./adapter/S3FileAdapter.ts": __default11,
+            "./test/TestConfigFileAdapter.ts": TestConfigFileAdapter,
+            "./adapter/LocalFileAdapter.ts": __default10,
+            "./adapter/S3FileAdapter.ts": __default12,
             "./adapter/NunjucksTemplateAdapter.ts": NunjucksTemplateAdapter,
             "./adapter/SimpleProxyAdapter.ts": SimpleProxyAdapter,
             "./adapter/AWS4ProxyAdapter.ts": AWS4ProxyAdapter,
             "./adapter/ElasticProxyAdapter.ts": ElasticProxyAdapter,
             "./adapter/ElasticDataAdapter.ts": ElasticDataAdapter,
             "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter,
-            "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter
+            "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter,
+            "./adapter/GraphQlQueryAdapter.ts": ElasticQueryAdapter1
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
-            "./adapter/LocalFileAdapter.ram.json": __default10,
-            "./adapter/S3FileAdapter.ram.json": __default12,
-            "./adapter/NunjucksTemplateAdapter.ram.json": __default13,
-            "./adapter/SimpleProxyAdapter.ram.json": __default14,
-            "./adapter/AWS4ProxyAdapter.ram.json": __default15,
-            "./adapter/ElasticProxyAdapter.ram.json": __default16,
-            "./adapter/ElasticDataAdapter.ram.json": __default17,
-            "./adapter/ElasticQueryAdapter.ram.json": __default18,
-            "./adapter/FileLogReaderAdapter.ram.json": __default19
+            "./test/TestConfigFileAdapter.ram.json": __default9,
+            "./adapter/LocalFileAdapter.ram.json": __default11,
+            "./adapter/S3FileAdapter.ram.json": __default13,
+            "./adapter/NunjucksTemplateAdapter.ram.json": __default14,
+            "./adapter/SimpleProxyAdapter.ram.json": __default15,
+            "./adapter/AWS4ProxyAdapter.ram.json": __default16,
+            "./adapter/ElasticProxyAdapter.ram.json": __default17,
+            "./adapter/ElasticDataAdapter.ram.json": __default18,
+            "./adapter/ElasticQueryAdapter.ram.json": __default19,
+            "./adapter/FileLogReaderAdapter.ram.json": __default20,
+            "./adapter/GraphQlQueryAdapter.ram.json": __default22
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
         Object.entries(this.adapterManifests).forEach(([url, v])=>{
@@ -43113,50 +48415,54 @@ class Modules {
             this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
         });
         this.services = {
-            "./services/services.ts": service12,
-            "./services/auth.ts": service13,
-            "./services/data.ts": service,
-            "./services/dataset.ts": service1,
-            "./services/file.ts": service2,
-            "./services/lib.ts": service3,
-            "./services/pipeline.ts": service14,
-            "./services/pipeline-store.ts": service15,
-            "./services/static-site-filter.ts": service4,
-            "./services/user-filter.ts": service16,
-            "./services/template.ts": service5,
-            "./services/proxy.ts": service6,
-            "./services/email.ts": service7,
-            "./services/account.ts": service17,
-            "./services/discord.ts": service8,
-            "./services/temporary-access.ts": service18,
-            "./services/query.ts": service9,
-            "./services/csvConverter.ts": service10,
-            "./services/logReader.ts": service11
+            "./services/mock.ts": service,
+            "./services/services.ts": service14,
+            "./services/auth.ts": service15,
+            "./services/data.ts": service1,
+            "./services/dataset.ts": service2,
+            "./services/file.ts": service3,
+            "./services/lib.ts": service4,
+            "./services/pipeline.ts": service16,
+            "./services/pipeline-store.ts": service17,
+            "./services/static-site-filter.ts": service5,
+            "./services/user-filter.ts": service18,
+            "./services/template.ts": service6,
+            "./services/proxy.ts": service7,
+            "./services/email.ts": service8,
+            "./services/account.ts": service19,
+            "./services/discord.ts": service9,
+            "./services/temporary-access.ts": service20,
+            "./services/query.ts": service10,
+            "./services/csvConverter.ts": service11,
+            "./services/logReader.ts": service12,
+            "./services/timer.ts": service13
         };
-        this.serviceManifestsMap[""] = Object.keys(this.services);
+        this.servicesMap[""] = Object.keys(this.services);
         this.serviceManifests = {
-            "./services/services.rsm.json": __default20,
-            "./services/auth.rsm.json": __default21,
-            "./services/data.rsm.json": __default22,
-            "./services/dataset.rsm.json": __default23,
-            "./services/file.rsm.json": __default24,
-            "./services/lib.rsm.json": __default25,
-            "./services/pipeline.rsm.json": __default26,
-            "./services/pipeline-store.rsm.json": __default27,
-            "./services/static-site-filter.rsm.json": __default28,
-            "./services/static-site.rsm.json": __default29,
-            "./services/user-data.rsm.json": __default30,
-            "./services/user-filter.rsm.json": __default31,
-            "./services/template.rsm.json": __default32,
-            "./services/proxy.rsm.json": __default33,
-            "./services/email.rsm.json": __default34,
-            "./services/account.rsm.json": __default35,
-            "./services/discord.rsm.json": __default36,
-            "./services/temporary-access.rsm.json": __default37,
-            "./services/query.rsm.json": __default38,
-            "./services/csvConverter.rsm.json": __default39,
-            "./services/logReader.rsm.json": __default40,
-            "./services/service-store.rsm.json": __default41
+            "./services/mock.rsm.json": __default23,
+            "./services/services.rsm.json": __default24,
+            "./services/auth.rsm.json": __default25,
+            "./services/data.rsm.json": __default26,
+            "./services/dataset.rsm.json": __default27,
+            "./services/file.rsm.json": __default28,
+            "./services/lib.rsm.json": __default29,
+            "./services/pipeline.rsm.json": __default30,
+            "./services/pipeline-store.rsm.json": __default31,
+            "./services/static-site-filter.rsm.json": __default32,
+            "./services/static-site.rsm.json": __default33,
+            "./services/user-data.rsm.json": __default34,
+            "./services/user-filter.rsm.json": __default35,
+            "./services/template.rsm.json": __default36,
+            "./services/proxy.rsm.json": __default37,
+            "./services/email.rsm.json": __default38,
+            "./services/account.rsm.json": __default39,
+            "./services/discord.rsm.json": __default40,
+            "./services/temporary-access.rsm.json": __default41,
+            "./services/query.rsm.json": __default42,
+            "./services/csvConverter.rsm.json": __default43,
+            "./services/logReader.rsm.json": __default44,
+            "./services/service-store.rsm.json": __default45,
+            "./services/timer.rsm.json": __default46
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
@@ -43168,10 +48474,26 @@ class Modules {
         const objUrl = new Url(url);
         if (objUrl.domain) {
             map[objUrl.domain] = map[objUrl.domain] || [];
-            map[objUrl.domain].push(url);
+            if (!map[objUrl.domain].includes(url)) {
+                map[objUrl.domain].push(url);
+            }
         } else {
             map[tenant] = map[tenant] || [];
-            map[tenant].push(url);
+            if (!map[tenant].includes(url)) {
+                map[tenant].push(url);
+            }
+        }
+    }
+    purgeTenantModules(tenant) {
+        const adapterUrls = this.adapterConstructorsMap[tenant];
+        if (adapterUrls) {
+            adapterUrls.forEach((url)=>delete this.adapterConstructors[url]);
+            delete this.adapterConstructorsMap[tenant];
+        }
+        const serviceUrls = this.servicesMap[tenant];
+        if (serviceUrls) {
+            serviceUrls.forEach((url)=>delete this.services[url]);
+            delete this.servicesMap[tenant];
         }
     }
     async getConfigAdapter(tenant) {
@@ -43183,12 +48505,21 @@ class Modules {
         const configAdapter = await config.modules.getAdapter(configStoreAdapterSpec.adapterSource, context, configStoreAdapterSpec);
         return configAdapter;
     }
-    async getAdapterConstructor(sourceUrl, manifestUrl) {
-        if (manifestUrl) sourceUrl = this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter");
+    async getAdapterConstructor(sourceUrl, tenant, manifestUrl) {
+        let moduleReqUrl;
+        if (manifestUrl) {
+            moduleReqUrl = new Url(this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter"));
+        } else {
+            moduleReqUrl = new Url(sourceUrl);
+        }
         if (!this.adapterConstructors[sourceUrl]) {
             try {
-                const module = await import(sourceUrl);
+                moduleReqUrl.query['$x-rs-source'] = [
+                    'internal'
+                ];
+                const module = await import(moduleReqUrl.toString());
                 this.adapterConstructors[sourceUrl] = module.default;
+                this.addToDomainMap(this.adapterConstructorsMap, sourceUrl, tenant);
             } catch (err) {
                 throw new Error(`failed to load adapter at ${sourceUrl}: ${err}`);
             }
@@ -43203,6 +48534,7 @@ class Modules {
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
                 this.adapterManifests[fullUrl] = manifest;
+                this.addToDomainMap(this.adapterManifestsMap, url, tenant);
             } catch (err) {
                 return `failed to load manifest at ${url}: ${err}`;
             }
@@ -43224,7 +48556,8 @@ class Modules {
             manifestUrl = sourceUrl;
             sourceUrl = manifest.moduleUrl;
         }
-        const constr = await this.getAdapterConstructor(sourceUrl, manifestUrl);
+        context.logger.debug(`Loading adapter at ${sourceUrl}`);
+        const constr = await this.getAdapterConstructor(sourceUrl, context.tenant, manifestUrl);
         return new constr(context, adapterConfig);
     }
     ensureServiceConfigValidator(url) {
@@ -43252,6 +48585,7 @@ class Modules {
                 const manifest = JSON.parse(manifestJson);
                 manifest.source = url;
                 this.serviceManifests[fullUrl] = manifest;
+                this.addToDomainMap(this.serviceManifestsMap, url, tenant);
             } catch (err) {
                 return `failed to load manifest at ${url}: ${err}`;
             }
@@ -43287,8 +48621,18 @@ class Modules {
         if (!this.services[sourceUrl]) {
             try {
                 config.logger.debug(`Start -- loading service at ${url}`);
-                const module = await import(sourceUrl);
+                const moduleReqUrl = new Url(sourceUrl);
+                moduleReqUrl.query['$x-rs-source'] = [
+                    'internal'
+                ];
+                if (moduleReqUrl.domain === primaryDomain) {
+                    moduleReqUrl.query['$no-cache'] = [
+                        crypto.randomUUID()
+                    ];
+                }
+                const module = await import(moduleReqUrl.toString());
                 this.services[sourceUrl] = module.default;
+                this.addToDomainMap(this.servicesMap, sourceUrl, tenant);
                 config.logger.debug(`End -- loading service at ${url}`);
             } catch (err) {
                 throw new Error(`failed to load module at ${url}: ${err}`);
@@ -43311,6 +48655,7 @@ class Modules {
         for (const s of serviceStoreServices){
             await this.loadManifestsFromDirectory(pathCombine(urlBase, s.basePath + '/'), context);
         }
+        this.manifestsAllLoaded.add(domain);
     }
     async loadManifestsFromDirectory(url, context) {
         url = upToLast(url, '?');
@@ -43543,10 +48888,11 @@ const infraAsCatalogue = (entry)=>{
 };
 const tenantLoads = {};
 const tenantLoadTimeoutMs = 500000;
-const getTenant = async (requestTenant, source = Source.External)=>{
+const getTenant = async (url, requestTenant)=>{
     const tenantLoad = tenantLoads[requestTenant];
-    if (tenantLoad !== undefined && source !== Source.Internal) {
-        await tenantLoads[requestTenant];
+    if (tenantLoad !== undefined) {
+        const urlIsReady = config.tenants[requestTenant]?.pathIsReady(url);
+        if (!urlIsReady) await tenantLoads[requestTenant];
     }
     if (!config.tenants[requestTenant]) {
         let resolveLoad = null;
@@ -43623,7 +48969,55 @@ const ensureAllManifests = async (tenantOrUrl, context)=>{
     }
     return domain;
 };
-service12.getPath('catalogue', async (msg, context)=>{
+service14.constantDirectory('/', {
+    path: '/',
+    paths: [
+        [
+            'catalogue',
+            undefined,
+            {
+                pattern: 'view',
+                respMimeType: 'application/json'
+            }
+        ],
+        [
+            'services',
+            undefined,
+            {
+                pattern: 'view',
+                respMimeType: 'application/json'
+            }
+        ],
+        [
+            'raw',
+            undefined,
+            {
+                pattern: 'store',
+                createDirectory: false,
+                createFiles: false,
+                storeMimeTypes: [
+                    'application/json'
+                ]
+            }
+        ],
+        [
+            'raw.json',
+            undefined,
+            {
+                pattern: 'store',
+                createDirectory: false,
+                createFiles: false,
+                storeMimeTypes: [
+                    'application/json'
+                ]
+            }
+        ]
+    ],
+    spec: {
+        pattern: 'directory'
+    }
+});
+service14.getPath('catalogue', async (msg, context)=>{
     const builtIns = "";
     const local = context.tenant;
     const extLibs = [
@@ -43662,7 +49056,7 @@ service12.getPath('catalogue', async (msg, context)=>{
         catalogue: allCat
     }));
 });
-service12.getPath('services', async (msg, context)=>{
+service14.getPath('services', async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
@@ -43692,9 +49086,10 @@ const getRaw = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
 };
-service12.getPath('raw', getRaw);
-service12.getPath('raw.json', getRaw);
+service14.getPath('raw', getRaw);
+service14.getPath('raw.json', getRaw);
 const rebuildConfig = async (rawServicesConfig, tenant)=>{
+    config.modules.purgeTenantModules(config.tenants[tenant].primaryDomain);
     let newTenant;
     try {
         newTenant = new Tenant(tenant, rawServicesConfig, config.tenants[tenant].domains);
@@ -43734,6 +49129,7 @@ class Tenant {
     servicesConfig;
     chordMap;
     _state;
+    readyBasePaths;
     state;
     get primaryDomain() {
         const name = this.name === "main" ? '' : this.name;
@@ -43749,6 +49145,7 @@ class Tenant {
         this.servicesConfig = null;
         this.chordMap = {};
         this._state = {};
+        this.readyBasePaths = [];
         this.state = (basePath)=>async (cons, context, config)=>{
                 if (this._state[basePath] === undefined) {
                     const newState = new cons();
@@ -43900,8 +49297,13 @@ class Tenant {
             }
         }
     }
+    pathIsReady(url) {
+        const basePath = this.serviceFactory.basePathFromUrl(url);
+        return !!basePath && this.readyBasePaths.includes(basePath);
+    }
     async init(oldTenant) {
         await this.loadConfig(this.filterConfigByLocalSource(this.rawServicesConfig, false), oldTenant);
+        this.readyBasePaths = Object.keys(this.filterConfigByLocalSource(this.rawServicesConfig, false).services);
         await this.loadConfig(this.filterConfigByLocalSource(this.rawServicesConfig, true), oldTenant);
     }
     async unload(newTenant) {
@@ -44041,7 +49443,10 @@ class PipelineStep {
 function makeServiceContext(tenantName, state, prePost) {
     const context = {
         tenant: tenantName,
-        makeRequest: (msg, source)=>source === Source.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg, source),
+        makeRequest: (msg, source)=>{
+            if (!msg.url.domain) msg.url.domain = config.tenants[tenantName].primaryDomain;
+            return source === Source.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg, source);
+        },
         runPipeline: (msg, pipelineSpec, contextUrl)=>{
             pipeline(msg, pipelineSpec, contextUrl);
         },
@@ -44075,7 +49480,7 @@ const handleIncomingRequest = async (msg)=>{
     try {
         const tenantName = tenantFromHostname(msg.getHeader('host') || 'none');
         if (tenantName === null) return msg.setStatus(404, 'Not found');
-        const tenant = await getTenant(tenantName || 'main');
+        const tenant = await getTenant(msg.url, tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
         config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
@@ -44111,7 +49516,7 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
         let tenant;
         if (tenantName !== null) {
             try {
-                tenant = await getTenant(tenantName || 'main', source);
+                tenant = await getTenant(msg.url, tenantName || 'main');
                 if (tenant.isEmpty) tenantName = null;
             } catch  {
                 tenantName = null;
@@ -44190,8 +49595,8 @@ const putRaw = async (msg, context)=>{
     if (status) return msg.setStatus(status, message);
     return msg.setStatus(200);
 };
-service12.putPath('raw', putRaw);
-service12.putPath('raw.json', putRaw);
+service14.putPath('raw', putRaw);
+service14.putPath('raw.json', putRaw);
 const putChords = async (msg, context)=>{
     const chords = await msg?.data?.asJson();
     if (typeof chords !== 'object') return msg.setStatus(400, 'Chords should be an object labelled by chord id');
@@ -44216,14 +49621,14 @@ const putChords = async (msg, context)=>{
     const [status, message] = await rebuildConfig(newRawConfig, context.tenant);
     return msg.setStatus(status || 200, message);
 };
-service12.putPath('chords', putChords);
-service12.putPath('chords.json', putChords);
+service14.putPath('chords', putChords);
+service14.putPath('chords.json', putChords);
 const getChordMap = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.chordMap));
 };
-service12.getPath('chord-map', getChordMap);
-service12.getPath('chord-map.json', getChordMap);
+service14.getPath('chord-map', getChordMap);
+service14.getPath('chord-map.json', getChordMap);
 const openApi = async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const spec = {
@@ -44246,7 +49651,7 @@ const openApi = async (msg, context)=>{
             const manifest = await config.modules.getServiceManifest(serv.source, context.tenant);
             if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
             let apiPattern = "store";
-            if (manifest.apis?.includes('store-transform')) apiPattern = "storeTransform";
+            if (manifest.apis?.includes('store-transform')) apiPattern = "store-transform";
             else if (manifest.apis?.includes('transform')) apiPattern = "transform";
             else if (manifest.apis?.includes('view')) apiPattern = "view";
             else if (manifest.apis?.includes('operation')) apiPattern = "operation";
@@ -44259,7 +49664,7 @@ const openApi = async (msg, context)=>{
     }
     return msg.setDataJson(spec);
 };
-service12.getPath('openApi', openApi);
+service14.getPath('openApi', openApi);
 var PipelineElementType;
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
@@ -44660,7 +50065,7 @@ function logout(msg) {
     msg.deleteCookie('rs-auth');
     return Promise.resolve(msg);
 }
-service13.postPath('login', async (msg, context, config)=>{
+service15.postPath('login', async (msg, context, config)=>{
     const newMsg = await login(msg, config.userUrlPattern, context, config);
     if (config.loginPage && msg.getHeader('referer')) {
         let redirUrl = msg.url.copy();
@@ -44695,8 +50100,8 @@ service13.postPath('login', async (msg, context, config)=>{
     }
     return newMsg;
 });
-service13.postPath('logout', (msg)=>logout(msg));
-service13.getPath('user', async (msg, context, config)=>{
+service15.postPath('logout', (msg)=>logout(msg));
+service15.getPath('user', async (msg, context, config)=>{
     if (!msg.user || userIsAnon(msg.user)) {
         return msg.setStatus(401, 'Unauthorized');
     }
@@ -44708,8 +50113,8 @@ service13.getPath('user', async (msg, context, config)=>{
         return msg.setStatus(404, "No such user");
     }
 });
-service13.getPath('timeout', (msg, _context, config)=>msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
-service13.setUser(async (msg, _context, { sessionTimeoutMins  })=>{
+service15.getPath('timeout', (msg, _context, config)=>msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
+service15.setUser(async (msg, _context, { sessionTimeoutMins })=>{
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
     let authResult = '';
@@ -44735,7 +50140,44 @@ service13.setUser(async (msg, _context, { sessionTimeoutMins  })=>{
     }
     return msg;
 });
-service14.all((msg, context, config)=>{
+service16.getDirectory((msg, _context, { manualMimeTypes })=>{
+    if (msg.url.query["$requestSchema"]) {
+        if (!manualMimeTypes?.requestSchema) return msg.setStatus(404, "No request schema available");
+        msg.setDataJson(manualMimeTypes?.requestSchema);
+        msg.data.setMimeType("application/schema+json");
+        return msg;
+    }
+    if (msg.url.query["$responseSchema"]) {
+        if (!manualMimeTypes?.responseSchema) return msg.setStatus(404, "No response schema available");
+        msg.setDataJson(manualMimeTypes?.responseSchema);
+        msg.data.setMimeType("application/schema+json");
+        return msg;
+    }
+    let pattern = "transform";
+    if (manualMimeTypes) {
+        let isSend = true;
+        if (manualMimeTypes.requestMimeType === "none" || manualMimeTypes.requestSchema?.type === "null") {
+            isSend = false;
+        }
+        let isReceive = true;
+        if (manualMimeTypes.responseMimeType === "none" || manualMimeTypes.responseSchema?.type === "null") {
+            isReceive = false;
+        }
+        if (!isReceive && isSend) pattern = "operation";
+        else if (isReceive && !isSend) pattern = "view";
+    }
+    msg.setDirectoryJson({
+        path: '/',
+        paths: [],
+        spec: {
+            pattern,
+            reqMimeType: manualMimeTypes?.requestSchema ? `application/json;schema=${msg.url.baseUrl()}/?$requestSchema` : manualMimeTypes?.requestMimeType,
+            respMimeType: manualMimeTypes?.responseSchema ? `application/json;schema=${msg.url.baseUrl()}/?$responseSchema` : manualMimeTypes?.responseMimeType
+        }
+    });
+    return msg;
+});
+service16.all((msg, context, config)=>{
     let runPipeline = config.pipeline;
     if (msg.url.query["$to-step"]) {
         const toStep = parseInt(msg.url.query["$to-step"][0]);
@@ -44745,7 +50187,7 @@ service14.all((msg, context, config)=>{
     }
     return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal));
 });
-service15.all(async (msg, context)=>{
+service17.all(async (msg, context)=>{
     const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
@@ -44762,7 +50204,7 @@ service15.all(async (msg, context)=>{
     pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
     return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
-service16.get(async (msg, context)=>{
+service18.get(async (msg, context)=>{
     if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
     if (msg.url.query['test'] !== undefined) {
         msg.data = undefined;
@@ -44786,9 +50228,9 @@ service16.get(async (msg, context)=>{
     msg.data.mimeType = originalMime;
     return msg;
 });
-service16.put(validateChange);
-service16.post(validateChange);
-service16.delete(validateChange);
+service18.put(validateChange);
+service18.post(validateChange);
+service18.delete(validateChange);
 const sendTokenUrl = async (msg, context, serviceConfig, subservice)=>{
     if (msg.url.servicePathElements.length < 1) return msg.setStatus(400, 'Missing email');
     const user = await getUserFromEmail(context, serviceConfig.userUrlPattern, msg, msg.url.servicePathElements[0], true);
@@ -44868,11 +50310,11 @@ const tokenVerifySchema = {
         }
     }
 };
-service17.postPath('reset-password', (msg, context, config)=>{
+service19.postPath('reset-password', (msg, context, config)=>{
     if (!config.passwordReset) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.passwordReset);
 });
-service17.postPath('token-update-password', (msg, context, config)=>{
+service19.postPath('token-update-password', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, async (userData, posted)=>{
         const user = new AuthUser(userData);
         user.password = posted['password'];
@@ -44880,18 +50322,18 @@ service17.postPath('token-update-password', (msg, context, config)=>{
         return user;
     });
 }, tokenPasswordSchema);
-service17.postPath('verify-email', (msg, context, config)=>{
+service19.postPath('verify-email', (msg, context, config)=>{
     if (!config.emailConfirm) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.emailConfirm);
 });
-service17.postPath('confirm-email', (msg, context, config)=>{
+service19.postPath('confirm-email', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, (userData, _posted)=>{
         const user = new AuthUser(userData);
         user.emailVerified = new Date();
         return Promise.resolve(user);
     });
 }, tokenVerifySchema);
-service18.all(async (msg, context, config)=>{
+service20.all(async (msg, context, config)=>{
     const state = await context.state(TemporaryAccessState, context, config);
     const expireTokens = ()=>{
         const now = new Date();
@@ -44963,12 +50405,12 @@ console.log(`receiving requests from http://localhost:${port}/`);
 for await (const conn of listener){
     (async ()=>{
         try {
-            for await (const { request , respondWith  } of Deno.serveHttp(conn)){
+            for await (const { request, respondWith } of Deno.serveHttp(conn)){
                 try {
                     const msgIn = Message.fromRequest(request, '');
                     if (config.server.incomingAlwaysHttps) msgIn.url.scheme = "https://";
                     if (msgIn.getHeader("upgrade") === "websocket") {
-                        const { socket , response  } = Deno.upgradeWebSocket(request);
+                        const { socket, response } = Deno.upgradeWebSocket(request);
                         msgIn.websocket = socket;
                         await handleIncomingRequest(msgIn);
                         await respondWith(response);
