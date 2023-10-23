@@ -16,6 +16,7 @@ export interface PipelineContext {
     path: number[];
     callerLoggerArgs?: string[];
     concurrencyLimiter: Limiter;
+    variables: Record<string, unknown>;
 }
 
 export const copyPipelineContext = (context: PipelineContext) => {

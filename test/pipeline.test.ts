@@ -107,7 +107,7 @@ Deno.test('transfer files', async function () {
             "GET /test/list",
             "GET /test/${[]} :$*",
             {
-                "value": "$this",
+                "value": "$",
                 "name": "pathPattern('$N*')"
             },
             "jsonObject"
@@ -445,6 +445,20 @@ Deno.test('limited concurrency', async function () {
     ]);
     const output = await msgOut.data?.asJson();
     assertEquals(output, "ccc result");
+});
+
+Deno.test('variables', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson({ a: 'www' }), [
+        {
+            '$v': "a",
+            x: 'abc'
+        },
+        {
+            x: '$v'
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output.x, "www");
 });
 
 // Deno.test('simple post', async function () {

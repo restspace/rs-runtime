@@ -5,6 +5,8 @@ import { AdapterContext } from "rs-core/ServiceContext.ts";
 
 export interface SimpleProxyAdapterProps {
     urlPattern: string;
+    basicAuthentication?: { username?: string, password: string },
+    bearerToken?: string;
 }
 
 export default class SimpleProxyAdapter implements IProxyAdapter {
@@ -15,6 +17,14 @@ export default class SimpleProxyAdapter implements IProxyAdapter {
     }
 
     buildMessage(msg: Message) {
+        const basic = this.props.basicAuthentication;
+        if (basic) {
+            const authString = `${basic.username || ''}:${basic.password}`;
+            msg.setHeader('Authorization', `Basic ${btoa(authString)}`);
+        } else if (this.props.bearerToken) {
+            msg.setHeader('Authorization', `Bearer ${this.props.bearerToken}`);
+        }
+
         return Promise.resolve(
             msg.setUrl(resolvePathPatternWithUrl(this.urlPattern, msg.url, msg.data) as string)
         );
