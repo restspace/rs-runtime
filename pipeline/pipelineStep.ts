@@ -56,6 +56,9 @@ export class PipelineStep {
             if (context.targetHost && msg.url.domain === context.targetHost.domain) {
                 Object.assign(msg.headers, context.targetHeaders);
             }
+            if ((msg.method === "GET" || msg.method === "HEAD") && msg.data) {
+                msg.setData(null, '');
+            }
 
             msg.startSpan();
 
