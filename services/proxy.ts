@@ -15,7 +15,9 @@ service.all(async (msg: Message, context: ServiceContext<IProxyAdapter>) => {
 	}
 	sendMsg = await adapter.buildMessage(sendMsg);
 	context.logger.info(`Proxy, msg headers: ${JSON.stringify(sendMsg.headers)}`);
-	return makeRequest(sendMsg);
+	const msgOut = await makeRequest(sendMsg);
+	msgOut.url = msg.url;
+	return msgOut;
 });
 
 export default service;

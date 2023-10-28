@@ -1,4 +1,4 @@
-import { assert } from "std/testing/asserts.ts";
+import { assert, assertEquals } from "std/testing/asserts.ts";
 import { config } from "../config.ts";
 import { testServicesConfig } from "./TestConfigFileAdapter.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
@@ -28,4 +28,5 @@ Deno.test("proxy", async () => {
     let msgOut = await handleIncomingRequest(msg);
     const body = await msgOut.data?.asString()
     assert(msgOut.ok);
+    assertEquals(msgOut.url.path, '/proxy');
 });

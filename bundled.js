@@ -13777,10 +13777,12 @@ class Message {
         if (this.data?.data instanceof ReadableStream) {
             if (this.data.data.locked) throw new Error("Can't convert locked stream to request, will fail");
         }
+        let body = this.data?.data || undefined;
+        if (this.method === "GET" || this.method === "HEAD") body = undefined;
         const req = new Request(this.url.toString(), {
             method: this.method,
             headers: this.mapHeaders(this.nonForbiddenHeaders(), new Headers()),
-            body: this.data?.data || undefined
+            body
         });
         return req;
     }
@@ -13885,6 +13887,8 @@ class Message {
         this.cancelOldStream();
         if (data == null) {
             this.data = undefined;
+            this.removeHeader("content-type");
+            return this;
         } else if (typeof data === 'string') {
             this.data = new MessageBody(str2ab(data), mimeType);
         } else {
@@ -24076,9 +24080,9 @@ const arrayToFunction = (arr, transformHelper)=>{
     }
     return `${functionName}(${args.join(', ')})`;
 };
-const doEvaluate = (expression, context, helper)=>{
+const doEvaluate = (expression, context, variables, helper)=>{
     try {
-        return evaluate(expression, context, helper);
+        return evaluate(expression, Object.assign({}, context, variables), helper);
     } catch (err) {
         throw SyntaxError('Transform failed', {
             cause: err,
@@ -24086,39 +24090,42 @@ const doEvaluate = (expression, context, helper)=>{
         });
     }
 };
-const transformation = (transformObject, data, url = new Url('/'), name = '')=>{
+const transformation = (transformObject, data, url = new Url('/'), name = '', variables = {})=>{
+    variables['$'] = data;
+    if (Array.isArray(data)) data = {
+        ...data,
+        length: data.length
+    };
     const transformHelper = {
         Math: Math,
         transformMap: (list, transformObject)=>!list ? [] : Array.from(list, (item)=>transformation(transformObject, Object.assign({}, data, item), url, name)),
-        expressionReduce: (list, init, expression)=>!list ? init : Array.from(list).reduce((partial, item)=>doEvaluate(expression, partial, Object.assign({}, transformHelper, data, item)), init),
+        expressionReduce: (list, init, expression)=>!list ? init : Array.from(list).reduce((partial, item)=>doEvaluate(expression, partial, variables, Object.assign({}, transformHelper, data, item)), init),
         expressionReduce_expArgs: [
             2
         ],
-        expressionMap: (list, expression)=>!list ? [] : Array.from(list).map((item)=>doEvaluate(expression, item, Object.assign({}, transformHelper, data))),
+        expressionMap: (list, expression)=>!list ? [] : Array.from(list).map((item)=>doEvaluate(expression, item, variables, Object.assign({}, transformHelper, data))),
         expressionMap_expArgs: [
             1
         ],
-        expressionFilter: (list, expression)=>!list ? [] : Array.from(list).filter((item)=>doEvaluate(expression, item, Object.assign({}, transformHelper, data))),
+        expressionFilter: (list, expression)=>!list ? [] : Array.from(list).filter((item)=>doEvaluate(expression, item, variables, Object.assign({}, transformHelper, data))),
         expressionFilter_expArgs: [
             1
         ],
-        expressionFind: (list, expression)=>!list ? null : Array.from(list).find((item)=>doEvaluate(expression, item, Object.assign({}, transformHelper, data))),
+        expressionFind: (list, expression)=>!list ? null : Array.from(list).find((item)=>doEvaluate(expression, item, variables, Object.assign({}, transformHelper, data))),
         expressionFind_expArgs: [
             1
         ],
         expressionSort: (list, expression, dir)=>!list ? null : Array.from(list).sort((a, b)=>{
                 const ctx = Object.assign({}, transformHelper, data);
-                const expA = doEvaluate(expression, a, ctx);
-                const expB = doEvaluate(expression, b, ctx);
+                const expA = doEvaluate(expression, a, variables, ctx);
+                const expB = doEvaluate(expression, b, variables, ctx);
                 const res = expA == expB ? 0 : expA < expB ? -1 : 1;
                 return dir === 'desc' ? -res : res;
             }),
         expressionSort_expArgs: [
             1
         ],
-        unique: (list)=>!list ? [] : [
-                ...new Set(Array.from(list))
-            ],
+        unique: (list)=>!list ? [] : Array.from(new Set(Array.from(list))),
         pathCombine,
         pathPattern: (pattern, decode)=>resolvePathPatternWithUrl(pattern, url, data, name, decode),
         newDate: (...args)=>args.length === 0 ? new Date() : args.length === 1 ? typeof args[0] === 'number' ? new Date(args[0]) : dayjs_min(args[0]).toDate() : new Date(args[0], args[1], args[2], args[3], args[4], args[5], args[6]),
@@ -24136,24 +24143,28 @@ const transformation = (transformObject, data, url = new Url('/'), name = '')=>{
         uuid: ()=>crypto.randomUUID()
     };
     if (typeof transformObject === 'string') {
-        return doEvaluate(transformObject, data, transformHelper);
+        return doEvaluate(transformObject, data, variables, transformHelper);
     } else if (Array.isArray(transformObject)) {
         if (transformObject.length === 0 || typeof transformObject[0] !== 'string' || !transformObject[0].endsWith("()")) {
             return transformObject.map((item)=>transformation(item, data, url, name));
         }
         const expr = arrayToFunction(transformObject, transformHelper);
         console.log('expr ' + expr);
-        const arrResult = doEvaluate(expr, data, transformHelper);
+        const arrResult = doEvaluate(expr, data, variables, transformHelper);
         return arrResult;
     } else {
         let transformed = {};
         const selfObject = transformObject['$this'] || transformObject['.'];
         if (selfObject) {
-            transformed = shallowCopy(transformation(selfObject, data, url, name));
+            transformed = shallowCopy(transformation(selfObject, data, url, name, variables));
         }
         for(const key in transformObject){
             if (key === '.' || key === '$this') continue;
-            doTransformKey(key, 0, data, transformed, url, transformObject[key], name);
+            if (key.startsWith('$') && key.length > 1 && key !== '$key') {
+                variables[key] = shallowCopy(transformation(transformObject[key], data, url, name, variables));
+            } else {
+                doTransformKey(key, 0, data, transformed, url, transformObject[key], name, variables);
+            }
         }
         return rectifyObject(transformed);
     }
@@ -24165,7 +24176,7 @@ const rectifyObject = (obj)=>{
     }
     return newObj;
 };
-const doTransformKey = (key, keyStart, input, output, url, subTransform, name)=>{
+const doTransformKey = (key, keyStart, input, output, url, subTransform, name, variables)=>{
     let [match, newKeyStart] = scanFirst(key, keyStart, [
         '.',
         '[',
@@ -24173,7 +24184,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name)=>
     ]);
     if (newKeyStart < 0) {
         const effectiveKey = key.slice(keyStart);
-        output[effectiveKey] = shallowCopy(transformation(subTransform, input, url, name));
+        output[effectiveKey] = shallowCopy(transformation(subTransform, input, url, name, variables));
     } else if (match === '.') {
         const keyPart = key.slice(keyStart, newKeyStart - 1).trim();
         if (keyStart === 0 && !(keyPart in input)) return;
@@ -24183,7 +24194,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name)=>
             output[keyPart] = shallowCopy(output[keyPart]);
         }
         console.log(`recursing path, new start: ${newKeyStart}, new output: ${JSON.stringify(output[keyPart])}`);
-        doTransformKey(key, newKeyStart, input, output[keyPart], url, subTransform, name);
+        doTransformKey(key, newKeyStart, input, output[keyPart], url, subTransform, name, variables);
     } else if (match === '[' || match === '{') {
         const keyPart = key.slice(keyStart, newKeyStart - 1).trim();
         let newOutput = output;
@@ -24199,30 +24210,30 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name)=>
         newKeyStart += indexName.length + 1;
         indexName = indexName.trim();
         const remainingKey = key.slice(newKeyStart + 1);
-        const transformOrRecurse = (input, index)=>{
+        const transformOrRecurse = (input, index, output)=>{
             if (remainingKey) {
-                doTransformKey(remainingKey, 0, input, newOutput[index], url, subTransform, name);
+                output[index] = shallowCopy(output[index]);
+                doTransformKey(remainingKey, 0, input, output[index], url, subTransform, name, variables);
             } else {
-                newOutput[index] = shallowCopy(transformation(subTransform, input, url, name));
+                output[index] = shallowCopy(transformation(subTransform, input, url, name));
             }
         };
         if (match === '[' && '0' <= indexName[0] && indexName[0] <= '9') {
-            transformOrRecurse(input, parseInt(indexName));
+            transformOrRecurse(input, parseInt(indexName), newOutput);
         } else if (match === '[') {
             let list = newOutput;
-            if (!Array.isArray(newOutput)) {
+            if (!Array.isArray(newOutput) && !(typeof newOutput === 'object' && 'length' in newOutput)) {
                 if (typeof newOutput === 'object') {
                     list = Object.entries(newOutput).map(([k, v])=>typeof v === 'object' ? {
                             ...v,
                             "$key": k
                         } : v);
-                    for(const k in newOutput)delete newOutput[k];
                 } else {
                     return;
                 }
             }
             const loopItem = {};
-            list.forEach((item, idx)=>{
+            Array.from(list).forEach((item, idx)=>{
                 loopItem['value'] = item;
                 loopItem['index'] = idx;
                 const newInput = {
@@ -24231,7 +24242,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name)=>
                     outer: input.outer || input,
                     [indexName]: loopItem
                 };
-                transformOrRecurse(newInput, idx);
+                transformOrRecurse(newInput, idx, newOutput);
             });
             if (!('length' in newOutput)) newOutput.length = list.length;
             if (!remainingKey) {
@@ -24251,7 +24262,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name)=>
                         value
                     }
                 };
-                transformOrRecurse(newInput, key);
+                transformOrRecurse(newInput, key, newOutput);
             });
             if (!remainingKey) {
                 newOutput = Object.fromEntries(Object.entries(newOutput).filter(([_, v])=>v !== undefined));
@@ -24268,7 +24279,7 @@ class PipelineTransform {
         const jsonIn = msg.data ? await msg.data.asJson() : {};
         let transJson = null;
         try {
-            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url, msg.name);
+            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url, msg.name, context.variables);
         } catch (err) {
             if (err instanceof SyntaxError) {
                 const errx = err;
@@ -34718,6 +34729,13 @@ class SimpleProxyAdapter {
         this.urlPattern = props.urlPattern;
     }
     buildMessage(msg) {
+        const basic = this.props.basicAuthentication;
+        if (basic) {
+            const authString = `${basic.username || ''}:${basic.password}`;
+            msg.setHeader('Authorization', `Basic ${btoa(authString)}`);
+        } else if (this.props.bearerToken) {
+            msg.setHeader('Authorization', `Bearer ${this.props.bearerToken}`);
+        }
         return Promise.resolve(msg.setUrl(resolvePathPatternWithUrl(this.urlPattern, msg.url, msg.data)));
     }
 }
@@ -34731,6 +34749,22 @@ const __default15 = {
             "urlPattern": {
                 "type": "string",
                 "description": "Url pattern where to send request"
+            },
+            "basicAuthentication": {
+                "type": "object",
+                "description": "An optional basic auth username and password",
+                "properties": {
+                    "username": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    }
+                }
+            },
+            "bearerToken": {
+                "type": "string",
+                "description": "A token to be sent as via Authorization: Bearer header"
             }
         },
         "required": [
@@ -48917,6 +48951,7 @@ const getTenant = async (url, requestTenant)=>{
             }
             const servicesConfig = await servicesRes.asJson();
             const tenantDomains = Object.entries(config.server.domainMap).filter(([, ten])=>ten === requestTenant).map(([dom])=>dom);
+            tenantDomains.push(`${requestTenant}.${config.server.mainDomain}`);
             config.tenants[requestTenant] = new Tenant(requestTenant, servicesConfig, tenantDomains);
             await config.tenants[requestTenant].init();
             config.logger.info(`Loaded tenant ${requestTenant} successfully`, requestTenant);
@@ -49960,7 +49995,7 @@ function runDistributePipelineOne(pipeline, msg, context) {
     context.path.pop();
     return msgs;
 }
-function createInitialContext(pipeline, handler, callerMsg, contextUrl, external) {
+function createInitialContext(pipeline, handler, callerMsg, variables, contextUrl, external) {
     const context = {
         handler,
         callerUrl: contextUrl || callerMsg.url,
@@ -49968,7 +50003,8 @@ function createInitialContext(pipeline, handler, callerMsg, contextUrl, external
         callerLoggerArgs: callerMsg.loggerArgs(),
         external,
         path: [],
-        concurrencyLimiter: limitConcurrency(12)
+        concurrencyLimiter: limitConcurrency(12),
+        variables
     };
     let stepIdx = 0;
     for(; stepIdx < pipeline.length; stepIdx++){
@@ -49992,7 +50028,7 @@ function createInitialContext(pipeline, handler, callerMsg, contextUrl, external
     ];
 }
 async function pipeline(msg, pipeline, contextUrl, external, handler = handleOutgoingRequest) {
-    const [context, mainPipeline] = createInitialContext(pipeline, handler, msg, contextUrl, external);
+    const [context, mainPipeline] = createInitialContext(pipeline, handler, msg, {}, contextUrl, external);
     const asq = runPipeline(mainPipeline, new AsyncQueue(1).enqueue(msg), new PipelineMode("parallel"), context);
     let lastMsg = null;
     for await (const outMsg of asq){
