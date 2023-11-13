@@ -62,7 +62,7 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 	
 	quote(x: any): string | Error {
 		if (typeof x === "string") {
-			return "\"" + x.replace("\"", "\\\"") + "\"";
+			return "\"" + x.replace(/\"/g, "\\\"") + "\"";
 		} else if (typeof x !== "object") {
 			return JSON.stringify(x);
 		} else if (Array.isArray(x)) {

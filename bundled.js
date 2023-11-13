@@ -13752,7 +13752,7 @@ class Message {
     }
     forbiddenHeaders;
     nonForbiddenHeaders() {
-        const isForbidden = (h)=>this.forbiddenHeaders.includes(h) || h.startsWith('proxy-') || h.startsWith('sec-');
+        const isForbidden = (h)=>this.forbiddenHeaders.includes(h) || h.startsWith('proxy-') || h.startsWith('sec-') || !this.data && h.startsWith('content-');
         return Object.fromEntries(Object.entries(this.headers).filter(([k, _])=>!isForbidden(k)));
     }
     responsify() {
@@ -41721,7 +41721,9 @@ service7.all(async (msg, context)=>{
     }
     sendMsg = await adapter.buildMessage(sendMsg);
     context.logger.info(`Proxy, msg headers: ${JSON.stringify(sendMsg.headers)}`);
-    return makeRequest(sendMsg);
+    const msgOut = await makeRequest(sendMsg);
+    msgOut.url = msg.url;
+    return msgOut;
 });
 const __default37 = {
     "name": "Proxy Service",
