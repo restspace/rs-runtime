@@ -179,6 +179,8 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
                 const body = msgOut.hasData() ? await msgOut.data!.asString() : 'none';
                 config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...msgOut.loggerArgs());
             }
+            // don't process by mime type on external requests
+            if (msgOut.data) msgOut.data.wasMimeHandled = true;
             return msgOut;
         }
         

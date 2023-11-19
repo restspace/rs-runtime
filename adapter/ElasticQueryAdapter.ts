@@ -2,6 +2,7 @@ import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import { Message } from "rs-core/Message.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
+import { upTo } from "rs-core/utility/utility.ts";
 
 export interface ElasticAdapterProps {
 	username: string;
@@ -34,6 +35,8 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 	async runQuery(query: string, _: Record<string, unknown>, take = 1000, skip = 0): Promise<number | Record<string,unknown>[]> {
 		await this.ensureProxyAdapter();
 		let index = '';
+		let operation = '_search';
+		let paged = true;
 		
 		let queryObj = {} as any;
 		try {
@@ -45,10 +48,23 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			index = '/' + queryObj.index;
 			delete queryObj.index;
 		}
-		queryObj.size = take;
-		queryObj.from = skip;
+		if (queryObj.operation) {
+			operation = queryObj.operation;
+			delete queryObj.operation;
+			const opName = upTo(operation, '?');
+			if ([ "_update_by_query", "_delete_by_query", "_count" ].includes(opName)) {
+				paged = false;
+			} else if (![ "_search" ].includes(opName)) {
+				this.context.logger.error(`Unknown operation in ES query: ${operation}`);
+				return 400;
+			}
+		}
+		if (paged) {
+			queryObj.size = take;
+			queryObj.from = skip;
+		}
 
-		const msg = new Message(index + '/_search', this.context.tenant, "POST", null);
+		const msg = new Message(`${index}/${operation}`, this.context.tenant, "POST", null);
 		msg.startSpan(this.context.traceparent, this.context.tracestate);
 		msg.setDataJson(queryObj);
 		const res = await this.requestElastic(msg);
@@ -57,7 +73,11 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			throw new Error(`Elastic adapter error, query: ${report}`);
 		}
 		const data = await res.data?.asJson();
-		return data.hits.hits;
+		switch (operation) {
+			case "_search": return data.hits.hits;
+			case "_count": return data.count;
+			default: return data;
+		}
 	}
 	
 	quote(x: any): string | Error {

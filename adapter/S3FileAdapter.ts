@@ -229,7 +229,7 @@ class S3FileAdapterBase implements IFileAdapter {
             if (item.name.endsWith('/') && item.lastModified) {
                 modifiedStr = "," + item.lastModified.getTime().toString();
             }
-            const nameEscaped = item.name.replace(/\"/g, '\\"');
+            const nameEscaped = item.name.replace(/\"/g, '\\"').replace(/\n/g, '');
             yield `${first ? '': ','} [ "${nameEscaped}"${modifiedStr} ]`;
             first = false;
         }

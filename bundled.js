@@ -24091,7 +24091,6 @@ const doEvaluate = (expression, context, variables, helper)=>{
     }
 };
 const transformation = (transformObject, data, url = new Url('/'), name = '', variables = {})=>{
-    variables['$'] = data;
     if (Array.isArray(data)) data = {
         ...data,
         length: data.length
@@ -24143,7 +24142,7 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
         uuid: ()=>crypto.randomUUID()
     };
     if (typeof transformObject === 'string') {
-        return doEvaluate(transformObject, data, variables, transformHelper);
+        return rectifyObject(doEvaluate(transformObject, data, variables, transformHelper));
     } else if (Array.isArray(transformObject)) {
         if (transformObject.length === 0 || typeof transformObject[0] !== 'string' || !transformObject[0].endsWith("()")) {
             return transformObject.map((item)=>transformation(item, data, url, name));
@@ -24158,12 +24157,14 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
         if (selfObject) {
             transformed = shallowCopy(transformation(selfObject, data, url, name, variables));
         }
-        for(const key in transformObject){
+        for(let key in transformObject){
             if (key === '.' || key === '$this') continue;
-            if (key.startsWith('$') && key.length > 1 && key !== '$key') {
+            if (key.startsWith('$') && key.length > 1 && key !== '$key' && !key.startsWith('$$')) {
                 variables[key] = shallowCopy(transformation(transformObject[key], data, url, name, variables));
             } else {
-                doTransformKey(key, 0, data, transformed, url, transformObject[key], name, variables);
+                let keyStart = 0;
+                if (key.startsWith('$$') && key.length > 2) keyStart = 1;
+                doTransformKey(key, keyStart, data, transformed, url, transformObject[key], name, variables);
             }
         }
         return rectifyObject(transformed);
@@ -24171,7 +24172,7 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
 };
 const rectifyObject = (obj)=>{
     let newObj = obj;
-    if ('length' in obj && !Array.isArray(obj)) {
+    if (typeof obj === 'object' && 'length' in obj && !Array.isArray(obj)) {
         newObj = Array.from(obj);
     }
     return newObj;
@@ -34605,7 +34606,8 @@ class S3FileAdapterBase {
             if (item.name.endsWith('/') && item.lastModified) {
                 modifiedStr = "," + item.lastModified.getTime().toString();
             }
-            yield `${first ? '' : ','} [ "${item.name}"${modifiedStr} ]`;
+            const nameEscaped = item.name.replace(/\"/g, '\\"').replace(/\n/g, '');
+            yield `${first ? '' : ','} [ "${nameEscaped}"${modifiedStr} ]`;
             first = false;
         }
         yield ']';
@@ -35458,6 +35460,8 @@ class ElasticQueryAdapter {
     async runQuery(query, _, take = 1000, skip = 0) {
         await this.ensureProxyAdapter();
         let index = '';
+        let operation = '_search';
+        let paged = true;
         let queryObj = {};
         try {
             queryObj = JSON.parse(query);
@@ -35468,9 +35472,28 @@ class ElasticQueryAdapter {
             index = '/' + queryObj.index;
             delete queryObj.index;
         }
-        queryObj.size = take;
-        queryObj.from = skip;
-        const msg = new Message(index + '/_search', this.context.tenant, "POST", null);
+        if (queryObj.operation) {
+            operation = queryObj.operation;
+            delete queryObj.operation;
+            const opName = upTo(operation, '?');
+            if ([
+                "_update_by_query",
+                "_delete_by_query",
+                "_count"
+            ].includes(opName)) {
+                paged = false;
+            } else if (![
+                "_search"
+            ].includes(opName)) {
+                this.context.logger.error(`Unknown operation in ES query: ${operation}`);
+                return 400;
+            }
+        }
+        if (paged) {
+            queryObj.size = take;
+            queryObj.from = skip;
+        }
+        const msg = new Message(`${index}/${operation}`, this.context.tenant, "POST", null);
         msg.startSpan(this.context.traceparent, this.context.tracestate);
         msg.setDataJson(queryObj);
         const res = await this.requestElastic(msg);
@@ -35479,11 +35502,18 @@ class ElasticQueryAdapter {
             throw new Error(`Elastic adapter error, query: ${report}`);
         }
         const data = await res.data?.asJson();
-        return data.hits.hits;
+        switch(operation){
+            case "_search":
+                return data.hits.hits;
+            case "_count":
+                return data.count;
+            default:
+                return data;
+        }
     }
     quote(x) {
         if (typeof x === "string") {
-            return "\"" + x.replace("\"", "\\\"") + "\"";
+            return "\"" + x.replace(/\"/g, "\\\"") + "\"";
         } else if (typeof x !== "object") {
             return JSON.stringify(x);
         } else if (Array.isArray(x)) {
@@ -49598,6 +49628,7 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
                 const body = msgOut.hasData() ? await msgOut.data.asString() : 'none';
                 config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...msgOut.loggerArgs());
             }
+            if (msgOut.data) msgOut.data.wasMimeHandled = true;
             return msgOut;
         }
         if (!msgOut.ok) {
