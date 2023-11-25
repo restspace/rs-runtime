@@ -73,10 +73,15 @@ export default class AWS4ProxyAdapter implements IProxyAdapter {
 
     if (this.sessionToken) msg.setHeader("X-Amz-Security-Token", this.sessionToken);
     // for now, don't use chunked signing method, just ensure data isn't a stream
+    if (msg.data) {
+      await msg.data.ensureDataIsArrayBuffer();
+      msg.setHeader('content-length', (msg.data?.data as ArrayBuffer).byteLength.toString());
+    }
     const req = await this.signer!.sign(this.props.service, msg.toRequest());
+
     const msgOut = Message.fromRequest(req, msg.tenant);
-    //if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
-    msg.setMetadataOn(msgOut);
+    if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
+    msg.setMetadataOn(msgOut); // set Restspace specific metadata
     return msgOut;
   }
 }

@@ -146,7 +146,10 @@ class S3FileAdapterBase implements IFileAdapter {
 
         try {
             this.context.logger.info(`AWS S3 begin request ${path} at ${new Date().getTime()}`);
-			const msgOut = await this.context.makeRequest(msgSend);
+			//const msgOut = await this.context.makeRequest(msgSend);
+            const req = msgSend.toRequest();
+            const resp = await fetch(req);
+            const msgOut = Message.fromResponse(resp, this.context.tenant);
 			if (!msgOut.ok) {
 				this.context.logger.error('AWS S3 write error: ' + (await msgOut.data?.asString()));
 			}

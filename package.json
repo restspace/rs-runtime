@@ -24,7 +24,7 @@
         "--upload-data": "scp -i C:\\dev\\keys\\stagingpac.pem -r ..\\test\\data\\main\\* ubuntu@ec2-35-176-233-252.eu-west-2.compute.amazonaws.com:/var/www/rs-data/demo",
         "to-production": "npm run bundle && npm run publish && npm run deploy",
         "to-production-adem": "npm run bundle && npm run publish && npm run deploy-adem",
-        "deploy-admin": "scp -i C:\\dev\\keys\\stagingpac.pem -r D:\\Dev\\json-depot\\build\\* ubuntu@ec2-35-176-233-252.eu-west-2.compute.amazonaws.com:/var/www/rs-data/ademchic2/site",
+        "deploy-admin": "scp -i C:\\dev\\keys\\stagingpac.pem -r C:\\Dev\\json-depot\\build\\* ubuntu@ec2-35-176-233-252.eu-west-2.compute.amazonaws.com:/var/www/rs-data/ademchic2/site",
         "deploy-admin-adem": "scp -i C:\\dev\\keys\\ost-server-keys.pem -r C:\\dev\\json-depot\\build\\* ubuntu@ec2-18-132-142-210.eu-west-2.compute.amazonaws.com:/var/www/rs-data/ademchic3/site",
         "https-proxy-3131": "caddy run",
         "elasticsearch": "D:\\Dev\\elasticsearch-8.4.2\\bin\\elasticsearch",
