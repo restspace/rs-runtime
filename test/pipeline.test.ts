@@ -125,6 +125,16 @@ Deno.test('transfer files', async function () {
         }
     });
 });
+Deno.test('data in spec', async function () {
+    const msgOut = await pipeline(testMessage('/', 'GET'), [
+        {
+            "a": "'something'"
+        },
+        "POST a /lib/bypass"
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertStrictEquals(output, 'something');
+});
 Deno.test('expansion', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [
         [

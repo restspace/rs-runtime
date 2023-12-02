@@ -10,7 +10,6 @@ import { getType } from "rs-core/mimeType.ts";
 import { fileToDataAdapter } from "./fileToDataAdapter.ts";
 import { dataToSchemaAdapter } from "./dataToSchemaAdapter.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
-import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 
 export interface LocalFileAdapterProps {
     rootPath: string;
