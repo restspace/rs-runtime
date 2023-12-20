@@ -15,7 +15,8 @@ service.post(async (msg: Message, context: ServiceContext<IQueryAdapter>) => {
 	let query = await msgQuery.data!.asString();
 	if (!query) return msg.setStatus(400, 'No query');
 
-	// find the applicable url
+	// find the applicable url: the msgQuery location header tells you the url of the actual query file
+	// - the rest is the subpath of the url
 	const contextUrl: Url = msg.url.copy();
 	contextUrl.setSubpathFromUrl(msgQuery.getHeader('location') || '');
 

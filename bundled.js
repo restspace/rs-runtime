@@ -1628,7 +1628,7 @@ class Url {
         this.path = urlParse[4];
         this._isDirectory = this.path.endsWith('/');
         const qs = urlParse[5];
-        this.queryString = qs ? decodeURI(qs.substr(1)) : '';
+        this.queryString = qs ? qs.substr(1) : '';
         const frag = urlParse[6];
         this.fragment = frag ? frag.substr(1) : '';
     }
@@ -13611,7 +13611,9 @@ class Message {
     }
     set name(name) {
         const cd = this.getHeader('Content-Disposition');
-        if (cd) {
+        if (name === '') {
+            this.removeHeader('Content-Disposition');
+        } else if (cd) {
             this.setHeader('Content-Disposition', cd.replace(Message.pullName, `$1${name}$3`));
         } else {
             this.setHeader('Content-Disposition', `form-data; name="${name}"`);
@@ -14016,7 +14018,8 @@ class Message {
         let obj = {};
         const hasData = (mimeType)=>isJson(mimeType) || mimeType === 'application/x-www-form-urlencoded';
         const specHasObjectMacro = spec.indexOf('${') >= 0 || spec.indexOf(' $this') >= 0;
-        if (this.data && this.data.mimeType && hasData(this.data.mimeType) && specHasObjectMacro) {
+        const specHasProperty = spec.split(' ').length === 3;
+        if (this.data && this.data.mimeType && hasData(this.data.mimeType) && (specHasObjectMacro || specHasProperty)) {
             obj = await this.data.asJson();
         }
         const msgs = Message.fromSpec(spec, this.tenant, effectiveUrl || this.url, obj, defaultMethod, this.name, inheritMethod, headers);
@@ -14158,9 +14161,6 @@ class Message {
         }
         return msg;
     }
-    static isUrl(url) {
-        return (Url.urlRegex.test(url) || url.startsWith('$')) && !url.startsWith('$this');
-    }
     static isMethod(method) {
         return [
             "GET",
@@ -14178,12 +14178,12 @@ class Message {
         let method = defaultMethod || 'GET';
         let url = '';
         let postData = null;
-        if (Message.isUrl(parts[0]) && !Message.isMethod(parts[0])) {
+        if (parts.length === 1) {
             url = spec;
-        } else if (parts.length > 1 && Message.isUrl(parts[1]) && Message.isMethod(parts[0])) {
+        } else if (parts.length === 2 && Message.isMethod(parts[0])) {
             method = parts[0] === '$METHOD' ? inheritMethod || method : parts[0];
             url = parts.slice(1).join(' ');
-        } else if (parts.length > 2 && Message.isUrl(parts[2]) && Message.isMethod(parts[0]) && data) {
+        } else if (parts.length === 3 && Message.isMethod(parts[0]) && data) {
             method = parts[0] === '$METHOD' ? inheritMethod || method : parts[0];
             const propertyPath = parts[1];
             if (propertyPath === '$this') {
@@ -24082,7 +24082,7 @@ const arrayToFunction = (arr, transformHelper)=>{
 };
 const doEvaluate = (expression, context, variables, helper)=>{
     try {
-        return evaluate(expression, Object.assign({}, context, variables), helper);
+        return evaluate(expression, Object.assign({}, context), Object.assign({}, helper, variables));
     } catch (err) {
         throw SyntaxError('Transform failed', {
             cause: err,
@@ -24091,13 +24091,14 @@ const doEvaluate = (expression, context, variables, helper)=>{
     }
 };
 const transformation = (transformObject, data, url = new Url('/'), name = '', variables = {})=>{
+    if (variables['$'] === undefined) variables['$'] = data;
     if (Array.isArray(data)) data = {
         ...data,
         length: data.length
     };
     const transformHelper = {
         Math: Math,
-        transformMap: (list, transformObject)=>!list ? [] : Array.from(list, (item)=>transformation(transformObject, Object.assign({}, data, item), url, name)),
+        transformMap: (list, transformObject)=>!list ? [] : Array.from(list, (item)=>transformation(transformObject, Object.assign({}, data, item), url, name, variables)),
         expressionReduce: (list, init, expression)=>!list ? init : Array.from(list).reduce((partial, item)=>doEvaluate(expression, partial, variables, Object.assign({}, transformHelper, data, item)), init),
         expressionReduce_expArgs: [
             2
@@ -24145,7 +24146,7 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
         return rectifyObject(doEvaluate(transformObject, data, variables, transformHelper));
     } else if (Array.isArray(transformObject)) {
         if (transformObject.length === 0 || typeof transformObject[0] !== 'string' || !transformObject[0].endsWith("()")) {
-            return transformObject.map((item)=>transformation(item, data, url, name));
+            return transformObject.map((item)=>transformation(item, data, url, name, variables));
         }
         const expr = arrayToFunction(transformObject, transformHelper);
         console.log('expr ' + expr);
@@ -24216,7 +24217,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name, v
                 output[index] = shallowCopy(output[index]);
                 doTransformKey(remainingKey, 0, input, output[index], url, subTransform, name, variables);
             } else {
-                output[index] = shallowCopy(transformation(subTransform, input, url, name));
+                output[index] = shallowCopy(transformation(subTransform, input, url, name, variables));
             }
         };
         if (match === '[' && '0' <= indexName[0] && indexName[0] <= '9') {
@@ -34525,7 +34526,9 @@ class S3FileAdapterBase {
         const msgSend = await this.processForAws(s3Msg);
         try {
             this.context.logger.info(`AWS S3 begin request ${path} at ${new Date().getTime()}`);
-            const msgOut = await this.context.makeRequest(msgSend);
+            const req = msgSend.toRequest();
+            const resp = await fetch(req);
+            const msgOut = Message.fromResponse(resp, this.context.tenant);
             if (!msgOut.ok) {
                 this.context.logger.error('AWS S3 write error: ' + await msgOut.data?.asString());
             }
@@ -34976,8 +34979,13 @@ class AWS4ProxyAdapter {
             await this.getEc2TempKeys();
         }
         if (this.sessionToken) msg.setHeader("X-Amz-Security-Token", this.sessionToken);
+        if (msg.data) {
+            await msg.data.ensureDataIsArrayBuffer();
+            msg.setHeader('content-length', (msg.data?.data).byteLength.toString());
+        }
         const req = await this.signer.sign(this.props.service, msg.toRequest());
         const msgOut = Message.fromRequest(req, msg.tenant);
+        if (msgOut.data) await msgOut.data.ensureDataIsArrayBuffer();
         msg.setMetadataOn(msgOut);
         return msgOut;
     }
@@ -40531,6 +40539,75 @@ const __default22 = {
         "IQueryAdapter"
     ]
 };
+class SnsSmsAdapter {
+    context;
+    props;
+    aws4ProxyAdapter;
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+        this.aws4ProxyAdapter = null;
+    }
+    async ensureProxyAdapter() {
+        if (this.aws4ProxyAdapter === null) {
+            this.aws4ProxyAdapter = await this.context.getAdapter("./adapter/AWS4ProxyAdapter.ts", {
+                service: "sns",
+                region: this.props.region,
+                secretAccessKey: this.props.secretAccessKey,
+                accessKeyId: this.props.accessKeyId,
+                urlPattern: `https://sns.${this.props.region}.amazonaws.com/$P*`,
+                ec2IamRole: this.props.ec2IamRole
+            });
+        }
+    }
+    async processForAws(msg) {
+        await this.ensureProxyAdapter();
+        msg.startSpan(this.context.traceparent, this.context.tracestate);
+        const msgOut = await this.aws4ProxyAdapter.buildMessage(msg);
+        return msgOut;
+    }
+    async send(phoneNumber, message) {
+        const queryParams = `Action=Publish&PhoneNumber=${phoneNumber}&Message=${encodeURIComponent(message)}&Version=2010-03-31`;
+        const msg = new Message('/', this.context.tenant, "POST", null);
+        msg.setData(queryParams, "application/x-www-form-urlencoded");
+        const awsMsg = await this.processForAws(msg);
+        const resp = await fetch(awsMsg.toRequest());
+        const msgOut = Message.fromResponse(resp, this.context.tenant);
+        if (!msgOut.ok) {
+            this.context.logger.error('AWS SNS send error: ' + await msgOut.data?.asString());
+        }
+        return msgOut.ok ? 200 : msgOut.status;
+    }
+}
+const __default23 = {
+    "name": "SNS SMS Sender Adapter",
+    "description": "Sends a SMS message via AWS SNS",
+    "moduleUrl": "./adapter/SnsSmsAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "region": {
+                "type": "string"
+            },
+            "secretAccessKey": {
+                "type": "string"
+            },
+            "ec2IamRole": {
+                "type": "string",
+                "description": "If running on EC2 with an associated IAM role, this can be provided instead of account keys"
+            },
+            "accessKeyId": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "region"
+        ]
+    },
+    "adapterInterfaces": [
+        "ISmsAdapter"
+    ]
+};
 class MockHandler {
     subhandlers = {};
     handle(msg) {
@@ -40558,13 +40635,13 @@ class MockHandler {
 const mockHandler = new MockHandler();
 const service = new Service();
 service.all((msg)=>mockHandler.handle(msg));
-const __default23 = {
+const __default24 = {
     "name": "Mock Service",
     "description": "Routes under control of test construction",
     "moduleUrl": "./services/mock.ts",
     "apis": []
 };
-const __default24 = {
+const __default25 = {
     "name": "Services Service",
     "description": "Provides discovery of configured services and service catalogue",
     "moduleUrl": "./services/services.ts",
@@ -40572,7 +40649,7 @@ const __default24 = {
         "services"
     ]
 };
-const __default25 = {
+const __default26 = {
     "name": "Authentication Service",
     "description": "Provides simple JWT authentication",
     "moduleUrl": "./services/auth.ts",
@@ -40812,7 +40889,7 @@ service1.deleteDirectory(async (msg, { adapter })=>{
     }
     return msg;
 });
-const __default26 = {
+const __default27 = {
     "name": "Data Service",
     "description": "Reads and writes data from urls with the pattern datasource/key",
     "moduleUrl": "./services/data.ts",
@@ -41002,7 +41079,7 @@ service2.delete(async (msg, { adapter })=>{
 service2.deleteDirectory((msg)=>{
     return Promise.resolve(msg.setStatus(400, 'Cannot delete the underlying dataset of a dataset service'));
 });
-const __default27 = {
+const __default28 = {
     "name": "Dataset Service",
     "description": "Reads and writes data with configured schema from urls by key",
     "moduleUrl": "./services/dataset.ts",
@@ -41200,7 +41277,7 @@ service3.deleteDirectory(async (msg, { adapter })=>{
     }
     return msg;
 });
-const __default28 = {
+const __default29 = {
     "name": "File Service",
     "description": "GET files from urls and PUT files to urls",
     "moduleUrl": "./services/file.ts",
@@ -41404,7 +41481,7 @@ service4.postPath('/log/body', async (msg, context)=>{
     context.logger.info('BODY ' + JSON.stringify(json || {}), ...msg.loggerArgs());
     return msg;
 });
-const __default29 = {
+const __default30 = {
     "name": "Library functions",
     "description": "A range of simple utility web functions",
     "moduleUrl": "./services/lib.ts",
@@ -41412,7 +41489,7 @@ const __default29 = {
         "sys.lib"
     ]
 };
-const __default30 = {
+const __default31 = {
     "name": "Pipeline",
     "description": "A pipeline of urls acting as request processors in parallel or serial",
     "moduleUrl": "./services/pipeline.ts",
@@ -41478,7 +41555,7 @@ const __default30 = {
         }
     }
 };
-const __default31 = {
+const __default32 = {
     "name": "Pipeline store",
     "description": "Run a pipeline whose specification is stored at the request url",
     "moduleUrl": "./services/pipeline-store.ts",
@@ -41549,7 +41626,7 @@ const processGet = async (msg, { adapter, logger }, config)=>{
     return msg;
 };
 service5.get(processGet);
-const __default32 = {
+const __default33 = {
     "name": "Static site filter",
     "description": "Provide static site behaviour with options suitable for hosting SPAs",
     "moduleUrl": "./services/static-site-filter.ts",
@@ -41565,7 +41642,7 @@ const __default32 = {
         }
     }
 };
-const __default33 = {
+const __default34 = {
     "name": "Static site service",
     "description": "Hosts a static site with options suitable for SPA routing",
     "moduleUrl": "./services/file.ts",
@@ -41605,7 +41682,7 @@ const __default33 = {
         }
     }
 };
-const __default34 = {
+const __default35 = {
     "name": "User data service",
     "description": "Manages access to and stores user data",
     "moduleUrl": "./services/dataset.ts",
@@ -41631,7 +41708,7 @@ const __default34 = {
         }
     }
 };
-const __default35 = {
+const __default36 = {
     "name": "User filter",
     "description": "Manage passwords and restrict illegal operations to users",
     "moduleUrl": "./services/user-filter.ts",
@@ -41660,7 +41737,7 @@ service6.post(async (msg, context, config)=>{
     const output = await context.adapter.fillTemplate(data, template || "", contextUrl);
     return msg.setData(output, config.outputMime);
 });
-const __default36 = {
+const __default37 = {
     "name": "Template",
     "description": "Fill a template with data from the request",
     "moduleUrl": "./services/template.ts",
@@ -41755,7 +41832,7 @@ service7.all(async (msg, context)=>{
     msgOut.url = msg.url;
     return msgOut;
 });
-const __default37 = {
+const __default38 = {
     "name": "Proxy Service",
     "description": "Forwards requests with server defined authentication or urls",
     "moduleUrl": "./services/proxy.ts",
@@ -42727,7 +42804,7 @@ service8.post(async (msg, _context, config)=>{
     }
     return msg.setData(null, "").setStatus(201);
 });
-const __default38 = {
+const __default39 = {
     "name": "Email Service",
     "description": "Send an email optionally with attachments",
     "moduleUrl": "./services/email.ts",
@@ -42767,7 +42844,7 @@ const __default38 = {
         ]
     }
 };
-const __default39 = {
+const __default40 = {
     "name": "Account Service",
     "description": "Provides password reset and email verification",
     "moduleUrl": "./services/account.ts",
@@ -44004,7 +44081,7 @@ function sign_detached_verify(msg, sig, publicKey) {
     const m = ByteArray(64 + msg.length);
     let i;
     for(i = 0; i < 64; i++)sm[i] = sig[i];
-    for(i = 0; i < msg.length; i++)sm[i + SignLength.Signature] = msg[i];
+    for(i = 0; i < msg.length; i++)sm[i + 64] = msg[i];
     return _sign_open(m, sm, sm.length, publicKey) >= 0;
 }
 function _sign_open(m, sm, n, pk) {
@@ -45096,7 +45173,7 @@ buildDefaultDirectory({
     basePath: "/",
     service: service9
 });
-const __default40 = {
+const __default41 = {
     "name": "Discord Service",
     "description": "Manages command creation for Discord",
     "moduleUrl": "./services/discord.ts",
@@ -45177,7 +45254,7 @@ const __default40 = {
     },
     "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts"
 };
-const __default41 = {
+const __default42 = {
     "name": "Temporary access service",
     "description": "Generates a token for temporary access to resources and then gives access",
     "moduleUrl": "./services/temporary-access.ts",
@@ -45247,7 +45324,7 @@ service10.post(async (msg, context)=>{
     msg.setDataJson(result);
     return msg;
 });
-const __default42 = {
+const __default43 = {
     "name": "Query",
     "description": "Stores queries as text files and runs the query in the file parameterised with a POST body to produce the response",
     "moduleUrl": "./services/query.ts",
@@ -46762,7 +46839,7 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
 service11.postPath("ndjson", csvToJson("ndjson"));
 service11.postPath("validate", csvToJson("validate"));
 service11.postPath("json", csvToJson("json"));
-const __default43 = {
+const __default44 = {
     "name": "CSV converter",
     "description": "Convert CSV files to and from JSON or NDJSON",
     "moduleUrl": "./services/csvConverter.ts",
@@ -46842,7 +46919,7 @@ service12.getPath("search", async (msg, { adapter, logger })=>{
     const lines = await adapter.search(nLines, search);
     return msg.setData(lines.join('\n'), 'text/plain');
 });
-const __default44 = {
+const __default45 = {
     "name": "Log Reader Service",
     "description": "Queries a log store for log information",
     "moduleUrl": "./services/logReader.ts",
@@ -46851,7 +46928,7 @@ const __default44 = {
     ],
     "adapterInterface": "ILogReaderAdapter"
 };
-const __default45 = {
+const __default46 = {
     "name": "Service store service",
     "description": "Stores files for service and adapter code and manifests",
     "moduleUrl": "./services/file.ts",
@@ -47122,7 +47199,7 @@ service13.constantDirectory('/', {
         pattern: 'directory'
     }
 });
-const __default46 = {
+const __default47 = {
     "name": "Timer",
     "description": "Trigger a pipeline at regular intervals",
     "moduleUrl": "./services/timer.ts",
@@ -47153,6 +47230,24 @@ const __default46 = {
             "repeatDuration"
         ]
     }
+};
+const service14 = new Service();
+service14.post(async (msg, context)=>{
+    const phoneNumber = msg.url.servicePathElements[0];
+    const message = await msg.data?.asString();
+    if (!message) return msg.setStatus(400, 'No message');
+    const status = await context.adapter.send(phoneNumber, message);
+    return msg.setStatus(status);
+});
+const __default48 = {
+    "name": "SMS",
+    "description": "Send the request as an SMS message",
+    "moduleUrl": "./services/sms.ts",
+    "apis": [
+        "operation",
+        "sms"
+    ],
+    "adapterInterface": "ISmsAdapter"
 };
 var LogLevels1;
 (function(LogLevels) {
@@ -48335,10 +48430,10 @@ class NunjucksTemplateAdapter {
 const deleteManifestProperties = [
     'exposedConfigProperties'
 ];
-const service14 = new Service();
-const service15 = new AuthService();
-const service16 = new Service();
+const service15 = new Service();
+const service16 = new AuthService();
 const service17 = new Service();
+const service18 = new Service();
 function mapLegalChanges(msg, oldValues, newUser) {
     const currentUserObj = msg.user || AuthUser.anon;
     const current = new AuthUser(currentUserObj);
@@ -48411,13 +48506,13 @@ async function validateChange(msg, context) {
     msg.setDataJson(updatedUser);
     return msg;
 }
-const service18 = new Service();
 const service19 = new Service();
+const service20 = new Service();
 class TemporaryAccessState extends BaseStateClass {
     validTokenExpiries = [];
     tokenBaseUrls = {};
 }
-const service20 = new Service();
+const service21 = new Service();
 class Modules {
     ajv;
     services;
@@ -48459,7 +48554,8 @@ class Modules {
             "./adapter/ElasticDataAdapter.ts": ElasticDataAdapter,
             "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter,
             "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter,
-            "./adapter/GraphQlQueryAdapter.ts": ElasticQueryAdapter1
+            "./adapter/GraphQlQueryAdapter.ts": ElasticQueryAdapter1,
+            "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
@@ -48473,7 +48569,8 @@ class Modules {
             "./adapter/ElasticDataAdapter.ram.json": __default18,
             "./adapter/ElasticQueryAdapter.ram.json": __default19,
             "./adapter/FileLogReaderAdapter.ram.json": __default20,
-            "./adapter/GraphQlQueryAdapter.ram.json": __default22
+            "./adapter/GraphQlQueryAdapter.ram.json": __default22,
+            "./adapter/SnsSmsAdapter.ram.json": __default23
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
         Object.entries(this.adapterManifests).forEach(([url, v])=>{
@@ -48482,53 +48579,55 @@ class Modules {
         });
         this.services = {
             "./services/mock.ts": service,
-            "./services/services.ts": service14,
-            "./services/auth.ts": service15,
+            "./services/services.ts": service15,
+            "./services/auth.ts": service16,
             "./services/data.ts": service1,
             "./services/dataset.ts": service2,
             "./services/file.ts": service3,
             "./services/lib.ts": service4,
-            "./services/pipeline.ts": service16,
-            "./services/pipeline-store.ts": service17,
+            "./services/pipeline.ts": service17,
+            "./services/pipeline-store.ts": service18,
             "./services/static-site-filter.ts": service5,
-            "./services/user-filter.ts": service18,
+            "./services/user-filter.ts": service19,
             "./services/template.ts": service6,
             "./services/proxy.ts": service7,
             "./services/email.ts": service8,
-            "./services/account.ts": service19,
+            "./services/account.ts": service20,
             "./services/discord.ts": service9,
-            "./services/temporary-access.ts": service20,
+            "./services/temporary-access.ts": service21,
             "./services/query.ts": service10,
             "./services/csvConverter.ts": service11,
             "./services/logReader.ts": service12,
-            "./services/timer.ts": service13
+            "./services/timer.ts": service13,
+            "./services/sms.ts": service14
         };
         this.servicesMap[""] = Object.keys(this.services);
         this.serviceManifests = {
-            "./services/mock.rsm.json": __default23,
-            "./services/services.rsm.json": __default24,
-            "./services/auth.rsm.json": __default25,
-            "./services/data.rsm.json": __default26,
-            "./services/dataset.rsm.json": __default27,
-            "./services/file.rsm.json": __default28,
-            "./services/lib.rsm.json": __default29,
-            "./services/pipeline.rsm.json": __default30,
-            "./services/pipeline-store.rsm.json": __default31,
-            "./services/static-site-filter.rsm.json": __default32,
-            "./services/static-site.rsm.json": __default33,
-            "./services/user-data.rsm.json": __default34,
-            "./services/user-filter.rsm.json": __default35,
-            "./services/template.rsm.json": __default36,
-            "./services/proxy.rsm.json": __default37,
-            "./services/email.rsm.json": __default38,
-            "./services/account.rsm.json": __default39,
-            "./services/discord.rsm.json": __default40,
-            "./services/temporary-access.rsm.json": __default41,
-            "./services/query.rsm.json": __default42,
-            "./services/csvConverter.rsm.json": __default43,
-            "./services/logReader.rsm.json": __default44,
-            "./services/service-store.rsm.json": __default45,
-            "./services/timer.rsm.json": __default46
+            "./services/mock.rsm.json": __default24,
+            "./services/services.rsm.json": __default25,
+            "./services/auth.rsm.json": __default26,
+            "./services/data.rsm.json": __default27,
+            "./services/dataset.rsm.json": __default28,
+            "./services/file.rsm.json": __default29,
+            "./services/lib.rsm.json": __default30,
+            "./services/pipeline.rsm.json": __default31,
+            "./services/pipeline-store.rsm.json": __default32,
+            "./services/static-site-filter.rsm.json": __default33,
+            "./services/static-site.rsm.json": __default34,
+            "./services/user-data.rsm.json": __default35,
+            "./services/user-filter.rsm.json": __default36,
+            "./services/template.rsm.json": __default37,
+            "./services/proxy.rsm.json": __default38,
+            "./services/email.rsm.json": __default39,
+            "./services/account.rsm.json": __default40,
+            "./services/discord.rsm.json": __default41,
+            "./services/temporary-access.rsm.json": __default42,
+            "./services/query.rsm.json": __default43,
+            "./services/csvConverter.rsm.json": __default44,
+            "./services/logReader.rsm.json": __default45,
+            "./services/service-store.rsm.json": __default46,
+            "./services/timer.rsm.json": __default47,
+            "./services/sms.rsm.json": __default48
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
@@ -49036,7 +49135,7 @@ const ensureAllManifests = async (tenantOrUrl, context)=>{
     }
     return domain;
 };
-service14.constantDirectory('/', {
+service15.constantDirectory('/', {
     path: '/',
     paths: [
         [
@@ -49084,7 +49183,7 @@ service14.constantDirectory('/', {
         pattern: 'directory'
     }
 });
-service14.getPath('catalogue', async (msg, context)=>{
+service15.getPath('catalogue', async (msg, context)=>{
     const builtIns = "";
     const local = context.tenant;
     const extLibs = [
@@ -49123,7 +49222,7 @@ service14.getPath('catalogue', async (msg, context)=>{
         catalogue: allCat
     }));
 });
-service14.getPath('services', async (msg, context)=>{
+service15.getPath('services', async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
@@ -49153,8 +49252,8 @@ const getRaw = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
 };
-service14.getPath('raw', getRaw);
-service14.getPath('raw.json', getRaw);
+service15.getPath('raw', getRaw);
+service15.getPath('raw.json', getRaw);
 const rebuildConfig = async (rawServicesConfig, tenant)=>{
     config.modules.purgeTenantModules(config.tenants[tenant].primaryDomain);
     let newTenant;
@@ -49663,8 +49762,8 @@ const putRaw = async (msg, context)=>{
     if (status) return msg.setStatus(status, message);
     return msg.setStatus(200);
 };
-service14.putPath('raw', putRaw);
-service14.putPath('raw.json', putRaw);
+service15.putPath('raw', putRaw);
+service15.putPath('raw.json', putRaw);
 const putChords = async (msg, context)=>{
     const chords = await msg?.data?.asJson();
     if (typeof chords !== 'object') return msg.setStatus(400, 'Chords should be an object labelled by chord id');
@@ -49689,14 +49788,14 @@ const putChords = async (msg, context)=>{
     const [status, message] = await rebuildConfig(newRawConfig, context.tenant);
     return msg.setStatus(status || 200, message);
 };
-service14.putPath('chords', putChords);
-service14.putPath('chords.json', putChords);
+service15.putPath('chords', putChords);
+service15.putPath('chords.json', putChords);
 const getChordMap = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.chordMap));
 };
-service14.getPath('chord-map', getChordMap);
-service14.getPath('chord-map.json', getChordMap);
+service15.getPath('chord-map', getChordMap);
+service15.getPath('chord-map.json', getChordMap);
 const openApi = async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const spec = {
@@ -49732,7 +49831,7 @@ const openApi = async (msg, context)=>{
     }
     return msg.setDataJson(spec);
 };
-service14.getPath('openApi', openApi);
+service15.getPath('openApi', openApi);
 var PipelineElementType;
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
@@ -50134,7 +50233,7 @@ function logout(msg) {
     msg.deleteCookie('rs-auth');
     return Promise.resolve(msg);
 }
-service15.postPath('login', async (msg, context, config)=>{
+service16.postPath('login', async (msg, context, config)=>{
     const newMsg = await login(msg, config.userUrlPattern, context, config);
     if (config.loginPage && msg.getHeader('referer')) {
         let redirUrl = msg.url.copy();
@@ -50169,8 +50268,8 @@ service15.postPath('login', async (msg, context, config)=>{
     }
     return newMsg;
 });
-service15.postPath('logout', (msg)=>logout(msg));
-service15.getPath('user', async (msg, context, config)=>{
+service16.postPath('logout', (msg)=>logout(msg));
+service16.getPath('user', async (msg, context, config)=>{
     if (!msg.user || userIsAnon(msg.user)) {
         return msg.setStatus(401, 'Unauthorized');
     }
@@ -50182,8 +50281,8 @@ service15.getPath('user', async (msg, context, config)=>{
         return msg.setStatus(404, "No such user");
     }
 });
-service15.getPath('timeout', (msg, _context, config)=>msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
-service15.setUser(async (msg, _context, { sessionTimeoutMins })=>{
+service16.getPath('timeout', (msg, _context, config)=>msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
+service16.setUser(async (msg, _context, { sessionTimeoutMins })=>{
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
     let authResult = '';
@@ -50209,7 +50308,7 @@ service15.setUser(async (msg, _context, { sessionTimeoutMins })=>{
     }
     return msg;
 });
-service16.getDirectory((msg, _context, { manualMimeTypes })=>{
+service17.getDirectory((msg, _context, { manualMimeTypes })=>{
     if (msg.url.query["$requestSchema"]) {
         if (!manualMimeTypes?.requestSchema) return msg.setStatus(404, "No request schema available");
         msg.setDataJson(manualMimeTypes?.requestSchema);
@@ -50246,7 +50345,7 @@ service16.getDirectory((msg, _context, { manualMimeTypes })=>{
     });
     return msg;
 });
-service16.all((msg, context, config)=>{
+service17.all((msg, context, config)=>{
     let runPipeline = config.pipeline;
     if (msg.url.query["$to-step"]) {
         const toStep = parseInt(msg.url.query["$to-step"][0]);
@@ -50256,7 +50355,7 @@ service16.all((msg, context, config)=>{
     }
     return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal));
 });
-service17.all(async (msg, context)=>{
+service18.all(async (msg, context)=>{
     const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
@@ -50273,7 +50372,7 @@ service17.all(async (msg, context)=>{
     pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
     return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
-service18.get(async (msg, context)=>{
+service19.get(async (msg, context)=>{
     if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
     if (msg.url.query['test'] !== undefined) {
         msg.data = undefined;
@@ -50297,9 +50396,9 @@ service18.get(async (msg, context)=>{
     msg.data.mimeType = originalMime;
     return msg;
 });
-service18.put(validateChange);
-service18.post(validateChange);
-service18.delete(validateChange);
+service19.put(validateChange);
+service19.post(validateChange);
+service19.delete(validateChange);
 const sendTokenUrl = async (msg, context, serviceConfig, subservice)=>{
     if (msg.url.servicePathElements.length < 1) return msg.setStatus(400, 'Missing email');
     const user = await getUserFromEmail(context, serviceConfig.userUrlPattern, msg, msg.url.servicePathElements[0], true);
@@ -50379,11 +50478,11 @@ const tokenVerifySchema = {
         }
     }
 };
-service19.postPath('reset-password', (msg, context, config)=>{
+service20.postPath('reset-password', (msg, context, config)=>{
     if (!config.passwordReset) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.passwordReset);
 });
-service19.postPath('token-update-password', (msg, context, config)=>{
+service20.postPath('token-update-password', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, async (userData, posted)=>{
         const user = new AuthUser(userData);
         user.password = posted['password'];
@@ -50391,18 +50490,18 @@ service19.postPath('token-update-password', (msg, context, config)=>{
         return user;
     });
 }, tokenPasswordSchema);
-service19.postPath('verify-email', (msg, context, config)=>{
+service20.postPath('verify-email', (msg, context, config)=>{
     if (!config.emailConfirm) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.emailConfirm);
 });
-service19.postPath('confirm-email', (msg, context, config)=>{
+service20.postPath('confirm-email', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, (userData, _posted)=>{
         const user = new AuthUser(userData);
         user.emailVerified = new Date();
         return Promise.resolve(user);
     });
 }, tokenVerifySchema);
-service20.all(async (msg, context, config)=>{
+service21.all(async (msg, context, config)=>{
     const state = await context.state(TemporaryAccessState, context, config);
     const expireTokens = ()=>{
         const now = new Date();
