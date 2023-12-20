@@ -84,7 +84,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
     }
 
 	waitForWrite(): Promise<void> {
-		return new Promise((res) => setInterval(() => res(),
+		return new Promise((res) => setTimeout(() => res(),
 			this.props.writeDelayMs || this.defaultWriteDelayMs));
 	}
 
