@@ -33,6 +33,8 @@ import GraphQlQueryAdapter from "./adapter/GraphQlQueryAdapter.ts";
 import GraphQlQueryAdapterManifest from "./adapter/GraphQlQueryAdapter.ram.js";
 import SnsSmsAdapter from "./adapter/SnsSmsAdapter.ts";
 import SnsSmsAdapterManifest from "./adapter/SnsSmsAdapter.ram.js";
+import BotProxyAdapter from "./adapter/BotProxyAdapter.ts";
+import BotProxyAdapterManifest from "./adapter/BotProxyAdapter.ram.js";
 
 import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
@@ -83,6 +85,8 @@ import Timer from "./services/timer.ts";
 import TimerManifest from "./services/timer.rsm.js";
 import Sms from "./services/sms.ts";
 import SmsManifest from "./services/sms.rsm.js";
+import WebScraper from "./services/webScraperService.ts";
+import WebScraperManifest from "./services/webScraperService.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -193,7 +197,8 @@ export class Modules {
             "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/GraphQlQueryAdapter.ts": GraphQlQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter as new (context: AdapterContext, props: unknown) => IAdapter
+            "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
+            "./adapter/BotProxyAdapter.ts": BotProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
@@ -208,7 +213,8 @@ export class Modules {
             "./adapter/ElasticQueryAdapter.ram.json": ElasticQueryAdapterManifest,
             "./adapter/FileLogReaderAdapter.ram.json": FileLogReaderAdapterManifest,
             "./adapter/GraphQlQueryAdapter.ram.json": GraphQlQueryAdapterManifest,
-            "./adapter/SnsSmsAdapter.ram.json": SnsSmsAdapterManifest
+            "./adapter/SnsSmsAdapter.ram.json": SnsSmsAdapterManifest,
+            "./adapter/BotProxyAdapter.ram.json": BotProxyAdapterManifest
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
 
@@ -241,6 +247,7 @@ export class Modules {
             //"./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>,
             "./services/timer.ts": Timer as unknown as Service<IAdapter, IServiceConfig>,
             "./services/sms.ts": Sms as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/webScraperService.ts": WebScraper as unknown as Service<IAdapter, IServiceConfig> // TODO: replace with actual service
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -270,7 +277,8 @@ export class Modules {
             "./services/service-store.rsm.json": ServiceStoreManifest as unknown as IServiceManifest,
             //"./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest,
             "./services/timer.rsm.json": TimerManifest as unknown as IServiceManifest,
-            "./services/sms.rsm.json": SmsManifest as unknown as IServiceManifest
+            "./services/sms.rsm.json": SmsManifest as unknown as IServiceManifest,
+            "./services/webscraperService.rsm.json": WebScraperManifest as unknown as IServiceManifest
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 

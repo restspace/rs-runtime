@@ -2,17 +2,8 @@
     "tenancy": "multi",
     "mainDomain": "restspace.local:3100",
     "domainMap": {
-        "shamiyaana.com": "shamiyaana",
-        "www.shamiyaana.com": "shamiyaana",
-        "schoolofgnostickabbalah.com": "sgk",
-        "www.schoolofgnostickabbalah.com": "sgk",
-        "schoolofgnostickabbalah.org": "sgk",
-        "www.schoolofgnostickabbalah.org": "sgk",
-        "test.restspace.io": "test",
-        "kaballah.restspace.io": "kaballah",
         "restspace.local:3131": "main",
-        "localhost:3100": "main",
-        "c5ec-81-174-162-73.eu.ngrok.io": "main"
+        "localhost:3100": "main"
     },
     "infra": {
         "localStore": {

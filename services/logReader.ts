@@ -2,7 +2,8 @@ import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
 import { ILogReaderAdapter } from "rs-core/adapter/ILogReaderAdapter.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
-import { BaseHandler, FileHandler } from "https://deno.land/std@0.185.0/log/handlers.ts";
+import { FileHandler } from "https://deno.land/std@0.185.0/log/handlers.ts";
+import { ViewSpec } from "rs-core/DirDescriptor.ts";
 
 const service = new Service<ILogReaderAdapter>();
 
@@ -59,6 +60,18 @@ service.getPath("search", async (msg: Message, { adapter, logger }: ServiceConte
 	if (!search) return msg.setStatus(400, 'Must provide a string to search for');
 	const lines = await adapter.search(nLines, search);
 	return msg.setData(lines.join('\n'), 'text/plain');
+});
+
+service.constantDirectory('/', {
+    path: '/',
+    paths: [ 
+        [ 'tail', 0, { pattern: "view" } as ViewSpec ],
+        [ 'json', 0, { pattern: "view" } as ViewSpec ],
+        [ 'search', 0, { pattern: "view" } as ViewSpec ]
+    ],
+    spec: {
+        pattern: 'directory'
+    }
 });
 
 export default service;

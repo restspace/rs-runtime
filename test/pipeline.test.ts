@@ -46,6 +46,7 @@ mockHandler.getString('/test/xyz', "xyz result");
 mockHandler.getString('/test/abc', "abc result");
 mockHandler.getString('/test/def', "def result");
 mockHandler.getString('/test/ghi', "ghi result");
+mockHandler.getString('/test/x x', "x x result");
 mockHandler.getError('/test/missingFile', 404, 'Not found');
 mockHandler.getJson("/test/list", [ "abc", "xyz" ]);
 mockHandler.getJson("/test/list-repeats", [ "abc", "abd", "abc" ]);
@@ -66,6 +67,12 @@ Deno.test('single item', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [ "GET /test/xyz" ]);
     const ds = await msgOut.data?.asString();
     assertStrictEquals(ds, "xyz result");
+});
+
+Deno.test('single item, url encoding', async function () {
+    const msgOut = await pipeline(testMessage('/', 'GET'), [ "GET /test/x x" ]);
+    const ds = await msgOut.data?.asString();
+    assertStrictEquals(ds, "x x result");
 });
 
 Deno.test('simple parallel json', async function () {

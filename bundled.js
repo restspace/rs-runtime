@@ -14178,23 +14178,25 @@ class Message {
         let method = defaultMethod || 'GET';
         let url = '';
         let postData = null;
-        if (parts.length === 1) {
-            url = spec;
-        } else if (parts.length === 2 && Message.isMethod(parts[0])) {
-            method = parts[0] === '$METHOD' ? inheritMethod || method : parts[0];
-            url = parts.slice(1).join(' ');
-        } else if (parts.length === 3 && Message.isMethod(parts[0]) && data) {
-            method = parts[0] === '$METHOD' ? inheritMethod || method : parts[0];
-            const propertyPath = parts[1];
-            if (propertyPath === '$this') {
-                postData = data;
-            } else {
-                postData = getProp(data, propertyPath);
-            }
-            url = parts.slice(2).join(' ');
+        if (!Message.isMethod(parts[0])) {
+            url = spec.trim();
         } else {
-            console.error('bad req spec: ' + spec);
-            throw new Error('Bad request spec');
+            if (parts.length === 2 || parts[1].includes('/')) {
+                method = parts[0] === '$METHOD' ? inheritMethod || method : parts[0];
+                url = parts.slice(1).join(' ');
+            } else if (data) {
+                method = parts[0] === '$METHOD' ? inheritMethod || method : parts[0];
+                const propertyPath = parts[1];
+                if (propertyPath === '$this') {
+                    postData = data;
+                } else {
+                    postData = getProp(data, propertyPath);
+                }
+                url = parts.slice(2).join(' ');
+            } else {
+                console.error('bad req spec: ' + spec);
+                throw new Error('Bad request spec');
+            }
         }
         if (referenceUrl || data) {
             const refUrl = referenceUrl || new Url('/');
@@ -24080,9 +24082,29 @@ const arrayToFunction = (arr, transformHelper)=>{
     }
     return `${functionName}(${args.join(', ')})`;
 };
+const buildContext = (context)=>{
+    if (Array.isArray(context) || !(typeof context === 'object')) {
+        return [
+            {
+                $: context
+            },
+            {}
+        ];
+    }
+    const newContext = {
+        ...context
+    };
+    return [
+        newContext,
+        {
+            $: newContext
+        }
+    ];
+};
 const doEvaluate = (expression, context, variables, helper)=>{
     try {
-        return evaluate(expression, Object.assign({}, context), Object.assign({}, helper, variables));
+        const [newContext, newVariables] = buildContext(context);
+        return evaluate(expression, newContext, Object.assign({}, helper, variables, newVariables));
     } catch (err) {
         throw SyntaxError('Transform failed', {
             cause: err,
@@ -24091,7 +24113,6 @@ const doEvaluate = (expression, context, variables, helper)=>{
     }
 };
 const transformation = (transformObject, data, url = new Url('/'), name = '', variables = {})=>{
-    if (variables['$'] === undefined) variables['$'] = data;
     if (Array.isArray(data)) data = {
         ...data,
         length: data.length
@@ -24099,7 +24120,9 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
     const transformHelper = {
         Math: Math,
         transformMap: (list, transformObject)=>!list ? [] : Array.from(list, (item)=>transformation(transformObject, Object.assign({}, data, item), url, name, variables)),
-        expressionReduce: (list, init, expression)=>!list ? init : Array.from(list).reduce((partial, item)=>doEvaluate(expression, partial, variables, Object.assign({}, transformHelper, data, item)), init),
+        expressionReduce: (list, init, expression)=>!list ? init : Array.from(list).reduce((previous, item)=>doEvaluate(expression, item, variables, Object.assign({}, transformHelper, data, {
+                    '$previous': previous
+                })), init),
         expressionReduce_expArgs: [
             2
         ],
@@ -24154,12 +24177,12 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
         return arrResult;
     } else {
         let transformed = {};
-        const selfObject = transformObject['$this'] || transformObject['.'];
+        const selfObject = transformObject['$'] || transformObject['$this'] || transformObject['.'];
         if (selfObject) {
             transformed = shallowCopy(transformation(selfObject, data, url, name, variables));
         }
         for(let key in transformObject){
-            if (key === '.' || key === '$this') continue;
+            if (key === '.' || key === '$this' || key === '$') continue;
             if (key.startsWith('$') && key.length > 1 && key !== '$key' && !key.startsWith('$$')) {
                 variables[key] = shallowCopy(transformation(transformObject[key], data, url, name, variables));
             } else {
@@ -24189,7 +24212,6 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name, v
         output[effectiveKey] = shallowCopy(transformation(subTransform, input, url, name, variables));
     } else if (match === '.') {
         const keyPart = key.slice(keyStart, newKeyStart - 1).trim();
-        if (keyStart === 0 && !(keyPart in input)) return;
         if (!(keyPart in output)) {
             output[keyPart] = {};
         } else {
@@ -35209,7 +35231,7 @@ class ElasticDataAdapter {
         this.defaultWriteDelayMs = 1500;
     }
     waitForWrite() {
-        return new Promise((res)=>setInterval(()=>res(), this.props.writeDelayMs || this.defaultWriteDelayMs));
+        return new Promise((res)=>setTimeout(()=>res(), this.props.writeDelayMs || this.defaultWriteDelayMs));
     }
     normaliseIndexName(s) {
         if (s === '.' || s === '..') throw new Error('Elastic does not allow index names . or ..');
@@ -49518,7 +49540,7 @@ class PipelineStep {
         let [match, posNew] = matchFirst(step, pos, [
             "try"
         ]);
-        if (match === "try") {
+        if (match === "try" && posNew === "try".length) {
             this.tryMode = true;
             pos = posNew;
         }

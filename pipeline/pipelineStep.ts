@@ -19,7 +19,7 @@ export class PipelineStep {
         let pos = 0;
         step = step.trim();
         let [ match, posNew ] = matchFirst(step, pos, [ "try" ]);
-        if (match === "try") {
+        if (match === "try" && posNew === "try".length) {
             this.tryMode = true;
             pos = posNew;
         }
