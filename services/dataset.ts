@@ -90,7 +90,9 @@ service.getDirectory(async (msg, { adapter }, config: IDatasetConfig) => {
         createInstanceConfigSchema
     }
 
-    const paths = await adapter.listDataset('');
+    const take = msg.url.query['$take'] ? parseInt(msg.url.query['$take'][0]) : undefined;
+    const skip = msg.url.query['$skip'] ? parseInt(msg.url.query['$skip'][0]) : undefined;
+    const paths = await adapter.listDataset('', take, skip);
     if (typeof paths === 'number') return msg.setStatus(paths);
 
     let dirState: DirState;

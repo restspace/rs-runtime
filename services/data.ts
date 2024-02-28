@@ -68,7 +68,9 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
     }
     const pathEls = msg.url.servicePathElements;
     const dataset = pathEls.length ? pathEls[0] : '';
-    const paths =  await adapter.listDataset(dataset);
+    const take = msg.url.query['$take'] ? parseInt(msg.url.query['$take'][0]) : undefined;
+    const skip = msg.url.query['$skip'] ? parseInt(msg.url.query['$skip'][0]) : undefined;
+    const paths =  await adapter.listDataset(dataset, take, skip);
     if (typeof paths === 'number') return msg.setStatus(paths);
 
     enum DirState {
