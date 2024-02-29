@@ -87,6 +87,8 @@ import Sms from "./services/sms.ts";
 import SmsManifest from "./services/sms.rsm.js";
 import WebScraper from "./services/webScraperService.ts";
 import WebScraperManifest from "./services/webScraperService.rsm.js";
+import References from "./services/references.ts";
+import ReferencesManifest from "./services/references.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -247,7 +249,8 @@ export class Modules {
             //"./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>,
             "./services/timer.ts": Timer as unknown as Service<IAdapter, IServiceConfig>,
             "./services/sms.ts": Sms as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/webScraperService.ts": WebScraper as unknown as Service<IAdapter, IServiceConfig> // TODO: replace with actual service
+            "./services/webScraperService.ts": WebScraper as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/references.ts": References as unknown as Service<IAdapter, IServiceConfig>
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -278,7 +281,8 @@ export class Modules {
             //"./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest,
             "./services/timer.rsm.json": TimerManifest as unknown as IServiceManifest,
             "./services/sms.rsm.json": SmsManifest as unknown as IServiceManifest,
-            "./services/webscraperService.rsm.json": WebScraperManifest as unknown as IServiceManifest
+            "./services/webscraperService.rsm.json": WebScraperManifest as unknown as IServiceManifest,
+            "./services/references.rsm.json": ReferencesManifest as unknown as IServiceManifest
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 

@@ -40809,7 +40809,9 @@ service1.getDirectory(async (msg, { adapter })=>{
     }
     const pathEls = msg.url.servicePathElements;
     const dataset = pathEls.length ? pathEls[0] : '';
-    const paths = await adapter.listDataset(dataset);
+    const take = msg.url.query['$take'] ? parseInt(msg.url.query['$take'][0]) : undefined;
+    const skip = msg.url.query['$skip'] ? parseInt(msg.url.query['$skip'][0]) : undefined;
+    const paths = await adapter.listDataset(dataset, take, skip);
     if (typeof paths === 'number') return msg.setStatus(paths);
     let DirState;
     (function(DirState) {
@@ -41062,7 +41064,9 @@ service2.getDirectory(async (msg, { adapter }, config)=>{
         DirState[DirState["createInstanceAdapterSchema"] = 1] = "createInstanceAdapterSchema";
         DirState[DirState["createInstanceConfigSchema"] = 2] = "createInstanceConfigSchema";
     })(DirState || (DirState = {}));
-    const paths = await adapter.listDataset('');
+    const take = msg.url.query['$take'] ? parseInt(msg.url.query['$take'][0]) : undefined;
+    const skip = msg.url.query['$skip'] ? parseInt(msg.url.query['$skip'][0]) : undefined;
+    const paths = await adapter.listDataset('', take, skip);
     if (typeof paths === 'number') return msg.setStatus(paths);
     let dirState;
     const schemaExists = paths.some(([f])=>f === '.schema.json');
