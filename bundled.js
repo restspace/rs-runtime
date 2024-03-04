@@ -1266,6 +1266,16 @@ function patch(target, patchData) {
         return removePatchConfig(patchData);
     }
 }
+function deepEqual(obj1, obj2) {
+    if (obj1 === obj2) return true;
+    if (isPrimitive(obj1) && isPrimitive(obj2)) return obj1 === obj2;
+    if (Object.keys(obj1).length !== Object.keys(obj2).length) return false;
+    for(const key in obj1){
+        if (!(key in obj2)) return false;
+        if (!deepEqual(obj1[key], obj2[key])) return false;
+    }
+    return true;
+}
 function deepEqualIfPresent(objSuper, objSub) {
     if (objSuper === objSub) return true;
     if (isPrimitive(objSuper) && isPrimitive(objSub)) return objSuper === objSub;
@@ -1408,6 +1418,38 @@ const upToLast = (str, match, end)=>{
 const after = (str, match, start)=>{
     const pos = str.indexOf(match, start);
     return pos < 0 ? '' : str.substring(pos + match.length);
+};
+function isArrayLike(item) {
+    return Array.isArray(item) || !!item && typeof item === "object" && item.hasOwnProperty("length") && typeof item.length === "number" && (item.length === 0 || item.length - 1 in item);
+}
+const entityChange = (entitiesFrom, entitiesTo, idProp)=>{
+    const result1 = {
+        created: [],
+        updated: [],
+        deleted: []
+    };
+    for (const entityFrom of entitiesFrom){
+        const entityTo = entitiesTo.find((e)=>e[idProp] === entityFrom[idProp]);
+        if (!entityTo) {
+            result1.deleted.push(entityFrom);
+        } else if (!deepEqual(entityFrom, entityTo)) {
+            result1.updated.push(entityTo);
+        }
+    }
+    let maxId = null;
+    for (const entityTo of entitiesTo){
+        if (entityTo[idProp] === undefined || !entitiesFrom.find((e)=>e[idProp] === entityTo[idProp])) {
+            result1.created.push(entityTo);
+        }
+        if (entityTo[idProp] === undefined) {
+            if (maxId === null) {
+                maxId = Math.max(...entitiesFrom.map((e)=>e[idProp] || 0));
+            }
+            maxId++;
+            entityTo[idProp] = maxId;
+        }
+    }
+    return result1;
 };
 function queryString(args) {
     return Object.entries(args || {}).flatMap(([key, vals])=>vals.map((val)=>key + (val ? '=' + encodeURIComponent(val) : ''))).join('&');
@@ -24056,6 +24098,60 @@ dayjs_min.isDayjs;
 dayjs_min.locale;
 dayjs_min.p;
 dayjs_min.unix;
+const applySelect = (val, prop, filter)=>{
+    if (filter !== undefined && Array.isArray(val)) {
+        if (filter === '') return val;
+        const len = val.length;
+        if (len === 0) return [];
+        const context = {
+            last: ()=>len - 1
+        };
+        const indexVal = evaluate(filter, context);
+        if (typeof indexVal === 'number') return val[indexVal];
+        return val.filter((item)=>evaluate(filter, item, context));
+    } else if (prop !== undefined) {
+        if (prop === '') return val;
+        return Array.isArray(val) ? val.flatMap((item)=>item[prop]) : val[prop];
+    } else {
+        return undefined;
+    }
+};
+const jsonPath = (obj, path)=>{
+    let pos = 0;
+    let result1 = obj;
+    let mode = 'prop';
+    path = path.startsWith('/') ? path.substring(1) : path;
+    do {
+        let prop = undefined;
+        let filter = undefined;
+        switch(mode){
+            case 'prop':
+            case 'postFilter':
+                {
+                    const [matched, newPos] = scanFirst(path, pos, [
+                        '/',
+                        '.',
+                        '['
+                    ]);
+                    prop = path.slice(pos, newPos < 0 ? undefined : newPos - 1);
+                    if (mode === 'postFilter' && Array.isArray(result1)) result1 = result1.flat(1);
+                    mode = newPos < 0 ? 'done' : path[newPos - 1] === '[' ? 'filter' : 'prop';
+                    pos = newPos;
+                    break;
+                }
+            case 'filter':
+                {
+                    const newPos = path.indexOf(']', pos);
+                    filter = path.slice(pos, newPos);
+                    mode = 'postFilter';
+                    pos = newPos + 1;
+                    break;
+                }
+        }
+        result1 = applySelect(result1, prop, filter);
+    }while (pos >= 0 && pos <= path.length)
+    return result1;
+};
 const arrayToFunction = (arr, transformHelper)=>{
     if (arr.length === 0) return '';
     let functionName = arr[0];
@@ -24106,7 +24202,7 @@ const doEvaluate = (expression, context, variables, helper)=>{
         const [newContext, newVariables] = buildContext(context);
         return evaluate(expression, newContext, Object.assign({}, helper, variables, newVariables));
     } catch (err) {
-        throw SyntaxError('Transform failed', {
+        throw SyntaxError(`Transform failed in '${expression}'`, {
             cause: err,
             fileName: expression
         });
@@ -24169,8 +24265,23 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
         expressionGroup_expArgs: [
             1
         ],
+        expressionMax: (list, expression)=>!list ? {} : Math.max(...Array.from(list).map((item)=>evaluate(expression, item, Object.assign({}, transformHelper, data)))),
+        expressionMax_expArgs: [
+            1
+        ],
+        expressionMin: (list, expression)=>!list ? {} : Math.min(...Array.from(list).map((item)=>evaluate(expression, item, Object.assign({}, transformHelper, data)))),
+        expressionMin_expArgs: [
+            1
+        ],
         merge: (...objs)=>Object.assign({}, ...objs),
         pathPattern: (pattern, decode)=>resolvePathPatternWithUrl(pattern, url, data, name, decode),
+        path: (pathPattern, val, decode)=>{
+            if (isArrayLike(val)) val = Array.from(val);
+            return jsonPath(val, resolvePathPatternWithUrl(pathPattern, url, data, name, decode));
+        },
+        entityChange: (from, to, idProp)=>{
+            return entityChange(Array.from(from), Array.from(to), idProp);
+        },
         newDate: (...args)=>args.length === 0 ? new Date() : args.length === 1 ? typeof args[0] === 'number' ? new Date(args[0]) : dayjs_min(args[0]).toDate() : new Date(args[0], args[1], args[2], args[3], args[4], args[5], args[6]),
         formatDate: (date, format)=>format === 'forQuery' ? `datetime'${dayjs_min(date).format().slice(0, -6)}'` : dayjs_min(date).format(format),
         propsToList: (obj, keyProp)=>Object.entries(obj).map(([key, val])=>{
@@ -24178,9 +24289,6 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
                 return val;
             }),
         literal: (obj)=>obj,
-        merge: (val0, val1)=>{
-            return Object.assign({}, val0, val1);
-        },
         parseInt: (s, radix)=>parseInt(s, radix),
         parseFloat: (s)=>parseFloat(s),
         uuid: ()=>crypto.randomUUID()
@@ -54055,6 +54163,149 @@ const __default53 = {
         }
     }
 };
+const extractReferenceProps = ([head, ...rest], val)=>{
+    if (head === undefined) return [];
+    const current = val[head];
+    if (Array.isArray(current)) {
+        if (current.length === 0) {
+            return [];
+        } else if (typeof current[0] === 'object') {
+            const results = current.map((el)=>extractReferenceProps(rest, el));
+            return results.flat();
+        } else if (typeof current[0] === 'string' && rest.length === 0) {
+            return current;
+        } else {
+            return [];
+        }
+    } else if (typeof current === 'object') {
+        return extractReferenceProps(rest, current);
+    } else if (typeof current === 'string' && rest.length === 0) {
+        return [
+            current
+        ];
+    } else {
+        return [];
+    }
+};
+const extractReferences = ({ referencePointer, referredUrl }, val)=>{
+    const refProps = referencePointer.split('/').filter((el)=>!!el);
+    return extractReferenceProps(refProps, val).map((urlString)=>{
+        const url = new Url(urlString);
+        if (url.isRelative) url.isRelative = false;
+        return resolvePathPatternWithUrl(referredUrl, new Url(url));
+    }).flat();
+};
+const service16 = new Service();
+service16.post(async (msg, context)=>{
+    const change = await msg.data?.asJson();
+    const reqReferences = msg.copy().setMethod("GET");
+    const msgReferences = await context.makeRequest(reqReferences);
+    if (!msgReferences.ok) return msgReferences;
+    if (msgReferences?.data?.mimeType !== 'application/json') return msg.setStatus(400, 'References spec is not JSON');
+    const references = await msgReferences.data.asJson();
+    if (!references) return msg.setStatus(400, 'No references spec');
+    let from = change.from;
+    if (typeof from === 'string') {
+        let url;
+        try {
+            url = new Url(from);
+        } catch  {
+            return msg.setStatus(400, `Invalid URL: ${from}`);
+        }
+        const fromMsg = msg.copy().setUrl(url).setMethod("GET");
+        const fromResp = await context.makeRequest(fromMsg);
+        if (!fromResp.ok) return fromResp;
+        from = await fromResp.data?.asJson();
+    }
+    const contextUrl = msg.url.copy();
+    contextUrl.setSubpathFromUrl(msgReferences.getHeader('location') || '');
+    const fromReferredUrls = new Set(references.map((ref)=>extractReferences(ref, from)).flat());
+    const toReferredUrls = new Set(references.map((ref)=>extractReferences(ref, change.to || {})).flat());
+    const changes = {
+        deletions: Array.from(fromReferredUrls).filter((url)=>!toReferredUrls.has(url))
+    };
+    switch(contextUrl.subPathElements[0]){
+        case "references":
+            {
+                msg.setDataJson(Array.from(fromReferredUrls));
+                break;
+            }
+        case "changes":
+            {
+                msg.setDataJson(changes);
+                break;
+            }
+        case "apply":
+            {
+                const deletionsPromises = changes.deletions.map((url)=>{
+                    const delMsg = msg.copy().setUrl(new Url(url)).setMethod("DELETE");
+                    return context.makeRequest(delMsg);
+                });
+                const delResps = await Promise.all(deletionsPromises);
+                const delErrorCount = delResps.filter((resp)=>!resp.ok).length;
+                if (delErrorCount > 0) return msg.setStatus(500, `Failed to delete ${delErrorCount} references`);
+                msg.setStatus(200, `Deleted ${changes.deletions.length} references`);
+                break;
+            }
+    }
+    return msg;
+});
+const __default54 = {
+    "name": "References",
+    "description": "Manages changes to referenced values in a JSON data item using stored reference specs",
+    "moduleUrl": "./services/references.ts",
+    "apis": [
+        "store-transform",
+        "file.base"
+    ],
+    "isFilter": true,
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "store": {
+                "type": "object",
+                "description": "Configuration for the reference spec store",
+                "properties": {
+                    "adapterSource": {
+                        "type": "string",
+                        "description": "Source url for adapter for reference spec store"
+                    },
+                    "infraName": {
+                        "type": "string",
+                        "description": "Infra name for reference spec store"
+                    },
+                    "adapterConfig": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            }
+        },
+        "required": [
+            "store"
+        ]
+    },
+    "postPipeline": [
+        "if (method !== 'POST') $METHOD store/$*"
+    ],
+    "privateServices": {
+        "store": {
+            "name": "'Reference Sepc Store'",
+            "storesTransforms": "true",
+            "source": "./services/file.rsm.json",
+            "access": {
+                "readRoles": "access.readRoles",
+                "writeRoles": "access.writeRoles"
+            },
+            "adapterInterface": "IFileAdapter",
+            "adapterSource": "store.adapterSource",
+            "infraName": "store.infraName",
+            "adapterConfig": "store.adapterConfig",
+            "extensions": "[ 'json' ]",
+            "parentIfMissing": "true"
+        }
+    }
+};
 var LogLevels1;
 (function(LogLevels) {
     LogLevels[LogLevels["NOTSET"] = 0] = "NOTSET";
@@ -55236,10 +55487,10 @@ class NunjucksTemplateAdapter {
 const deleteManifestProperties = [
     'exposedConfigProperties'
 ];
-const service16 = new Service();
-const service17 = new AuthService();
-const service18 = new Service();
+const service17 = new Service();
+const service18 = new AuthService();
 const service19 = new Service();
+const service20 = new Service();
 function mapLegalChanges(msg, oldValues, newUser) {
     const currentUserObj = msg.user || AuthUser.anon;
     const current = new AuthUser(currentUserObj);
@@ -55312,13 +55563,13 @@ async function validateChange(msg, context) {
     msg.setDataJson(updatedUser);
     return msg;
 }
-const service20 = new Service();
 const service21 = new Service();
+const service22 = new Service();
 class TemporaryAccessState extends BaseStateClass {
     validTokenExpiries = [];
     tokenBaseUrls = {};
 }
-const service22 = new Service();
+const service23 = new Service();
 class Modules {
     ajv;
     services;
@@ -55387,28 +55638,29 @@ class Modules {
         });
         this.services = {
             "./services/mock.ts": service,
-            "./services/services.ts": service16,
-            "./services/auth.ts": service17,
+            "./services/services.ts": service17,
+            "./services/auth.ts": service18,
             "./services/data.ts": service1,
             "./services/dataset.ts": service2,
             "./services/file.ts": service3,
             "./services/lib.ts": service4,
-            "./services/pipeline.ts": service18,
-            "./services/pipeline-store.ts": service19,
+            "./services/pipeline.ts": service19,
+            "./services/pipeline-store.ts": service20,
             "./services/static-site-filter.ts": service5,
-            "./services/user-filter.ts": service20,
+            "./services/user-filter.ts": service21,
             "./services/template.ts": service6,
             "./services/proxy.ts": service7,
             "./services/email.ts": service8,
-            "./services/account.ts": service21,
+            "./services/account.ts": service22,
             "./services/discord.ts": service9,
-            "./services/temporary-access.ts": service22,
+            "./services/temporary-access.ts": service23,
             "./services/query.ts": service10,
             "./services/csvConverter.ts": service11,
             "./services/logReader.ts": service12,
             "./services/timer.ts": service13,
             "./services/sms.ts": service14,
-            "./services/webScraperService.ts": service15
+            "./services/webScraperService.ts": service15,
+            "./services/references.ts": service16
         };
         this.servicesMap[""] = Object.keys(this.services);
         this.serviceManifests = {
@@ -55437,7 +55689,8 @@ class Modules {
             "./services/service-store.rsm.json": __default47,
             "./services/timer.rsm.json": __default48,
             "./services/sms.rsm.json": __default49,
-            "./services/webscraperService.rsm.json": __default53
+            "./services/webscraperService.rsm.json": __default53,
+            "./services/references.rsm.json": __default54
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
@@ -55945,7 +56198,7 @@ const ensureAllManifests = async (tenantOrUrl, context)=>{
     }
     return domain;
 };
-service16.constantDirectory('/', {
+service17.constantDirectory('/', {
     path: '/',
     paths: [
         [
@@ -55993,7 +56246,7 @@ service16.constantDirectory('/', {
         pattern: 'directory'
     }
 });
-service16.getPath('catalogue', async (msg, context)=>{
+service17.getPath('catalogue', async (msg, context)=>{
     const builtIns = "";
     const local = context.tenant;
     const extLibs = [
@@ -56032,7 +56285,7 @@ service16.getPath('catalogue', async (msg, context)=>{
         catalogue: allCat
     }));
 });
-service16.getPath('services', async (msg, context)=>{
+service17.getPath('services', async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const manifestData = {};
     for (const serv of Object.values(tenant.servicesConfig.services)){
@@ -56062,8 +56315,8 @@ const getRaw = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.rawServicesConfig));
 };
-service16.getPath('raw', getRaw);
-service16.getPath('raw.json', getRaw);
+service17.getPath('raw', getRaw);
+service17.getPath('raw.json', getRaw);
 const rebuildConfig = async (rawServicesConfig, tenant)=>{
     config.modules.purgeTenantModules(config.tenants[tenant].primaryDomain);
     let newTenant;
@@ -56572,8 +56825,8 @@ const putRaw = async (msg, context)=>{
     if (status) return msg.setStatus(status, message);
     return msg.setStatus(200);
 };
-service16.putPath('raw', putRaw);
-service16.putPath('raw.json', putRaw);
+service17.putPath('raw', putRaw);
+service17.putPath('raw.json', putRaw);
 const putChords = async (msg, context)=>{
     const chords = await msg?.data?.asJson();
     if (typeof chords !== 'object') return msg.setStatus(400, 'Chords should be an object labelled by chord id');
@@ -56598,14 +56851,14 @@ const putChords = async (msg, context)=>{
     const [status, message] = await rebuildConfig(newRawConfig, context.tenant);
     return msg.setStatus(status || 200, message);
 };
-service16.putPath('chords', putChords);
-service16.putPath('chords.json', putChords);
+service17.putPath('chords', putChords);
+service17.putPath('chords.json', putChords);
 const getChordMap = (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     return Promise.resolve(msg.setDataJson(tenant.chordMap));
 };
-service16.getPath('chord-map', getChordMap);
-service16.getPath('chord-map.json', getChordMap);
+service17.getPath('chord-map', getChordMap);
+service17.getPath('chord-map.json', getChordMap);
 const openApi = async (msg, context)=>{
     const tenant = config.tenants[context.tenant];
     const spec = {
@@ -56641,7 +56894,7 @@ const openApi = async (msg, context)=>{
     }
     return msg.setDataJson(spec);
 };
-service16.getPath('openApi', openApi);
+service17.getPath('openApi', openApi);
 var PipelineElementType;
 (function(PipelineElementType) {
     PipelineElementType[PipelineElementType["parallelizer"] = 0] = "parallelizer";
@@ -57043,7 +57296,7 @@ function logout(msg) {
     msg.deleteCookie('rs-auth');
     return Promise.resolve(msg);
 }
-service17.postPath('login', async (msg, context, config)=>{
+service18.postPath('login', async (msg, context, config)=>{
     const newMsg = await login(msg, config.userUrlPattern, context, config);
     if (config.loginPage && msg.getHeader('referer')) {
         let redirUrl = msg.url.copy();
@@ -57078,8 +57331,8 @@ service17.postPath('login', async (msg, context, config)=>{
     }
     return newMsg;
 });
-service17.postPath('logout', (msg)=>logout(msg));
-service17.getPath('user', async (msg, context, config)=>{
+service18.postPath('logout', (msg)=>logout(msg));
+service18.getPath('user', async (msg, context, config)=>{
     if (!msg.user || userIsAnon(msg.user)) {
         return msg.setStatus(401, 'Unauthorized');
     }
@@ -57091,8 +57344,8 @@ service17.getPath('user', async (msg, context, config)=>{
         return msg.setStatus(404, "No such user");
     }
 });
-service17.getPath('timeout', (msg, _context, config)=>msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
-service17.setUser(async (msg, _context, { sessionTimeoutMins })=>{
+service18.getPath('timeout', (msg, _context, config)=>msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
+service18.setUser(async (msg, _context, { sessionTimeoutMins })=>{
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
     let authResult = '';
@@ -57118,7 +57371,7 @@ service17.setUser(async (msg, _context, { sessionTimeoutMins })=>{
     }
     return msg;
 });
-service18.getDirectory((msg, _context, { manualMimeTypes })=>{
+service19.getDirectory((msg, _context, { manualMimeTypes })=>{
     if (msg.url.query["$requestSchema"]) {
         if (!manualMimeTypes?.requestSchema) return msg.setStatus(404, "No request schema available");
         msg.setDataJson(manualMimeTypes?.requestSchema);
@@ -57155,7 +57408,7 @@ service18.getDirectory((msg, _context, { manualMimeTypes })=>{
     });
     return msg;
 });
-service18.all((msg, context, config)=>{
+service19.all((msg, context, config)=>{
     let runPipeline = config.pipeline;
     if (msg.url.query["$to-step"]) {
         const toStep = parseInt(msg.url.query["$to-step"][0]);
@@ -57165,7 +57418,7 @@ service18.all((msg, context, config)=>{
     }
     return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal));
 });
-service19.all(async (msg, context)=>{
+service20.all(async (msg, context)=>{
     const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
@@ -57182,7 +57435,7 @@ service19.all(async (msg, context)=>{
     pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
     return pipeline(msg, pipelineSpec, pipelineUrl, false, (msg)=>context.makeRequest(msg));
 });
-service20.get(async (msg, context)=>{
+service21.get(async (msg, context)=>{
     if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
     if (msg.url.query['test'] !== undefined) {
         msg.data = undefined;
@@ -57206,9 +57459,9 @@ service20.get(async (msg, context)=>{
     msg.data.mimeType = originalMime;
     return msg;
 });
-service20.put(validateChange);
-service20.post(validateChange);
-service20.delete(validateChange);
+service21.put(validateChange);
+service21.post(validateChange);
+service21.delete(validateChange);
 const sendTokenUrl = async (msg, context, serviceConfig, subservice)=>{
     if (msg.url.servicePathElements.length < 1) return msg.setStatus(400, 'Missing email');
     const user = await getUserFromEmail(context, serviceConfig.userUrlPattern, msg, msg.url.servicePathElements[0], true);
@@ -57288,11 +57541,11 @@ const tokenVerifySchema = {
         }
     }
 };
-service21.postPath('reset-password', (msg, context, config)=>{
+service22.postPath('reset-password', (msg, context, config)=>{
     if (!config.passwordReset) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.passwordReset);
 });
-service21.postPath('token-update-password', (msg, context, config)=>{
+service22.postPath('token-update-password', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, async (userData, posted)=>{
         const user = new AuthUser(userData);
         user.password = posted['password'];
@@ -57300,18 +57553,18 @@ service21.postPath('token-update-password', (msg, context, config)=>{
         return user;
     });
 }, tokenPasswordSchema);
-service21.postPath('verify-email', (msg, context, config)=>{
+service22.postPath('verify-email', (msg, context, config)=>{
     if (!config.emailConfirm) return Promise.resolve(msg.setStatus(404, 'Not found'));
     return sendTokenUrl(msg, context, config, config.emailConfirm);
 });
-service21.postPath('confirm-email', (msg, context, config)=>{
+service22.postPath('confirm-email', (msg, context, config)=>{
     return tokenUserUpdate(msg, context, config, (userData, _posted)=>{
         const user = new AuthUser(userData);
         user.emailVerified = new Date();
         return Promise.resolve(user);
     });
 }, tokenVerifySchema);
-service22.all(async (msg, context, config)=>{
+service23.all(async (msg, context, config)=>{
     const state = await context.state(TemporaryAccessState, context, config);
     const expireTokens = ()=>{
         const now = new Date();

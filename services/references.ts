@@ -97,12 +97,16 @@ service.post(async (msg, context) => {
 	contextUrl.setSubpathFromUrl(msgReferences.getHeader('location') || '');
 
     const fromReferredUrls = new Set<string>(references.map(ref => extractReferences(ref, from)).flat());
-    const toReferredUrls = new Set<string>(references.map(ref => extractReferences(ref, change.to)).flat());
+    const toReferredUrls = new Set<string>(references.map(ref => extractReferences(ref, change.to || {})).flat());
     const changes = {
         deletions: Array.from(fromReferredUrls).filter(url => !toReferredUrls.has(url))
     };
 
     switch (contextUrl.subPathElements[0]) {
+        case "references": {
+            msg.setDataJson(Array.from(fromReferredUrls));
+            break;
+        }
         case "changes": {
             msg.setDataJson(changes);
             break;
