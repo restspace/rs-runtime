@@ -24,6 +24,6 @@ export class PipelineTransform {
     }
 
     static isValid(item: any): boolean {
-        return typeof item === 'object';
+        return item && typeof item === 'object';
     }
 }

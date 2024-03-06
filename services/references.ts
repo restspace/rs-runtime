@@ -40,7 +40,7 @@ const extractReferenceProps = ([head, ...rest]: string[], val: any): string[] =>
     if (Array.isArray(current)) {
         if (current.length === 0) {
             return [];
-        } else if (typeof current[0] === 'object') {
+        } else if (current?.[0] && typeof current[0] === 'object') {
             const results = current.map((el: any) => extractReferenceProps(rest, el));
             return results.flat();
         } else if (typeof current[0] === 'string' && rest.length === 0) {
@@ -48,7 +48,7 @@ const extractReferenceProps = ([head, ...rest]: string[], val: any): string[] =>
         } else {
             return [];
         }
-    } else if (typeof current === 'object') {
+    } else if (current && typeof current === 'object') {
         return extractReferenceProps(rest, current);
     } else if (typeof current === 'string' && rest.length === 0) {
         return [current];

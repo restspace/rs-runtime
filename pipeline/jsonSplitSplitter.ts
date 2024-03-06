@@ -21,7 +21,7 @@ export function jsonSplit(msg: Message): AsyncQueue<Message> {
         msg.data.asJson().then(obj => {
             if (Array.isArray(obj)) {
                 obj.forEach((item, i) => queue.enqueue(msg.copy().setName(i.toString()).setDataJson(item)));
-            } else if (typeof obj === 'object') {
+            } else if (obj && typeof obj === 'object') {
                 Object.entries(obj).forEach(([key, value]) => queue.enqueue(msg.copy().setName(key).setDataJson(value)));
             } else {
                 queue.enqueue(msg);

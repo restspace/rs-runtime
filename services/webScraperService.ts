@@ -58,7 +58,7 @@ const scrapeFromSpec = async (spec: any, reqMsg: Message, subpath: string[], con
                     : doc.querySelector(value)?.textContent;
             } else if (Array.isArray(value)) {
                 returnVal[key] = { $status: 400, $message: `Directly nested arrays not allowed in spec` };
-            } else if (typeof value === 'object') {
+            } else if (value && typeof value === 'object') {
                 if (!value['$urlselector']) {
                     returnVal[key] = { $status: 400, $message: `No url selector specified in subspec at ${key}` };
                     continue;

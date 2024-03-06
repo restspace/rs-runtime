@@ -41,7 +41,7 @@ type PipelineOperator = PipelineParallelizer | PipelineSerializer | Partial<Pipe
 function parsePipelineElement(el: string | Record<string, unknown> | PipelineSpec): [ PipelineElementType | null, PipelineElement | null] {
     if (Array.isArray(el)) {
         return [ PipelineElementType.subpipeline, el ];
-    } else if (typeof el === 'object') {
+    } else if (el && typeof el === 'object') {
         return PipelineTransform.isValid(el)
             ? [ PipelineElementType.transform, new PipelineTransform(el) ]
             : [ null, null ];

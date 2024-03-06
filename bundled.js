@@ -22707,7 +22707,8 @@ class PipelineCondition {
                         k,
                         v[0]
                     ]));
-            }
+            },
+            ...context.variables
         };
         return !!evaluate(this.exp, msgValues);
     }
