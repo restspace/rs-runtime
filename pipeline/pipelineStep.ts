@@ -90,11 +90,15 @@ export class PipelineStep {
                     }
                 }
                 if (this.rename) {
-                    let prename = ''
-                    if (this.rename.startsWith('.')) {
-                        prename = outMsg.name;
+                    if (this.rename.startsWith('$') && this.rename !== '$this' && outMsg.data) {
+                        context.variables[this.rename] = await outMsg.data.asJson();
+                    } else {
+                        let prename = ''
+                        if (this.rename.startsWith('.')) {
+                            prename = outMsg.name;
+                        }
+                        outMsg.name = prename + resolvePathPatternWithUrl(this.rename, outMsg.url, undefined, outMsg.name) as string;
                     }
-                    outMsg.name = prename + resolvePathPatternWithUrl(this.rename, outMsg.url, undefined, outMsg.name) as string;
                 }
                 if (this.tryMode) {
                     outMsg.enterConditionalMode();

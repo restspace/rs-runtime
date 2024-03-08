@@ -1163,11 +1163,11 @@ const strategies = [
 ];
 function removePatchConfig(patchData) {
     if (Array.isArray(patchData)) {
-        if (typeof patchData[0] === 'object' && '$strategy' in patchData[0] && strategies.includes(patchData[0].$strategy)) {
+        if (patchData[0] && typeof patchData[0] === 'object' && '$strategy' in patchData[0] && strategies.includes(patchData[0].$strategy)) {
             patchData.shift();
         }
         return patchData.map((item)=>removePatchConfig(item));
-    } else if (typeof patchData === 'object') {
+    } else if (patchData && typeof patchData === 'object') {
         return Object.fromEntries(Object.entries(patchData).map(([k, v])=>[
                 k,
                 removePatchConfig(v)
@@ -1292,7 +1292,7 @@ function shallowCopy(value) {
     if (Array.isArray(value)) return [
         ...value
     ];
-    if (typeof value === 'object') return {
+    if (value && typeof value === 'object') return {
         ...value
     };
     return value;
@@ -24156,14 +24156,15 @@ const jsonPath = (obj, path)=>{
 const arrayToFunction = (arr, transformHelper)=>{
     if (arr.length === 0) return '';
     let functionName = arr[0];
-    if (!functionName.endsWith('()')) return '';
+    if (typeof functionName !== 'string' || !functionName.endsWith('()')) return '';
     functionName = functionName.slice(0, -2);
     const args = [];
     for(let i1 = 1; i1 < arr.length; i1++){
         if (Array.isArray(arr[i1])) {
             const arrayFunc = arrayToFunction(arr[i1], transformHelper);
             if (arrayFunc) args.push(arrayFunc);
-        } else if (typeof arr[i1] === 'object') {
+            args.push(JSON.stringify(arr[i1]));
+        } else if (arr[i1] && typeof arr[i1] === 'object') {
             let objectStr = JSON.stringify(arr[i1]);
             args.push(objectStr);
         } else if (typeof arr[i1] === 'string') {
@@ -24325,7 +24326,7 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
 };
 const rectifyObject = (obj)=>{
     let newObj = obj;
-    if (typeof obj === 'object' && 'length' in obj && !Array.isArray(obj)) {
+    if (obj && typeof obj === 'object' && 'length' in obj && !Array.isArray(obj)) {
         newObj = Array.from(obj);
     }
     return newObj;
@@ -24376,7 +24377,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name, v
         } else if (match === '[') {
             let list = newOutput;
             if (!Array.isArray(newOutput) && !(typeof newOutput === 'object' && 'length' in newOutput)) {
-                if (typeof newOutput === 'object') {
+                if (newOutput && typeof newOutput === 'object') {
                     list = Object.entries(newOutput).map(([k, v])=>typeof v === 'object' ? {
                             ...v,
                             "$key": k
@@ -24445,7 +24446,7 @@ class PipelineTransform {
         return msg.copy().setDataJson(transJson);
     }
     static isValid(item) {
-        return typeof item === 'object';
+        return item && typeof item === 'object';
     }
 }
 const copyPipelineContext = (context)=>{
@@ -24935,7 +24936,7 @@ function jsonSplit(msg) {
         msg.data.asJson().then((obj)=>{
             if (Array.isArray(obj)) {
                 obj.forEach((item, i1)=>queue.enqueue(msg.copy().setName(i1.toString()).setDataJson(item)));
-            } else if (typeof obj === 'object') {
+            } else if (obj && typeof obj === 'object') {
                 Object.entries(obj).forEach(([key, value])=>queue.enqueue(msg.copy().setName(key).setDataJson(value)));
             } else {
                 queue.enqueue(msg);
@@ -35312,6 +35313,11 @@ const schemaToMapping = (schema)=>{
         case "number":
             submapping = {
                 type: "double"
+            };
+            break;
+        case "integer":
+            submapping = {
+                type: "long"
             };
             break;
         case "boolean":
@@ -54047,7 +54053,7 @@ const scrapeFromSpec = async (spec, reqMsg, subpath, context)=>{
                     $status: 400,
                     $message: `Directly nested arrays not allowed in spec`
                 };
-            } else if (typeof value === 'object') {
+            } else if (value && typeof value === 'object') {
                 if (!value['$urlselector']) {
                     returnVal[key] = {
                         $status: 400,
@@ -54170,7 +54176,7 @@ const extractReferenceProps = ([head, ...rest], val)=>{
     if (Array.isArray(current)) {
         if (current.length === 0) {
             return [];
-        } else if (typeof current[0] === 'object') {
+        } else if (current?.[0] && typeof current[0] === 'object') {
             const results = current.map((el)=>extractReferenceProps(rest, el));
             return results.flat();
         } else if (typeof current[0] === 'string' && rest.length === 0) {
@@ -54178,7 +54184,7 @@ const extractReferenceProps = ([head, ...rest], val)=>{
         } else {
             return [];
         }
-    } else if (typeof current === 'object') {
+    } else if (current && typeof current === 'object') {
         return extractReferenceProps(rest, current);
     } else if (typeof current === 'string' && rest.length === 0) {
         return [
@@ -56647,11 +56653,15 @@ class PipelineStep {
                     }
                 }
                 if (this.rename) {
-                    let prename = '';
-                    if (this.rename.startsWith('.')) {
-                        prename = outMsg.name;
+                    if (this.rename.startsWith('$') && this.rename !== '$this' && outMsg.data) {
+                        context.variables[this.rename] = await outMsg.data.asJson();
+                    } else {
+                        let prename = '';
+                        if (this.rename.startsWith('.')) {
+                            prename = outMsg.name;
+                        }
+                        outMsg.name = prename + resolvePathPatternWithUrl(this.rename, outMsg.url, undefined, outMsg.name);
                     }
-                    outMsg.name = prename + resolvePathPatternWithUrl(this.rename, outMsg.url, undefined, outMsg.name);
                 }
                 if (this.tryMode) {
                     outMsg.enterConditionalMode();
@@ -56925,7 +56935,7 @@ function parsePipelineElement(el) {
             PipelineElementType.subpipeline,
             el
         ];
-    } else if (typeof el === 'object') {
+    } else if (el && typeof el === 'object') {
         return PipelineTransform.isValid(el) ? [
             PipelineElementType.transform,
             new PipelineTransform(el)

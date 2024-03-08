@@ -132,6 +132,14 @@ Deno.test('transfer files', async function () {
         }
     });
 });
+Deno.test('empty split does nothing', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson([]), [
+            "jsonSplit",
+            "GET /test/abc"
+    ]);
+    const output = await msgOut.data?.asJson();
+    console.log('output ' + JSON.stringify(output));
+});
 Deno.test('data in spec', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [
         {
@@ -476,6 +484,17 @@ Deno.test('variables', async function () {
     ]);
     const output = await msgOut.data?.asJson();
     assertEquals(output.x, "www");
+});
+
+Deno.test('rename to variable', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson({ a: 1, b: 2}), [
+        "GET /test/object :$var",
+        {
+            "$": "$var"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output, { val1: "aaa", val2: "bbb" });
 });
 
 // Deno.test('simple post', async function () {

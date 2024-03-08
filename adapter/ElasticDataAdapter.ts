@@ -42,6 +42,9 @@ export const schemaToMapping = (schema: any): any => {
 		case "number":
 			submapping = { type: "double" };
 			break;
+		case "integer":
+			submapping = { type: "long"};
+			break;
 		case "boolean":
 			submapping = { type: "boolean" };
 			break;
