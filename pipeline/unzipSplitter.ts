@@ -8,6 +8,7 @@ export function unzip(msg: Message): AsyncQueue<Message> {
 	if (!msg.data) return queue;
 	const readable = msg.data.asReadable();
 	if (!readable) return queue;
+	let anyMessages = false;
     (async () => {
 		try {
 			for await (const entry of read(readable)) {
@@ -21,12 +22,14 @@ export function unzip(msg: Message): AsyncQueue<Message> {
 						.setUrl(newUrl)
 						.removeHeader('transfer-encoding');
 					queue.enqueue(entryMsg);
+					anyMessages = true;
 				}
 			}
 			queue.close();
 		} catch (err) {
 			queue.enqueue(err).close();
 		}
+		if (!anyMessages) queue.enqueue(msg.copy().setNullMessage(true));
 	})();
 
     return queue;

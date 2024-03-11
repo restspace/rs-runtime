@@ -29,6 +29,13 @@ export class MockHandler {
     getError(path: string, code: number, message: string) {
         this.subhandlers[path] = (msg: Message) => Promise.resolve(msg.setStatus(code, message));
     }
+
+    getNoBody(path: string) {
+        this.subhandlers[path] = (msg: Message) => {
+            msg.data = undefined;
+            return Promise.resolve(msg);
+        }
+    }
 }
 
 export const mockHandler = new MockHandler();

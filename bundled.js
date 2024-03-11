@@ -1523,7 +1523,13 @@ function resolvePathPatternWithObjectInner(pathPattern, regex, partialResolution
         const substitutions = enumeratedPaths.map((path)=>{
             const val = path ? getProp(sourceObject, path) : sourceObject;
             if (val === undefined || val === null) {
-                throw new Error(`In path pattern, the data path '${path}' is not present in the data`);
+                throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is not present in the data`);
+            }
+            if (typeof val === 'object') {
+                throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an object`);
+            }
+            if (val.toString() === '') {
+                throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an empty string`);
             }
             return val.toString();
         });

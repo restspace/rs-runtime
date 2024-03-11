@@ -44,6 +44,9 @@ export async function zip(msgs: AsyncIterator<Message, Message, Message>): Promi
         first = await msgs.next();
     }
     if (first.done) return null; // no messages
+	if (first.value?.nullMessage) {
+        return first.value.setNullMessage(false).setData("{}", "application/json");
+    }
 
 	const stream = write(messageProcessor(first, msgs));
     const msgOut = first.value!;

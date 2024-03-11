@@ -20,6 +20,7 @@ import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { jsonSplit } from "./jsonSplitSplitter.ts";
 import { limitConcurrency } from "rs-core/utility/limitConcurrency.ts";
 
+// 
 const DefaultConcurrencyLimit = 12;
 
 type PipelineElement = PipelineSpec | PipelineOperator | PipelineStep | PipelineMode | PipelineTransform;
@@ -37,6 +38,8 @@ enum PipelineSerializer {
 }
 
 type PipelineOperator = PipelineParallelizer | PipelineSerializer | Partial<PipelineContext>;
+
+
 
 function parsePipelineElement(el: string | Record<string, unknown> | PipelineSpec): [ PipelineElementType | null, PipelineElement | null] {
     if (Array.isArray(el)) {
@@ -156,7 +159,7 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                     const fixedMode = mode;
                     const contextCopy = copyPipelineContext(context);
                     msgs = msgs.flatMap(async msg => {
-                        if (endedMsgs.includes(msg)) return msg;
+                        if (endedMsgs.includes(msg) || msg.nullMessage) return msg;
                         succeeded = step.test(msg, fixedMode, contextCopy);
                         if (succeeded) {
                             const stepResult = step.execute(msg, contextCopy);
@@ -175,7 +178,7 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                     const transform = el as PipelineTransform;
                     const contextCopy = copyPipelineContext(context);
                     msgs = msgs.flatMap(msg => {
-                        if (endedMsgs.includes(msg)) return msg;
+                        if (endedMsgs.includes(msg) || msg.nullMessage) return msg;
                         return transform.execute(msg, contextCopy)
                     });
                     break;
@@ -184,7 +187,7 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                     const fixedModeSubpipeline = mode;
                     
                     msgs = msgs.flatMap(msg => {
-                        if (endedMsgs.includes(msg)) return msg;
+                        if (endedMsgs.includes(msg) || msg.nullMessage) return msg;
                         succeeded = testPipeline(el as PipelineSpec, msg, fixedModeSubpipeline, context);
                         if (succeeded) {
                             const stepResult = runPipeline(el as PipelineSpec, new AsyncQueue<Message>(1).enqueue(msg), mode, context);

@@ -51,10 +51,13 @@ mockHandler.getError('/test/missingFile', 404, 'Not found');
 mockHandler.getJson("/test/list", [ "abc", "xyz" ]);
 mockHandler.getJson("/test/list-repeats", [ "abc", "abd", "abc" ]);
 mockHandler.getJson("/test/timing-list", [ 100, 80, 50 ]);
+mockHandler.getJson("/test/post-list", [ "post-1", "post-2"])
 mockHandler.getJson("/test/object", { val1: "aaa", val2: "bbb" });
 mockHandler.getStringDelay("/test/aaa-100ms", 100, "aaa result");
 mockHandler.getStringDelay("/test/bbb-75ms", 75, "bbb result");
 mockHandler.getStringDelay("/test/ccc-50ms", 50, "ccc result");
+mockHandler.getNoBody("/test/post-1");
+mockHandler.getNoBody("/test/post-2");
 
 function testMessage(url: string, method: MessageMethod) {
     const msg = new Message(url, 'pipeline', method, null)
@@ -163,6 +166,24 @@ Deno.test('expansion', async function () {
     assertStrictEquals(output.xyz, 'xyz result');
     assertStrictEquals(output.abc, 'abc result');
     assertStrictEquals(output.xxx, 'abc result');
+});
+Deno.test('expansion 2', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST'), [
+        "GET /test/post-list",
+        "POST /test/${[]}",
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    console.log('output:', output);
+});
+Deno.test('expansion ', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST'), [
+        "GET /test/post-list",
+        "POST /test/${[]}",
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    console.log('output:', output);
 });
 Deno.test('error normal abort', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [
@@ -444,6 +465,32 @@ Deno.test('nested split', async function () {
         "1": { x: { b: 234 }, y: { b: 234 } },
         length: 2
       });
+});
+
+Deno.test('continues after null split', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
+        []
+    ), [
+        "jsonSplit",
+        [
+                "/lib/bypass :.x",
+                "/lib/bypass :.y"
+        ],
+        "jsonObject",
+        "GET /test/abc"
+    ]);
+    const output = await msgOut.data?.asString();
+    assertEquals(output, "abc result");
+});
+Deno.test('continues after empty expansion', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
+        []
+    ), [
+        "GET /test/x/${[]}",
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asString();
+    assertEquals(output, '{}');
 });
 
 Deno.test('parallel timing', async function () {

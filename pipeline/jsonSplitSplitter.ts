@@ -15,14 +15,27 @@ export function jsonSplit(msg: Message): AsyncQueue<Message> {
                 queue.enqueue(msg.copy().setName(idx.toString()).setData(line, "application/json"));
                 idx++;
             }
+            if (idx === 0) {
+                // if there are zero split messages, ensure we have a null message to traverse the pipeline until the next join
+                queue.enqueue(msg.copy().setNullMessage(true));
+            }
         }
         processLines(rbl);
     } else {
         msg.data.asJson().then(obj => {
             if (Array.isArray(obj)) {
-                obj.forEach((item, i) => queue.enqueue(msg.copy().setName(i.toString()).setDataJson(item)));
+                if (obj.length === 0) {
+                    queue.enqueue(msg.copy().setNullMessage(true));
+                } else {
+                    obj.forEach((item, i) => queue.enqueue(msg.copy().setName(i.toString()).setDataJson(item)));
+                }
             } else if (obj && typeof obj === 'object') {
-                Object.entries(obj).forEach(([key, value]) => queue.enqueue(msg.copy().setName(key).setDataJson(value)));
+                if (Object.keys(obj).length === 0) {
+                    msg.nullMessage = true;
+                    queue.enqueue(msg.copy().setNullMessage(true));
+                } else {
+                    Object.entries(obj).forEach(([key, value]) => queue.enqueue(msg.copy().setName(key).setDataJson(value)));
+                }
             } else {
                 queue.enqueue(msg);
             }

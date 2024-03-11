@@ -71,6 +71,9 @@ export class PipelineStep {
                 if (this.spec) {
                     const newMsg_s = await msg.divertToSpec(this.spec, "POST", context.callerUrl, context.callerMethod, msg.headers);
                     if (Array.isArray(newMsg_s)) {
+                        if (newMsg_s.length === 0) { // ensure a null message continues on the queue if no messages are found
+                            return new AsyncQueue<Message>(1).enqueue(msg.copy().setNullMessage(true));
+                        }
                         const newMsgs = new AsyncQueue<Message>(newMsg_s.length);
                         newMsg_s.forEach((msg, i) => sendMsg(msg).then(outMsg => {
                             let prename = '';
