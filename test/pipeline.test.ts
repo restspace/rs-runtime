@@ -493,6 +493,17 @@ Deno.test('continues after empty expansion', async function () {
     assertEquals(output, '{}');
 });
 
+Deno.test('continues after null body results expansion', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
+        [ "x" ]
+    ), [
+        "POST /lib/devnull?var=${[]}",
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asString();
+    assertEquals(output, '{}');
+});
+
 Deno.test('parallel timing', async function () {
     const msgOut = await pipeline(testMessage('/', 'POST'), [
         [

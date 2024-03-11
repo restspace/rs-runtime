@@ -40,12 +40,14 @@ async function* messageProcessor(firstMsg: IteratorResult<Message | null, Messag
 
 export async function zip(msgs: AsyncIterator<Message, Message, Message>): Promise<Message | null> {
     let first: IteratorResult<Message | null, Message | null> = { value: null, done: false };
+    let nullMessage = null as Message | null;
     while (!((first.value && first.value.hasData()) || first.done)) {
         first = await msgs.next();
+        if (first.value) nullMessage = first.value;
     }
-    if (first.done) return null; // no messages
-	if (first.value?.nullMessage) {
-        return first.value.setNullMessage(false).setData("{}", "application/json");
+    if (first.done) {
+        if (!nullMessage) return null;
+        return nullMessage.setNullMessage(false).setData("{}", "application/json");
     }
 
 	const stream = write(messageProcessor(first, msgs));

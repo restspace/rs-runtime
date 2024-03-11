@@ -13593,6 +13593,7 @@ class Message {
     _data;
     uninitiatedDataCopies;
     _headers;
+    _nullMessage;
     static pullName = new RegExp(/([; ]name=["'])(.*?)(["'])/);
     get headers() {
         const headersOut = {
@@ -13671,6 +13672,13 @@ class Message {
         const host = this.getHeader('Host');
         return host || '';
     }
+    get nullMessage() {
+        return this._nullMessage;
+    }
+    set nullMessage(val) {
+        this._nullMessage = val;
+        if (val) this.data = undefined;
+    }
     constructor(url, tenantOrContext, method = "GET", parent, headers, data){
         this.tenantOrContext = tenantOrContext;
         this.method = method;
@@ -13687,6 +13695,7 @@ class Message {
         this._status = 0;
         this.uninitiatedDataCopies = [];
         this._headers = {};
+        this._nullMessage = false;
         this.forbiddenHeaders = [
             "accept-charset",
             "accept-encoding",
@@ -13984,6 +13993,10 @@ class Message {
     }
     setDateModified(dateModified) {
         if (this.data) this.data.dateModified = dateModified;
+        return this;
+    }
+    setNullMessage(isNullMessage) {
+        this.nullMessage = isNullMessage;
         return this;
     }
     enterConditionalMode() {
@@ -23052,6 +23065,9 @@ async function zip(msgs) {
         first = await msgs.next();
     }
     if (first.done) return null;
+    if (first.value?.nullMessage) {
+        return first.value.setNullMessage(false).setData("{}", "application/json");
+    }
     const stream = write(messageProcessor(first, msgs));
     const msgOut = first.value;
     if (msgOut.name && msgOut.name.includes('.')) {
@@ -23065,10 +23081,13 @@ async function jsonObject(msgs) {
     let first = {
         value: null
     };
-    while(!(first.value && first.value.hasData() || first.done)){
+    while(!(first.value && (first.value.nullMessage || first.value.hasData()) || first.done)){
         first = await msgs.next();
     }
     if (first.done) return null;
+    if (first.value?.nullMessage) {
+        return first.value.setNullMessage(false).setData("{}", "application/json");
+    }
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const writeString = (data)=>writer.write(new TextEncoder().encode(data));
@@ -23607,6 +23626,7 @@ function unzip(msg) {
     if (!msg.data) return queue;
     const readable = msg.data.asReadable();
     if (!readable) return queue;
+    let anyMessages = false;
     (async ()=>{
         try {
             for await (const entry of read(readable)){
@@ -23615,12 +23635,14 @@ function unzip(msg) {
                 if (entry.type === 'file') {
                     const entryMsg = msg.copy().setName(entry.name).setData(entry.body.stream(), getType(entry.name) || '').setUrl(newUrl).removeHeader('transfer-encoding');
                     queue.enqueue(entryMsg);
+                    anyMessages = true;
                 }
             }
             queue.close();
         } catch (err) {
             queue.enqueue(err).close();
         }
+        if (!anyMessages) queue.enqueue(msg.copy().setNullMessage(true));
     })();
     return queue;
 }
@@ -24936,14 +24958,26 @@ function jsonSplit(msg) {
                 queue.enqueue(msg.copy().setName(idx.toString()).setData(line, "application/json"));
                 idx++;
             }
+            if (idx === 0) {
+                queue.enqueue(msg.copy().setNullMessage(true));
+            }
         };
         processLines(rbl);
     } else {
         msg.data.asJson().then((obj)=>{
             if (Array.isArray(obj)) {
-                obj.forEach((item, i1)=>queue.enqueue(msg.copy().setName(i1.toString()).setDataJson(item)));
+                if (obj.length === 0) {
+                    queue.enqueue(msg.copy().setNullMessage(true));
+                } else {
+                    obj.forEach((item, i1)=>queue.enqueue(msg.copy().setName(i1.toString()).setDataJson(item)));
+                }
             } else if (obj && typeof obj === 'object') {
-                Object.entries(obj).forEach(([key, value])=>queue.enqueue(msg.copy().setName(key).setDataJson(value)));
+                if (Object.keys(obj).length === 0) {
+                    msg.nullMessage = true;
+                    queue.enqueue(msg.copy().setNullMessage(true));
+                } else {
+                    Object.entries(obj).forEach(([key, value])=>queue.enqueue(msg.copy().setName(key).setDataJson(value)));
+                }
             } else {
                 queue.enqueue(msg);
             }
@@ -40840,6 +40874,12 @@ class MockHandler {
     getError(path, code, message) {
         this.subhandlers[path] = (msg)=>Promise.resolve(msg.setStatus(code, message));
     }
+    getNoBody(path) {
+        this.subhandlers[path] = (msg)=>{
+            msg.data = undefined;
+            return Promise.resolve(msg);
+        };
+    }
 }
 const mockHandler = new MockHandler();
 const service = new Service();
@@ -56640,6 +56680,9 @@ class PipelineStep {
                 if (this.spec) {
                     const newMsg_s = await msg.divertToSpec(this.spec, "POST", context.callerUrl, context.callerMethod, msg.headers);
                     if (Array.isArray(newMsg_s)) {
+                        if (newMsg_s.length === 0) {
+                            return new AsyncQueue(1).enqueue(msg.copy().setNullMessage(true));
+                        }
                         const newMsgs = new AsyncQueue(newMsg_s.length);
                         newMsg_s.forEach((msg, i1)=>sendMsg(msg).then((outMsg)=>{
                                 let prename = '';
@@ -57059,7 +57102,7 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                         const fixedMode = mode;
                         const contextCopy = copyPipelineContext(context);
                         msgs = msgs.flatMap(async (msg)=>{
-                            if (endedMsgs.includes(msg)) return msg;
+                            if (endedMsgs.includes(msg) || msg.nullMessage) return msg;
                             succeeded = step.test(msg, fixedMode, contextCopy);
                             if (succeeded) {
                                 const stepResult = step.execute(msg, contextCopy);
@@ -57079,7 +57122,7 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                         const transform = el;
                         const contextCopy = copyPipelineContext(context);
                         msgs = msgs.flatMap((msg)=>{
-                            if (endedMsgs.includes(msg)) return msg;
+                            if (endedMsgs.includes(msg) || msg.nullMessage) return msg;
                             return transform.execute(msg, contextCopy);
                         });
                         break;
@@ -57088,7 +57131,7 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                     {
                         const fixedModeSubpipeline = mode;
                         msgs = msgs.flatMap((msg)=>{
-                            if (endedMsgs.includes(msg)) return msg;
+                            if (endedMsgs.includes(msg) || msg.nullMessage) return msg;
                             succeeded = testPipeline(el, msg, fixedModeSubpipeline, context);
                             if (succeeded) {
                                 const stepResult = runPipeline(el, new AsyncQueue(1).enqueue(msg), mode, context);

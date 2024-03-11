@@ -6,6 +6,8 @@ const service = new Service();
 
 service.postPath('/bypass', msg => msg);
 
+service.postPath('/devnull', msg => msg.setData(null, "text/plain"));
+
 service.postPath('/destream', async msg => {
     await msg.data?.ensureDataIsArrayBuffer();
     return msg;

@@ -5,12 +5,14 @@ import { jsonQuote } from "rs-core/utility/utility.ts";
 export async function jsonObject(msgs: AsyncIterator<Message, Message, Message>): Promise<Message | null> {
     let outerName = '';
     let first: IteratorResult<Message | null, Message | null> = { value: null };
-    while (!((first.value && (first.value.nullMessage || first.value.hasData())) || first.done)) {
+    let nullMessage = null as Message | null;
+    while (!((first.value && first.value.hasData()) || first.done)) {
         first = await msgs.next();
+        if (first.value) nullMessage = first.value;
     }
-    if (first.done) return null; // no messages
-    if (first.value?.nullMessage) {
-        return first.value.setNullMessage(false).setData("{}", "application/json");
+    if (first.done) {
+        if (!nullMessage) return null;
+        return nullMessage.setNullMessage(false).setData("{}", "application/json");
     }
 
     const { readable, writable } = new TransformStream();
