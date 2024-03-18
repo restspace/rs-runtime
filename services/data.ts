@@ -158,10 +158,11 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: log.Logger, is
             // TO DO this operation should be atomic somehow - maybe readKeySync or adapter.writeLockKey
             let val = await adapter.readKey(dataset, key);
             if (typeof val === 'number') {
-                if (val === 404) {
+                const details = await adapter.checkKey(dataset, key);
+                if (details.status === "none") {
                     val = {};
                 } else {
-                    return msg.setStatus(val, 'Was reading full value to write back fragment');
+                    return msg.setStatus(val, 'Was reading full value to ' + (isPatch ? 'update with patch' : 'write back fragment'));
                 }
             }
             const d = await msg.data?.asJson();
