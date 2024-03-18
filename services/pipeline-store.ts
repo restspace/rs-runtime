@@ -6,7 +6,7 @@ import { pipeline } from "../pipeline/pipeline.ts";
 const service = new Service();
 
 service.all(async (msg, context) => {
-	const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
+	const reqForStore = msg.url.isDirectory || (msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST');
 	if (reqForStore) return msg; // request will be handled by store
 
 	const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");

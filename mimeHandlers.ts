@@ -2,7 +2,8 @@ import { Message } from "rs-core/Message.ts";
 import { Url } from "rs-core/Url.ts";
 import { DirDescriptor } from "rs-core/DirDescriptor.ts";
 import { getProp, last, slashTrim, slashTrimLeft } from "rs-core/utility/utility.ts";
-import { makeKeywordArgs } from "https://deno.land/x/nunjucks@3.2.3/src/runtime.js";
+import { AsyncQueue } from "rs-core/utility/asyncQueue.ts";
+import { zip } from "./pipeline/zipJoiner.ts"
 
 type MimeHandler = (msg: Message, url: Url, requestInternal: (req: Message) => Promise<Message>) => Promise<Message>;
 
@@ -40,6 +41,22 @@ const dirToItems = async (msg: Message, dir: DirDescriptor, requestInternal: (re
     return fullList;
 }
 
+const dirToQueue = (basePath: string, msg: Message, dir: DirDescriptor, requestInternal: (req: Message) => Promise<Message>) => {
+    if (basePath === '/') basePath = '';
+    const fetchAllMessages = dir.paths
+        .filter(([ path ]) => !path.endsWith('/'))
+        .map(([ path ]) => {
+            const url = msg.url.copy();
+            url.servicePath = dir.path + path;
+            const name = url.servicePath.substring(basePath.length);
+            return msg.copy().setUrl(url).setName(name);
+        });
+    const dirFetchQueue = new AsyncQueue<Message>(fetchAllMessages.length)
+    fetchAllMessages
+        .forEach(msg => dirFetchQueue.enqueue(requestInternal(msg)));
+    return dirFetchQueue;
+}
+
 const final = (s: string) => {
     const words = s.split('/');
     return last(words) === '' ? words.slice(-2)[0] + '/' : last(words);
@@ -66,6 +83,8 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
         const noDirs = listFlags.includes('nodirs');
 
         const isZip = listFlags.includes('zip');
+
+        const zipQueue = new AsyncQueue<Message>();
         if (isZip) {
             isRecursive = true;
             pathsOnly = true;
@@ -87,12 +106,23 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
             if (getItems) {
                 result = await dirToItems(resMsg, resDir, requestInternal);
                 results.push(result);
+            } else if (isZip) {
+                const dirQueue = dirToQueue(msg.url.servicePath, resMsg, resDir, requestInternal);
+                zipQueue.enqueue(dirQueue);
+                dirQueue.close();
             } else if (pathsOnly) {
                 const relPath = (resDir.path === '/' ? '' : resDir.path).substring(basePath.length);
                 results = results.concat(resDir.paths.map(([p, ...rest]) => [relPath + p, ...rest]));
             } else {
                 results.push(result);
             }
+        }
+
+        if (isZip) {
+            zipQueue.close();
+            let zipMsg = await zip(zipQueue);
+            if (zipMsg === null) zipMsg = msg.setStatus(500, 'Zip output null');
+            return zipMsg;
         }
 
         // transform output list

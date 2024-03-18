@@ -20,7 +20,7 @@ export default {
         },
         "required": [ "store" ]
     },
-    "postPipeline": [ "if (isManage && method !== 'POST') $METHOD store/$*" ],
+    "postPipeline": [ "if (isDirectory || (isManage && method !== 'POST')) $METHOD store/$*" ],
     "privateServices": {
         "store": {
             "name": "'Pipeline Store'",

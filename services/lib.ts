@@ -63,5 +63,11 @@ service.postPath('/log/body', async (msg, context) => {
     context.logger.info('BODY ' + JSON.stringify(json || {}), ...msg.loggerArgs());
     return msg;
 });
+service.postPath('/set-name', msg => {
+    if (msg.data) {
+        msg.name = msg.url.query['$name'][0] || msg.name;
+    }
+    return msg;
+});
 
 export default service;
