@@ -22765,6 +22765,7 @@ class PipelineCondition {
             ok: status === 200 || status === 0,
             method: context.callerMethod?.toUpperCase(),
             subpath: callerUrl && (callerUrl.subPathElementCount === null ? callerUrl.servicePathElements : callerUrl.subPathElements),
+            isDirectory: callerUrl && callerUrl.isDirectory,
             header: (hdr)=>msg.getHeader(hdr),
             body: ()=>{
                 if (!msg.data) {
@@ -25032,11 +25033,13 @@ const dirToItems = async (msg, dir, requestInternal)=>{
     await Promise.all(fetchAllMessages.map((msg)=>requestInternal(msg).then((msg)=>msg.data.asJson().then((data)=>fullList[slashTrimLeft(dir.path) + msg.url.resourceName] = data))));
     return fullList;
 };
-const dirToQueue = (msg, dir, requestInternal)=>{
+const dirToQueue = (basePath, msg, dir, requestInternal)=>{
+    if (basePath === '/') basePath = '';
     const fetchAllMessages = dir.paths.filter(([path])=>!path.endsWith('/')).map(([path])=>{
         const url = msg.url.copy();
         url.servicePath = dir.path + path;
-        return msg.copy().setUrl(url).setName(path);
+        const name = url.servicePath.substring(basePath.length);
+        return msg.copy().setUrl(url).setName(name);
     });
     const dirFetchQueue = new AsyncQueue(fetchAllMessages.length);
     fetchAllMessages.forEach((msg)=>dirFetchQueue.enqueue(requestInternal(msg)));
@@ -25086,7 +25089,9 @@ const mimeHandlers = {
                 result1 = await dirToItems(resMsg, resDir, requestInternal);
                 results.push(result1);
             } else if (isZip) {
-                zipQueue.enqueue(dirToQueue(resMsg, resDir, requestInternal));
+                const dirQueue = dirToQueue(msg.url.servicePath, resMsg, resDir, requestInternal);
+                zipQueue.enqueue(dirQueue);
+                dirQueue.close();
             } else if (pathsOnly) {
                 const relPath = (resDir.path === '/' ? '' : resDir.path).substring(basePath.length);
                 results = results.concat(resDir.paths.map(([p, ...rest])=>[
@@ -25098,6 +25103,7 @@ const mimeHandlers = {
             }
         }
         if (isZip) {
+            zipQueue.close();
             let zipMsg = await zip(zipQueue);
             if (zipMsg === null) zipMsg = msg.setStatus(500, 'Zip output null');
             return zipMsg;
@@ -41886,7 +41892,7 @@ const __default33 = {
         ]
     },
     "postPipeline": [
-        "if (isManage && method !== 'POST') $METHOD store/$*"
+        "if (isDirectory || (isManage && method !== 'POST')) $METHOD store/$*"
     ],
     "privateServices": {
         "store": {
@@ -57517,7 +57523,7 @@ service19.all((msg, context, config)=>{
     return pipeline(msg, runPipeline, msg.url, false, (msg)=>context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal));
 });
 service20.all(async (msg, context)=>{
-    const reqForStore = msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
+    const reqForStore = msg.url.isDirectory || msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST';
     if (reqForStore) return msg;
     const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
     const msgPipelineSpec = await context.makeRequest(getFromStore);
