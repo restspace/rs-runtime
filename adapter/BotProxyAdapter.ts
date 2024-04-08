@@ -27,7 +27,7 @@ export default class BotProxyAdapter implements IProxyAdapter {
     buildMessage(msg: Message) {
         msg.setHeader('User-Agent', botUserAgents[Math.floor(Math.random() * botUserAgents.length)]);
         msg.setHeader("Accept-Language", "en-US,en;q=0.9");
-        msg.setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
+        if (!msg.getHeader("Accept")) msg.setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
         //msg.setHeader("Accept-Encoding", "gzip, deflate, br");
         msg.setHeader("Referer", "https://www.google.com/");
 

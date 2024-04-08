@@ -1,9 +1,6 @@
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import { Message } from "rs-core/Message.ts";
-import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
-import { S3Client } from "https://deno.land/x/aws_sdk@v3.32.0-1/client-s3/mod.ts";
-import { Hash } from "https://jspm.dev/@aws-sdk/hash-node";
 import { applyOrMap } from "rs-core/utility/utility.ts";
 
 export interface AWS4ProxyAdapterProps {
@@ -93,7 +90,7 @@ export default class AWS4ProxyAdapter implements IProxyAdapter {
     async getPayloadHash(
         msg: Message
       ): Promise<string> {
-        if (msg.getHeader(sha256Header)) return msg.getHeader(sha256Header);
+        if (msg.getHeader(sha256Header)) return msg.getHeader(sha256Header)!;
       
         if (!msg.data) {
           return "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";

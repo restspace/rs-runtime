@@ -8,6 +8,8 @@ export default {
     "configSchema": {
         "type": "object",
         "properties": {
+            "minDelayMs": { "type": "number", "description": "Minimum delay between requests in milliseconds" },
+            "randomOffsetMs": { "type": "number", "description": "Random offset to add to the delay between requests in milliseconds" },
             "store": {
                 "type": "object",
                 "description": "Configuration for the spec store",

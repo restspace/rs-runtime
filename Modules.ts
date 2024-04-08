@@ -35,6 +35,8 @@ import SnsSmsAdapter from "./adapter/SnsSmsAdapter.ts";
 import SnsSmsAdapterManifest from "./adapter/SnsSmsAdapter.ram.js";
 import BotProxyAdapter from "./adapter/BotProxyAdapter.ts";
 import BotProxyAdapterManifest from "./adapter/BotProxyAdapter.ram.js";
+import BinanceProxyAdapter from "./adapter/BinanceProxyAdapter.ts";
+import BinanceProxyAdapterManifest from "./adapter/BinanceProxyAdapter.ram.js";
 
 import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
@@ -201,6 +203,7 @@ export class Modules {
             "./adapter/GraphQlQueryAdapter.ts": GraphQlQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/BotProxyAdapter.ts": BotProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
+            "./adapter/BinanceProxyAdapter.ts": BinanceProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
@@ -216,7 +219,8 @@ export class Modules {
             "./adapter/FileLogReaderAdapter.ram.json": FileLogReaderAdapterManifest,
             "./adapter/GraphQlQueryAdapter.ram.json": GraphQlQueryAdapterManifest,
             "./adapter/SnsSmsAdapter.ram.json": SnsSmsAdapterManifest,
-            "./adapter/BotProxyAdapter.ram.json": BotProxyAdapterManifest
+            "./adapter/BotProxyAdapter.ram.json": BotProxyAdapterManifest,
+            "./adapter/BinanceProxyAdapter.ram.json": BinanceProxyAdapterManifest,
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
 

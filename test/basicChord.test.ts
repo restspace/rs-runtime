@@ -163,7 +163,7 @@ async function logIn(email: string) {
         .setDataJson({ email, password: 'hello' });
     const msgOut = await handleIncomingRequest(msg);
     assert(msgOut.ok, 'failed to log in');
-    let token = msgOut.getHeader('Set-Cookie').replace('rs-auth=', '');
+    let token = msgOut.getHeader('Set-Cookie')?.replace('rs-auth=', '');
     assert(token, 'no set auth cookie');
     token = token.split(';')[0];
     return token;

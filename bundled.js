@@ -1451,6 +1451,1629 @@ const entityChange = (entitiesFrom, entitiesTo, idProp)=>{
     }
     return result1;
 };
+var __dirname = "/tmp/cdn/_7L5tse9km4CJVhsMBees/node_modules/bcx-expression-evaluator/dist";
+function getDefaultExportFromCjs(x) {
+    return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
+}
+function createCommonjsModule(fn, basedir, module1) {
+    return module1 = {
+        path: basedir,
+        exports: {},
+        require: function(path, base) {
+            return commonjsRequire(path, base === void 0 || base === null ? module1.path : base);
+        }
+    }, fn(module1, module1.exports), module1.exports;
+}
+function commonjsRequire() {
+    throw new Error("Dynamic requires are not currently supported by @rollup/plugin-commonjs");
+}
+var dist = createCommonjsModule(function(module1) {
+    function _extends() {
+        _extends = Object.assign || function(target) {
+            for(var i1 = 1; i1 < arguments.length; i1++){
+                var source = arguments[i1];
+                for(var key in source){
+                    if (Object.prototype.hasOwnProperty.call(source, key)) {
+                        target[key] = source[key];
+                    }
+                }
+            }
+            return target;
+        };
+        return _extends.apply(this, arguments);
+    }
+    function _inheritsLoose(subClass, superClass) {
+        subClass.prototype = Object.create(superClass.prototype);
+        subClass.prototype.constructor = subClass;
+        subClass.__proto__ = superClass;
+    }
+    function _defineProperties(target, props) {
+        for(var i1 = 0; i1 < props.length; i1++){
+            var descriptor = props[i1];
+            descriptor.enumerable = descriptor.enumerable || false;
+            descriptor.configurable = true;
+            if ("value" in descriptor) descriptor.writable = true;
+            Object.defineProperty(target, descriptor.key, descriptor);
+        }
+    }
+    function _createClass(Constructor, protoProps, staticProps) {
+        if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+        if (staticProps) _defineProperties(Constructor, staticProps);
+        return Constructor;
+    }
+    module1.exports = function(t, e) {
+        var i1 = {};
+        function __webpack_require__(e2) {
+            if (i1[e2]) {
+                return i1[e2].exports;
+            }
+            var n = i1[e2] = {
+                i: e2,
+                l: false,
+                exports: {}
+            };
+            var s = true;
+            try {
+                t[e2].call(n.exports, n, n.exports, __webpack_require__);
+                s = false;
+            } finally{
+                if (s) delete i1[e2];
+            }
+            n.l = true;
+            return n.exports;
+        }
+        __webpack_require__.ab = __dirname + "/";
+        function startup() {
+            return __webpack_require__(81);
+        }
+        e(__webpack_require__);
+        return startup();
+    }({
+        81: function _(t, e, i1) {
+            i1.r(e);
+            var Token = function() {
+                function Token2(t2, e2) {
+                    this.index = t2;
+                    this.text = e2;
+                }
+                var _proto = Token2.prototype;
+                _proto.withOp = function withOp(t2) {
+                    this.opKey = t2;
+                    return this;
+                };
+                _proto.withGetterSetter = function withGetterSetter(t2) {
+                    this.key = t2;
+                    return this;
+                };
+                _proto.withValue = function withValue(t2) {
+                    this.value = t2;
+                    return this;
+                };
+                _proto.toString = function toString() {
+                    return "Token(" + this.text + ")";
+                };
+                return Token2;
+            }();
+            var Lexer = function() {
+                function Lexer2() {}
+                var _proto2 = Lexer2.prototype;
+                _proto2.lex = function lex(t2, e2) {
+                    var i2 = new Scanner(t2, e2);
+                    var n2 = [];
+                    var s2 = i2.scanToken();
+                    while(s2){
+                        n2.push(s2);
+                        s2 = i2.scanToken();
+                    }
+                    return n2;
+                };
+                return Lexer2;
+            }();
+            var n = 0;
+            var s = 1;
+            var r = 2;
+            var a = 3;
+            var Scanner = function() {
+                function Scanner2(t2, e2) {
+                    if (e2 === void 0) {
+                        e2 = {};
+                    }
+                    this.input = t2;
+                    this.length = t2.length;
+                    this.peek = 0;
+                    this.index = -1;
+                    this.stringInterpolationMode = e2.stringInterpolationMode || false;
+                    var i2 = this.stringInterpolationMode ? r : n;
+                    this.contextStack = [
+                        i2
+                    ];
+                    this.advance();
+                }
+                var _proto3 = Scanner2.prototype;
+                _proto3.scanToken = function scanToken() {
+                    var t2 = this.index;
+                    if (this.context !== r) {
+                        while(this.peek <= d){
+                            if (++this.index >= this.length) {
+                                this.peek = h;
+                                return null;
+                            }
+                            this.peek = this.input.charCodeAt(this.index);
+                        }
+                        if (isIdentifierStart(this.peek)) {
+                            return this.scanIdentifier();
+                        }
+                        if (isDigit(this.peek)) {
+                            return this.scanNumber(this.index);
+                        }
+                        switch(this.peek){
+                            case I:
+                                this.advance();
+                                return isDigit(this.peek) ? this.scanNumber(t2) : new Token(t2, ".");
+                            case et:
+                                this.contextStack.push(s);
+                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
+                            case nt:
+                                this.contextStack.pop();
+                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
+                            case S:
+                            case C:
+                            case Z:
+                            case Y:
+                            case A:
+                            case m:
+                            case M:
+                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
+                            case y:
+                            case v:
+                                return this.scanString();
+                            case _2:
+                            case L:
+                            case b:
+                            case j:
+                            case g:
+                            case J:
+                            case F:
+                                return this.scanOperator(t2, String.fromCharCode(this.peek));
+                            case O:
+                            case q:
+                            case x:
+                            case P:
+                                return this.scanComplexOperator(t2, P, String.fromCharCode(this.peek), "=");
+                            case k:
+                                return this.scanComplexOperator(t2, k, "&", "&");
+                            case it:
+                                return this.scanComplexOperator(t2, it, "|", "|");
+                            case E:
+                                this.contextStack.push(r);
+                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
+                            case st:
+                                while(isWhitespace(this.peek)){
+                                    this.advance();
+                                }
+                                return this.scanToken();
+                        }
+                        var _e = String.fromCharCode(this.peek);
+                        this.error("Unexpected character [" + _e + "]");
+                        return null;
+                    } else {
+                        if (this.peek === E) {
+                            if (this.isRootLevelOfStringInterpolationMode) {
+                                return this.scanString();
+                            } else {
+                                this.contextStack.pop();
+                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
+                            }
+                        } else if (this.isStartOfInterpolation()) {
+                            var _t = this.scanStartOfInterpolation();
+                            this.contextStack.push(a);
+                            return _t;
+                        } else if (this.peek) {
+                            return this.scanString();
+                        }
+                    }
+                };
+                _proto3.scanCharacter = function scanCharacter(t2, e2) {
+                    assert(this.peek === e2.charCodeAt(0));
+                    this.advance();
+                    return new Token(t2, e2);
+                };
+                _proto3.scanOperator = function scanOperator(t2, e2) {
+                    assert(this.peek === e2.charCodeAt(0));
+                    assert(o.indexOf(e2) !== -1);
+                    this.advance();
+                    return new Token(t2, e2).withOp(e2);
+                };
+                _proto3.scanComplexOperator = function scanComplexOperator(t2, e2, i2, n2) {
+                    assert(this.peek === i2.charCodeAt(0));
+                    this.advance();
+                    var s2 = i2;
+                    if (this.peek === e2) {
+                        this.advance();
+                        s2 += n2;
+                    }
+                    if (this.peek === e2) {
+                        this.advance();
+                        s2 += n2;
+                    }
+                    assert(o.indexOf(s2) !== -1);
+                    return new Token(t2, s2).withOp(s2);
+                };
+                _proto3.scanIdentifier = function scanIdentifier() {
+                    assert(isIdentifierStart(this.peek));
+                    var t2 = this.index;
+                    this.advance();
+                    while(isIdentifierPart(this.peek)){
+                        this.advance();
+                    }
+                    var e2 = this.input.substring(t2, this.index);
+                    var i2 = new Token(t2, e2);
+                    if (o.indexOf(e2) !== -1) {
+                        i2.withOp(e2);
+                    } else {
+                        i2.withGetterSetter(e2);
+                    }
+                    return i2;
+                };
+                _proto3.scanNumber = function scanNumber(t2) {
+                    assert(isDigit(this.peek));
+                    var e2 = this.index === t2;
+                    this.advance();
+                    while(true){
+                        if (!isDigit(this.peek)) {
+                            if (this.peek === I) {
+                                e2 = false;
+                            } else if (isExponentStart(this.peek)) {
+                                this.advance();
+                                if (isExponentSign(this.peek)) {
+                                    this.advance();
+                                }
+                                if (!isDigit(this.peek)) {
+                                    this.error("Invalid exponent", -1);
+                                }
+                                e2 = false;
+                            } else {
+                                break;
+                            }
+                        }
+                        this.advance();
+                    }
+                    var i2 = this.input.substring(t2, this.index);
+                    var n2 = e2 ? parseInt(i2, 10) : parseFloat(i2);
+                    return new Token(t2, i2).withValue(n2);
+                };
+                _proto3.scanString = function scanString() {
+                    if (this.context !== r) {
+                        assert(this.peek === y || this.peek === v);
+                    }
+                    var t2 = this.index;
+                    var e2;
+                    if (this.context !== r) {
+                        e2 = this.peek;
+                        this.advance();
+                    } else {
+                        e2 = this.isRootLevelOfStringInterpolationMode ? h : E;
+                    }
+                    var i2;
+                    var n2 = this.index;
+                    while(this.peek !== e2 && !this.isStartOfInterpolation()){
+                        if (this.peek === z) {
+                            if (!i2) {
+                                i2 = [];
+                            }
+                            i2.push(this.input.substring(n2, this.index));
+                            this.advance();
+                            var _t2 = void 0;
+                            if (this.peek === N) {
+                                var _e2 = this.input.substring(this.index + 1, this.index + 5);
+                                if (!/[A-Z0-9]{4}/.test(_e2)) {
+                                    this.error("Invalid unicode escape [\\u" + _e2 + "]");
+                                }
+                                _t2 = parseInt(_e2, 16);
+                                for(var _t3 = 0; _t3 < 5; ++_t3){
+                                    this.advance();
+                                }
+                            } else {
+                                _t2 = lexer_unescape(this.peek);
+                                this.advance();
+                            }
+                            i2.push(String.fromCharCode(_t2));
+                            n2 = this.index;
+                        } else if (e2 !== h && this.peek === h) {
+                            this.error("Unterminated quote");
+                        } else {
+                            this.advance();
+                        }
+                    }
+                    var s2 = this.input.substring(n2, this.index);
+                    if (this.context !== r) {
+                        this.advance();
+                    }
+                    var a2 = this.input.substring(t2, this.index);
+                    var o2 = s2;
+                    if (i2 !== null && i2 !== void 0) {
+                        i2.push(s2);
+                        o2 = i2.join("");
+                    }
+                    return new Token(t2, a2).withValue(o2);
+                };
+                _proto3.scanStartOfInterpolation = function scanStartOfInterpolation() {
+                    assert(this.isStartOfInterpolation());
+                    var t2 = this.index;
+                    this.advance();
+                    this.advance();
+                    return new Token(t2, "${");
+                };
+                _proto3.advance = function advance() {
+                    if (++this.index >= this.length) {
+                        this.peek = h;
+                    } else {
+                        this.peek = this.input.charCodeAt(this.index);
+                    }
+                };
+                _proto3.error = function error(t2, e2) {
+                    if (e2 === void 0) {
+                        e2 = 0;
+                    }
+                    var i2 = this.index + e2;
+                    throw new Error("Lexer Error: " + t2 + " at column " + i2 + " in expression [" + this.input + "]");
+                };
+                _proto3.isStartOfInterpolation = function isStartOfInterpolation() {
+                    if (this.context === r) {
+                        return this.peek === w && this.input.charCodeAt(this.index + 1) === et;
+                    }
+                };
+                _createClass(Scanner2, [
+                    {
+                        key: "context",
+                        get: function get() {
+                            return this.contextStack[this.contextStack.length - 1];
+                        }
+                    },
+                    {
+                        key: "isRootLevelOfStringInterpolationMode",
+                        get: function get() {
+                            return this.stringInterpolationMode && this.contextStack.length === 1;
+                        }
+                    }
+                ]);
+                return Scanner2;
+            }();
+            var o = [
+                "undefined",
+                "null",
+                "true",
+                "false",
+                "+",
+                "-",
+                "*",
+                "/",
+                "%",
+                "^",
+                "=",
+                "==",
+                "===",
+                "!=",
+                "!==",
+                "<",
+                ">",
+                "<=",
+                ">=",
+                "&&",
+                "||",
+                "&",
+                "|",
+                "!",
+                "?"
+            ];
+            var h = 0;
+            var c = 9;
+            var p = 10;
+            var l1 = 11;
+            var u = 12;
+            var f = 13;
+            var d = 32;
+            var x = 33;
+            var v = 34;
+            var w = 36;
+            var g = 37;
+            var k = 38;
+            var y = 39;
+            var S = 40;
+            var C = 41;
+            var b = 42;
+            var _2 = 43;
+            var A = 44;
+            var L = 45;
+            var I = 46;
+            var j = 47;
+            var m = 58;
+            var M = 59;
+            var O = 60;
+            var P = 61;
+            var q = 62;
+            var F = 63;
+            var U = 48;
+            var W = 57;
+            var V = 65;
+            var B = 69;
+            var K = 90;
+            var Z = 91;
+            var z = 92;
+            var Y = 93;
+            var J = 94;
+            var D = 95;
+            var E = 96;
+            var H = 97;
+            var G = 101;
+            var X = 102;
+            var Q = 110;
+            var T = 114;
+            var $ = 116;
+            var N = 117;
+            var R = 118;
+            var tt = 122;
+            var et = 123;
+            var it = 124;
+            var nt = 125;
+            var st = 160;
+            function isWhitespace(t2) {
+                return t2 >= c && t2 <= d || t2 === st;
+            }
+            function isIdentifierStart(t2) {
+                return H <= t2 && t2 <= tt || V <= t2 && t2 <= K || t2 === D || t2 === w;
+            }
+            function isIdentifierPart(t2) {
+                return H <= t2 && t2 <= tt || V <= t2 && t2 <= K || U <= t2 && t2 <= W || t2 === D || t2 === w;
+            }
+            function isDigit(t2) {
+                return U <= t2 && t2 <= W;
+            }
+            function isExponentStart(t2) {
+                return t2 === G || t2 === B;
+            }
+            function isExponentSign(t2) {
+                return t2 === L || t2 === _2;
+            }
+            function lexer_unescape(t2) {
+                switch(t2){
+                    case Q:
+                        return p;
+                    case X:
+                        return u;
+                    case T:
+                        return f;
+                    case $:
+                        return c;
+                    case R:
+                        return l1;
+                    default:
+                        return t2;
+                }
+            }
+            function assert(t2, e2) {
+                if (!t2) {
+                    throw e2 || "Assertion failed";
+                }
+            }
+            var Unparser = function() {
+                function Unparser2(t2) {
+                    this.buffer = t2;
+                }
+                Unparser2.unparse = function unparse(t2) {
+                    var e2 = [];
+                    var i2 = new Unparser2(e2);
+                    t2.accept(i2);
+                    return e2.join("");
+                };
+                var _proto4 = Unparser2.prototype;
+                _proto4.write = function write(t2) {
+                    this.buffer.push(t2);
+                };
+                _proto4.writeArgs = function writeArgs(t2) {
+                    this.write("(");
+                    for(var _e3 = 0, _i = t2.length; _e3 < _i; ++_e3){
+                        if (_e3 !== 0) {
+                            this.write(",");
+                        }
+                        t2[_e3].accept(this);
+                    }
+                    this.write(")");
+                };
+                _proto4.visitAssign = function visitAssign(t2) {
+                    t2.target.accept(this);
+                    this.write("=");
+                    t2.value.accept(this);
+                };
+                _proto4.visitConditional = function visitConditional(t2) {
+                    t2.condition.accept(this);
+                    this.write("?");
+                    t2.yes.accept(this);
+                    this.write(":");
+                    t2.no.accept(this);
+                };
+                _proto4.visitAccessThis = function visitAccessThis(t2) {
+                    if (t2.ancestor === 0) {
+                        this.write("$this");
+                        return;
+                    }
+                    this.write("$parent");
+                    var e2 = t2.ancestor - 1;
+                    while(e2--){
+                        this.write(".$parent");
+                    }
+                };
+                _proto4.visitAccessScope = function visitAccessScope(t2) {
+                    var e2 = t2.ancestor;
+                    while(e2--){
+                        this.write("$parent.");
+                    }
+                    this.write(t2.name);
+                };
+                _proto4.visitAccessMember = function visitAccessMember(t2) {
+                    t2.object.accept(this);
+                    this.write("." + t2.name);
+                };
+                _proto4.visitAccessKeyed = function visitAccessKeyed(t2) {
+                    t2.object.accept(this);
+                    this.write("[");
+                    t2.key.accept(this);
+                    this.write("]");
+                };
+                _proto4.visitCallScope = function visitCallScope(t2) {
+                    var e2 = t2.ancestor;
+                    while(e2--){
+                        this.write("$parent.");
+                    }
+                    this.write(t2.name);
+                    this.writeArgs(t2.args);
+                };
+                _proto4.visitCallFunction = function visitCallFunction(t2) {
+                    t2.func.accept(this);
+                    this.writeArgs(t2.args);
+                };
+                _proto4.visitCallMember = function visitCallMember(t2) {
+                    t2.object.accept(this);
+                    this.write("." + t2.name);
+                    this.writeArgs(t2.args);
+                };
+                _proto4.visitPrefix = function visitPrefix(t2) {
+                    this.write("(" + t2.operation);
+                    t2.expression.accept(this);
+                    this.write(")");
+                };
+                _proto4.visitBinary = function visitBinary(t2) {
+                    t2.left.accept(this);
+                    this.write(t2.operation);
+                    t2.right.accept(this);
+                };
+                _proto4.visitLiteralPrimitive = function visitLiteralPrimitive(t2) {
+                    this.write("" + t2.value);
+                };
+                _proto4.visitLiteralArray = function visitLiteralArray(t2) {
+                    var e2 = t2.elements;
+                    this.write("[");
+                    for(var _t4 = 0, _i2 = e2.length; _t4 < _i2; ++_t4){
+                        if (_t4 !== 0) {
+                            this.write(",");
+                        }
+                        e2[_t4].accept(this);
+                    }
+                    this.write("]");
+                };
+                _proto4.visitLiteralObject = function visitLiteralObject(t2) {
+                    var e2 = t2.keys;
+                    var i2 = t2.values;
+                    this.write("{");
+                    for(var _t5 = 0, _n = e2.length; _t5 < _n; ++_t5){
+                        if (_t5 !== 0) {
+                            this.write(",");
+                        }
+                        this.write("'" + e2[_t5] + "':");
+                        i2[_t5].accept(this);
+                    }
+                    this.write("}");
+                };
+                _proto4.visitLiteralString = function visitLiteralString(t2) {
+                    var e2 = t2.value.replace(/'/g, "'");
+                    this.write("'" + e2 + "'");
+                };
+                _proto4.visitStringInterpolation = function visitStringInterpolation(t2) {
+                    var e2 = t2.parts;
+                    this.write("(''");
+                    for(var _t6 = 0, _i3 = e2.length; _t6 < _i3; ++_t6){
+                        e2[_t6];
+                        this.write("+(");
+                        e2[_t6].accept(this);
+                        this.write(")");
+                    }
+                    this.write(")");
+                };
+                return Unparser2;
+            }();
+            function has(t2, e2) {
+                var i2 = typeof t2;
+                return (i2 === "object" || i2 === "function") && e2 in t2;
+            }
+            function createOverrideContext2(t2, e2) {
+                return {
+                    bindingContext: t2,
+                    parentOverrideContext: e2 || null
+                };
+            }
+            function getContextFor(t2, e2, i2) {
+                var n2 = e2.overrideContext;
+                if (i2) {
+                    while(i2 && n2){
+                        i2--;
+                        n2 = n2.parentOverrideContext;
+                    }
+                    if (i2 || !n2) {
+                        return void 0;
+                    }
+                    return has(n2, t2) ? n2 : n2.bindingContext;
+                }
+                while(n2 && !has(n2, t2) && !(n2.bindingContext && has(n2.bindingContext, t2))){
+                    n2 = n2.parentOverrideContext;
+                }
+                if (n2) {
+                    return has(n2, t2) ? n2 : n2.bindingContext;
+                }
+                return e2.bindingContext || e2.overrideContext;
+            }
+            function createSimpleScope2(t2, e2) {
+                if (e2) {
+                    return {
+                        bindingContext: t2,
+                        overrideContext: createOverrideContext2(t2, createOverrideContext2(e2))
+                    };
+                }
+                return {
+                    bindingContext: t2,
+                    overrideContext: createOverrideContext2(t2)
+                };
+            }
+            var ast_Expression = function() {
+                function ast_Expression2() {
+                    this.isAssignable = false;
+                }
+                var _proto5 = ast_Expression2.prototype;
+                _proto5.evaluate = function evaluate3(t2, e2) {
+                    throw new Error('Binding expression "' + this + '" cannot be evaluated.');
+                };
+                _proto5.evaluateWith = function evaluateWith(t2, e2, i2) {
+                    return this.evaluate(createSimpleScope2(t2, e2), i2);
+                };
+                _proto5.assign = function assign(t2, e2) {
+                    throw new Error('Binding expression "' + this + '" cannot be assigned to.');
+                };
+                _proto5.toString = function toString() {
+                    return typeof FEATURE_NO_UNPARSER === "undefined" ? Unparser.unparse(this) : Object.prototype.toString.call(this);
+                };
+                return ast_Expression2;
+            }();
+            var Assign = function(_ast_Expression) {
+                _inheritsLoose(Assign2, _ast_Expression);
+                function Assign2(t2, e2) {
+                    var _this;
+                    _this = _ast_Expression.call(this) || this;
+                    _this.target = t2;
+                    _this.value = e2;
+                    _this.isAssignable = true;
+                    return _this;
+                }
+                var _proto6 = Assign2.prototype;
+                _proto6.evaluate = function evaluate3(t2) {
+                    return this.target.assign(t2, this.value.evaluate(t2));
+                };
+                _proto6.accept = function accept(t2) {
+                    t2.visitAssign(this);
+                };
+                _proto6.assign = function assign(t2, e2) {
+                    this.value.assign(t2, e2);
+                    this.target.assign(t2, e2);
+                };
+                return Assign2;
+            }(ast_Expression);
+            var Conditional = function(_ast_Expression2) {
+                _inheritsLoose(Conditional2, _ast_Expression2);
+                function Conditional2(t2, e2, i2) {
+                    var _this2;
+                    _this2 = _ast_Expression2.call(this) || this;
+                    _this2.condition = t2;
+                    _this2.yes = e2;
+                    _this2.no = i2;
+                    return _this2;
+                }
+                var _proto7 = Conditional2.prototype;
+                _proto7.evaluate = function evaluate3(t2) {
+                    return !!this.condition.evaluate(t2) ? this.yes.evaluate(t2) : this.no.evaluate(t2);
+                };
+                _proto7.accept = function accept(t2) {
+                    return t2.visitConditional(this);
+                };
+                return Conditional2;
+            }(ast_Expression);
+            var AccessThis = function(_ast_Expression3) {
+                _inheritsLoose(AccessThis2, _ast_Expression3);
+                function AccessThis2(t2) {
+                    var _this3;
+                    _this3 = _ast_Expression3.call(this) || this;
+                    _this3.ancestor = t2;
+                    return _this3;
+                }
+                var _proto8 = AccessThis2.prototype;
+                _proto8.evaluate = function evaluate3(t2) {
+                    var e2 = t2.overrideContext;
+                    var i2 = this.ancestor;
+                    while(i2-- && e2){
+                        e2 = e2.parentOverrideContext;
+                    }
+                    return i2 < 1 && e2 ? e2.bindingContext : void 0;
+                };
+                _proto8.accept = function accept(t2) {
+                    return t2.visitAccessThis(this);
+                };
+                return AccessThis2;
+            }(ast_Expression);
+            var ast_AccessScope = function(_ast_Expression4) {
+                _inheritsLoose(ast_AccessScope2, _ast_Expression4);
+                function ast_AccessScope2(t2, e2) {
+                    var _this4;
+                    _this4 = _ast_Expression4.call(this) || this;
+                    _this4.name = t2;
+                    _this4.ancestor = e2;
+                    _this4.isAssignable = true;
+                    return _this4;
+                }
+                var _proto9 = ast_AccessScope2.prototype;
+                _proto9.evaluate = function evaluate3(t2) {
+                    var e2 = getContextFor(this.name, t2, this.ancestor);
+                    return e2[this.name];
+                };
+                _proto9.assign = function assign(t2, e2) {
+                    var i2 = getContextFor(this.name, t2, this.ancestor);
+                    return i2 ? i2[this.name] = e2 : void 0;
+                };
+                _proto9.accept = function accept(t2) {
+                    return t2.visitAccessScope(this);
+                };
+                return ast_AccessScope2;
+            }(ast_Expression);
+            var AccessMember = function(_ast_Expression5) {
+                _inheritsLoose(AccessMember2, _ast_Expression5);
+                function AccessMember2(t2, e2) {
+                    var _this5;
+                    _this5 = _ast_Expression5.call(this) || this;
+                    _this5.object = t2;
+                    _this5.name = e2;
+                    _this5.isAssignable = true;
+                    return _this5;
+                }
+                var _proto10 = AccessMember2.prototype;
+                _proto10.evaluate = function evaluate3(t2) {
+                    var e2 = this.object.evaluate(t2);
+                    return e2 === null || e2 === void 0 ? e2 : e2[this.name];
+                };
+                _proto10.assign = function assign(t2, e2) {
+                    var i2 = this.object.evaluate(t2);
+                    if (i2 === null || i2 === void 0) {
+                        i2 = {};
+                        this.object.assign(t2, i2);
+                    }
+                    i2[this.name] = e2;
+                    return e2;
+                };
+                _proto10.accept = function accept(t2) {
+                    return t2.visitAccessMember(this);
+                };
+                return AccessMember2;
+            }(ast_Expression);
+            var AccessKeyed = function(_ast_Expression6) {
+                _inheritsLoose(AccessKeyed2, _ast_Expression6);
+                function AccessKeyed2(t2, e2) {
+                    var _this6;
+                    _this6 = _ast_Expression6.call(this) || this;
+                    _this6.object = t2;
+                    _this6.key = e2;
+                    _this6.isAssignable = true;
+                    return _this6;
+                }
+                var _proto11 = AccessKeyed2.prototype;
+                _proto11.evaluate = function evaluate3(t2) {
+                    var e2 = this.object.evaluate(t2);
+                    var i2 = this.key.evaluate(t2);
+                    return getKeyed(e2, i2);
+                };
+                _proto11.assign = function assign(t2, e2) {
+                    var i2 = this.object.evaluate(t2);
+                    var n2 = this.key.evaluate(t2);
+                    return setKeyed(i2, n2, e2);
+                };
+                _proto11.accept = function accept(t2) {
+                    return t2.visitAccessKeyed(this);
+                };
+                return AccessKeyed2;
+            }(ast_Expression);
+            var ast_CallScope = function(_ast_Expression7) {
+                _inheritsLoose(ast_CallScope2, _ast_Expression7);
+                function ast_CallScope2(t2, e2, i2) {
+                    var _this7;
+                    _this7 = _ast_Expression7.call(this) || this;
+                    _this7.name = t2;
+                    _this7.args = e2;
+                    _this7.ancestor = i2;
+                    return _this7;
+                }
+                var _proto12 = ast_CallScope2.prototype;
+                _proto12.evaluate = function evaluate3(t2, e2) {
+                    var i2 = evalList(t2, this.args);
+                    var n2 = getContextFor(this.name, t2, this.ancestor);
+                    var s2 = getFunction(n2, this.name, e2);
+                    if (s2) {
+                        return s2.apply(n2, i2);
+                    }
+                    return void 0;
+                };
+                _proto12.accept = function accept(t2) {
+                    return t2.visitCallScope(this);
+                };
+                return ast_CallScope2;
+            }(ast_Expression);
+            var CallMember = function(_ast_Expression8) {
+                _inheritsLoose(CallMember2, _ast_Expression8);
+                function CallMember2(t2, e2, i2) {
+                    var _this8;
+                    _this8 = _ast_Expression8.call(this) || this;
+                    _this8.object = t2;
+                    _this8.name = e2;
+                    _this8.args = i2;
+                    return _this8;
+                }
+                var _proto13 = CallMember2.prototype;
+                _proto13.evaluate = function evaluate3(t2, e2) {
+                    var i2 = this.object.evaluate(t2);
+                    var n2 = evalList(t2, this.args);
+                    var s2 = getFunction(i2, this.name, e2);
+                    if (s2) {
+                        return s2.apply(i2, n2);
+                    }
+                    return void 0;
+                };
+                _proto13.accept = function accept(t2) {
+                    return t2.visitCallMember(this);
+                };
+                return CallMember2;
+            }(ast_Expression);
+            var CallFunction = function(_ast_Expression9) {
+                _inheritsLoose(CallFunction2, _ast_Expression9);
+                function CallFunction2(t2, e2) {
+                    var _this9;
+                    _this9 = _ast_Expression9.call(this) || this;
+                    _this9.func = t2;
+                    _this9.args = e2;
+                    return _this9;
+                }
+                var _proto14 = CallFunction2.prototype;
+                _proto14.evaluate = function evaluate3(t2, e2) {
+                    var i2 = this.func.evaluate(t2);
+                    if (typeof i2 === "function") {
+                        return i2.apply(null, evalList(t2, this.args));
+                    }
+                    if (!e2 && (i2 === null || i2 === void 0)) {
+                        return void 0;
+                    }
+                    throw new Error(this.func + " is not a function");
+                };
+                _proto14.accept = function accept(t2) {
+                    return t2.visitCallFunction(this);
+                };
+                return CallFunction2;
+            }(ast_Expression);
+            var Binary = function(_ast_Expression10) {
+                _inheritsLoose(Binary2, _ast_Expression10);
+                function Binary2(t2, e2, i2) {
+                    var _this10;
+                    _this10 = _ast_Expression10.call(this) || this;
+                    _this10.operation = t2;
+                    _this10.left = e2;
+                    _this10.right = i2;
+                    return _this10;
+                }
+                var _proto15 = Binary2.prototype;
+                _proto15.evaluate = function evaluate3(t2) {
+                    var e2 = this.left.evaluate(t2);
+                    switch(this.operation){
+                        case "&&":
+                            return e2 && this.right.evaluate(t2);
+                        case "||":
+                            return e2 || this.right.evaluate(t2);
+                    }
+                    var i2 = this.right.evaluate(t2);
+                    switch(this.operation){
+                        case "==":
+                            return e2 == i2;
+                        case "===":
+                            return e2 === i2;
+                        case "!=":
+                            return e2 != i2;
+                        case "!==":
+                            return e2 !== i2;
+                    }
+                    if (e2 === null || i2 === null || e2 === void 0 || i2 === void 0) {
+                        switch(this.operation){
+                            case "+":
+                                if (e2 !== null && e2 !== void 0) return e2;
+                                if (i2 !== null && i2 !== void 0) return i2;
+                                return 0;
+                            case "-":
+                                if (e2 !== null && e2 !== void 0) return e2;
+                                if (i2 !== null && i2 !== void 0) return 0 - i2;
+                                return 0;
+                        }
+                    }
+                    switch(this.operation){
+                        case "+":
+                            return autoConvertAdd(e2, i2);
+                        case "-":
+                            return e2 - i2;
+                        case "*":
+                            return e2 * i2;
+                        case "/":
+                            return e2 / i2;
+                        case "%":
+                            return e2 % i2;
+                        case "<":
+                            return e2 < i2;
+                        case ">":
+                            return e2 > i2;
+                        case "<=":
+                            return e2 <= i2;
+                        case ">=":
+                            return e2 >= i2;
+                        case "^":
+                            return e2 ^ i2;
+                        case "&":
+                            return e2 & i2;
+                        case "|":
+                            return e2 | i2;
+                        case "<<":
+                            return e2 << i2;
+                        case ">>":
+                            return e2 >> i2;
+                        case ">>>":
+                            return e2 >>> i2;
+                    }
+                    throw new Error("Internal error [" + this.operation + "] not handled");
+                };
+                _proto15.accept = function accept(t2) {
+                    return t2.visitBinary(this);
+                };
+                return Binary2;
+            }(ast_Expression);
+            var PrefixNot = function(_ast_Expression11) {
+                _inheritsLoose(PrefixNot2, _ast_Expression11);
+                function PrefixNot2(t2, e2) {
+                    var _this11;
+                    _this11 = _ast_Expression11.call(this) || this;
+                    _this11.operation = t2;
+                    _this11.expression = e2;
+                    return _this11;
+                }
+                var _proto16 = PrefixNot2.prototype;
+                _proto16.evaluate = function evaluate3(t2) {
+                    return !this.expression.evaluate(t2);
+                };
+                _proto16.accept = function accept(t2) {
+                    return t2.visitPrefix(this);
+                };
+                return PrefixNot2;
+            }(ast_Expression);
+            var LiteralPrimitive = function(_ast_Expression12) {
+                _inheritsLoose(LiteralPrimitive2, _ast_Expression12);
+                function LiteralPrimitive2(t2) {
+                    var _this12;
+                    _this12 = _ast_Expression12.call(this) || this;
+                    _this12.value = t2;
+                    return _this12;
+                }
+                var _proto17 = LiteralPrimitive2.prototype;
+                _proto17.evaluate = function evaluate3(t2) {
+                    return this.value;
+                };
+                _proto17.accept = function accept(t2) {
+                    return t2.visitLiteralPrimitive(this);
+                };
+                return LiteralPrimitive2;
+            }(ast_Expression);
+            var LiteralString = function(_ast_Expression13) {
+                _inheritsLoose(LiteralString2, _ast_Expression13);
+                function LiteralString2(t2) {
+                    var _this13;
+                    _this13 = _ast_Expression13.call(this) || this;
+                    _this13.value = t2;
+                    return _this13;
+                }
+                var _proto18 = LiteralString2.prototype;
+                _proto18.evaluate = function evaluate3(t2) {
+                    return this.value;
+                };
+                _proto18.accept = function accept(t2) {
+                    return t2.visitLiteralString(this);
+                };
+                return LiteralString2;
+            }(ast_Expression);
+            var LiteralArray = function(_ast_Expression14) {
+                _inheritsLoose(LiteralArray2, _ast_Expression14);
+                function LiteralArray2(t2) {
+                    var _this14;
+                    _this14 = _ast_Expression14.call(this) || this;
+                    _this14.elements = t2;
+                    return _this14;
+                }
+                var _proto19 = LiteralArray2.prototype;
+                _proto19.evaluate = function evaluate3(t2) {
+                    var e2 = this.elements;
+                    var i2 = [];
+                    for(var _n2 = 0, _s = e2.length; _n2 < _s; ++_n2){
+                        i2[_n2] = e2[_n2].evaluate(t2);
+                    }
+                    return i2;
+                };
+                _proto19.accept = function accept(t2) {
+                    return t2.visitLiteralArray(this);
+                };
+                return LiteralArray2;
+            }(ast_Expression);
+            var LiteralObject = function(_ast_Expression15) {
+                _inheritsLoose(LiteralObject2, _ast_Expression15);
+                function LiteralObject2(t2, e2) {
+                    var _this15;
+                    _this15 = _ast_Expression15.call(this) || this;
+                    _this15.keys = t2;
+                    _this15.values = e2;
+                    return _this15;
+                }
+                var _proto20 = LiteralObject2.prototype;
+                _proto20.evaluate = function evaluate3(t2) {
+                    var e2 = {};
+                    var i2 = this.keys;
+                    var n2 = this.values;
+                    for(var _s2 = 0, _r = i2.length; _s2 < _r; ++_s2){
+                        e2[i2[_s2]] = n2[_s2].evaluate(t2);
+                    }
+                    return e2;
+                };
+                _proto20.accept = function accept(t2) {
+                    return t2.visitLiteralObject(this);
+                };
+                return LiteralObject2;
+            }(ast_Expression);
+            var StringInterpolation = function(_ast_Expression16) {
+                _inheritsLoose(StringInterpolation2, _ast_Expression16);
+                function StringInterpolation2(t2) {
+                    var _this16;
+                    _this16 = _ast_Expression16.call(this) || this;
+                    _this16.parts = t2;
+                    return _this16;
+                }
+                var _proto21 = StringInterpolation2.prototype;
+                _proto21.evaluate = function evaluate3(t2) {
+                    var e2 = this.parts;
+                    var i2 = "";
+                    for(var _n3 = 0, _s3 = e2.length; _n3 < _s3; ++_n3){
+                        i2 += e2[_n3].evaluate(t2);
+                    }
+                    return i2;
+                };
+                _proto21.accept = function accept(t2) {
+                    return t2.visitStringInterpolation(this);
+                };
+                return StringInterpolation2;
+            }(ast_Expression);
+            function evalList(t2, e2) {
+                var i2 = e2.length;
+                var n2 = [];
+                for(var _s4 = 0; _s4 < i2; _s4++){
+                    n2[_s4] = e2[_s4].evaluate(t2);
+                }
+                return n2;
+            }
+            function autoConvertAdd(t2, e2) {
+                if (t2 !== null && e2 !== null) {
+                    if (typeof t2 === "string" && typeof e2 !== "string") {
+                        return t2 + e2.toString();
+                    }
+                    if (typeof t2 !== "string" && typeof e2 === "string") {
+                        return t2.toString() + e2;
+                    }
+                    return t2 + e2;
+                }
+                if (t2 !== null) {
+                    return t2;
+                }
+                if (e2 !== null) {
+                    return e2;
+                }
+                return 0;
+            }
+            function getFunction(t2, e2, i2) {
+                var n2 = t2 === null || t2 === void 0 ? null : t2[e2];
+                if (typeof n2 === "function") {
+                    return n2;
+                }
+                if (!i2 && (n2 === null || n2 === void 0)) {
+                    return null;
+                }
+                throw new Error(e2 + " is not a function");
+            }
+            function getKeyed(t2, e2) {
+                if (Array.isArray(t2)) {
+                    return t2[parseInt(e2, 10)];
+                } else if (t2) {
+                    return t2[e2];
+                } else if (t2 === null || t2 === void 0) {
+                    return void 0;
+                }
+                return t2[e2];
+            }
+            function setKeyed(t2, e2, i2) {
+                if (Array.isArray(t2)) {
+                    var _n4 = parseInt(e2, 10);
+                    if (t2.length <= _n4) {
+                        t2.length = _n4 + 1;
+                    }
+                    t2[_n4] = i2;
+                } else {
+                    t2[e2] = i2;
+                }
+                return i2;
+            }
+            var rt = new Token(-1, null);
+            var parser_Parser = function() {
+                function parser_Parser2() {
+                    this.cache = {};
+                    this.lexer = new Lexer();
+                }
+                var _proto22 = parser_Parser2.prototype;
+                _proto22.parse = function parse(t2, e2) {
+                    if (e2 === void 0) {
+                        e2 = {};
+                    }
+                    t2 = t2 || "";
+                    var i2 = t2 + ":" + JSON.stringify(e2);
+                    if (!this.cache[i2]) {
+                        var _n5 = new parser_ParserImplementation(this.lexer, t2, e2);
+                        this.cache[i2] = _n5.parseExpression();
+                        var _s5 = "";
+                        for(var _t7 = 0, _e4 = _n5.tokens.length; _t7 < _e4; ++_t7){
+                            _s5 += _n5.tokens[_t7].text;
+                        }
+                        this.cache[i2].toString = function() {
+                            return _s5;
+                        };
+                    }
+                    return this.cache[i2];
+                };
+                return parser_Parser2;
+            }();
+            var parser_ParserImplementation = function() {
+                function parser_ParserImplementation2(t2, e2, i2) {
+                    if (i2 === void 0) {
+                        i2 = {};
+                    }
+                    this.rejectAssignment = i2.rejectAssignment || false;
+                    this.stringInterpolationMode = i2.stringInterpolationMode || false;
+                    this.index = 0;
+                    this.input = e2;
+                    this.tokens = t2.lex(e2, {
+                        stringInterpolationMode: this.stringInterpolationMode
+                    });
+                }
+                var _proto23 = parser_ParserImplementation2.prototype;
+                _proto23.parseExpression = function parseExpression() {
+                    if (this.index === 0 && this.stringInterpolationMode) {
+                        return this.parseStringInterpolation(true);
+                    }
+                    var t2 = this.peek.index;
+                    var e2 = this.parseConditional();
+                    while(this.peek.text === "="){
+                        if (this.rejectAssignment) {
+                            this.error("assignment is not allowed");
+                        }
+                        if (!e2.isAssignable) {
+                            var _e5 = this.index < this.tokens.length ? this.peek.index : this.input.length;
+                            var _i5 = this.input.substring(t2, _e5);
+                            this.error("Expression " + _i5 + " is not assignable");
+                        }
+                        this.expect("=");
+                        e2 = new Assign(e2, this.parseConditional());
+                    }
+                    return e2;
+                };
+                _proto23.parseConditional = function parseConditional() {
+                    var t2 = this.peek.index;
+                    var e2 = this.parseLogicalOr();
+                    if (this.optional("?")) {
+                        var _i6 = this.parseExpression();
+                        if (!this.optional(":")) {
+                            var _e6 = this.index < this.tokens.length ? this.peek.index : this.input.length;
+                            var _i7 = this.input.substring(t2, _e6);
+                            this.error("Conditional expression " + _i7 + " requires all 3 expressions");
+                        }
+                        var _n6 = this.parseExpression();
+                        e2 = new Conditional(e2, _i6, _n6);
+                    }
+                    return e2;
+                };
+                _proto23.parseLogicalOr = function parseLogicalOr() {
+                    var t2 = this.parseLogicalAnd();
+                    while(this.optional("||")){
+                        t2 = new Binary("||", t2, this.parseLogicalAnd());
+                    }
+                    return t2;
+                };
+                _proto23.parseLogicalAnd = function parseLogicalAnd() {
+                    var t2 = this.parseEquality();
+                    while(this.optional("&&")){
+                        t2 = new Binary("&&", t2, this.parseEquality());
+                    }
+                    return t2;
+                };
+                _proto23.parseEquality = function parseEquality() {
+                    var t2 = this.parseRelational();
+                    while(true){
+                        if (this.optional("==")) {
+                            t2 = new Binary("==", t2, this.parseRelational());
+                        } else if (this.optional("!=")) {
+                            t2 = new Binary("!=", t2, this.parseRelational());
+                        } else if (this.optional("===")) {
+                            t2 = new Binary("===", t2, this.parseRelational());
+                        } else if (this.optional("!==")) {
+                            t2 = new Binary("!==", t2, this.parseRelational());
+                        } else {
+                            return t2;
+                        }
+                    }
+                };
+                _proto23.parseRelational = function parseRelational() {
+                    var t2 = this.parseAdditive();
+                    while(true){
+                        if (this.optional("<")) {
+                            t2 = new Binary("<", t2, this.parseAdditive());
+                        } else if (this.optional(">")) {
+                            t2 = new Binary(">", t2, this.parseAdditive());
+                        } else if (this.optional("<=")) {
+                            t2 = new Binary("<=", t2, this.parseAdditive());
+                        } else if (this.optional(">=")) {
+                            t2 = new Binary(">=", t2, this.parseAdditive());
+                        } else {
+                            return t2;
+                        }
+                    }
+                };
+                _proto23.parseAdditive = function parseAdditive() {
+                    var t2 = this.parseMultiplicative();
+                    while(true){
+                        if (this.optional("+")) {
+                            t2 = new Binary("+", t2, this.parseMultiplicative());
+                        } else if (this.optional("-")) {
+                            t2 = new Binary("-", t2, this.parseMultiplicative());
+                        } else {
+                            return t2;
+                        }
+                    }
+                };
+                _proto23.parseMultiplicative = function parseMultiplicative() {
+                    var t2 = this.parsePrefix();
+                    while(true){
+                        if (this.optional("*")) {
+                            t2 = new Binary("*", t2, this.parsePrefix());
+                        } else if (this.optional("%")) {
+                            t2 = new Binary("%", t2, this.parsePrefix());
+                        } else if (this.optional("/")) {
+                            t2 = new Binary("/", t2, this.parsePrefix());
+                        } else {
+                            return t2;
+                        }
+                    }
+                };
+                _proto23.parsePrefix = function parsePrefix() {
+                    if (this.optional("+")) {
+                        return this.parsePrefix();
+                    } else if (this.optional("-")) {
+                        return new Binary("-", new LiteralPrimitive(0), this.parsePrefix());
+                    } else if (this.optional("!")) {
+                        return new PrefixNot("!", this.parsePrefix());
+                    }
+                    return this.parseAccessOrCallMember();
+                };
+                _proto23.parseAccessOrCallMember = function parseAccessOrCallMember() {
+                    var t2 = this.parsePrimary();
+                    while(true){
+                        if (this.optional(".")) {
+                            var _e7 = this.peek.text;
+                            this.advance();
+                            if (this.optional("(")) {
+                                var _i8 = this.parseExpressionList(")");
+                                this.expect(")");
+                                if (t2 instanceof AccessThis) {
+                                    t2 = new ast_CallScope(_e7, _i8, t2.ancestor);
+                                } else {
+                                    t2 = new CallMember(t2, _e7, _i8);
+                                }
+                            } else {
+                                if (t2 instanceof AccessThis) {
+                                    t2 = new ast_AccessScope(_e7, t2.ancestor);
+                                } else {
+                                    t2 = new AccessMember(t2, _e7);
+                                }
+                            }
+                        } else if (this.optional("[")) {
+                            var _e8 = this.parseExpression();
+                            this.expect("]");
+                            t2 = new AccessKeyed(t2, _e8);
+                        } else if (this.optional("(")) {
+                            var _e9 = this.parseExpressionList(")");
+                            this.expect(")");
+                            t2 = new CallFunction(t2, _e9);
+                        } else {
+                            return t2;
+                        }
+                    }
+                };
+                _proto23.parseStringInterpolation = function parseStringInterpolation(t2) {
+                    var e2 = [];
+                    while(t2 ? this.peek !== rt : this.peek !== rt && this.peek.text !== "`"){
+                        if (this.optional("${")) {
+                            var _t8 = this.parseExpression();
+                            this.expect("}");
+                            e2.push(_t8);
+                        } else if (typeof this.peek.value === "string") {
+                            var _t9 = this.peek.value;
+                            this.advance();
+                            e2.push(new LiteralString(_t9));
+                        }
+                    }
+                    return new StringInterpolation(e2);
+                };
+                _proto23.parsePrimary = function parsePrimary() {
+                    if (this.optional("(")) {
+                        var _t10 = this.parseExpression();
+                        this.expect(")");
+                        return _t10;
+                    } else if (this.optional("`")) {
+                        var _t11 = this.parseStringInterpolation();
+                        this.expect("`");
+                        return _t11;
+                    } else if (this.optional("null")) {
+                        return new LiteralPrimitive(null);
+                    } else if (this.optional("undefined")) {
+                        return new LiteralPrimitive(void 0);
+                    } else if (this.optional("true")) {
+                        return new LiteralPrimitive(true);
+                    } else if (this.optional("false")) {
+                        return new LiteralPrimitive(false);
+                    } else if (this.optional("[")) {
+                        var _t12 = this.parseExpressionList("]");
+                        this.expect("]");
+                        return new LiteralArray(_t12);
+                    } else if (this.peek.text === "{") {
+                        return this.parseObject();
+                    } else if (this.peek.key !== null && this.peek.key !== void 0) {
+                        return this.parseAccessOrCallScope();
+                    } else if (this.peek.value !== null && this.peek.value !== void 0) {
+                        var _t13 = this.peek.value;
+                        this.advance();
+                        return _t13 instanceof String || typeof _t13 === "string" ? new LiteralString(_t13) : new LiteralPrimitive(_t13);
+                    } else if (this.index >= this.tokens.length) {
+                        throw new Error("Unexpected end of expression: " + this.input);
+                    } else {
+                        this.error("Unexpected token " + this.peek.text);
+                    }
+                };
+                _proto23.parseAccessOrCallScope = function parseAccessOrCallScope() {
+                    var t2 = this.peek.key;
+                    this.advance();
+                    if (t2 === "$this") {
+                        return new AccessThis(0);
+                    }
+                    var e2 = 0;
+                    while(t2 === "$parent"){
+                        e2++;
+                        if (this.optional(".")) {
+                            t2 = this.peek.key;
+                            this.advance();
+                        } else if (this.peek === rt || this.peek.text === "(" || this.peek.text === ")" || this.peek.text === "[" || this.peek.text === "}" || this.peek.text === ",") {
+                            return new AccessThis(e2);
+                        } else {
+                            this.error("Unexpected token " + this.peek.text);
+                        }
+                    }
+                    if (this.optional("(")) {
+                        var _i9 = this.parseExpressionList(")");
+                        this.expect(")");
+                        return new ast_CallScope(t2, _i9, e2);
+                    }
+                    return new ast_AccessScope(t2, e2);
+                };
+                _proto23.parseObject = function parseObject() {
+                    var t2 = [];
+                    var e2 = [];
+                    this.expect("{");
+                    if (this.peek.text !== "}") {
+                        do {
+                            var _i10 = this.peek;
+                            var _n7 = _i10.value;
+                            t2.push(typeof _n7 === "string" ? _n7 : _i10.text);
+                            this.advance();
+                            if (_i10.key && (this.peek.text === "," || this.peek.text === "}")) {
+                                --this.index;
+                                e2.push(this.parseAccessOrCallScope());
+                            } else {
+                                this.expect(":");
+                                e2.push(this.parseExpression());
+                            }
+                        }while (this.optional(","))
+                    }
+                    this.expect("}");
+                    return new LiteralObject(t2, e2);
+                };
+                _proto23.parseExpressionList = function parseExpressionList(t2) {
+                    var e2 = [];
+                    if (this.peek.text !== t2) {
+                        do {
+                            e2.push(this.parseExpression());
+                        }while (this.optional(","))
+                    }
+                    return e2;
+                };
+                _proto23.optional = function optional(t2) {
+                    if (this.peek.text === t2) {
+                        this.advance();
+                        return true;
+                    }
+                    return false;
+                };
+                _proto23.expect = function expect(t2) {
+                    if (this.peek.text === t2) {
+                        this.advance();
+                    } else {
+                        this.error("Missing expected " + t2);
+                    }
+                };
+                _proto23.advance = function advance() {
+                    this.index++;
+                };
+                _proto23.error = function error(t2) {
+                    var e2 = this.index < this.tokens.length ? "at column " + (this.tokens[this.index].index + 1) + " in" : "at the end of the expression";
+                    throw new Error("Parser Error: " + t2 + " " + e2 + " [" + this.input + "]");
+                };
+                _createClass(parser_ParserImplementation2, [
+                    {
+                        key: "peek",
+                        get: function get() {
+                            return this.index < this.tokens.length ? this.tokens[this.index] : rt;
+                        }
+                    }
+                ]);
+                return parser_ParserImplementation2;
+            }();
+            i1.d(e, "Parser", function() {
+                return parser_Parser;
+            });
+            i1.d(e, "createOverrideContext", function() {
+                return createOverrideContext2;
+            });
+            i1.d(e, "createSimpleScope", function() {
+                return createSimpleScope2;
+            });
+            i1.d(e, "evaluate", function() {
+                return evaluate2;
+            });
+            i1.d(e, "evaluateStringInterpolation", function() {
+                return evaluateStringInterpolation2;
+            });
+            var at = new parser_Parser();
+            function evaluate2(t2, e2, i2, n2) {
+                var s2 = at.parse(t2, n2);
+                return s2.evaluateWith(e2, i2);
+            }
+            function evaluateStringInterpolation2(t2, e2, i2, n2) {
+                if (n2 === void 0) {
+                    n2 = {};
+                }
+                return evaluate2(t2, e2, i2, _extends(_extends({}, n2), {}, {
+                    stringInterpolationMode: true
+                }));
+            }
+        }
+    }, function(t) {
+        !function() {
+            t.r = function(t2) {
+                if (typeof Symbol !== "undefined" && Symbol.toStringTag) {
+                    Object.defineProperty(t2, Symbol.toStringTag, {
+                        value: "Module"
+                    });
+                }
+                Object.defineProperty(t2, "__esModule", {
+                    value: true
+                });
+            };
+        }();
+        !function() {
+            var e = Object.prototype.hasOwnProperty;
+            t.d = function(t2, i1, n) {
+                if (!e.call(t2, i1)) {
+                    Object.defineProperty(t2, i1, {
+                        enumerable: true,
+                        get: n
+                    });
+                }
+            };
+        }();
+    });
+});
+getDefaultExportFromCjs(dist);
+dist.Parser;
+dist.createOverrideContext;
+dist.createSimpleScope;
+var evaluate = dist.evaluate;
+dist.evaluateStringInterpolation;
+const applySelect = (val, prop, filter)=>{
+    if (filter !== undefined && Array.isArray(val)) {
+        if (filter === '') return val;
+        const len = val.length;
+        if (len === 0) return [];
+        const context = {
+            last: ()=>len - 1
+        };
+        const indexVal = evaluate(filter, context);
+        if (typeof indexVal === 'number') return val[indexVal];
+        return val.filter((item)=>evaluate(filter, item, context));
+    } else if (prop !== undefined) {
+        if (prop === '') return val;
+        return Array.isArray(val) ? val.flatMap((item)=>item[prop]) : val[prop];
+    } else {
+        return undefined;
+    }
+};
+const jsonPath = (obj, path)=>{
+    let pos = 0;
+    let result1 = obj;
+    let mode = 'prop';
+    path = path.startsWith('/') ? path.substring(1) : path;
+    do {
+        let prop = undefined;
+        let filter = undefined;
+        switch(mode){
+            case 'prop':
+            case 'postFilter':
+                {
+                    const [matched, newPos] = scanFirst(path, pos, [
+                        '/',
+                        '.',
+                        '['
+                    ]);
+                    prop = path.slice(pos, newPos < 0 ? undefined : newPos - 1);
+                    if (mode === 'postFilter' && Array.isArray(result1)) result1 = result1.flat(1);
+                    mode = newPos < 0 ? 'done' : path[newPos - 1] === '[' ? 'filter' : 'prop';
+                    pos = newPos;
+                    break;
+                }
+            case 'filter':
+                {
+                    const newPos = path.indexOf(']', pos);
+                    filter = path.slice(pos, newPos);
+                    mode = 'postFilter';
+                    pos = newPos + 1;
+                    break;
+                }
+        }
+        result1 = applySelect(result1, prop, filter);
+    }while (pos >= 0 && pos <= path.length)
+    return result1;
+};
 function queryString(args) {
     return Object.entries(args || {}).flatMap(([key, vals])=>vals.map((val)=>key + (val ? '=' + encodeURIComponent(val) : ''))).join('&');
 }
@@ -1472,7 +3095,7 @@ function resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl
             if (section === 'S') parts = subPathParts;
             if (section === 'N') parts = nameParts;
             if (section === 'P') parts = fullPathParts;
-            let pos0 = parseInt(position0.substr(1));
+            let pos0 = parseInt(position0.substring(1));
             if (position0.startsWith('<')) pos0 = -pos0 - 1;
             let match = '';
             if (position1) {
@@ -1505,36 +3128,31 @@ function resolvePathPatternWithUrl(pathPattern, url, obj, name, decode) {
         return resolvePathPattern(pathPattern, url.servicePath, url.basePathElements.join('/'), url.subPathElements.join('/'), url.toString(), url.query, name, url.isDirectory, decode);
     }
 }
-function multiplyVariableSegments(currentSegments, newSegment, sourceObject) {
-    return currentSegments.flatMap((seg)=>{
-        const valAtSeg = seg ? getProp(sourceObject, seg) : sourceObject;
-        return Object.keys(valAtSeg).map((key)=>`${seg}[${key}]${newSegment}`);
-    });
-}
-function resolvePathPatternWithObjectInner(pathPattern, regex, partialResolutions, sourceObject, sourcePath) {
+function resolvePathPatternWithObjectInner2(pathPattern, regex, partialResolutions, sourceObject, sourcePath) {
     const match = regex.exec(pathPattern);
     if (match) {
         const path = match[1];
-        const pathConstantSegments = path.split('[]');
-        const isMultiplied = pathConstantSegments.length > 1;
-        const enumeratedPaths = pathConstantSegments.reduce((result1, seg)=>result1.length === 0 ? [
-                seg
-            ] : multiplyVariableSegments(result1, seg, sourceObject), []);
-        const substitutions = enumeratedPaths.map((path)=>{
-            const val = path ? getProp(sourceObject, path) : sourceObject;
-            if (val === undefined || val === null) {
-                throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is not present in the data`);
-            }
-            if (typeof val === 'object') {
-                throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an object`);
-            }
-            if (val.toString() === '') {
-                throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an empty string`);
-            }
-            return val.toString();
-        });
-        const newPartialResolutions = partialResolutions.flatMap((pr)=>substitutions.map((subs)=>pr.replace(new RegExp(regex.source), subs)));
-        const [prs, wasMultiplied] = resolvePathPatternWithObjectInner(pathPattern, regex, newPartialResolutions, sourceObject, sourcePath);
+        let substitutions = jsonPath(sourceObject, path);
+        let isMultiplied = true;
+        if (!Array.isArray(substitutions)) {
+            substitutions = [
+                substitutions
+            ];
+            isMultiplied = false;
+        }
+        const newPartialResolutions = partialResolutions.flatMap((pr)=>substitutions.map((subs)=>{
+                if (subs === undefined || subs === null) {
+                    throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is not present in the data`);
+                }
+                if (typeof subs === 'object') {
+                    throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an object`);
+                }
+                if (subs.toString() === '') {
+                    throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an empty string`);
+                }
+                return pr.replace(new RegExp(regex.source), subs.toString());
+            }));
+        const [prs, wasMultiplied] = resolvePathPatternWithObjectInner2(pathPattern, regex, newPartialResolutions, sourceObject, sourcePath);
         return [
             prs,
             wasMultiplied || isMultiplied
@@ -1547,9 +3165,9 @@ function resolvePathPatternWithObjectInner(pathPattern, regex, partialResolution
     }
 }
 function resolvePathPatternWithObject(pathPattern, sourceObject, sourcePath, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode) {
-    const regex = /\${([\w\[\].]*)}/g;
+    const regex = /\${([^}]*)}/g;
     const partResolvedPattern = resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode);
-    const [resolved, wasMultiplied] = resolvePathPatternWithObjectInner(partResolvedPattern, regex, [
+    const [resolved, wasMultiplied] = resolvePathPatternWithObjectInner2(partResolvedPattern, regex, [
         partResolvedPattern
     ], sourceObject, sourcePath);
     return wasMultiplied ? resolved : resolved[0];
@@ -12947,1629 +14565,6 @@ function readerFromStreamReader(streamReader) {
         }
     };
 }
-var __dirname = "/tmp/cdn/_7L5tse9km4CJVhsMBees/node_modules/bcx-expression-evaluator/dist";
-function getDefaultExportFromCjs(x) {
-    return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
-}
-function createCommonjsModule(fn, basedir, module1) {
-    return module1 = {
-        path: basedir,
-        exports: {},
-        require: function(path, base) {
-            return commonjsRequire(path, base === void 0 || base === null ? module1.path : base);
-        }
-    }, fn(module1, module1.exports), module1.exports;
-}
-function commonjsRequire() {
-    throw new Error("Dynamic requires are not currently supported by @rollup/plugin-commonjs");
-}
-var dist = createCommonjsModule(function(module1) {
-    function _extends() {
-        _extends = Object.assign || function(target) {
-            for(var i1 = 1; i1 < arguments.length; i1++){
-                var source = arguments[i1];
-                for(var key in source){
-                    if (Object.prototype.hasOwnProperty.call(source, key)) {
-                        target[key] = source[key];
-                    }
-                }
-            }
-            return target;
-        };
-        return _extends.apply(this, arguments);
-    }
-    function _inheritsLoose(subClass, superClass) {
-        subClass.prototype = Object.create(superClass.prototype);
-        subClass.prototype.constructor = subClass;
-        subClass.__proto__ = superClass;
-    }
-    function _defineProperties(target, props) {
-        for(var i1 = 0; i1 < props.length; i1++){
-            var descriptor = props[i1];
-            descriptor.enumerable = descriptor.enumerable || false;
-            descriptor.configurable = true;
-            if ("value" in descriptor) descriptor.writable = true;
-            Object.defineProperty(target, descriptor.key, descriptor);
-        }
-    }
-    function _createClass(Constructor, protoProps, staticProps) {
-        if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-        if (staticProps) _defineProperties(Constructor, staticProps);
-        return Constructor;
-    }
-    module1.exports = function(t, e) {
-        var i1 = {};
-        function __webpack_require__(e2) {
-            if (i1[e2]) {
-                return i1[e2].exports;
-            }
-            var n = i1[e2] = {
-                i: e2,
-                l: false,
-                exports: {}
-            };
-            var s = true;
-            try {
-                t[e2].call(n.exports, n, n.exports, __webpack_require__);
-                s = false;
-            } finally{
-                if (s) delete i1[e2];
-            }
-            n.l = true;
-            return n.exports;
-        }
-        __webpack_require__.ab = __dirname + "/";
-        function startup() {
-            return __webpack_require__(81);
-        }
-        e(__webpack_require__);
-        return startup();
-    }({
-        81: function _(t, e, i1) {
-            i1.r(e);
-            var Token = function() {
-                function Token2(t2, e2) {
-                    this.index = t2;
-                    this.text = e2;
-                }
-                var _proto = Token2.prototype;
-                _proto.withOp = function withOp(t2) {
-                    this.opKey = t2;
-                    return this;
-                };
-                _proto.withGetterSetter = function withGetterSetter(t2) {
-                    this.key = t2;
-                    return this;
-                };
-                _proto.withValue = function withValue(t2) {
-                    this.value = t2;
-                    return this;
-                };
-                _proto.toString = function toString() {
-                    return "Token(" + this.text + ")";
-                };
-                return Token2;
-            }();
-            var Lexer = function() {
-                function Lexer2() {}
-                var _proto2 = Lexer2.prototype;
-                _proto2.lex = function lex(t2, e2) {
-                    var i2 = new Scanner(t2, e2);
-                    var n2 = [];
-                    var s2 = i2.scanToken();
-                    while(s2){
-                        n2.push(s2);
-                        s2 = i2.scanToken();
-                    }
-                    return n2;
-                };
-                return Lexer2;
-            }();
-            var n = 0;
-            var s = 1;
-            var r = 2;
-            var a = 3;
-            var Scanner = function() {
-                function Scanner2(t2, e2) {
-                    if (e2 === void 0) {
-                        e2 = {};
-                    }
-                    this.input = t2;
-                    this.length = t2.length;
-                    this.peek = 0;
-                    this.index = -1;
-                    this.stringInterpolationMode = e2.stringInterpolationMode || false;
-                    var i2 = this.stringInterpolationMode ? r : n;
-                    this.contextStack = [
-                        i2
-                    ];
-                    this.advance();
-                }
-                var _proto3 = Scanner2.prototype;
-                _proto3.scanToken = function scanToken() {
-                    var t2 = this.index;
-                    if (this.context !== r) {
-                        while(this.peek <= d){
-                            if (++this.index >= this.length) {
-                                this.peek = h;
-                                return null;
-                            }
-                            this.peek = this.input.charCodeAt(this.index);
-                        }
-                        if (isIdentifierStart(this.peek)) {
-                            return this.scanIdentifier();
-                        }
-                        if (isDigit(this.peek)) {
-                            return this.scanNumber(this.index);
-                        }
-                        switch(this.peek){
-                            case I:
-                                this.advance();
-                                return isDigit(this.peek) ? this.scanNumber(t2) : new Token(t2, ".");
-                            case et:
-                                this.contextStack.push(s);
-                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
-                            case nt:
-                                this.contextStack.pop();
-                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
-                            case S:
-                            case C:
-                            case Z:
-                            case Y:
-                            case A:
-                            case m:
-                            case M:
-                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
-                            case y:
-                            case v:
-                                return this.scanString();
-                            case _2:
-                            case L:
-                            case b:
-                            case j:
-                            case g:
-                            case J:
-                            case F:
-                                return this.scanOperator(t2, String.fromCharCode(this.peek));
-                            case O:
-                            case q:
-                            case x:
-                            case P:
-                                return this.scanComplexOperator(t2, P, String.fromCharCode(this.peek), "=");
-                            case k:
-                                return this.scanComplexOperator(t2, k, "&", "&");
-                            case it:
-                                return this.scanComplexOperator(t2, it, "|", "|");
-                            case E:
-                                this.contextStack.push(r);
-                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
-                            case st:
-                                while(isWhitespace(this.peek)){
-                                    this.advance();
-                                }
-                                return this.scanToken();
-                        }
-                        var _e = String.fromCharCode(this.peek);
-                        this.error("Unexpected character [" + _e + "]");
-                        return null;
-                    } else {
-                        if (this.peek === E) {
-                            if (this.isRootLevelOfStringInterpolationMode) {
-                                return this.scanString();
-                            } else {
-                                this.contextStack.pop();
-                                return this.scanCharacter(t2, String.fromCharCode(this.peek));
-                            }
-                        } else if (this.isStartOfInterpolation()) {
-                            var _t = this.scanStartOfInterpolation();
-                            this.contextStack.push(a);
-                            return _t;
-                        } else if (this.peek) {
-                            return this.scanString();
-                        }
-                    }
-                };
-                _proto3.scanCharacter = function scanCharacter(t2, e2) {
-                    assert(this.peek === e2.charCodeAt(0));
-                    this.advance();
-                    return new Token(t2, e2);
-                };
-                _proto3.scanOperator = function scanOperator(t2, e2) {
-                    assert(this.peek === e2.charCodeAt(0));
-                    assert(o.indexOf(e2) !== -1);
-                    this.advance();
-                    return new Token(t2, e2).withOp(e2);
-                };
-                _proto3.scanComplexOperator = function scanComplexOperator(t2, e2, i2, n2) {
-                    assert(this.peek === i2.charCodeAt(0));
-                    this.advance();
-                    var s2 = i2;
-                    if (this.peek === e2) {
-                        this.advance();
-                        s2 += n2;
-                    }
-                    if (this.peek === e2) {
-                        this.advance();
-                        s2 += n2;
-                    }
-                    assert(o.indexOf(s2) !== -1);
-                    return new Token(t2, s2).withOp(s2);
-                };
-                _proto3.scanIdentifier = function scanIdentifier() {
-                    assert(isIdentifierStart(this.peek));
-                    var t2 = this.index;
-                    this.advance();
-                    while(isIdentifierPart(this.peek)){
-                        this.advance();
-                    }
-                    var e2 = this.input.substring(t2, this.index);
-                    var i2 = new Token(t2, e2);
-                    if (o.indexOf(e2) !== -1) {
-                        i2.withOp(e2);
-                    } else {
-                        i2.withGetterSetter(e2);
-                    }
-                    return i2;
-                };
-                _proto3.scanNumber = function scanNumber(t2) {
-                    assert(isDigit(this.peek));
-                    var e2 = this.index === t2;
-                    this.advance();
-                    while(true){
-                        if (!isDigit(this.peek)) {
-                            if (this.peek === I) {
-                                e2 = false;
-                            } else if (isExponentStart(this.peek)) {
-                                this.advance();
-                                if (isExponentSign(this.peek)) {
-                                    this.advance();
-                                }
-                                if (!isDigit(this.peek)) {
-                                    this.error("Invalid exponent", -1);
-                                }
-                                e2 = false;
-                            } else {
-                                break;
-                            }
-                        }
-                        this.advance();
-                    }
-                    var i2 = this.input.substring(t2, this.index);
-                    var n2 = e2 ? parseInt(i2, 10) : parseFloat(i2);
-                    return new Token(t2, i2).withValue(n2);
-                };
-                _proto3.scanString = function scanString() {
-                    if (this.context !== r) {
-                        assert(this.peek === y || this.peek === v);
-                    }
-                    var t2 = this.index;
-                    var e2;
-                    if (this.context !== r) {
-                        e2 = this.peek;
-                        this.advance();
-                    } else {
-                        e2 = this.isRootLevelOfStringInterpolationMode ? h : E;
-                    }
-                    var i2;
-                    var n2 = this.index;
-                    while(this.peek !== e2 && !this.isStartOfInterpolation()){
-                        if (this.peek === z) {
-                            if (!i2) {
-                                i2 = [];
-                            }
-                            i2.push(this.input.substring(n2, this.index));
-                            this.advance();
-                            var _t2 = void 0;
-                            if (this.peek === N) {
-                                var _e2 = this.input.substring(this.index + 1, this.index + 5);
-                                if (!/[A-Z0-9]{4}/.test(_e2)) {
-                                    this.error("Invalid unicode escape [\\u" + _e2 + "]");
-                                }
-                                _t2 = parseInt(_e2, 16);
-                                for(var _t3 = 0; _t3 < 5; ++_t3){
-                                    this.advance();
-                                }
-                            } else {
-                                _t2 = lexer_unescape(this.peek);
-                                this.advance();
-                            }
-                            i2.push(String.fromCharCode(_t2));
-                            n2 = this.index;
-                        } else if (e2 !== h && this.peek === h) {
-                            this.error("Unterminated quote");
-                        } else {
-                            this.advance();
-                        }
-                    }
-                    var s2 = this.input.substring(n2, this.index);
-                    if (this.context !== r) {
-                        this.advance();
-                    }
-                    var a2 = this.input.substring(t2, this.index);
-                    var o2 = s2;
-                    if (i2 !== null && i2 !== void 0) {
-                        i2.push(s2);
-                        o2 = i2.join("");
-                    }
-                    return new Token(t2, a2).withValue(o2);
-                };
-                _proto3.scanStartOfInterpolation = function scanStartOfInterpolation() {
-                    assert(this.isStartOfInterpolation());
-                    var t2 = this.index;
-                    this.advance();
-                    this.advance();
-                    return new Token(t2, "${");
-                };
-                _proto3.advance = function advance() {
-                    if (++this.index >= this.length) {
-                        this.peek = h;
-                    } else {
-                        this.peek = this.input.charCodeAt(this.index);
-                    }
-                };
-                _proto3.error = function error(t2, e2) {
-                    if (e2 === void 0) {
-                        e2 = 0;
-                    }
-                    var i2 = this.index + e2;
-                    throw new Error("Lexer Error: " + t2 + " at column " + i2 + " in expression [" + this.input + "]");
-                };
-                _proto3.isStartOfInterpolation = function isStartOfInterpolation() {
-                    if (this.context === r) {
-                        return this.peek === w && this.input.charCodeAt(this.index + 1) === et;
-                    }
-                };
-                _createClass(Scanner2, [
-                    {
-                        key: "context",
-                        get: function get() {
-                            return this.contextStack[this.contextStack.length - 1];
-                        }
-                    },
-                    {
-                        key: "isRootLevelOfStringInterpolationMode",
-                        get: function get() {
-                            return this.stringInterpolationMode && this.contextStack.length === 1;
-                        }
-                    }
-                ]);
-                return Scanner2;
-            }();
-            var o = [
-                "undefined",
-                "null",
-                "true",
-                "false",
-                "+",
-                "-",
-                "*",
-                "/",
-                "%",
-                "^",
-                "=",
-                "==",
-                "===",
-                "!=",
-                "!==",
-                "<",
-                ">",
-                "<=",
-                ">=",
-                "&&",
-                "||",
-                "&",
-                "|",
-                "!",
-                "?"
-            ];
-            var h = 0;
-            var c = 9;
-            var p = 10;
-            var l1 = 11;
-            var u = 12;
-            var f = 13;
-            var d = 32;
-            var x = 33;
-            var v = 34;
-            var w = 36;
-            var g = 37;
-            var k = 38;
-            var y = 39;
-            var S = 40;
-            var C = 41;
-            var b = 42;
-            var _2 = 43;
-            var A = 44;
-            var L = 45;
-            var I = 46;
-            var j = 47;
-            var m = 58;
-            var M = 59;
-            var O = 60;
-            var P = 61;
-            var q = 62;
-            var F = 63;
-            var U = 48;
-            var W = 57;
-            var V = 65;
-            var B = 69;
-            var K = 90;
-            var Z = 91;
-            var z = 92;
-            var Y = 93;
-            var J = 94;
-            var D = 95;
-            var E = 96;
-            var H = 97;
-            var G = 101;
-            var X = 102;
-            var Q = 110;
-            var T = 114;
-            var $ = 116;
-            var N = 117;
-            var R = 118;
-            var tt = 122;
-            var et = 123;
-            var it = 124;
-            var nt = 125;
-            var st = 160;
-            function isWhitespace(t2) {
-                return t2 >= c && t2 <= d || t2 === st;
-            }
-            function isIdentifierStart(t2) {
-                return H <= t2 && t2 <= tt || V <= t2 && t2 <= K || t2 === D || t2 === w;
-            }
-            function isIdentifierPart(t2) {
-                return H <= t2 && t2 <= tt || V <= t2 && t2 <= K || U <= t2 && t2 <= W || t2 === D || t2 === w;
-            }
-            function isDigit(t2) {
-                return U <= t2 && t2 <= W;
-            }
-            function isExponentStart(t2) {
-                return t2 === G || t2 === B;
-            }
-            function isExponentSign(t2) {
-                return t2 === L || t2 === _2;
-            }
-            function lexer_unescape(t2) {
-                switch(t2){
-                    case Q:
-                        return p;
-                    case X:
-                        return u;
-                    case T:
-                        return f;
-                    case $:
-                        return c;
-                    case R:
-                        return l1;
-                    default:
-                        return t2;
-                }
-            }
-            function assert(t2, e2) {
-                if (!t2) {
-                    throw e2 || "Assertion failed";
-                }
-            }
-            var Unparser = function() {
-                function Unparser2(t2) {
-                    this.buffer = t2;
-                }
-                Unparser2.unparse = function unparse(t2) {
-                    var e2 = [];
-                    var i2 = new Unparser2(e2);
-                    t2.accept(i2);
-                    return e2.join("");
-                };
-                var _proto4 = Unparser2.prototype;
-                _proto4.write = function write(t2) {
-                    this.buffer.push(t2);
-                };
-                _proto4.writeArgs = function writeArgs(t2) {
-                    this.write("(");
-                    for(var _e3 = 0, _i = t2.length; _e3 < _i; ++_e3){
-                        if (_e3 !== 0) {
-                            this.write(",");
-                        }
-                        t2[_e3].accept(this);
-                    }
-                    this.write(")");
-                };
-                _proto4.visitAssign = function visitAssign(t2) {
-                    t2.target.accept(this);
-                    this.write("=");
-                    t2.value.accept(this);
-                };
-                _proto4.visitConditional = function visitConditional(t2) {
-                    t2.condition.accept(this);
-                    this.write("?");
-                    t2.yes.accept(this);
-                    this.write(":");
-                    t2.no.accept(this);
-                };
-                _proto4.visitAccessThis = function visitAccessThis(t2) {
-                    if (t2.ancestor === 0) {
-                        this.write("$this");
-                        return;
-                    }
-                    this.write("$parent");
-                    var e2 = t2.ancestor - 1;
-                    while(e2--){
-                        this.write(".$parent");
-                    }
-                };
-                _proto4.visitAccessScope = function visitAccessScope(t2) {
-                    var e2 = t2.ancestor;
-                    while(e2--){
-                        this.write("$parent.");
-                    }
-                    this.write(t2.name);
-                };
-                _proto4.visitAccessMember = function visitAccessMember(t2) {
-                    t2.object.accept(this);
-                    this.write("." + t2.name);
-                };
-                _proto4.visitAccessKeyed = function visitAccessKeyed(t2) {
-                    t2.object.accept(this);
-                    this.write("[");
-                    t2.key.accept(this);
-                    this.write("]");
-                };
-                _proto4.visitCallScope = function visitCallScope(t2) {
-                    var e2 = t2.ancestor;
-                    while(e2--){
-                        this.write("$parent.");
-                    }
-                    this.write(t2.name);
-                    this.writeArgs(t2.args);
-                };
-                _proto4.visitCallFunction = function visitCallFunction(t2) {
-                    t2.func.accept(this);
-                    this.writeArgs(t2.args);
-                };
-                _proto4.visitCallMember = function visitCallMember(t2) {
-                    t2.object.accept(this);
-                    this.write("." + t2.name);
-                    this.writeArgs(t2.args);
-                };
-                _proto4.visitPrefix = function visitPrefix(t2) {
-                    this.write("(" + t2.operation);
-                    t2.expression.accept(this);
-                    this.write(")");
-                };
-                _proto4.visitBinary = function visitBinary(t2) {
-                    t2.left.accept(this);
-                    this.write(t2.operation);
-                    t2.right.accept(this);
-                };
-                _proto4.visitLiteralPrimitive = function visitLiteralPrimitive(t2) {
-                    this.write("" + t2.value);
-                };
-                _proto4.visitLiteralArray = function visitLiteralArray(t2) {
-                    var e2 = t2.elements;
-                    this.write("[");
-                    for(var _t4 = 0, _i2 = e2.length; _t4 < _i2; ++_t4){
-                        if (_t4 !== 0) {
-                            this.write(",");
-                        }
-                        e2[_t4].accept(this);
-                    }
-                    this.write("]");
-                };
-                _proto4.visitLiteralObject = function visitLiteralObject(t2) {
-                    var e2 = t2.keys;
-                    var i2 = t2.values;
-                    this.write("{");
-                    for(var _t5 = 0, _n = e2.length; _t5 < _n; ++_t5){
-                        if (_t5 !== 0) {
-                            this.write(",");
-                        }
-                        this.write("'" + e2[_t5] + "':");
-                        i2[_t5].accept(this);
-                    }
-                    this.write("}");
-                };
-                _proto4.visitLiteralString = function visitLiteralString(t2) {
-                    var e2 = t2.value.replace(/'/g, "'");
-                    this.write("'" + e2 + "'");
-                };
-                _proto4.visitStringInterpolation = function visitStringInterpolation(t2) {
-                    var e2 = t2.parts;
-                    this.write("(''");
-                    for(var _t6 = 0, _i3 = e2.length; _t6 < _i3; ++_t6){
-                        e2[_t6];
-                        this.write("+(");
-                        e2[_t6].accept(this);
-                        this.write(")");
-                    }
-                    this.write(")");
-                };
-                return Unparser2;
-            }();
-            function has(t2, e2) {
-                var i2 = typeof t2;
-                return (i2 === "object" || i2 === "function") && e2 in t2;
-            }
-            function createOverrideContext2(t2, e2) {
-                return {
-                    bindingContext: t2,
-                    parentOverrideContext: e2 || null
-                };
-            }
-            function getContextFor(t2, e2, i2) {
-                var n2 = e2.overrideContext;
-                if (i2) {
-                    while(i2 && n2){
-                        i2--;
-                        n2 = n2.parentOverrideContext;
-                    }
-                    if (i2 || !n2) {
-                        return void 0;
-                    }
-                    return has(n2, t2) ? n2 : n2.bindingContext;
-                }
-                while(n2 && !has(n2, t2) && !(n2.bindingContext && has(n2.bindingContext, t2))){
-                    n2 = n2.parentOverrideContext;
-                }
-                if (n2) {
-                    return has(n2, t2) ? n2 : n2.bindingContext;
-                }
-                return e2.bindingContext || e2.overrideContext;
-            }
-            function createSimpleScope2(t2, e2) {
-                if (e2) {
-                    return {
-                        bindingContext: t2,
-                        overrideContext: createOverrideContext2(t2, createOverrideContext2(e2))
-                    };
-                }
-                return {
-                    bindingContext: t2,
-                    overrideContext: createOverrideContext2(t2)
-                };
-            }
-            var ast_Expression = function() {
-                function ast_Expression2() {
-                    this.isAssignable = false;
-                }
-                var _proto5 = ast_Expression2.prototype;
-                _proto5.evaluate = function evaluate3(t2, e2) {
-                    throw new Error('Binding expression "' + this + '" cannot be evaluated.');
-                };
-                _proto5.evaluateWith = function evaluateWith(t2, e2, i2) {
-                    return this.evaluate(createSimpleScope2(t2, e2), i2);
-                };
-                _proto5.assign = function assign(t2, e2) {
-                    throw new Error('Binding expression "' + this + '" cannot be assigned to.');
-                };
-                _proto5.toString = function toString() {
-                    return typeof FEATURE_NO_UNPARSER === "undefined" ? Unparser.unparse(this) : Object.prototype.toString.call(this);
-                };
-                return ast_Expression2;
-            }();
-            var Assign = function(_ast_Expression) {
-                _inheritsLoose(Assign2, _ast_Expression);
-                function Assign2(t2, e2) {
-                    var _this;
-                    _this = _ast_Expression.call(this) || this;
-                    _this.target = t2;
-                    _this.value = e2;
-                    _this.isAssignable = true;
-                    return _this;
-                }
-                var _proto6 = Assign2.prototype;
-                _proto6.evaluate = function evaluate3(t2) {
-                    return this.target.assign(t2, this.value.evaluate(t2));
-                };
-                _proto6.accept = function accept(t2) {
-                    t2.visitAssign(this);
-                };
-                _proto6.assign = function assign(t2, e2) {
-                    this.value.assign(t2, e2);
-                    this.target.assign(t2, e2);
-                };
-                return Assign2;
-            }(ast_Expression);
-            var Conditional = function(_ast_Expression2) {
-                _inheritsLoose(Conditional2, _ast_Expression2);
-                function Conditional2(t2, e2, i2) {
-                    var _this2;
-                    _this2 = _ast_Expression2.call(this) || this;
-                    _this2.condition = t2;
-                    _this2.yes = e2;
-                    _this2.no = i2;
-                    return _this2;
-                }
-                var _proto7 = Conditional2.prototype;
-                _proto7.evaluate = function evaluate3(t2) {
-                    return !!this.condition.evaluate(t2) ? this.yes.evaluate(t2) : this.no.evaluate(t2);
-                };
-                _proto7.accept = function accept(t2) {
-                    return t2.visitConditional(this);
-                };
-                return Conditional2;
-            }(ast_Expression);
-            var AccessThis = function(_ast_Expression3) {
-                _inheritsLoose(AccessThis2, _ast_Expression3);
-                function AccessThis2(t2) {
-                    var _this3;
-                    _this3 = _ast_Expression3.call(this) || this;
-                    _this3.ancestor = t2;
-                    return _this3;
-                }
-                var _proto8 = AccessThis2.prototype;
-                _proto8.evaluate = function evaluate3(t2) {
-                    var e2 = t2.overrideContext;
-                    var i2 = this.ancestor;
-                    while(i2-- && e2){
-                        e2 = e2.parentOverrideContext;
-                    }
-                    return i2 < 1 && e2 ? e2.bindingContext : void 0;
-                };
-                _proto8.accept = function accept(t2) {
-                    return t2.visitAccessThis(this);
-                };
-                return AccessThis2;
-            }(ast_Expression);
-            var ast_AccessScope = function(_ast_Expression4) {
-                _inheritsLoose(ast_AccessScope2, _ast_Expression4);
-                function ast_AccessScope2(t2, e2) {
-                    var _this4;
-                    _this4 = _ast_Expression4.call(this) || this;
-                    _this4.name = t2;
-                    _this4.ancestor = e2;
-                    _this4.isAssignable = true;
-                    return _this4;
-                }
-                var _proto9 = ast_AccessScope2.prototype;
-                _proto9.evaluate = function evaluate3(t2) {
-                    var e2 = getContextFor(this.name, t2, this.ancestor);
-                    return e2[this.name];
-                };
-                _proto9.assign = function assign(t2, e2) {
-                    var i2 = getContextFor(this.name, t2, this.ancestor);
-                    return i2 ? i2[this.name] = e2 : void 0;
-                };
-                _proto9.accept = function accept(t2) {
-                    return t2.visitAccessScope(this);
-                };
-                return ast_AccessScope2;
-            }(ast_Expression);
-            var AccessMember = function(_ast_Expression5) {
-                _inheritsLoose(AccessMember2, _ast_Expression5);
-                function AccessMember2(t2, e2) {
-                    var _this5;
-                    _this5 = _ast_Expression5.call(this) || this;
-                    _this5.object = t2;
-                    _this5.name = e2;
-                    _this5.isAssignable = true;
-                    return _this5;
-                }
-                var _proto10 = AccessMember2.prototype;
-                _proto10.evaluate = function evaluate3(t2) {
-                    var e2 = this.object.evaluate(t2);
-                    return e2 === null || e2 === void 0 ? e2 : e2[this.name];
-                };
-                _proto10.assign = function assign(t2, e2) {
-                    var i2 = this.object.evaluate(t2);
-                    if (i2 === null || i2 === void 0) {
-                        i2 = {};
-                        this.object.assign(t2, i2);
-                    }
-                    i2[this.name] = e2;
-                    return e2;
-                };
-                _proto10.accept = function accept(t2) {
-                    return t2.visitAccessMember(this);
-                };
-                return AccessMember2;
-            }(ast_Expression);
-            var AccessKeyed = function(_ast_Expression6) {
-                _inheritsLoose(AccessKeyed2, _ast_Expression6);
-                function AccessKeyed2(t2, e2) {
-                    var _this6;
-                    _this6 = _ast_Expression6.call(this) || this;
-                    _this6.object = t2;
-                    _this6.key = e2;
-                    _this6.isAssignable = true;
-                    return _this6;
-                }
-                var _proto11 = AccessKeyed2.prototype;
-                _proto11.evaluate = function evaluate3(t2) {
-                    var e2 = this.object.evaluate(t2);
-                    var i2 = this.key.evaluate(t2);
-                    return getKeyed(e2, i2);
-                };
-                _proto11.assign = function assign(t2, e2) {
-                    var i2 = this.object.evaluate(t2);
-                    var n2 = this.key.evaluate(t2);
-                    return setKeyed(i2, n2, e2);
-                };
-                _proto11.accept = function accept(t2) {
-                    return t2.visitAccessKeyed(this);
-                };
-                return AccessKeyed2;
-            }(ast_Expression);
-            var ast_CallScope = function(_ast_Expression7) {
-                _inheritsLoose(ast_CallScope2, _ast_Expression7);
-                function ast_CallScope2(t2, e2, i2) {
-                    var _this7;
-                    _this7 = _ast_Expression7.call(this) || this;
-                    _this7.name = t2;
-                    _this7.args = e2;
-                    _this7.ancestor = i2;
-                    return _this7;
-                }
-                var _proto12 = ast_CallScope2.prototype;
-                _proto12.evaluate = function evaluate3(t2, e2) {
-                    var i2 = evalList(t2, this.args);
-                    var n2 = getContextFor(this.name, t2, this.ancestor);
-                    var s2 = getFunction(n2, this.name, e2);
-                    if (s2) {
-                        return s2.apply(n2, i2);
-                    }
-                    return void 0;
-                };
-                _proto12.accept = function accept(t2) {
-                    return t2.visitCallScope(this);
-                };
-                return ast_CallScope2;
-            }(ast_Expression);
-            var CallMember = function(_ast_Expression8) {
-                _inheritsLoose(CallMember2, _ast_Expression8);
-                function CallMember2(t2, e2, i2) {
-                    var _this8;
-                    _this8 = _ast_Expression8.call(this) || this;
-                    _this8.object = t2;
-                    _this8.name = e2;
-                    _this8.args = i2;
-                    return _this8;
-                }
-                var _proto13 = CallMember2.prototype;
-                _proto13.evaluate = function evaluate3(t2, e2) {
-                    var i2 = this.object.evaluate(t2);
-                    var n2 = evalList(t2, this.args);
-                    var s2 = getFunction(i2, this.name, e2);
-                    if (s2) {
-                        return s2.apply(i2, n2);
-                    }
-                    return void 0;
-                };
-                _proto13.accept = function accept(t2) {
-                    return t2.visitCallMember(this);
-                };
-                return CallMember2;
-            }(ast_Expression);
-            var CallFunction = function(_ast_Expression9) {
-                _inheritsLoose(CallFunction2, _ast_Expression9);
-                function CallFunction2(t2, e2) {
-                    var _this9;
-                    _this9 = _ast_Expression9.call(this) || this;
-                    _this9.func = t2;
-                    _this9.args = e2;
-                    return _this9;
-                }
-                var _proto14 = CallFunction2.prototype;
-                _proto14.evaluate = function evaluate3(t2, e2) {
-                    var i2 = this.func.evaluate(t2);
-                    if (typeof i2 === "function") {
-                        return i2.apply(null, evalList(t2, this.args));
-                    }
-                    if (!e2 && (i2 === null || i2 === void 0)) {
-                        return void 0;
-                    }
-                    throw new Error(this.func + " is not a function");
-                };
-                _proto14.accept = function accept(t2) {
-                    return t2.visitCallFunction(this);
-                };
-                return CallFunction2;
-            }(ast_Expression);
-            var Binary = function(_ast_Expression10) {
-                _inheritsLoose(Binary2, _ast_Expression10);
-                function Binary2(t2, e2, i2) {
-                    var _this10;
-                    _this10 = _ast_Expression10.call(this) || this;
-                    _this10.operation = t2;
-                    _this10.left = e2;
-                    _this10.right = i2;
-                    return _this10;
-                }
-                var _proto15 = Binary2.prototype;
-                _proto15.evaluate = function evaluate3(t2) {
-                    var e2 = this.left.evaluate(t2);
-                    switch(this.operation){
-                        case "&&":
-                            return e2 && this.right.evaluate(t2);
-                        case "||":
-                            return e2 || this.right.evaluate(t2);
-                    }
-                    var i2 = this.right.evaluate(t2);
-                    switch(this.operation){
-                        case "==":
-                            return e2 == i2;
-                        case "===":
-                            return e2 === i2;
-                        case "!=":
-                            return e2 != i2;
-                        case "!==":
-                            return e2 !== i2;
-                    }
-                    if (e2 === null || i2 === null || e2 === void 0 || i2 === void 0) {
-                        switch(this.operation){
-                            case "+":
-                                if (e2 !== null && e2 !== void 0) return e2;
-                                if (i2 !== null && i2 !== void 0) return i2;
-                                return 0;
-                            case "-":
-                                if (e2 !== null && e2 !== void 0) return e2;
-                                if (i2 !== null && i2 !== void 0) return 0 - i2;
-                                return 0;
-                        }
-                    }
-                    switch(this.operation){
-                        case "+":
-                            return autoConvertAdd(e2, i2);
-                        case "-":
-                            return e2 - i2;
-                        case "*":
-                            return e2 * i2;
-                        case "/":
-                            return e2 / i2;
-                        case "%":
-                            return e2 % i2;
-                        case "<":
-                            return e2 < i2;
-                        case ">":
-                            return e2 > i2;
-                        case "<=":
-                            return e2 <= i2;
-                        case ">=":
-                            return e2 >= i2;
-                        case "^":
-                            return e2 ^ i2;
-                        case "&":
-                            return e2 & i2;
-                        case "|":
-                            return e2 | i2;
-                        case "<<":
-                            return e2 << i2;
-                        case ">>":
-                            return e2 >> i2;
-                        case ">>>":
-                            return e2 >>> i2;
-                    }
-                    throw new Error("Internal error [" + this.operation + "] not handled");
-                };
-                _proto15.accept = function accept(t2) {
-                    return t2.visitBinary(this);
-                };
-                return Binary2;
-            }(ast_Expression);
-            var PrefixNot = function(_ast_Expression11) {
-                _inheritsLoose(PrefixNot2, _ast_Expression11);
-                function PrefixNot2(t2, e2) {
-                    var _this11;
-                    _this11 = _ast_Expression11.call(this) || this;
-                    _this11.operation = t2;
-                    _this11.expression = e2;
-                    return _this11;
-                }
-                var _proto16 = PrefixNot2.prototype;
-                _proto16.evaluate = function evaluate3(t2) {
-                    return !this.expression.evaluate(t2);
-                };
-                _proto16.accept = function accept(t2) {
-                    return t2.visitPrefix(this);
-                };
-                return PrefixNot2;
-            }(ast_Expression);
-            var LiteralPrimitive = function(_ast_Expression12) {
-                _inheritsLoose(LiteralPrimitive2, _ast_Expression12);
-                function LiteralPrimitive2(t2) {
-                    var _this12;
-                    _this12 = _ast_Expression12.call(this) || this;
-                    _this12.value = t2;
-                    return _this12;
-                }
-                var _proto17 = LiteralPrimitive2.prototype;
-                _proto17.evaluate = function evaluate3(t2) {
-                    return this.value;
-                };
-                _proto17.accept = function accept(t2) {
-                    return t2.visitLiteralPrimitive(this);
-                };
-                return LiteralPrimitive2;
-            }(ast_Expression);
-            var LiteralString = function(_ast_Expression13) {
-                _inheritsLoose(LiteralString2, _ast_Expression13);
-                function LiteralString2(t2) {
-                    var _this13;
-                    _this13 = _ast_Expression13.call(this) || this;
-                    _this13.value = t2;
-                    return _this13;
-                }
-                var _proto18 = LiteralString2.prototype;
-                _proto18.evaluate = function evaluate3(t2) {
-                    return this.value;
-                };
-                _proto18.accept = function accept(t2) {
-                    return t2.visitLiteralString(this);
-                };
-                return LiteralString2;
-            }(ast_Expression);
-            var LiteralArray = function(_ast_Expression14) {
-                _inheritsLoose(LiteralArray2, _ast_Expression14);
-                function LiteralArray2(t2) {
-                    var _this14;
-                    _this14 = _ast_Expression14.call(this) || this;
-                    _this14.elements = t2;
-                    return _this14;
-                }
-                var _proto19 = LiteralArray2.prototype;
-                _proto19.evaluate = function evaluate3(t2) {
-                    var e2 = this.elements;
-                    var i2 = [];
-                    for(var _n2 = 0, _s = e2.length; _n2 < _s; ++_n2){
-                        i2[_n2] = e2[_n2].evaluate(t2);
-                    }
-                    return i2;
-                };
-                _proto19.accept = function accept(t2) {
-                    return t2.visitLiteralArray(this);
-                };
-                return LiteralArray2;
-            }(ast_Expression);
-            var LiteralObject = function(_ast_Expression15) {
-                _inheritsLoose(LiteralObject2, _ast_Expression15);
-                function LiteralObject2(t2, e2) {
-                    var _this15;
-                    _this15 = _ast_Expression15.call(this) || this;
-                    _this15.keys = t2;
-                    _this15.values = e2;
-                    return _this15;
-                }
-                var _proto20 = LiteralObject2.prototype;
-                _proto20.evaluate = function evaluate3(t2) {
-                    var e2 = {};
-                    var i2 = this.keys;
-                    var n2 = this.values;
-                    for(var _s2 = 0, _r = i2.length; _s2 < _r; ++_s2){
-                        e2[i2[_s2]] = n2[_s2].evaluate(t2);
-                    }
-                    return e2;
-                };
-                _proto20.accept = function accept(t2) {
-                    return t2.visitLiteralObject(this);
-                };
-                return LiteralObject2;
-            }(ast_Expression);
-            var StringInterpolation = function(_ast_Expression16) {
-                _inheritsLoose(StringInterpolation2, _ast_Expression16);
-                function StringInterpolation2(t2) {
-                    var _this16;
-                    _this16 = _ast_Expression16.call(this) || this;
-                    _this16.parts = t2;
-                    return _this16;
-                }
-                var _proto21 = StringInterpolation2.prototype;
-                _proto21.evaluate = function evaluate3(t2) {
-                    var e2 = this.parts;
-                    var i2 = "";
-                    for(var _n3 = 0, _s3 = e2.length; _n3 < _s3; ++_n3){
-                        i2 += e2[_n3].evaluate(t2);
-                    }
-                    return i2;
-                };
-                _proto21.accept = function accept(t2) {
-                    return t2.visitStringInterpolation(this);
-                };
-                return StringInterpolation2;
-            }(ast_Expression);
-            function evalList(t2, e2) {
-                var i2 = e2.length;
-                var n2 = [];
-                for(var _s4 = 0; _s4 < i2; _s4++){
-                    n2[_s4] = e2[_s4].evaluate(t2);
-                }
-                return n2;
-            }
-            function autoConvertAdd(t2, e2) {
-                if (t2 !== null && e2 !== null) {
-                    if (typeof t2 === "string" && typeof e2 !== "string") {
-                        return t2 + e2.toString();
-                    }
-                    if (typeof t2 !== "string" && typeof e2 === "string") {
-                        return t2.toString() + e2;
-                    }
-                    return t2 + e2;
-                }
-                if (t2 !== null) {
-                    return t2;
-                }
-                if (e2 !== null) {
-                    return e2;
-                }
-                return 0;
-            }
-            function getFunction(t2, e2, i2) {
-                var n2 = t2 === null || t2 === void 0 ? null : t2[e2];
-                if (typeof n2 === "function") {
-                    return n2;
-                }
-                if (!i2 && (n2 === null || n2 === void 0)) {
-                    return null;
-                }
-                throw new Error(e2 + " is not a function");
-            }
-            function getKeyed(t2, e2) {
-                if (Array.isArray(t2)) {
-                    return t2[parseInt(e2, 10)];
-                } else if (t2) {
-                    return t2[e2];
-                } else if (t2 === null || t2 === void 0) {
-                    return void 0;
-                }
-                return t2[e2];
-            }
-            function setKeyed(t2, e2, i2) {
-                if (Array.isArray(t2)) {
-                    var _n4 = parseInt(e2, 10);
-                    if (t2.length <= _n4) {
-                        t2.length = _n4 + 1;
-                    }
-                    t2[_n4] = i2;
-                } else {
-                    t2[e2] = i2;
-                }
-                return i2;
-            }
-            var rt = new Token(-1, null);
-            var parser_Parser = function() {
-                function parser_Parser2() {
-                    this.cache = {};
-                    this.lexer = new Lexer();
-                }
-                var _proto22 = parser_Parser2.prototype;
-                _proto22.parse = function parse(t2, e2) {
-                    if (e2 === void 0) {
-                        e2 = {};
-                    }
-                    t2 = t2 || "";
-                    var i2 = t2 + ":" + JSON.stringify(e2);
-                    if (!this.cache[i2]) {
-                        var _n5 = new parser_ParserImplementation(this.lexer, t2, e2);
-                        this.cache[i2] = _n5.parseExpression();
-                        var _s5 = "";
-                        for(var _t7 = 0, _e4 = _n5.tokens.length; _t7 < _e4; ++_t7){
-                            _s5 += _n5.tokens[_t7].text;
-                        }
-                        this.cache[i2].toString = function() {
-                            return _s5;
-                        };
-                    }
-                    return this.cache[i2];
-                };
-                return parser_Parser2;
-            }();
-            var parser_ParserImplementation = function() {
-                function parser_ParserImplementation2(t2, e2, i2) {
-                    if (i2 === void 0) {
-                        i2 = {};
-                    }
-                    this.rejectAssignment = i2.rejectAssignment || false;
-                    this.stringInterpolationMode = i2.stringInterpolationMode || false;
-                    this.index = 0;
-                    this.input = e2;
-                    this.tokens = t2.lex(e2, {
-                        stringInterpolationMode: this.stringInterpolationMode
-                    });
-                }
-                var _proto23 = parser_ParserImplementation2.prototype;
-                _proto23.parseExpression = function parseExpression() {
-                    if (this.index === 0 && this.stringInterpolationMode) {
-                        return this.parseStringInterpolation(true);
-                    }
-                    var t2 = this.peek.index;
-                    var e2 = this.parseConditional();
-                    while(this.peek.text === "="){
-                        if (this.rejectAssignment) {
-                            this.error("assignment is not allowed");
-                        }
-                        if (!e2.isAssignable) {
-                            var _e5 = this.index < this.tokens.length ? this.peek.index : this.input.length;
-                            var _i5 = this.input.substring(t2, _e5);
-                            this.error("Expression " + _i5 + " is not assignable");
-                        }
-                        this.expect("=");
-                        e2 = new Assign(e2, this.parseConditional());
-                    }
-                    return e2;
-                };
-                _proto23.parseConditional = function parseConditional() {
-                    var t2 = this.peek.index;
-                    var e2 = this.parseLogicalOr();
-                    if (this.optional("?")) {
-                        var _i6 = this.parseExpression();
-                        if (!this.optional(":")) {
-                            var _e6 = this.index < this.tokens.length ? this.peek.index : this.input.length;
-                            var _i7 = this.input.substring(t2, _e6);
-                            this.error("Conditional expression " + _i7 + " requires all 3 expressions");
-                        }
-                        var _n6 = this.parseExpression();
-                        e2 = new Conditional(e2, _i6, _n6);
-                    }
-                    return e2;
-                };
-                _proto23.parseLogicalOr = function parseLogicalOr() {
-                    var t2 = this.parseLogicalAnd();
-                    while(this.optional("||")){
-                        t2 = new Binary("||", t2, this.parseLogicalAnd());
-                    }
-                    return t2;
-                };
-                _proto23.parseLogicalAnd = function parseLogicalAnd() {
-                    var t2 = this.parseEquality();
-                    while(this.optional("&&")){
-                        t2 = new Binary("&&", t2, this.parseEquality());
-                    }
-                    return t2;
-                };
-                _proto23.parseEquality = function parseEquality() {
-                    var t2 = this.parseRelational();
-                    while(true){
-                        if (this.optional("==")) {
-                            t2 = new Binary("==", t2, this.parseRelational());
-                        } else if (this.optional("!=")) {
-                            t2 = new Binary("!=", t2, this.parseRelational());
-                        } else if (this.optional("===")) {
-                            t2 = new Binary("===", t2, this.parseRelational());
-                        } else if (this.optional("!==")) {
-                            t2 = new Binary("!==", t2, this.parseRelational());
-                        } else {
-                            return t2;
-                        }
-                    }
-                };
-                _proto23.parseRelational = function parseRelational() {
-                    var t2 = this.parseAdditive();
-                    while(true){
-                        if (this.optional("<")) {
-                            t2 = new Binary("<", t2, this.parseAdditive());
-                        } else if (this.optional(">")) {
-                            t2 = new Binary(">", t2, this.parseAdditive());
-                        } else if (this.optional("<=")) {
-                            t2 = new Binary("<=", t2, this.parseAdditive());
-                        } else if (this.optional(">=")) {
-                            t2 = new Binary(">=", t2, this.parseAdditive());
-                        } else {
-                            return t2;
-                        }
-                    }
-                };
-                _proto23.parseAdditive = function parseAdditive() {
-                    var t2 = this.parseMultiplicative();
-                    while(true){
-                        if (this.optional("+")) {
-                            t2 = new Binary("+", t2, this.parseMultiplicative());
-                        } else if (this.optional("-")) {
-                            t2 = new Binary("-", t2, this.parseMultiplicative());
-                        } else {
-                            return t2;
-                        }
-                    }
-                };
-                _proto23.parseMultiplicative = function parseMultiplicative() {
-                    var t2 = this.parsePrefix();
-                    while(true){
-                        if (this.optional("*")) {
-                            t2 = new Binary("*", t2, this.parsePrefix());
-                        } else if (this.optional("%")) {
-                            t2 = new Binary("%", t2, this.parsePrefix());
-                        } else if (this.optional("/")) {
-                            t2 = new Binary("/", t2, this.parsePrefix());
-                        } else {
-                            return t2;
-                        }
-                    }
-                };
-                _proto23.parsePrefix = function parsePrefix() {
-                    if (this.optional("+")) {
-                        return this.parsePrefix();
-                    } else if (this.optional("-")) {
-                        return new Binary("-", new LiteralPrimitive(0), this.parsePrefix());
-                    } else if (this.optional("!")) {
-                        return new PrefixNot("!", this.parsePrefix());
-                    }
-                    return this.parseAccessOrCallMember();
-                };
-                _proto23.parseAccessOrCallMember = function parseAccessOrCallMember() {
-                    var t2 = this.parsePrimary();
-                    while(true){
-                        if (this.optional(".")) {
-                            var _e7 = this.peek.text;
-                            this.advance();
-                            if (this.optional("(")) {
-                                var _i8 = this.parseExpressionList(")");
-                                this.expect(")");
-                                if (t2 instanceof AccessThis) {
-                                    t2 = new ast_CallScope(_e7, _i8, t2.ancestor);
-                                } else {
-                                    t2 = new CallMember(t2, _e7, _i8);
-                                }
-                            } else {
-                                if (t2 instanceof AccessThis) {
-                                    t2 = new ast_AccessScope(_e7, t2.ancestor);
-                                } else {
-                                    t2 = new AccessMember(t2, _e7);
-                                }
-                            }
-                        } else if (this.optional("[")) {
-                            var _e8 = this.parseExpression();
-                            this.expect("]");
-                            t2 = new AccessKeyed(t2, _e8);
-                        } else if (this.optional("(")) {
-                            var _e9 = this.parseExpressionList(")");
-                            this.expect(")");
-                            t2 = new CallFunction(t2, _e9);
-                        } else {
-                            return t2;
-                        }
-                    }
-                };
-                _proto23.parseStringInterpolation = function parseStringInterpolation(t2) {
-                    var e2 = [];
-                    while(t2 ? this.peek !== rt : this.peek !== rt && this.peek.text !== "`"){
-                        if (this.optional("${")) {
-                            var _t8 = this.parseExpression();
-                            this.expect("}");
-                            e2.push(_t8);
-                        } else if (typeof this.peek.value === "string") {
-                            var _t9 = this.peek.value;
-                            this.advance();
-                            e2.push(new LiteralString(_t9));
-                        }
-                    }
-                    return new StringInterpolation(e2);
-                };
-                _proto23.parsePrimary = function parsePrimary() {
-                    if (this.optional("(")) {
-                        var _t10 = this.parseExpression();
-                        this.expect(")");
-                        return _t10;
-                    } else if (this.optional("`")) {
-                        var _t11 = this.parseStringInterpolation();
-                        this.expect("`");
-                        return _t11;
-                    } else if (this.optional("null")) {
-                        return new LiteralPrimitive(null);
-                    } else if (this.optional("undefined")) {
-                        return new LiteralPrimitive(void 0);
-                    } else if (this.optional("true")) {
-                        return new LiteralPrimitive(true);
-                    } else if (this.optional("false")) {
-                        return new LiteralPrimitive(false);
-                    } else if (this.optional("[")) {
-                        var _t12 = this.parseExpressionList("]");
-                        this.expect("]");
-                        return new LiteralArray(_t12);
-                    } else if (this.peek.text === "{") {
-                        return this.parseObject();
-                    } else if (this.peek.key !== null && this.peek.key !== void 0) {
-                        return this.parseAccessOrCallScope();
-                    } else if (this.peek.value !== null && this.peek.value !== void 0) {
-                        var _t13 = this.peek.value;
-                        this.advance();
-                        return _t13 instanceof String || typeof _t13 === "string" ? new LiteralString(_t13) : new LiteralPrimitive(_t13);
-                    } else if (this.index >= this.tokens.length) {
-                        throw new Error("Unexpected end of expression: " + this.input);
-                    } else {
-                        this.error("Unexpected token " + this.peek.text);
-                    }
-                };
-                _proto23.parseAccessOrCallScope = function parseAccessOrCallScope() {
-                    var t2 = this.peek.key;
-                    this.advance();
-                    if (t2 === "$this") {
-                        return new AccessThis(0);
-                    }
-                    var e2 = 0;
-                    while(t2 === "$parent"){
-                        e2++;
-                        if (this.optional(".")) {
-                            t2 = this.peek.key;
-                            this.advance();
-                        } else if (this.peek === rt || this.peek.text === "(" || this.peek.text === ")" || this.peek.text === "[" || this.peek.text === "}" || this.peek.text === ",") {
-                            return new AccessThis(e2);
-                        } else {
-                            this.error("Unexpected token " + this.peek.text);
-                        }
-                    }
-                    if (this.optional("(")) {
-                        var _i9 = this.parseExpressionList(")");
-                        this.expect(")");
-                        return new ast_CallScope(t2, _i9, e2);
-                    }
-                    return new ast_AccessScope(t2, e2);
-                };
-                _proto23.parseObject = function parseObject() {
-                    var t2 = [];
-                    var e2 = [];
-                    this.expect("{");
-                    if (this.peek.text !== "}") {
-                        do {
-                            var _i10 = this.peek;
-                            var _n7 = _i10.value;
-                            t2.push(typeof _n7 === "string" ? _n7 : _i10.text);
-                            this.advance();
-                            if (_i10.key && (this.peek.text === "," || this.peek.text === "}")) {
-                                --this.index;
-                                e2.push(this.parseAccessOrCallScope());
-                            } else {
-                                this.expect(":");
-                                e2.push(this.parseExpression());
-                            }
-                        }while (this.optional(","))
-                    }
-                    this.expect("}");
-                    return new LiteralObject(t2, e2);
-                };
-                _proto23.parseExpressionList = function parseExpressionList(t2) {
-                    var e2 = [];
-                    if (this.peek.text !== t2) {
-                        do {
-                            e2.push(this.parseExpression());
-                        }while (this.optional(","))
-                    }
-                    return e2;
-                };
-                _proto23.optional = function optional(t2) {
-                    if (this.peek.text === t2) {
-                        this.advance();
-                        return true;
-                    }
-                    return false;
-                };
-                _proto23.expect = function expect(t2) {
-                    if (this.peek.text === t2) {
-                        this.advance();
-                    } else {
-                        this.error("Missing expected " + t2);
-                    }
-                };
-                _proto23.advance = function advance() {
-                    this.index++;
-                };
-                _proto23.error = function error(t2) {
-                    var e2 = this.index < this.tokens.length ? "at column " + (this.tokens[this.index].index + 1) + " in" : "at the end of the expression";
-                    throw new Error("Parser Error: " + t2 + " " + e2 + " [" + this.input + "]");
-                };
-                _createClass(parser_ParserImplementation2, [
-                    {
-                        key: "peek",
-                        get: function get() {
-                            return this.index < this.tokens.length ? this.tokens[this.index] : rt;
-                        }
-                    }
-                ]);
-                return parser_ParserImplementation2;
-            }();
-            i1.d(e, "Parser", function() {
-                return parser_Parser;
-            });
-            i1.d(e, "createOverrideContext", function() {
-                return createOverrideContext2;
-            });
-            i1.d(e, "createSimpleScope", function() {
-                return createSimpleScope2;
-            });
-            i1.d(e, "evaluate", function() {
-                return evaluate2;
-            });
-            i1.d(e, "evaluateStringInterpolation", function() {
-                return evaluateStringInterpolation2;
-            });
-            var at = new parser_Parser();
-            function evaluate2(t2, e2, i2, n2) {
-                var s2 = at.parse(t2, n2);
-                return s2.evaluateWith(e2, i2);
-            }
-            function evaluateStringInterpolation2(t2, e2, i2, n2) {
-                if (n2 === void 0) {
-                    n2 = {};
-                }
-                return evaluate2(t2, e2, i2, _extends(_extends({}, n2), {}, {
-                    stringInterpolationMode: true
-                }));
-            }
-        }
-    }, function(t) {
-        !function() {
-            t.r = function(t2) {
-                if (typeof Symbol !== "undefined" && Symbol.toStringTag) {
-                    Object.defineProperty(t2, Symbol.toStringTag, {
-                        value: "Module"
-                    });
-                }
-                Object.defineProperty(t2, "__esModule", {
-                    value: true
-                });
-            };
-        }();
-        !function() {
-            var e = Object.prototype.hasOwnProperty;
-            t.d = function(t2, i1, n) {
-                if (!e.call(t2, i1)) {
-                    Object.defineProperty(t2, i1, {
-                        enumerable: true,
-                        get: n
-                    });
-                }
-            };
-        }();
-    });
-});
-getDefaultExportFromCjs(dist);
-dist.Parser;
-dist.createOverrideContext;
-dist.createSimpleScope;
-var evaluate = dist.evaluate;
-dist.evaluateStringInterpolation;
-const applySelect = (val, prop, filter)=>{
-    if (filter !== undefined && Array.isArray(val)) {
-        if (filter === '') return val;
-        const len = val.length;
-        if (len === 0) return [];
-        const context = {
-            last: ()=>len - 1
-        };
-        const indexVal = evaluate(filter, context);
-        if (typeof indexVal === 'number') return val[indexVal];
-        return val.filter((item)=>evaluate(filter, item, context));
-    } else if (prop !== undefined) {
-        if (prop === '') return val;
-        return Array.isArray(val) ? val.flatMap((item)=>item[prop]) : val[prop];
-    } else {
-        return undefined;
-    }
-};
-const jsonPath = (obj, path)=>{
-    let pos = 0;
-    let result1 = obj;
-    let mode = 'prop';
-    path = path.startsWith('/') ? path.substring(1) : path;
-    do {
-        let prop = undefined;
-        let filter = undefined;
-        switch(mode){
-            case 'prop':
-            case 'postFilter':
-                {
-                    const [matched, newPos] = scanFirst(path, pos, [
-                        '/',
-                        '.',
-                        '['
-                    ]);
-                    prop = path.slice(pos, newPos < 0 ? undefined : newPos - 1);
-                    if (mode === 'postFilter' && Array.isArray(result1)) result1 = result1.flat(1);
-                    mode = newPos < 0 ? 'done' : path[newPos - 1] === '[' ? 'filter' : 'prop';
-                    pos = newPos;
-                    break;
-                }
-            case 'filter':
-                {
-                    const newPos = path.indexOf(']', pos);
-                    filter = path.slice(pos, newPos);
-                    mode = 'postFilter';
-                    pos = newPos + 1;
-                    break;
-                }
-        }
-        result1 = applySelect(result1, prop, filter);
-    }while (pos >= 0 && pos <= path.length)
-    return result1;
-};
 class MessageBody {
     data;
     mimeType;
@@ -15874,7 +15869,7 @@ class Message {
                 if (propertyPath === '$this') {
                     postData = data;
                 } else {
-                    postData = getProp(data, propertyPath);
+                    postData = jsonPath(data, propertyPath);
                 }
                 url = parts.slice(2).join(' ');
             } else {
@@ -35731,8 +35726,8 @@ class ElasticQueryAdapter {
             }
         }
         if (paged) {
-            queryObj.size = take;
-            queryObj.from = skip;
+            if (!queryObj.size) queryObj.size = take;
+            if (!queryObj.from) queryObj.from = skip;
         }
         const msg = new Message(`${index}/${operation}`, this.context.tenant, "POST", null);
         msg.startSpan(this.context.traceparent, this.context.tracestate);
@@ -47754,13 +47749,13 @@ function resolvePathPatternWithUrl1(pathPattern, url, obj, name, decode) {
         return resolvePathPattern1(pathPattern, url.servicePath, url.basePathElements.join('/'), url.subPathElements.join('/'), url.toString(), url.query, name, url.isDirectory, decode);
     }
 }
-function multiplyVariableSegments1(currentSegments, newSegment, sourceObject) {
+function multiplyVariableSegments(currentSegments, newSegment, sourceObject) {
     return currentSegments.flatMap((seg)=>{
         const valAtSeg = seg ? getProp1(sourceObject, seg) : sourceObject;
         return Object.keys(valAtSeg).map((key)=>`${seg}[${key}]${newSegment}`);
     });
 }
-function resolvePathPatternWithObjectInner1(pathPattern, regex, partialResolutions, sourceObject, sourcePath) {
+function resolvePathPatternWithObjectInner(pathPattern, regex, partialResolutions, sourceObject, sourcePath) {
     const match = regex.exec(pathPattern);
     if (match) {
         const path = match[1];
@@ -47768,7 +47763,7 @@ function resolvePathPatternWithObjectInner1(pathPattern, regex, partialResolutio
         const isMultiplied = pathConstantSegments.length > 1;
         const enumeratedPaths = pathConstantSegments.reduce((result1, seg)=>result1.length === 0 ? [
                 seg
-            ] : multiplyVariableSegments1(result1, seg, sourceObject), []);
+            ] : multiplyVariableSegments(result1, seg, sourceObject), []);
         const substitutions = enumeratedPaths.map((path)=>{
             const val = path ? getProp1(sourceObject, path) : sourceObject;
             if (val === undefined || val === null) {
@@ -47777,7 +47772,7 @@ function resolvePathPatternWithObjectInner1(pathPattern, regex, partialResolutio
             return val.toString();
         });
         const newPartialResolutions = partialResolutions.flatMap((pr)=>substitutions.map((subs)=>pr.replace(new RegExp(regex.source), subs)));
-        const [prs, wasMultiplied] = resolvePathPatternWithObjectInner1(pathPattern, regex, newPartialResolutions, sourceObject, sourcePath);
+        const [prs, wasMultiplied] = resolvePathPatternWithObjectInner(pathPattern, regex, newPartialResolutions, sourceObject, sourcePath);
         return [
             prs,
             wasMultiplied || isMultiplied
@@ -47792,7 +47787,7 @@ function resolvePathPatternWithObjectInner1(pathPattern, regex, partialResolutio
 function resolvePathPatternWithObject1(pathPattern, sourceObject, sourcePath, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode) {
     const regex = /\${([\w\[\].]*)}/g;
     const partResolvedPattern = resolvePathPattern1(pathPattern, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode);
-    const [resolved, wasMultiplied] = resolvePathPatternWithObjectInner1(partResolvedPattern, regex, [
+    const [resolved, wasMultiplied] = resolvePathPatternWithObjectInner(partResolvedPattern, regex, [
         partResolvedPattern
     ], sourceObject, sourcePath);
     return wasMultiplied ? resolved : resolved[0];

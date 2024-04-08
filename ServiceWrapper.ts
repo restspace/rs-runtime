@@ -175,7 +175,7 @@ export class ServiceWrapper {
 
     /** Return a ServiceFunction for a call to a service coming from an inbound request to the runtime server */
     external: (source: Source) => ServiceFunction = (source: Source) => async (msg: Message, context: ServiceContext<IAdapter>, serviceConfig: IServiceConfig) => {
-        const origin = msg.getHeader('origin');
+        const origin = msg.getHeader('origin') || '';
         msg.url.basePathElements = serviceConfig.basePath.split('/').filter((s: string) => s !== '');
 
         const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);

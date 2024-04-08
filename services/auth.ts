@@ -110,7 +110,7 @@ service.setUser(async (msg, _context, { sessionTimeoutMins }) => {
     // OPTIONS requests should never be authenticated so all errors don't become CORS errors
     let authResult: IJwtPayload | string = '';
     if (msg.method !== "OPTIONS") {
-        authResult = await config.authoriser.verifyJwtHeader(msg.getHeader('authorization'), authCookie, msg.url.path);
+        authResult = await config.authoriser.verifyJwtHeader(msg.getHeader('authorization')!, authCookie, msg.url.path);
     }
     authResult = authResult || 'anon';
 
