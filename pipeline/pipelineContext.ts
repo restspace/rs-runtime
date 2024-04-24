@@ -2,6 +2,7 @@ import { Url } from "rs-core/Url.ts";
 import { MessageFunction } from "rs-core/Service.ts";
 import { MessageMethod } from "rs-core/Message.ts";
 import { Limiter } from "rs-core/utility/limitConcurrency.ts";
+import { VariableScope } from "rs-core/VariableScope.ts";
 
 export interface PipelineContext {
     handler: MessageFunction;
@@ -16,7 +17,7 @@ export interface PipelineContext {
     path: number[];
     callerLoggerArgs?: string[];
     concurrencyLimiter: Limiter;
-    variables: Record<string, unknown>;
+    variables: VariableScope;
 }
 
 export const copyPipelineContext = (context: PipelineContext) => {

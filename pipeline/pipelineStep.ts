@@ -94,7 +94,7 @@ export class PipelineStep {
                 }
                 if (this.rename) {
                     if (this.rename.startsWith('$') && this.rename !== '$this' && outMsg.data) {
-                        context.variables[this.rename] = await outMsg.data.asJson();
+                        context.variables.setForScope(msg.name, this.rename, await outMsg.data.asJson());
                     } else {
                         let prename = ''
                         if (this.rename.startsWith('.')) {

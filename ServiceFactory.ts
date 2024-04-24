@@ -184,7 +184,7 @@ export class ServiceFactory {
                 throw new Error(`failed to validate adapter config for service ${serviceConfig.name}: ${getErrors(validator)}`);
             }
 
-            adapter = await config.modules.getAdapter(adapterSource as string, serviceContext, adapterConfig);
+            adapter = await config.modules.getAdapter(adapterSource as string, serviceContext, adapterConfig, this.primaryDomain);
             serviceContext = { ...serviceContext, manifest, adapter } as ServiceContext<IAdapter>;
         } else {
             serviceContext = { ...serviceContext, manifest };

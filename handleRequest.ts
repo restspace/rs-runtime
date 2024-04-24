@@ -99,10 +99,10 @@ export const handleIncomingRequest = async (msg: Message) => {
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg.callDown());
         msgOut.depth = msg.depth;
-        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        config.logger.info(`${" ".repeat(msg.depth - 1)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         msgOut.callUp();
         if (!msgOut.ok) {
-            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            config.logger.info(`${" ".repeat(msg.depth - 1)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
@@ -145,7 +145,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             const messageFunction = await tenant!.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
-            config.logger.info(`${" ".repeat(msgOut.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            config.logger.info(`${" ".repeat(msgOut.depth - 1)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());

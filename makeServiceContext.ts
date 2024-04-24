@@ -22,7 +22,8 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 		prePost,
 		logger: config.logger,
 		getAdapter: <T extends IAdapter>(url: string, adapterConfig: unknown) => {
-			return config.modules.getAdapter<T>(url, context, adapterConfig)
+			const primaryDomain = config.tenants[tenantName].primaryDomain;
+			return config.modules.getAdapter<T>(url, context, adapterConfig, primaryDomain);
 		},
 		state
 	} as ServiceContext<IAdapter>;

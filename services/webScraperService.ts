@@ -16,10 +16,56 @@ import {
   import { Url } from "rs-core/Url.ts";
   import { BaseStateClass } from "rs-core/ServiceContext.ts";
   import { Delayer, ensureDelay } from "rs-core/utility/ensureDelay.ts";
+  import { M } from "https://cdn.jsdelivr.net/gh/intob/tweetnacl-deno@1.1.0/src/core.ts";
+  import { setProp } from "rs-core/utility/utility.ts";
+  import { getProp } from "rs-core/utility/utility.ts";
 
 interface IWebScraperServiceConfig extends IServiceConfig {
     minDelayMs?: number;
     randomOffsetMs?: number;
+}
+
+// looks like { "items": { "index": 3, "subitems": { "index": 9 } } }
+type LoopPosition = Record<string, any> & { index: number };
+
+const positionAtPath = (loopPosition: LoopPosition, path: string[]) => {
+    let current = loopPosition;
+    for (const p of path) {
+        if (!(p in current)) return undefined;
+        current = current[p];
+    }
+    return current;
+}
+
+const incrementLoopPosition = (loopPosition: LoopPosition, path: string[]) => {
+    let current = loopPosition;
+    for (const p of path) {
+        if (!(p in current)) current[p] = { index: -1 };
+        current = current[p];
+    }
+    current.index++;
+    Object.keys(current).filter(k => k !== 'index').forEach(k => delete current[k]);
+}
+
+const setIndexAtLoopPosition = (loopPosition: LoopPosition, path: string[], index?: number) => {
+    let current = loopPosition;
+    for (const p of path) {
+        if (!(p in current)) current[p] = { index: 0 };
+        current = current[p];
+    }
+    if (current.index !== index) {
+        current.index = index ? index : -1;
+        Object.keys(current).filter(k => k !== 'index').forEach(k => delete current[k]);
+    }
+}
+
+interface IFetchContext {
+    maxFetches?: number;
+    delayer: Delayer;
+    serviceContext: ServiceContext<IProxyAdapter>;
+    loopPath: string[] | undefined;
+    outputWriter?: WritableStreamDefaultWriter<any>;
+    startFrom?: LoopPosition;
 }
 
 class WebScraperState extends BaseStateClass {
@@ -64,9 +110,47 @@ const parseSpec = (spec: string): [spec: string, attribute: string] => {
     return [spec, attribute];
 }
 
-const scrapeFromSpec = async (spec: any, reqMsg: Message, subpath: string[], context: ServiceContext<IProxyAdapter>, delayer: Delayer) => {
-    const sendMsg = await context.adapter.buildMessage(reqMsg);
-    const pageMsg = await delayer(() => context.makeRequest(sendMsg));
+interface IGetters {
+    itemGetter: (spec: string) => string | null;
+    arrayGetter: (spec: string) => (string | null)[];
+};
+
+const makeGetters = (page: string, mimeType: string): IGetters => {
+    let itemGetter: (spec: string) => string | null;
+    let arrayGetter: (spec: string) => (string | null)[];
+
+    switch (upTo(mimeType, ';')) {
+        case 'text/html': {
+            const doc = new DOMParser().parseFromString(page, "text/html");
+            if (doc === null) throw new Error(`HMTL parse failed`)
+            itemGetter = spec => {
+                let attribute: string;
+                [spec, attribute] = parseSpec(spec);
+                return nodeAttribute(doc!.querySelector(spec), attribute)?.trim() || null;
+            }
+            arrayGetter = spec => {
+                let attribute: string;
+                [spec, attribute] = parseSpec(spec);
+                return Array.from(doc!.querySelectorAll(spec)).map(
+                    el => nodeAttribute(el, attribute)?.trim() || null
+                );
+            }
+            return { itemGetter, arrayGetter };
+        }
+        case 'application/json': {
+            const obj = JSON.parse(page);
+            itemGetter = spec => jsonPath(obj, spec);
+            arrayGetter = spec => jsonPath(obj, spec);
+            return { itemGetter, arrayGetter };
+        }
+        default:
+            throw new Error(`Unsupported mime type ${mimeType}`);
+    }
+}
+
+const scrapeFromSpec = async (spec: any, path: string[], parentResult: Record<string, unknown>, loopPosition: LoopPosition, reqMsg: Message, fetchContext: IFetchContext) => {
+    const sendMsg = await fetchContext.serviceContext.adapter.buildMessage(reqMsg);
+    const pageMsg = await fetchContext.delayer(() => fetchContext.serviceContext.makeRequest(sendMsg));
     if (!pageMsg.ok) return {
         $status: pageMsg.status,
         $message: (await pageMsg?.data?.asString()) || ''
@@ -74,51 +158,51 @@ const scrapeFromSpec = async (spec: any, reqMsg: Message, subpath: string[], con
     if (!pageMsg.data) return { $status: 400, $message: `No data ${reqMsg.url}` };
     const page = await pageMsg.data.asString();
     if (!page) return { $status: 400, $message: `No page ${reqMsg.url}` };
-    return extractFromPage(spec, page, upTo(pageMsg.data.mimeType, ';'), reqMsg, context, subpath, delayer);
+    return extractFromPage(spec, path, parentResult, loopPosition, page, upTo(pageMsg.data.mimeType, ';'), reqMsg, fetchContext);
 }
 
-const extractFromPage = async (spec: any, page: string, mimeType: string, reqMsg: Message, context: ServiceContext<IProxyAdapter>, subpath: string[], delayer: Delayer) => {
-    let doc = null as HTMLDocument | null;
-    let obj = null as any;
-    let itemGetter = (spec: string) => "" as string | null;
-    let arrayGetter = (spec: string) => ["" as string | null];
+const extractFromPage = async (spec: any, path: string[], parentResult: Record<string, unknown>, loopPosition: LoopPosition, page: string, mimeType: string, reqMsg: Message, fetchContext: IFetchContext) => {
+    let getters: IGetters;
 
     try {
-        switch (upTo(mimeType, ';')) {
-            case 'text/html':
-                doc = new DOMParser().parseFromString(page, "text/html");
-                if (doc === null) return { $status: 400, $message: `HMTL parse failed ${location}` };
-                itemGetter = spec => {
-                    let attribute: string;
-                    [spec, attribute] = parseSpec(spec);
-                    return nodeAttribute(doc!.querySelector(spec), attribute)?.trim() || null;
-                }
-                arrayGetter = spec => {
-                    let attribute: string;
-                    [spec, attribute] = parseSpec(spec);
-                    return Array.from(doc!.querySelectorAll(spec)).map(
-                        el => nodeAttribute(el, attribute)?.trim() || null
-                    );
-                }
-                break;
-            case 'application/json':
-                obj = JSON.parse(page);
-                itemGetter = spec => jsonPath(obj, spec);
-                arrayGetter = spec => jsonPath(obj, spec);
-                break;
-            default:
-                return { $status: 400, $message: `Unsupported mime type ${mimeType}` };
-        }
+        getters = makeGetters(page, mimeType);
     } catch (e) {
-        return { $status: 400, $message: `Error parsing ${location}: ${e}` };
+        return { $status: 400, $message: `Error parsing ${path.join('.')}: ${e}` };
     }
 
+    const { itemGetter, arrayGetter } = getters;
+
     const returnVal: any = {};
-    for (const key in spec) {
+    const startFrom = fetchContext.startFrom || {} as LoopPosition;
+    const startFromAtPath = positionAtPath(startFrom, path);
+    // if we're haven't yet reached the startFrom path
+    let keyMatched = !!(startFromAtPath) || Object.keys(startFrom).length === 0;
+    let keys = Object.keys(spec);
+
+    const nextLoopKey = fetchContext.loopPath?.[path.length];
+    // push processing of properties on the loop path to the end so we have
+    // the other properties fully processed
+    if (nextLoopKey && path.every((p, i) => p === fetchContext.loopPath![i])) {
+        if (keys.includes(nextLoopKey)) {
+            keys = keys.filter(k => k !== nextLoopKey).concat([ nextLoopKey ]);
+        }
+    }
+
+    for (const key of keys) {
         if (key.startsWith('$')) continue;
 
         let value = spec[key];
+        const newPath = [...path, key];
         const returnsArray = Array.isArray(value);
+
+        // return empty arrays until startFrom key is found
+        if (startFromAtPath && key in startFromAtPath) keyMatched = true;
+        if (!keyMatched && returnsArray) {
+            returnVal[key] = []
+            continue;
+        }
+        const isLoopKey = fetchContext.loopPath && key === nextLoopKey && path.length === fetchContext.loopPath!.length - 1;
+        const startFromAtKey = startFromAtPath?.[key];
 
         if (returnsArray) {
             if (value.length !== 1) {
@@ -129,7 +213,11 @@ const extractFromPage = async (spec: any, page: string, mimeType: string, reqMsg
         }
 
         if (typeof value === 'string') {
-            returnVal[key] = returnsArray ? arrayGetter(value) : itemGetter(value);
+            if (value === '$url') {
+                returnVal[key] = reqMsg.url.toString();
+            } else {
+                returnVal[key] = returnsArray ? arrayGetter(value) : itemGetter(value);
+            }
         } else if (Array.isArray(value)) {
             returnVal[key] = { $status: 400, $message: `Directly nested arrays not allowed in spec` };
             continue;
@@ -141,10 +229,22 @@ const extractFromPage = async (spec: any, page: string, mimeType: string, reqMsg
             }
 
             if ('$urlSelector' in value) {
-                const hrefsOrNull = returnsArray
-                ? arrayGetter(value['$urlSelector'] + " @href")
-                : [ itemGetter(value['$urlSelector'] + " @href") ];
-                hrefs = hrefsOrNull.filter(href => !!href) as string[];
+                if (fetchContext.maxFetches !== undefined && fetchContext.maxFetches <= 0) {
+                    hrefs = [];
+                } else {
+                    let hrefsOrNull = returnsArray
+                        ? arrayGetter(value['$urlSelector'] + " @href")
+                        : [ itemGetter(value['$urlSelector'] + " @href") ];
+                    if (startFromAtKey?.index && startFromAtKey.index > 0) {
+                        hrefsOrNull = hrefsOrNull.slice(startFromAtKey.index);
+                        setIndexAtLoopPosition(loopPosition, newPath, startFromAtKey.index);
+                    }
+                    // we are at the leaf of the startFrom path, clear it so we don't jump ahead
+                    if (startFromAtKey?.index && !Object.keys(startFromAtKey).some(k => k !== 'index')) {
+                        fetchContext.startFrom = {} as LoopPosition;
+                    }
+                    hrefs = hrefsOrNull.filter(href => !!href) as string[];
+                }
             } else if ('$pagedUrlPattern' in value) {
                 let pageCount = 1;
                 if (value['$pageCountSelector']) {
@@ -179,7 +279,16 @@ const extractFromPage = async (spec: any, page: string, mimeType: string, reqMsg
                 if (itemCount > 0) pageCount = Math.floor(itemCount / pageLength);
                 hrefs = [];
                 if (!returnsArray) pageCount = 1;
-                for (let i = 0; i < pageCount; i++) {
+                if (fetchContext.maxFetches !== undefined && fetchContext.maxFetches <= 0) pageCount = 0;
+                let initialIdx = 0;
+                if (startFromAtKey?.index && startFromAtKey.index > 0) {
+                    setIndexAtLoopPosition(loopPosition, newPath, startFromAtKey.index);
+                    initialIdx = startFromAtKey.index;
+                }
+                if (startFromAtKey?.index && !Object.keys(startFromAtKey).some(k => k !== 'index')) {
+                    fetchContext.startFrom = {} as LoopPosition;
+                }
+                for (let i = initialIdx; i < pageCount; i++) {
                     const pattern = value['$pagedUrlPattern'];
                     const url = resolvePathPatternWithUrl(pattern, reqMsg.url, {
                         page0: i.toString(),
@@ -192,16 +301,19 @@ const extractFromPage = async (spec: any, page: string, mimeType: string, reqMsg
             } else if ('$embeddedDataSelector' in value) {
                 if (returnsArray) {
                     const data = arrayGetter(value['$embeddedDataSelector']);
-                    const val = data
-                        .filter(item => item !== null)
-                        .map(item =>
-                            extractFromPage(value, item!, fetchMimeType, reqMsg, context, subpath, delayer)
-                        );
+                    const items = data
+                        .filter(item => item !== null);
+                    const val = []
+                    for (let idx = 0; idx < items.length; idx++) {
+                        setIndexAtLoopPosition(loopPosition, newPath, idx);
+                        val.push(await extractFromPage(value, newPath, parentResult, loopPosition, items[idx]!, fetchMimeType, reqMsg, fetchContext));
+                    };
                     returnVal[key] = val;
                 } else {
                     const data = itemGetter(value['$embeddedDataSelector']);
                     if (data) {
-                        const val = await extractFromPage(value, data, fetchMimeType, reqMsg, context, subpath, delayer);
+                        setIndexAtLoopPosition(loopPosition, newPath, -1);
+                        const val = await extractFromPage(value, newPath, parentResult, loopPosition, data, fetchMimeType, reqMsg, fetchContext);
                         returnVal[key] = val;
                     } else {
                         returnVal[key] = { $status: 400, $message: `No data found at ${value['$embeddedDataSelector']}` };
@@ -214,8 +326,15 @@ const extractFromPage = async (spec: any, page: string, mimeType: string, reqMsg
             }
 
             const retValues = [];
-            for (const href of hrefs)
+            const countsAsFetch = !('$embeddedDataSelector' in value) // embedded data doesn't need a fetch
+                && returnsArray // don't count single items as fetches
+                && !Object.values(value)
+                    .some(v => typeof v === 'object'
+                        && v !== null
+                        && !('$embeddedDataSelector' in v)); // only count leaf fetches
+            for (let idx = 0; idx < hrefs.length; idx++)
             {
+                const href = hrefs[idx];
                 if (!href) {
                     retValues.push({ $status: 400, $message: `No href found at ${value['$urlselector']}` });
                     continue;
@@ -227,14 +346,37 @@ const extractFromPage = async (spec: any, page: string, mimeType: string, reqMsg
                     nextUrl = reqMsg.url.copy();
                     nextUrl.path = href;
                 }
-                const subReqMsg = new Message(nextUrl, context, 'GET', reqMsg);
+                const subReqMsg = new Message(nextUrl, fetchContext.serviceContext, 'GET', reqMsg);
                 if (fetchMimeType.startsWith('application/json')) {
                     subReqMsg.setHeader('accept', 'application/json, text/javascript, */*; q=0.01');
                     subReqMsg.setHeader('X-Requested-With', 'XMLHttpRequest');
                 }
-                const subReqVal: any = await scrapeFromSpec(value, subReqMsg, subpath, context, delayer);
+                if (key === nextLoopKey) {
+                    parentResult = { ...parentResult, ...returnVal };
+                }
+                incrementLoopPosition(loopPosition, newPath);
+                const subReqVal: any = await scrapeFromSpec(value, newPath, parentResult, loopPosition, subReqMsg, fetchContext);
                 if (subReqVal.$status && subReqVal.$message) return subReqVal;
-                retValues.push(subReqVal);                       
+                if (isLoopKey) {
+                    const loopOutput = {
+                        ...parentResult,
+                        [key]: subReqVal
+                    }
+                    if (fetchContext.outputWriter) {
+                        fetchContext.outputWriter.write(new TextEncoder().encode(JSON.stringify(loopOutput) + "\n"));
+                    }
+                } else if (!nextLoopKey) {
+                    // only add to return value if not a loop key
+                    retValues.push(subReqVal);
+                }
+                if (fetchContext.maxFetches !== undefined) {
+                    if (countsAsFetch && fetchContext.maxFetches > 0) {
+                        fetchContext.maxFetches--;
+                    }
+                    if (fetchContext.maxFetches <= 0) {
+                        break;
+                    }
+                }                  
             };
             returnVal[key] = returnsArray ? retValues : retValues[0];
         }
@@ -247,9 +389,19 @@ service.post(async (msg, context, config) => {
 	const msgSpec = await context.makeRequest(reqSpec);
 	if (!msgSpec.ok) return msgSpec;
     if (msgSpec?.data?.mimeType !== 'application/json') return msg.setStatus(400, 'Spec is not JSON');
-	let spec = await msgSpec.data!.asJson();
+	const spec = await msgSpec.data!.asJson();
 	if (!spec) return msg.setStatus(400, 'No spec');
     if (!spec['$url']) return msg.setStatus(400, 'No url in spec');
+
+    const reqStatus = reqSpec.copy();
+    reqStatus.url.resourceName = reqStatus.url.resourceExtension
+        ? reqStatus.url.resourceParts.slice(0, -1).concat([ 'status', 'json' ]).join('.')
+        : reqStatus.url.resourceParts.concat([ 'status', 'json' ]).join('.');
+    const msgStatus = await context.makeRequest(reqStatus);
+    if (!msgStatus.ok && msgStatus.status !== 404) return msgStatus;
+    if (msgStatus.status !== 404 && msgSpec?.data?.mimeType !== 'application/json') return msg.setStatus(400, 'Status is not JSON');
+    const status = msgStatus.status === 404 ? {} : await msgStatus.data!.asJson();
+    const startFrom = (status['startFrom'] || {}) as LoopPosition;
 
     // find the applicable url: the msgSpec location header tells you the url of the actual spec file
 	// - the rest is the subpath of the url
@@ -257,13 +409,43 @@ service.post(async (msg, context, config) => {
 	contextUrl.setSubpathFromUrl(msgSpec.getHeader('location') || '');
 
     const url = new Url(spec['$url']);
-    if (!url.domain) return msg.setStatus(400, 'No domain in top level $url: ' + spec['$url']);    
+
     const reqMsg = new Message(url, context, 'GET', msg);
     const state = await context.state(WebScraperState, context, config);
     const delayer = state.getDelayer(url.domain);
-    const scrape = await scrapeFromSpec(spec, reqMsg, contextUrl.subPathElements, context, delayer);
-    if (scrape.$status && scrape.$message) return msg.setStatus(scrape.$status, scrape.$message);
-    msg.setDataJson(scrape);
+    const loopProperty = spec['$loopProperty'] as string | undefined;
+    const loopPath = loopProperty?.split('.');
+    const transformStream = loopProperty ? new TransformStream() : undefined;
+    const fetchContext = {
+        maxFetches: spec['$maxFetches'] || 0,
+        delayer,
+        serviceContext: context,
+        startFrom,
+        loopPath,
+        outputWriter: transformStream?.writable?.getWriter()
+    } as IFetchContext;
+    const loopPosition = {} as LoopPosition;
+    if (loopProperty) {
+        (async () => {
+            try {
+                await scrapeFromSpec(spec, [], {}, loopPosition, reqMsg, fetchContext);
+            } finally {
+                fetchContext.outputWriter!.close();
+                status.startFrom = loopPosition;
+                reqStatus.setMethod('PUT').setDataJson(status);
+                await context.makeRequest(reqStatus);
+            }
+        })(); // don't wait for scrape to finish: return the stream immediately
+
+        msg.setData(transformStream!.readable, "application/x-ndjson"); // message has an open stream which will be closed in scrapeFromSpec
+    } else {
+        const scrape = await scrapeFromSpec(spec, [], {}, loopPosition, reqMsg, fetchContext);
+        if (scrape.$status && scrape.$message) return msg.setStatus(scrape.$status, scrape.$message);
+        msg.setDataJson(scrape);
+        status.startFrom = loopPosition;
+        reqStatus.setMethod('PUT').setDataJson(status);
+        await context.makeRequest(reqStatus);
+    }
     return msg;
 });
 

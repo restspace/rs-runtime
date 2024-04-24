@@ -19,6 +19,7 @@ export function jsonSplit(msg: Message): AsyncQueue<Message> {
                 // if there are zero split messages, ensure we have a null message to traverse the pipeline until the next join
                 queue.enqueue(msg.copy().setNullMessage(true));
             }
+            queue.close();
         }
         processLines(rbl);
     } else {

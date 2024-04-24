@@ -19,6 +19,7 @@ import { handleOutgoingRequest } from "../handleRequest.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { jsonSplit } from "./jsonSplitSplitter.ts";
 import { limitConcurrency } from "rs-core/utility/limitConcurrency.ts";
+import { VariableScope } from "rs-core/VariableScope.ts";
 
 // 
 const DefaultConcurrencyLimit = 12;
@@ -137,7 +138,8 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
 
     // a message on this list will be returned from the pipeline
     // because it is an error status or the pipeline mode dictates it,
-    // so it should not be further processed
+    // so it should not be further processed, so messages on this
+    // list are passed unchanged through the pipeline
     const endedMsgs: Message[] = [];
 
     let depth = context.path.length;
@@ -326,7 +328,7 @@ function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, 
         external,
         path: [],
         concurrencyLimiter: limitConcurrency(DefaultConcurrencyLimit),
-        variables
+        variables: new VariableScope(variables)
     } as PipelineContext;
     let stepIdx = 0;
     for (; stepIdx < pipeline.length; stepIdx++) {

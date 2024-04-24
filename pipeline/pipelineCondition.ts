@@ -48,7 +48,7 @@ export class PipelineCondition {
             query: () => {
                 Object.fromEntries(Object.entries(msg.url.query).map(([ k, v ]) => [k, v[0]]));
             },
-            ...context.variables
+            ...context.variables.getVariablesForScope(msg.name)
         }
         return !!evaluate(this.exp, msgValues);
     }

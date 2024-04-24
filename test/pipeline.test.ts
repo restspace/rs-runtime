@@ -554,6 +554,62 @@ Deno.test('rename to variable', async function () {
     const output = await msgOut.data?.asJson();
     assertEquals(output, { val1: "aaa", val2: "bbb" });
 });
+Deno.test('variable with scope', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson({ a: 1, b: 2}), [
+        {
+            "$x": "a",
+            "$var": "b"
+        },
+        "GET /test/object :$var",
+        {
+            "$": "$var",
+            "x": "$x"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output, { val1: "aaa", val2: "bbb", x: 1 });
+});
+Deno.test('variable with multi', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson({ a: 1, b: 2}), [
+        {
+            "$": [ "'aaa-100ms'", "'bbb-75ms'", "'ccc-50ms'" ]
+        },
+        "jsonSplit",
+        {
+            "$": "$",
+            "$x": "$"
+        },
+        "GET /test/${}",
+        {
+            "x": "$x"
+        },
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output, {
+        "0": { x: "aaa-100ms" },
+        "1": { x: "bbb-75ms" },
+        "2": { x: "ccc-50ms" },
+        length: 3
+      });
+});
+
+/*
+        {
+            "$": [ "aaa-100ms", "bbb-75ms", "ccc-50ms" ]
+        },
+        "jsonSplit",
+        {
+            "$": "$",
+            "$x": "$"
+        },
+        "/lib/log/body",
+        "GET /test/${}",
+        {
+            "x": "$x"
+        },
+        "jsonObject"
+*/
 
 // Deno.test('simple post', async function () {
 //     let postedBody: any = {};

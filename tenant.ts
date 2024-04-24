@@ -151,7 +151,7 @@ export class Tenant {
         // defaults is by reference, create a new copy to avoid overwriting original 
         const defaultedService = structuredClone(defaults);
         mergeDeep(defaultedService, service);
-        return defaultedService;
+        return defaultedService as T;
     }
 
     private applyTemplate<T extends IServiceConfig>(service: T): T {

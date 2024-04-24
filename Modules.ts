@@ -339,7 +339,7 @@ export class Modules {
      * @param manifestUrl the url of the manifest that references the adapter
      * @returns the adapter constructor
      */
-    async getAdapterConstructor<T extends IAdapter>(sourceUrl: string, tenant: string, manifestUrl?: string): Promise<new (context: AdapterContext, config: unknown) => T> {
+    async getAdapterConstructor<T extends IAdapter>(sourceUrl: string, tenant: string, manifestUrl?: string, primaryDomain?: string): Promise<new (context: AdapterContext, config: unknown) => T> {
         let moduleReqUrl: Url;
         if (manifestUrl) {
             moduleReqUrl = new Url(this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter"));
@@ -348,7 +348,10 @@ export class Modules {
         }
         if (!this.adapterConstructors[sourceUrl]) {
             try {
-                moduleReqUrl.query['$x-rs-source'] = [ 'internal']
+                moduleReqUrl.query['$x-rs-source'] = [ 'internal'];
+                if (moduleReqUrl.domain === primaryDomain) {
+                    moduleReqUrl.query['$no-cache'] = [ crypto.randomUUID() ];
+                }
                 const module = await import(moduleReqUrl.toString());
                 this.adapterConstructors[sourceUrl] = module.default;
                 this.addToDomainMap(this.adapterConstructorsMap, sourceUrl, tenant);
@@ -384,18 +387,18 @@ export class Modules {
     }
 
     /** returns a new instance of an adapter */
-    async getAdapter<T extends IAdapter>(sourceUrl: string, context: AdapterContext, adapterConfig: unknown): Promise<T> {
+    async getAdapter<T extends IAdapter>(sourceUrl: string, context: AdapterContext, adapterConfig: unknown, primaryDomain?: string): Promise<T> {
         sourceUrl = config.canonicaliseUrl(sourceUrl, context.tenant);
         let manifestUrl;
         if (sourceUrl.split('?')[0].endsWith('.ram.json')) {
-            const manifest = await this.getAdapterManifest(sourceUrl, context.tenant);
+            const manifest = await this.getAdapterManifest(sourceUrl, context.tenant, primaryDomain);
             if (typeof manifest === 'string') throw new Error(manifest);
             manifestUrl = sourceUrl;
             sourceUrl = manifest.moduleUrl as string;
         }
 
         context.logger.debug(`Loading adapter at ${sourceUrl}`);
-        const constr = await this.getAdapterConstructor(sourceUrl, context.tenant, manifestUrl);
+        const constr = await this.getAdapterConstructor(sourceUrl, context.tenant, manifestUrl, primaryDomain);
         return new constr(context, adapterConfig) as T;
     }
 

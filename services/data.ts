@@ -166,10 +166,10 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: log.Logger, is
                 }
             }
             const d = await msg.data?.asJson();
-            logger.info(`patch data ${JSON.stringify(d)}`);
+            //logger.info(`patch data ${JSON.stringify(d)}`);
             if (isPatch) {
                 val = patch(val, d);
-                logger.info(`patch result ${JSON.stringify(val)}`);
+                //logger.info(`patch result ${JSON.stringify(val)}`);
             } else {
                 setProp(val, msg.url.fragment, d);
             }

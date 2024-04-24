@@ -36,7 +36,7 @@ export class ServiceWrapper {
             const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
             newMsg = await this.prePostPipeline("pre", newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
             newMsg.applyServiceRedirect();
-            context.metadataOnly = newMsg.url.isDirectory && newMsg.url.query.hasOwnProperty("$metadataOnly");
+            context.metadataOnly = newMsg.url.isDirectory && ("$metadataOnly" in newMsg.url.query);
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
         } catch (err) {

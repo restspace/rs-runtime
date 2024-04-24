@@ -1302,7 +1302,8 @@ function getProp(object, path, defaultVal) {
     if (!path.length) {
         return object === undefined ? defaultVal : object;
     }
-    return getProp(object[path.shift()], path, defaultVal);
+    const [head, ...tail] = path;
+    return getProp(object[head], tail, defaultVal);
 }
 function deleteProp(object, path) {
     if (!path.length) return;
@@ -1317,6 +1318,10 @@ const setProp = (obj, path, value)=>{
     return obj;
 };
 const scanFirst = (str, start, searches)=>{
+    if (start < 0) return [
+        "",
+        -1
+    ];
     const matches = [];
     for(let idx = start; idx < str.length; idx++){
         for(let matchIdx = 0; matchIdx < matches.length; matchIdx++){
@@ -1450,6 +1455,10 @@ const entityChange = (entitiesFrom, entitiesTo, idProp)=>{
         }
     }
     return result1;
+};
+const canonicaliseName = (name, maxLength)=>{
+    const canonical = name.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/gu, '');
+    return maxLength ? canonical.substr(0, maxLength) : canonical;
 };
 var __dirname = "/tmp/cdn/_7L5tse9km4CJVhsMBees/node_modules/bcx-expression-evaluator/dist";
 function getDefaultExportFromCjs(x) {
@@ -3050,12 +3059,27 @@ const jsonPath = (obj, path)=>{
             case 'prop':
             case 'postFilter':
                 {
-                    const [matched, newPos] = scanFirst(path, pos, [
+                    let newPos;
+                    let matched;
+                    [matched, newPos] = scanFirst(path, pos, [
                         '/',
                         '.',
-                        '['
+                        '[',
+                        '"'
                     ]);
+                    if (matched === '"' && mode === 'prop') {
+                        pos = newPos;
+                        newPos = path.indexOf('"', pos);
+                        if (newPos > 0) newPos++;
+                    }
                     prop = path.slice(pos, newPos < 0 ? undefined : newPos - 1);
+                    if (matched === '"' && mode === 'prop') {
+                        [matched, newPos] = scanFirst(path, newPos, [
+                            '/',
+                            '.',
+                            '['
+                        ]);
+                    }
                     if (mode === 'postFilter' && Array.isArray(result1)) result1 = result1.flat(1);
                     mode = newPos < 0 ? 'done' : path[newPos - 1] === '[' ? 'filter' : 'prop';
                     pos = newPos;
@@ -15241,7 +15265,7 @@ class Message {
     }
     get schema() {
         const contentType = this.getHeader('content-type');
-        if (contentType.includes("schema=")) {
+        if (contentType?.includes("schema=")) {
             return upTo(after(contentType, 'schema="'), '"');
         } else {
             return '';
@@ -24184,6 +24208,13 @@ dayjs_min.isDayjs;
 dayjs_min.locale;
 dayjs_min.p;
 dayjs_min.unix;
+function stripHtmlTags(html, separatePWithNewline) {
+    if (separatePWithNewline) {
+        return html.replace(/<\/p>\s*<p>/g, '\n').replace(/<[^>]*>/g, '');
+    } else {
+        return html.replace(/<[^>]*>/g, '');
+    }
+}
 const arrayToFunction = (arr, transformHelper)=>{
     if (arr.length === 0) return '';
     let functionName = arr[0];
@@ -24321,10 +24352,16 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
                 val[keyProp || '$key'] = key;
                 return val;
             }),
+        objectEntries: (obj)=>Object.entries(obj),
         literal: (obj)=>obj,
         parseInt: (s, radix)=>parseInt(s, radix),
         parseFloat: (s)=>parseFloat(s),
-        uuid: ()=>crypto.randomUUID()
+        uuid: ()=>crypto.randomUUID(),
+        canonicalise: (s, maxLength)=>canonicaliseName(s, maxLength),
+        stripHtml: (s, sepPWithNewline)=>{
+            const stripped = stripHtmlTags(s, sepPWithNewline);
+            return stripped;
+        }
     };
     if (typeof transformObject === 'string') {
         return rectifyObject(doEvaluate(transformObject, data, variables, transformHelper));
@@ -24860,7 +24897,9 @@ async function* toBlockChunks(stringItbl) {
 }
 async function* toLines(stringItbl) {
     const iterator = stringItbl[Symbol.asyncIterator]();
-    let { value: chunk, done: readerDone } = await iterator.next();
+    let { value: binChunk, done: readerDone } = await iterator.next();
+    const decoder = new TextDecoder();
+    let chunk = decoder.decode(binChunk);
     const re = /\r\n|\n|\r/gm;
     let startIndex = 0;
     for(;;){
@@ -24869,9 +24908,9 @@ async function* toLines(stringItbl) {
             if (readerDone) {
                 break;
             }
-            const remainder = chunk.substr(startIndex);
+            const remainder = chunk.substring(startIndex);
             const nextResult = await iterator.next();
-            chunk = nextResult.value;
+            chunk = decoder.decode(nextResult.value);
             readerDone = nextResult.done;
             chunk = remainder + (chunk || "");
             startIndex = re.lastIndex = 0;
@@ -24881,7 +24920,7 @@ async function* toLines(stringItbl) {
         startIndex = re.lastIndex;
     }
     if (startIndex < chunk.length) {
-        yield chunk.substr(startIndex);
+        yield chunk.substring(startIndex);
     }
 }
 async function* iterateReader(r, options) {
@@ -24964,6 +25003,7 @@ function jsonSplit(msg) {
             if (idx === 0) {
                 queue.enqueue(msg.copy().setNullMessage(true));
             }
+            queue.close();
         };
         processLines(rbl);
     } else {
@@ -40857,7 +40897,7 @@ class BotProxyAdapter {
     buildMessage(msg) {
         msg.setHeader('User-Agent', botUserAgents[Math.floor(Math.random() * botUserAgents.length)]);
         msg.setHeader("Accept-Language", "en-US,en;q=0.9");
-        msg.setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
+        if (!msg.getHeader("Accept")) msg.setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
         msg.setHeader("Referer", "https://www.google.com/");
         if (this.urlPattern) {
             msg.setUrl(resolvePathPatternWithUrl(this.urlPattern, msg.url, msg.data));
@@ -40875,6 +40915,52 @@ const __default24 = {
             "urlPattern": {
                 "type": "string",
                 "description": "Url pattern where to send request"
+            }
+        }
+    },
+    "adapterInterfaces": [
+        "IProxyAdapter"
+    ]
+};
+class BinanceProxyAdapter {
+    context;
+    props;
+    constructor(context, props){
+        this.context = context;
+        this.props = props;
+        if (!props.apiKey) {
+            throw new Error('Must supply api key for Binance');
+        }
+    }
+    getBaseUrl() {
+        return new Url('https://api3.binance.com');
+    }
+    buildMessage(msg) {
+        if (this.props.apiKey) {
+            msg.setHeader('X-MBX-APIKEY', this.props.apiKey);
+        }
+        const newUrl = msg.url.copy();
+        const hostUrl = this.getBaseUrl();
+        newUrl.domain = hostUrl.domain;
+        newUrl.scheme = hostUrl.scheme;
+        if (!newUrl.path.startsWith('api/v3/')) newUrl.path = 'api/v3/' + newUrl.path;
+        return Promise.resolve(msg.setUrl(newUrl));
+    }
+}
+const __default25 = {
+    "name": "Binance API Proxy Adapter",
+    "description": "Forwards a request to a the Binance API using provided API keys",
+    "moduleUrl": "./adapter/BinanceProxyAdapter.ts",
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "apiKey": {
+                "type": "string",
+                "description": "Binance API key"
+            },
+            "secretKey": {
+                "type": "string",
+                "description": "Binance private key for API"
             }
         }
     },
@@ -40915,13 +41001,13 @@ class MockHandler {
 const mockHandler = new MockHandler();
 const service = new Service();
 service.all((msg)=>mockHandler.handle(msg));
-const __default25 = {
+const __default26 = {
     "name": "Mock Service",
     "description": "Routes under control of test construction",
     "moduleUrl": "./services/mock.ts",
     "apis": []
 };
-const __default26 = {
+const __default27 = {
     "name": "Services Service",
     "description": "Provides discovery of configured services and service catalogue",
     "moduleUrl": "./services/services.ts",
@@ -40929,7 +41015,7 @@ const __default26 = {
         "services"
     ]
 };
-const __default27 = {
+const __default28 = {
     "name": "Authentication Service",
     "description": "Provides simple JWT authentication",
     "moduleUrl": "./services/auth.ts",
@@ -41172,7 +41258,7 @@ service1.deleteDirectory(async (msg, { adapter })=>{
     }
     return msg;
 });
-const __default28 = {
+const __default29 = {
     "name": "Data Service",
     "description": "Reads and writes data from urls with the pattern datasource/key",
     "moduleUrl": "./services/data.ts",
@@ -41364,7 +41450,7 @@ service2.delete(async (msg, { adapter })=>{
 service2.deleteDirectory((msg)=>{
     return Promise.resolve(msg.setStatus(400, 'Cannot delete the underlying dataset of a dataset service'));
 });
-const __default29 = {
+const __default30 = {
     "name": "Dataset Service",
     "description": "Reads and writes data with configured schema from urls by key",
     "moduleUrl": "./services/dataset.ts",
@@ -41562,7 +41648,7 @@ service3.deleteDirectory(async (msg, { adapter })=>{
     }
     return msg;
 });
-const __default30 = {
+const __default31 = {
     "name": "File Service",
     "description": "GET files from urls and PUT files to urls",
     "moduleUrl": "./services/file.ts",
@@ -41773,7 +41859,7 @@ service4.postPath('/set-name', (msg)=>{
     }
     return msg;
 });
-const __default31 = {
+const __default32 = {
     "name": "Library functions",
     "description": "A range of simple utility web functions",
     "moduleUrl": "./services/lib.ts",
@@ -41781,7 +41867,7 @@ const __default31 = {
         "sys.lib"
     ]
 };
-const __default32 = {
+const __default33 = {
     "name": "Pipeline",
     "description": "A pipeline of urls acting as request processors in parallel or serial",
     "moduleUrl": "./services/pipeline.ts",
@@ -41847,7 +41933,7 @@ const __default32 = {
         }
     }
 };
-const __default33 = {
+const __default34 = {
     "name": "Pipeline store",
     "description": "Run a pipeline whose specification is stored at the request url",
     "moduleUrl": "./services/pipeline-store.ts",
@@ -41918,7 +42004,7 @@ const processGet = async (msg, { adapter, logger }, config)=>{
     return msg;
 };
 service5.get(processGet);
-const __default34 = {
+const __default35 = {
     "name": "Static site filter",
     "description": "Provide static site behaviour with options suitable for hosting SPAs",
     "moduleUrl": "./services/static-site-filter.ts",
@@ -41934,7 +42020,7 @@ const __default34 = {
         }
     }
 };
-const __default35 = {
+const __default36 = {
     "name": "Static site service",
     "description": "Hosts a static site with options suitable for SPA routing",
     "moduleUrl": "./services/file.ts",
@@ -41974,7 +42060,7 @@ const __default35 = {
         }
     }
 };
-const __default36 = {
+const __default37 = {
     "name": "User data service",
     "description": "Manages access to and stores user data",
     "moduleUrl": "./services/dataset.ts",
@@ -42000,7 +42086,7 @@ const __default36 = {
         }
     }
 };
-const __default37 = {
+const __default38 = {
     "name": "User filter",
     "description": "Manage passwords and restrict illegal operations to users",
     "moduleUrl": "./services/user-filter.ts",
@@ -42029,7 +42115,7 @@ service6.post(async (msg, context, config)=>{
     const output = await context.adapter.fillTemplate(data, template || "", contextUrl);
     return msg.setData(output, config.outputMime);
 });
-const __default38 = {
+const __default39 = {
     "name": "Template",
     "description": "Fill a template with data from the request",
     "moduleUrl": "./services/template.ts",
@@ -42124,7 +42210,7 @@ service7.all(async (msg, context)=>{
     msgOut.url = msg.url;
     return msgOut;
 });
-const __default39 = {
+const __default40 = {
     "name": "Proxy Service",
     "description": "Forwards requests with server defined authentication or urls",
     "moduleUrl": "./services/proxy.ts",
@@ -43096,7 +43182,7 @@ service8.post(async (msg, _context, config)=>{
     }
     return msg.setData(null, "").setStatus(201);
 });
-const __default40 = {
+const __default41 = {
     "name": "Email Service",
     "description": "Send an email optionally with attachments",
     "moduleUrl": "./services/email.ts",
@@ -43136,7 +43222,7 @@ const __default40 = {
         ]
     }
 };
-const __default41 = {
+const __default42 = {
     "name": "Account Service",
     "description": "Provides password reset and email verification",
     "moduleUrl": "./services/account.ts",
@@ -45465,7 +45551,7 @@ buildDefaultDirectory({
     basePath: "/",
     service: service9
 });
-const __default42 = {
+const __default43 = {
     "name": "Discord Service",
     "description": "Manages command creation for Discord",
     "moduleUrl": "./services/discord.ts",
@@ -45546,7 +45632,7 @@ const __default42 = {
     },
     "proxyAdapterSource": "./adapter/DiscordProxyAdapter.ts"
 };
-const __default43 = {
+const __default44 = {
     "name": "Temporary access service",
     "description": "Generates a token for temporary access to resources and then gives access",
     "moduleUrl": "./services/temporary-access.ts",
@@ -45616,7 +45702,7 @@ service10.post(async (msg, context)=>{
     msg.setDataJson(result1);
     return msg;
 });
-const __default44 = {
+const __default45 = {
     "name": "Query",
     "description": "Stores queries as text files and runs the query in the file parameterised with a POST body to produce the response",
     "moduleUrl": "./services/query.ts",
@@ -47131,7 +47217,7 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
 service11.postPath("ndjson", csvToJson("ndjson"));
 service11.postPath("validate", csvToJson("validate"));
 service11.postPath("json", csvToJson("json"));
-const __default45 = {
+const __default46 = {
     "name": "CSV converter",
     "description": "Convert CSV files to and from JSON or NDJSON",
     "moduleUrl": "./services/csvConverter.ts",
@@ -47240,7 +47326,7 @@ service12.constantDirectory('/', {
         pattern: 'directory'
     }
 });
-const __default46 = {
+const __default47 = {
     "name": "Log Reader Service",
     "description": "Queries a log store for log information",
     "moduleUrl": "./services/logReader.ts",
@@ -47249,7 +47335,7 @@ const __default46 = {
     ],
     "adapterInterface": "ILogReaderAdapter"
 };
-const __default47 = {
+const __default48 = {
     "name": "Service store service",
     "description": "Stores files for service and adapter code and manifests",
     "moduleUrl": "./services/file.ts",
@@ -47520,7 +47606,7 @@ service13.constantDirectory('/', {
         pattern: 'directory'
     }
 });
-const __default48 = {
+const __default49 = {
     "name": "Timer",
     "description": "Trigger a pipeline at regular intervals",
     "moduleUrl": "./services/timer.ts",
@@ -47560,7 +47646,7 @@ service14.post(async (msg, context)=>{
     const status = await context.adapter.send(phoneNumber, message);
     return msg.setStatus(status);
 });
-const __default49 = {
+const __default50 = {
     "name": "SMS",
     "description": "Send the request as an SMS message",
     "moduleUrl": "./services/sms.ts",
@@ -47570,1788 +47656,6 @@ const __default49 = {
     ],
     "adapterInterface": "ISmsAdapter"
 };
-function slashTrim1(s) {
-    let start = 0;
-    let end = s.length;
-    if (s[start] === '/') start++;
-    if (s[end - 1] === '/') end--;
-    if (end <= start) return '';
-    return s.substring(start, end);
-}
-function pathToArray1(path) {
-    return slashTrim1(path).split('/').filter((s)=>!!s);
-}
-function pathCombine1(...args) {
-    const stripped = args.filter((a)=>!!a);
-    if (stripped.length === 0) return '';
-    const startSlash = stripped[0].startsWith('/');
-    const endSlash = stripped[stripped.length - 1].endsWith('/');
-    let joined = stripped.map((a)=>slashTrim1(a)).filter((a)=>!!a).join('/');
-    if (startSlash) joined = '/' + joined;
-    if (endSlash && joined !== '/') joined += '/';
-    return joined;
-}
-function decodeURIComponentAndPlus1(x) {
-    return decodeURIComponent(x.replace(/\+/g, '%20'));
-}
-function last2(arr) {
-    return arr[arr.length - 1];
-}
-function arrayEqual1(arr0, arr1) {
-    if (arr0.length !== arr1.length) return false;
-    for(let i1 = 0; i1 < arr0.length; i1++){
-        if (arr0[i1] !== arr1[i1]) return false;
-    }
-    return true;
-}
-function getProp1(object, path, defaultVal) {
-    if (!Array.isArray(path)) path = path.toString().match(/[^.[\]]+/g) || [];
-    if (!path.length) {
-        return object === undefined ? defaultVal : object;
-    }
-    return getProp1(object[path.shift()], path, defaultVal);
-}
-const scanFirst1 = (str, start, searches)=>{
-    const matches = [];
-    for(let idx = start; idx < str.length; idx++){
-        for(let matchIdx = 0; matchIdx < matches.length; matchIdx++){
-            const [srchIdx, pos] = matches[matchIdx];
-            if (searches[srchIdx][pos + 1] === str[idx]) {
-                matches[matchIdx][1]++;
-                if (pos + 2 === searches[srchIdx].length) {
-                    return [
-                        searches[srchIdx],
-                        idx + 1
-                    ];
-                }
-            } else {
-                matches.splice(matchIdx, 1);
-                matchIdx--;
-            }
-        }
-        for(let srchIdx = 0; srchIdx < searches.length; srchIdx++){
-            if (searches[srchIdx][0] === str[idx]) {
-                matches.push([
-                    srchIdx,
-                    0
-                ]);
-                if (1 === searches[srchIdx].length) {
-                    return [
-                        searches[srchIdx],
-                        idx + 1
-                    ];
-                }
-            }
-        }
-    }
-    return [
-        "",
-        -1
-    ];
-};
-const scanCloseJsString1 = (str, start, quote)=>{
-    const escaped = "\\" + quote;
-    let [match, pos] = [
-        escaped,
-        start
-    ];
-    while(match === escaped){
-        [match, pos] = scanFirst1(str, pos, [
-            escaped,
-            quote
-        ]);
-    }
-    return pos;
-};
-const scanCloseJsBracket1 = (str, start, brackets)=>{
-    let [match, pos] = [
-        "",
-        start
-    ];
-    const quotes = "'\"`";
-    while(match !== brackets[1] && pos > 0){
-        [match, pos] = scanFirst1(str, pos, [
-            brackets[0],
-            brackets[1],
-            ...quotes
-        ]);
-        if (quotes.includes(match) && pos > 0) {
-            pos = scanCloseJsString1(str, pos, match);
-        } else if (match === brackets[0]) {
-            pos = scanCloseJsBracket1(str, pos, brackets);
-        }
-    }
-    return pos;
-};
-const upTo1 = (str, match, start)=>{
-    const pos = str.indexOf(match, start);
-    return pos < 0 ? str.substring(start || 0) : str.substring(start || 0, pos);
-};
-const upToLast1 = (str, match, end)=>{
-    const pos = str.lastIndexOf(match, end);
-    return pos < 0 ? str.substring(0, end || str.length) : str.substring(0, pos);
-};
-const after1 = (str, match, start)=>{
-    const pos = str.indexOf(match, start);
-    return pos < 0 ? '' : str.substring(pos + match.length);
-};
-function queryString1(args) {
-    return Object.entries(args || {}).flatMap(([key, vals])=>vals.map((val)=>key + (val ? '=' + encodeURIComponent(val) : ''))).join('&');
-}
-function fullQueryString1(args) {
-    return args && Object.values(args).length !== 0 ? "?" + queryString1(args) : '';
-}
-function resolvePathPattern1(pathPattern, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode) {
-    if (!pathPattern) return '';
-    const getParts = (path)=>slashTrim1(path || '').split('/').filter((part)=>part !== '').map((part)=>decode ? decodeURIComponent(part) : part);
-    const pathParts = getParts(currentPath);
-    const basePathParts = getParts(basePath);
-    const subPathParts = getParts(subPath);
-    const fullPathParts = basePathParts.concat(pathParts);
-    const nameParts = getParts(name);
-    const getPartsMatch = (section, position0, position1)=>{
-        try {
-            let parts = pathParts;
-            if (section === 'B') parts = basePathParts;
-            if (section === 'S') parts = subPathParts;
-            if (section === 'N') parts = nameParts;
-            if (section === 'P') parts = fullPathParts;
-            let pos0 = parseInt(position0.substr(1));
-            if (position0.startsWith('<')) pos0 = -pos0 - 1;
-            let match = '';
-            if (position1) {
-                let pos1 = parseInt(position1.substr(1));
-                if (position1.startsWith('<')) pos1 = -pos1 - 1;
-                match = (pos1 === -1 ? parts.slice(pos0) : parts.slice(pos0, pos1 + 1)).join('/');
-            } else {
-                match = pos0 >= 0 ? parts[pos0] : parts[parts.length + pos0];
-            }
-            return match || '';
-        } catch  {
-            return '';
-        }
-    };
-    const result1 = pathPattern.replace('$*', currentPath + (isDirectory ? "/" : "") + fullQueryString1(query)).replace('$$', encodeURIComponent(fullUrl || '')).replace('$P*', fullPathParts.join('/') + (isDirectory ? "/" : "") + fullQueryString1(query)).replace('$N*', name || '').replace(/\$([BSNP])?([<>]\d+)([<>]\d+)?(:\((.+?)\)|:\$([BSNP])?([<>]\d+)([<>]\d+)?)?/g, (_match, p1, p2, p3, p4, p5, p6, p7, p8)=>{
-        const partsMatch = getPartsMatch(p1, p2, p3);
-        if (partsMatch || !p4) return partsMatch || '$$';
-        if (p4.startsWith(':(')) return p5;
-        return getPartsMatch(p6, p7, p8) || '$$';
-    }).replace(/\$\?(\*|\((.+?)\))/g, (_match, p1, p2)=>{
-        if (p1 === '*') return queryString1(query);
-        return (query?.[p2] || []).length === 0 ? '$$' : ((query || {})[p2] || []).join(',') || '$$';
-    }).replace('/$$', '').replace('$$', '');
-    return result1;
-}
-function resolvePathPatternWithUrl1(pathPattern, url, obj, name, decode) {
-    if (obj) {
-        return resolvePathPatternWithObject1(pathPattern, obj, [], url.servicePath, url.basePathElements.join('/'), url.subPathElements.join('/'), url.toString(), url.query, name, url.isDirectory, decode);
-    } else {
-        return resolvePathPattern1(pathPattern, url.servicePath, url.basePathElements.join('/'), url.subPathElements.join('/'), url.toString(), url.query, name, url.isDirectory, decode);
-    }
-}
-function multiplyVariableSegments(currentSegments, newSegment, sourceObject) {
-    return currentSegments.flatMap((seg)=>{
-        const valAtSeg = seg ? getProp1(sourceObject, seg) : sourceObject;
-        return Object.keys(valAtSeg).map((key)=>`${seg}[${key}]${newSegment}`);
-    });
-}
-function resolvePathPatternWithObjectInner(pathPattern, regex, partialResolutions, sourceObject, sourcePath) {
-    const match = regex.exec(pathPattern);
-    if (match) {
-        const path = match[1];
-        const pathConstantSegments = path.split('[]');
-        const isMultiplied = pathConstantSegments.length > 1;
-        const enumeratedPaths = pathConstantSegments.reduce((result1, seg)=>result1.length === 0 ? [
-                seg
-            ] : multiplyVariableSegments(result1, seg, sourceObject), []);
-        const substitutions = enumeratedPaths.map((path)=>{
-            const val = path ? getProp1(sourceObject, path) : sourceObject;
-            if (val === undefined || val === null) {
-                throw new Error(`In path pattern, the data path '${path}' is not present in the data`);
-            }
-            return val.toString();
-        });
-        const newPartialResolutions = partialResolutions.flatMap((pr)=>substitutions.map((subs)=>pr.replace(new RegExp(regex.source), subs)));
-        const [prs, wasMultiplied] = resolvePathPatternWithObjectInner(pathPattern, regex, newPartialResolutions, sourceObject, sourcePath);
-        return [
-            prs,
-            wasMultiplied || isMultiplied
-        ];
-    } else {
-        return [
-            partialResolutions,
-            false
-        ];
-    }
-}
-function resolvePathPatternWithObject1(pathPattern, sourceObject, sourcePath, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode) {
-    const regex = /\${([\w\[\].]*)}/g;
-    const partResolvedPattern = resolvePathPattern1(pathPattern, currentPath, basePath, subPath, fullUrl, query, name, isDirectory, decode);
-    const [resolved, wasMultiplied] = resolvePathPatternWithObjectInner(partResolvedPattern, regex, [
-        partResolvedPattern
-    ], sourceObject, sourcePath);
-    return wasMultiplied ? resolved : resolved[0];
-}
-class Url1 {
-    scheme = '';
-    domain = '';
-    isRelative = false;
-    _fragment = '';
-    get fragment() {
-        return this._fragment || this.query['$fragment']?.[0] || '';
-    }
-    set fragment(val) {
-        this._fragment = val;
-    }
-    get path() {
-        return (this.isRelative ? '' : '/') + this.pathElements.join('/') + (this.isDirectory && this.pathElements.length > 0 ? '/' : '');
-    }
-    set path(val) {
-        this.pathElements = decodeURI(slashTrim1(val)).split('/').filter((el)=>!!el);
-        this._isDirectory = val.endsWith('/') || val === '';
-    }
-    pathElements = [];
-    _isDirectory = false;
-    get isDirectory() {
-        return this._isDirectory;
-    }
-    get resourceName() {
-        return this._isDirectory ? '' : last2(this.pathElements);
-    }
-    set resourceName(val) {
-        let resName = val;
-        const wasDirectory = this._isDirectory;
-        if (val.endsWith('/')) {
-            this._isDirectory = true;
-            resName = val.slice(0, -1);
-        } else {
-            this._isDirectory = false;
-        }
-        if (wasDirectory) {
-            this.pathElements.push(val);
-        } else {
-            this.pathElements[this.pathElements.length - 1] = resName;
-        }
-    }
-    get resourcePath() {
-        const resPathEls = this._isDirectory ? this.pathElements : this.pathElements.slice(0, -1);
-        return '/' + resPathEls.join('/');
-    }
-    get resourceParts() {
-        return this.resourceName.split('.');
-    }
-    get resourceExtension() {
-        return this.resourceParts.length > 1 ? last2(this.resourceParts) : '';
-    }
-    query = {};
-    encodeQueryValue(s) {
-        return s.replace('&', '%26').replace('=', '%3D').replace('#', '%23');
-    }
-    get queryString() {
-        return Object.entries(this.query).flatMap(([key, vals])=>vals.length == 0 ? [
-                key
-            ] : vals.map((val)=>`${key}=${this.encodeQueryValue(val)}`)).join('&') || '';
-    }
-    set queryString(qs) {
-        this.query = !qs ? {} : qs.split('&').filter((part)=>!!part).reduce((res, queryPart)=>{
-            const [key, val] = queryPart.split('=');
-            if (res[key]) {
-                if (val) res[key].push(decodeURIComponentAndPlus1(val));
-            } else {
-                res[key] = val ? [
-                    decodeURIComponentAndPlus1(val)
-                ] : [];
-            }
-            return res;
-        }, {});
-    }
-    basePathElementCount = 0;
-    get basePathElements() {
-        return this.pathElements.slice(0, this.basePathElementCount);
-    }
-    set basePathElements(els) {
-        if (els.length <= this.pathElements.length && arrayEqual1(els, this.pathElements.slice(0, els.length))) this.basePathElementCount = els.length;
-        else this.basePathElementCount = 0;
-    }
-    get servicePath() {
-        return this.servicePathElements.join('/') + (this.isDirectory ? '/' : '');
-    }
-    set servicePath(path) {
-        this.pathElements = [
-            ...this.basePathElements,
-            ...pathToArray1(path)
-        ];
-        this._isDirectory = path.endsWith('/') || this.pathElements.length === 0 && path === '';
-    }
-    get adapterPath() {
-        return this.servicePath + (this.queryString ? '?' + this.queryString : '');
-    }
-    get servicePathElements() {
-        return this.pathElements.slice(this.basePathElementCount);
-    }
-    subPathElementCount = null;
-    get subPathElements() {
-        return this.subPathElementCount === null || this.subPathElementCount <= 0 ? [] : this.pathElements.slice(-this.subPathElementCount);
-    }
-    set subPathElements(els) {
-        if (els.length <= this.pathElements.length && arrayEqual1(els, els.length === 0 ? [] : this.pathElements.slice(-els.length))) this.subPathElementCount = els.length;
-        else this.subPathElementCount = null;
-    }
-    get mainPathElementCount() {
-        return this.pathElements.length - this.basePathElementCount - (this.subPathElementCount || 0);
-    }
-    set mainPathElementCount(count) {
-        this.subPathElementCount = this.pathElements.length - this.basePathElementCount - count;
-    }
-    constructor(urlString){
-        if (!urlString) return;
-        if (typeof urlString !== 'string') urlString = urlString.toString();
-        const urlParse = urlString.match(Url1.urlRegex);
-        if (!urlParse) throw new Error('bad url');
-        this.scheme = urlParse[2];
-        this.domain = urlParse[3];
-        this.isRelative = !this.domain && urlParse[1] !== '/';
-        this.path = urlParse[4];
-        this._isDirectory = this.path.endsWith('/');
-        const qs = urlParse[5];
-        this.queryString = qs ? decodeURI(qs.substr(1)) : '';
-        const frag = urlParse[6];
-        this.fragment = frag ? frag.substr(1) : '';
-    }
-    hasBase(base) {
-        return this.path.startsWith(base === '/' ? base : base + '/') || this.path === base;
-    }
-    copy() {
-        const newUrl = new Url1();
-        newUrl.scheme = this.scheme;
-        newUrl.domain = this.domain;
-        newUrl.path = this.path;
-        newUrl.queryString = this.queryString;
-        newUrl.basePathElementCount = this.basePathElementCount;
-        newUrl.subPathElementCount = this.subPathElementCount;
-        newUrl.fragment = this.fragment;
-        newUrl.isRelative = this.isRelative;
-        return newUrl;
-    }
-    toString(mode = "absolute url") {
-        const host = `${this.scheme || ''}${this.domain || ''}`;
-        return `${this.isRelative || mode === "absolute path" ? '' : host}${this.path}${this.queryString ? '?' + this.queryString : ''}${this.fragment ? '#' + this.fragment : ''}`;
-    }
-    baseUrl() {
-        return `${this.scheme || ''}${this.domain || ''}/${this.basePathElements.join('/')}`;
-    }
-    setSubpathFromUrl(servicePathUrl) {
-        if (servicePathUrl === undefined) return;
-        if (typeof servicePathUrl === 'string') {
-            servicePathUrl = servicePathUrl ? new Url1(servicePathUrl) : this;
-        }
-        this.subPathElementCount = this.pathElements.length - servicePathUrl.pathElements.length;
-        return this;
-    }
-    follow(relativeUrl) {
-        const newUrl = this.copy();
-        if (!relativeUrl) return newUrl;
-        for (const part of relativeUrl.split('/')){
-            if (part === '..') {
-                newUrl.pathElements.pop();
-            } else if (part && part !== '.') {
-                newUrl.pathElements.push(part);
-            }
-        }
-        newUrl._isDirectory = relativeUrl.endsWith('/');
-        return newUrl;
-    }
-    static urlRegex = /^((https?:\/\/)([^?#\/]+)|\/)?([^?#]*)(\?[^#]*)?(#.*)?$/;
-    static fromPath(path) {
-        return new Url1(pathCombine1('/', path));
-    }
-    static fromPathPattern(pathPattern, url, obj) {
-        return new Url1(resolvePathPatternWithUrl1(pathPattern, url, obj));
-    }
-    static inheritingBase(baseUrl, url) {
-        const newUrl = new Url1(url);
-        if (baseUrl) {
-            baseUrl = new Url1(baseUrl);
-            newUrl.scheme = newUrl.scheme || baseUrl.scheme;
-            newUrl.domain = newUrl.domain || baseUrl.domain;
-        }
-        return newUrl;
-    }
-}
-const textTypes1 = [
-    "text/",
-    "application/javascript",
-    "application/typescript",
-    "application/xml",
-    "application/xhtml+xml"
-];
-const isJson1 = (mimeType)=>!!mimeType && (mimeType.indexOf("/json") > 0 || mimeType.indexOf("+json") > 0 || mimeType === 'inode/directory');
-const isText1 = (mimeType)=>!!mimeType && textTypes1.some((tt)=>mimeType.startsWith(tt));
-function ab2str1(buf) {
-    return new TextDecoder().decode(new Uint8Array(buf));
-}
-function str2ab1(str) {
-    return new TextEncoder().encode(str).buffer;
-}
-function ab2b641(buf) {
-    let binary = '';
-    const bytes = new Uint8Array(buf);
-    const len = bytes.byteLength;
-    for(let i1 = 0; i1 < len; i1++){
-        binary += String.fromCharCode(bytes[i1]);
-    }
-    return btoa(binary);
-}
-class MessageBody1 {
-    data;
-    mimeType;
-    dateModified;
-    filename;
-    statusCode;
-    wasMimeHandled;
-    _size;
-    get size() {
-        if (this.data instanceof ArrayBuffer) return this.data.byteLength;
-        if (!this.data) return 0;
-        return this._size || 0;
-    }
-    set size(newSize) {
-        this._size = newSize;
-    }
-    get ok() {
-        return this.statusCode === 0 || 200 <= this.statusCode && this.statusCode < 300;
-    }
-    get isStream() {
-        return this.data instanceof ReadableStream;
-    }
-    constructor(data, mimeType = "text/plain", size, dateModified, filename){
-        this.data = data;
-        this.mimeType = mimeType;
-        this.dateModified = dateModified;
-        this.filename = filename;
-        this.statusCode = 0;
-        this.wasMimeHandled = false;
-        this._size = size;
-    }
-    copy() {
-        let newData = this.data;
-        if (this.data && this.data instanceof ReadableStream) {
-            [this.data, newData] = this.data.tee();
-        }
-        return new MessageBody1(newData, this.mimeType, this.size, this.dateModified, this.filename);
-    }
-    convertFormData() {
-        if (this.data instanceof ArrayBuffer && this.mimeType === 'application/x-www-form-urlencoded') {
-            const formData = ab2str1(this.data);
-            const lines = formData.split('&');
-            const obj = lines.reduce((res, line)=>{
-                const parts = line.split('=');
-                res[decodeURIComponentAndPlus1(parts[0])] = parts.length < 2 ? null : decodeURIComponentAndPlus1(parts[1]);
-                return res;
-            }, {});
-            this.data = str2ab1(JSON.stringify(obj));
-            this.mimeType = 'application/json';
-        }
-    }
-    async ensureDataIsArrayBuffer() {
-        if (!(this.data instanceof ArrayBuffer)) {
-            if (!this.data) {
-                const err = new Error('Resource does not exist');
-                err['statusCode'] = this.statusCode;
-                throw err;
-            }
-            const resp = new Response(this.data);
-            this.data = await resp.arrayBuffer();
-        }
-    }
-    setMimeType(mimeType) {
-        this.mimeType = mimeType;
-        return this;
-    }
-    setIsDirectory() {
-        this.mimeType = 'inode/directory+json';
-        return this;
-    }
-    get isDirectory() {
-        return this.mimeType === 'inode/directory+json';
-    }
-    async asJson() {
-        if (this.data === null) return null;
-        const str = await this.asString();
-        if (isJson1(this.mimeType)) {
-            if (!str) return null;
-            const obj = JSON.parse(str);
-            return obj;
-        } else {
-            return str;
-        }
-    }
-    async extractPathIfJson(path) {
-        if (!isJson1(this.mimeType)) return;
-        const val = await this.asJson();
-        this.data = str2ab1(JSON.stringify(getProp1(val, path)));
-    }
-    isTextual() {
-        return isJson1(this.mimeType) || isText1(this.mimeType);
-    }
-    async asString() {
-        if (this.data === null) return null;
-        let enc = 'base64';
-        let str;
-        if (this.isTextual()) {
-            str = ab2str1(await this.asArrayBuffer());
-            return stripBom(str);
-        }
-        const buf = await this.asArrayBuffer();
-        if (this.isTextual()) enc = 'utf8';
-        str = enc === 'base64' ? ab2b641(buf) : ab2str1(buf);
-        return stripBom(str);
-    }
-    asStringSync() {
-        if (!(this.data instanceof ArrayBuffer)) return "";
-        return this.isTextual() ? ab2str1(this.data) : ab2b641(this.data);
-    }
-    async asArrayBuffer() {
-        if (this.data === null) return null;
-        await this.ensureDataIsArrayBuffer();
-        this.convertFormData();
-        return this.data;
-    }
-    asReadable() {
-        if (this.data === null) return null;
-        if (this.data instanceof ReadableStream) return this.data;
-        return new Response(this.data).body;
-    }
-    asServerResponseBody() {
-        if (this.data === null) return undefined;
-        if (this.data instanceof ReadableStream) return readerFromStreamReader(this.data.getReader());
-        return new Uint8Array(this.data);
-    }
-    asAny() {
-        if (this.data === null) {
-            return Promise.resolve(null);
-        } else if (isJson1(this.mimeType)) {
-            return this.asJson();
-        } else if (isText1(this.mimeType)) {
-            return this.asString();
-        } else {
-            return this.asArrayBuffer();
-        }
-    }
-    static fromRequest(req) {
-        const contentLength = req.headers.get('content-length');
-        const size = contentLength != null ? parseInt(contentLength) : NaN;
-        const contentType = req.headers.get('content-type');
-        return contentType && req.body ? new MessageBody1(req.body, contentType, isNaN(size) ? undefined : size) : null;
-    }
-    static fromString(text) {
-        return new MessageBody1(str2ab1(text), 'text/plain');
-    }
-    static fromObject(obj) {
-        const msgBody = MessageBody1.fromString(JSON.stringify(obj));
-        msgBody.mimeType = 'application/json';
-        return msgBody;
-    }
-    static fromError(statusCode, statusText) {
-        const msgBody = MessageBody1.fromString(statusText || '');
-        msgBody.statusCode = statusCode;
-        return msgBody;
-    }
-}
-var SameSiteValue1;
-(function(SameSiteValue) {
-    SameSiteValue["strict"] = "Strict";
-    SameSiteValue["lax"] = "Lax";
-    SameSiteValue["none"] = "None";
-})(SameSiteValue1 || (SameSiteValue1 = {}));
-class CookieOptions1 {
-    expires;
-    maxAge;
-    domain;
-    path;
-    secure;
-    httpOnly;
-    sameSite;
-    constructor(obj){
-        obj && Object.assign(this, obj);
-    }
-    toString() {
-        const opts = [];
-        if (this.expires) opts.push(`Expires=${this.expires.toUTCString()}`);
-        if (this.maxAge) opts.push(`Max-Age=${this.maxAge}`);
-        if (this.domain) opts.push(`Domain=${this.domain}`);
-        opts.push(this.path ? `Path=${this.path}` : "Path=/");
-        if (this.secure) opts.push("Secure");
-        if (this.httpOnly) opts.push("HttpOnly");
-        if (this.sameSite) opts.push(`SameSite=${this.sameSite}`);
-        return opts.length ? '; ' + opts.join('; ') : '';
-    }
-}
-class ArrayQueue1 extends Array {
-    enqueue(value) {
-        return this.push(value);
-    }
-    dequeue() {
-        return this.shift();
-    }
-}
-class AsyncQueue1 {
-    maxPassed;
-    _values;
-    _settlers;
-    _nPassed;
-    _nActiveChildren;
-    _state;
-    _nAwaiting;
-    static queueCount = 0;
-    _qid;
-    emitter;
-    get nRemaining() {
-        return this.maxPassed !== undefined ? this.maxPassed - this._nPassed : 1;
-    }
-    constructor(maxPassed){
-        this.maxPassed = maxPassed;
-        this._nPassed = 0;
-        this._nActiveChildren = 0;
-        this._state = "running";
-        this._nAwaiting = 0;
-        this.emitter = new EventEmitter();
-        this._values = new ArrayQueue1();
-        this._settlers = new ArrayQueue1();
-        this._qid = AsyncQueue1.queueCount++;
-        this.updateState();
-    }
-    updateState(closeRequested = false) {
-        if (this._qid == 9999) console.log(`state change qid ${this._qid} maxp ${this.maxPassed} starts ${this._state} nAwaiting ${this._nAwaiting} nPassed ${this._nPassed} nChild ${this._nActiveChildren} close req ${closeRequested}`);
-        if (this._state === "running" && (this.maxPassed !== undefined && this._nPassed >= this.maxPassed || closeRequested)) {
-            this.emitter.emit('statechange', 'no-enqueue');
-            this._state = "no-enqueue";
-        }
-        if (this._state === "no-enqueue" && this._nActiveChildren === 0 && this._nAwaiting === 0) {
-            this.emitter.emit('statechange', 'all-enqueued');
-            this._state = "all-enqueued";
-        }
-        if (this._state === "all-enqueued" && this._values.length === 0) {
-            this.emitter.emit('statechange', 'closed');
-            this._state = "closed";
-            this.finalClose();
-        }
-    }
-    [Symbol.asyncIterator]() {
-        return this;
-    }
-    enqueue(value) {
-        if (this._state !== "running") {
-            throw new Error('Closed');
-        }
-        if (value instanceof Promise) {
-            this._nAwaiting++;
-            value.then((res)=>{
-                this.innerEnqueue(res, false, true);
-                this._nAwaiting--;
-                this.updateState();
-                if (this._qid == 9999) console.log(`enqueue promise qid ${this._qid} maxp ${this.maxPassed}, after nAwaiting: ${this._nAwaiting}, state: ${this._state}`);
-            }).catch((reason)=>{
-                if (!(reason instanceof Error)) reason = new Error(reason.toString());
-                this.innerEnqueue(reason, false, true);
-                this._nAwaiting--;
-                this.updateState();
-            });
-        } else {
-            this.innerEnqueue(value, false);
-        }
-        return this;
-    }
-    innerEnqueue(value, fromChild, fromPromise) {
-        const allowedNoenqueue = this._state == "no-enqueue" && (fromChild || fromPromise);
-        if (allowedNoenqueue) {
-            if (this._qid == 9999) console.log(`Allowed no-enqueue, qid: ${this._qid} maxp: ${this.maxPassed} state: ${this._state}, fromChild: ${fromChild}, fromPromise: ${fromPromise} nChild ${this._nActiveChildren} nAwaiting ${this._nAwaiting}`);
-        }
-        if (this._state !== "running" && !allowedNoenqueue) {
-            if (this._qid == 9999) console.log(`Illegal enqueue, qid: ${this._qid} maxp: ${this.maxPassed} state: ${this._state}, fromChild: ${fromChild}, fromPromise: ${fromPromise}`);
-            throw new Error('Illegal internal enqueue after closed');
-        }
-        if (value instanceof AsyncQueue1) {
-            if (fromChild) return;
-            this.attachSubqueue(value);
-        } else {
-            if (value !== null && value !== undefined) {
-                if (this._settlers.length > 0) {
-                    if (this._values.length > 0) {
-                        throw new Error('Illegal internal state');
-                    }
-                    const settler = this._settlers.dequeue();
-                    if (value instanceof Error) {
-                        settler.reject(value);
-                    } else {
-                        settler.resolve({
-                            value
-                        });
-                    }
-                } else {
-                    this._values.enqueue(value);
-                }
-            }
-        }
-        this.emitter.emit('enqueue', value);
-        if (!fromChild) this._nPassed++;
-        this.updateState();
-    }
-    attachSubqueue(subqueue) {
-        subqueue._values.forEach((val)=>this.innerEnqueue(val, true));
-        if (subqueue._state === "running" || subqueue._state === "no-enqueue") {
-            subqueue.on('enqueue', (val)=>this.innerEnqueue(val, true));
-            this._nActiveChildren++;
-            const decrementActiveChildren = (newState)=>{
-                if (newState === 'all-enqueued') {
-                    this._nActiveChildren--;
-                    this.updateState();
-                    subqueue.off('statechange', decrementActiveChildren);
-                }
-            };
-            subqueue.on('statechange', decrementActiveChildren);
-        }
-    }
-    next() {
-        if (this._values.length > 0) {
-            const value = this._values.dequeue();
-            this.updateState();
-            if (value instanceof Error) {
-                return Promise.reject(value);
-            } else {
-                return Promise.resolve({
-                    value
-                });
-            }
-        } else if (this._state === 'closed') {
-            if (this._settlers.length > 0) {
-                throw new Error('Illegal internal state');
-            }
-            return Promise.resolve({
-                done: true
-            });
-        } else {
-            return new Promise((resolve, reject)=>{
-                this._settlers.enqueue({
-                    resolve,
-                    reject
-                });
-            });
-        }
-    }
-    close() {
-        this.updateState(true);
-    }
-    finalClose() {
-        while(this._settlers.length > 0){
-            this._settlers.dequeue().resolve({
-                done: true
-            });
-        }
-    }
-    on(event, listener) {
-        this.emitter.on(event, listener);
-    }
-    off(event, listener) {
-        this.emitter.off(event, listener);
-    }
-    flatMap(mapper) {
-        const newAsq = new AsyncQueue1();
-        const getResultsAsync = async ()=>{
-            try {
-                for await (const item of this){
-                    let res;
-                    try {
-                        res = mapper(item);
-                        if (res !== undefined) newAsq.enqueue(res);
-                    } catch (err) {
-                        newAsq.enqueue(err);
-                    }
-                }
-            } catch (err) {
-                newAsq.enqueue(err);
-            }
-            newAsq.close();
-        };
-        getResultsAsync();
-        return newAsq;
-    }
-    static fromPromises(...promises) {
-        const asq = new AsyncQueue1();
-        let nUnresolved = promises.length;
-        promises.forEach((promise)=>promise.then((val)=>{
-                if (val !== null && val !== undefined) asq.enqueue(val);
-                nUnresolved--;
-                if (nUnresolved <= 0) asq.close();
-            }).catch((reason)=>{
-                asq.enqueue(reason);
-                nUnresolved--;
-                if (nUnresolved <= 0) asq.close();
-            }));
-        return asq;
-    }
-}
-const sendHeaders1 = [
-    "accept-ranges",
-    "access-control-allow-origin",
-    "access-control-allow-credentials",
-    "access-control-expose-headers",
-    "access-control-max-age",
-    "access-control-allow-methods",
-    "access-control-allow-headers",
-    "cache-control",
-    "content-disposition",
-    "content-encoding",
-    "content-language",
-    "content-length",
-    "content-location",
-    "content-md5",
-    "content-range",
-    "content-security-policy",
-    "content-type",
-    "date",
-    "delta-base",
-    "etag",
-    "expires",
-    "im",
-    "last-modified",
-    "link",
-    "location",
-    "p3p",
-    "pragma",
-    "proxy-authenticate",
-    "public-key-pins",
-    "refresh",
-    "retry-after",
-    "server",
-    "set-cookie",
-    "strict-transport-security",
-    "timing-allow-origin",
-    "trailer",
-    "transfer-encoding",
-    "tk",
-    "upgrade",
-    "vary",
-    "via",
-    "warning",
-    "www-authenticate",
-    "x-content-type-options",
-    "x-correlation-id",
-    "x-frame-options",
-    "x-powered-by",
-    "x-request-id",
-    "x-restspace-service",
-    "x-ua-compatible",
-    "x-xss-protection"
-];
-const headerDate1 = (d)=>{
-    const leadingZ = (n)=>n.toString().padStart(2, '0');
-    const dayName = [
-        'Sun',
-        'Mon',
-        'Tue',
-        'Wed',
-        'Thu',
-        'Fri',
-        'Sat'
-    ][d.getUTCDay()];
-    const day = leadingZ(d.getUTCDate());
-    const month = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec'
-    ][d.getUTCMonth()];
-    const year = d.getUTCFullYear();
-    const hour = leadingZ(d.getUTCHours());
-    const minute = leadingZ(d.getUTCMinutes());
-    const second = leadingZ(d.getUTCSeconds());
-    return `${dayName}, ${day} ${month} ${year} ${hour}:${minute}:${second} GMT`;
-};
-class Message1 {
-    tenantOrContext;
-    method;
-    cookies;
-    context;
-    depth;
-    conditionalMode;
-    authenticated;
-    originator;
-    internalPrivilege;
-    url;
-    externalUrl;
-    user;
-    websocket;
-    tenant;
-    _status;
-    _data;
-    uninitiatedDataCopies;
-    _headers;
-    static pullName = new RegExp(/([; ]name=["'])(.*?)(["'])/);
-    get headers() {
-        const headersOut = {
-            ...this._headers
-        };
-        if (this.data?.mimeType) {
-            headersOut['content-type'] = this.data?.mimeType;
-        }
-        if (!headersOut['content-type']) headersOut['content-type'] = 'text/plain';
-        if (this.data?.size) {
-            headersOut['content-length'] = this.data.size.toString();
-        }
-        if (this.data?.filename) {
-            headersOut['content-disposition'] = `attachment; filename="${this.data.filename}"`;
-        }
-        if (this.data?.dateModified) {
-            headersOut['last-modified'] = headerDate1(this.data.dateModified);
-        }
-        return headersOut;
-    }
-    set headers(val) {
-        const valLowerCase = Object.fromEntries(Object.entries(val).map(([k, v])=>[
-                k.toLowerCase(),
-                v
-            ]));
-        this._headers = valLowerCase;
-    }
-    get schema() {
-        const contentType = this.getHeader('content-type');
-        if (contentType.includes("schema=")) {
-            return upTo1(after1(contentType, 'schema="'), '"');
-        } else {
-            return '';
-        }
-    }
-    get data() {
-        return this._data;
-    }
-    set data(d) {
-        this.cancelOldStream();
-        this._data = d;
-    }
-    get status() {
-        return this.data && this.data.statusCode > 0 ? this.data.statusCode : this._status;
-    }
-    set status(code) {
-        this._status = code;
-    }
-    get ok() {
-        return this.status < 400;
-    }
-    get isRedirect() {
-        return 300 <= this.status && this.status < 400;
-    }
-    get isManageRequest() {
-        const modeHdr = this.getHeader('X-Restspace-Request-Mode');
-        return !!modeHdr && modeHdr === 'manage';
-    }
-    get name() {
-        const cd = this.getHeader('Content-Disposition');
-        if (!cd) return '';
-        const match = Message1.pullName.exec(cd);
-        return match && match[2] ? match[2] : '';
-    }
-    set name(name) {
-        const cd = this.getHeader('Content-Disposition');
-        if (cd) {
-            this.setHeader('Content-Disposition', cd.replace(Message1.pullName, `$1${name}$3`));
-        } else {
-            this.setHeader('Content-Disposition', `form-data; name="${name}"`);
-        }
-    }
-    get host() {
-        const host = this.getHeader('Host');
-        return host || '';
-    }
-    constructor(url, tenantOrContext, method = "GET", parent, headers, data){
-        this.tenantOrContext = tenantOrContext;
-        this.method = method;
-        this.cookies = {};
-        this.context = {};
-        this.depth = 0;
-        this.conditionalMode = false;
-        this.authenticated = false;
-        this.originator = '';
-        this.internalPrivilege = false;
-        this.externalUrl = null;
-        this.user = null;
-        this.websocket = null;
-        this._status = 0;
-        this.uninitiatedDataCopies = [];
-        this._headers = {};
-        this.forbiddenHeaders = [
-            "accept-charset",
-            "accept-encoding",
-            "access-control-request-headers",
-            "access-control-request-method",
-            "connection",
-            "date",
-            "dnt",
-            "expect",
-            "feature-policy",
-            "host",
-            "keep-alive",
-            "origin",
-            "referer",
-            "te",
-            "trailer",
-            "transfer-encoding",
-            "upgrade",
-            "via"
-        ];
-        this.url = typeof url === 'string' ? new Url1(url) : url;
-        this.data = data;
-        if (headers) {
-            if (headers instanceof Headers) {
-                for (const [key, val] of headers.entries())this._headers[key.toLowerCase()] = val;
-            } else {
-                this.headers = headers;
-            }
-        }
-        if (this.getHeader("x-forwarded-proto")) {
-            this.url.scheme = this.getHeader("x-forwarded-proto") + '://';
-        }
-        if (!parent) {
-            const traceId = crypto.randomUUID().replace(/-/g, '');
-            const spanId = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
-            this.setHeader('traceparent', `00-${traceId}-${spanId}-00`);
-        } else if (parent instanceof Message1) {
-            const traceparent = parent.getHeader('traceparent');
-            if (traceparent) {
-                this.setHeader('traceparent', traceparent);
-                const tracestate = parent.getHeader('tracestate');
-                if (tracestate) this.setHeader('tracestate', tracestate);
-            }
-        } else if (typeof tenantOrContext !== 'string') {
-            if (tenantOrContext.traceparent) {
-                this.setHeader('traceparent', tenantOrContext.traceparent);
-                if (tenantOrContext.tracestate) this.setHeader('tracestate', tenantOrContext.tracestate);
-            }
-        }
-        if (typeof tenantOrContext === 'string') {
-            this.tenant = tenantOrContext;
-        } else {
-            this.tenant = tenantOrContext.tenant;
-        }
-        const cookieStrings = (this.headers['cookie'] || '').split(';');
-        this.cookies = cookieStrings ? cookieStrings.reduce((res, cookieString)=>{
-            const parts = cookieString.trim().split('=');
-            res[parts[0]] = parts[1];
-            return res;
-        }, {}) : {};
-    }
-    copy(withData = true) {
-        const msg = new Message1(this.url.copy(), this.tenant, this.method, this, {
-            ...this._headers
-        }, withData ? this.data : undefined);
-        msg.externalUrl = this.externalUrl ? this.externalUrl.copy() : null;
-        msg.depth = this.depth;
-        msg.conditionalMode = this.conditionalMode;
-        msg.authenticated = this.authenticated;
-        msg.internalPrivilege = this.internalPrivilege;
-        msg.user = this.user;
-        msg.name = this.name;
-        return msg.setStatus(this.status);
-    }
-    copyWithData() {
-        const newMsg = this.copy();
-        newMsg.data = this.data ? this.data.copy() : undefined;
-        if (newMsg.data) this.uninitiatedDataCopies.push(newMsg.data);
-        return newMsg;
-    }
-    setMetadataOn(msg) {
-        msg.externalUrl = this.externalUrl ? this.externalUrl.copy() : null;
-        msg.depth = this.depth;
-        msg.conditionalMode = this.conditionalMode;
-        msg.authenticated = this.authenticated;
-        msg.internalPrivilege = this.internalPrivilege;
-        msg.user = this.user;
-        msg.name = this.name;
-        const traceparent = this.getHeader('traceparent');
-        if (traceparent) msg.setHeader('traceparent', traceparent);
-    }
-    hasData() {
-        return !!this.data && !!this.data.data;
-    }
-    headerCase(header) {
-        return header.split('-').map((part)=>part.substr(0, 1).toUpperCase() + part.substr(1).toLowerCase()).join('-');
-    }
-    mapHeaders(msgHeaders, headers) {
-        Object.entries(msgHeaders).flatMap(([k, vs])=>Array.isArray(vs) ? vs.map((v)=>[
-                    k,
-                    v
-                ]) : [
-                [
-                    k,
-                    vs
-                ]
-            ]).forEach(([k, v])=>headers.set(this.headerCase(k), v));
-        return headers;
-    }
-    responseHeadersOnly(headers) {
-        const isContentDispositionFormData = (k, v)=>k.toLowerCase() === 'content-disposition' && !Array.isArray(v) && v.startsWith('form-data');
-        return Object.fromEntries(Object.entries(headers).filter(([k, v])=>sendHeaders1.indexOf(k.toLowerCase()) >= 0 && !isContentDispositionFormData(k, v)));
-    }
-    forbiddenHeaders;
-    nonForbiddenHeaders() {
-        const isForbidden = (h)=>this.forbiddenHeaders.includes(h) || h.startsWith('proxy-') || h.startsWith('sec-');
-        return Object.fromEntries(Object.entries(this.headers).filter(([k, _])=>!isForbidden(k)));
-    }
-    responsify() {
-        this.method = "";
-        this.status = this.status || 200;
-    }
-    requestify() {
-        this.status = 0;
-    }
-    toResponse() {
-        const res = new Response(this.data?.data || undefined, {
-            status: this.status || 200
-        });
-        this.mapHeaders(this.responseHeadersOnly(this.headers), res.headers);
-        if (this.data) {
-            res.headers.delete('content-length');
-        }
-        res.headers.set('X-Powered-By', 'Restspace');
-        return res;
-    }
-    toRequest() {
-        if (this.data?.data instanceof ReadableStream) {
-            if (this.data.data.locked) throw new Error("Can't convert locked stream to request, will fail");
-        }
-        const req = new Request(this.url.toString(), {
-            method: this.method,
-            headers: this.mapHeaders(this.nonForbiddenHeaders(), new Headers()),
-            body: this.data?.data || undefined
-        });
-        return req;
-    }
-    setStatus(status, message) {
-        if (message !== undefined) {
-            this.setData(message, 'text/plain');
-        }
-        this.status = status;
-        if (status >= 400) {
-            this.setCaching('none');
-        }
-        return this;
-    }
-    setCaching(caching) {
-        switch(caching){
-            case "none":
-                this.setHeader("cache-control", "no-cache, no-store, must-revalidate");
-                this.setHeader("Pragma", "no-cache");
-                this.removeHeader('Expires');
-                break;
-        }
-        return this;
-    }
-    getHeader(header) {
-        const hdr = this.headers[header.toLowerCase()];
-        return Array.isArray(hdr) ? hdr[0] : hdr;
-    }
-    setHeader(header, value) {
-        this._headers[header.toLowerCase()] = value;
-        return this;
-    }
-    removeHeader(header) {
-        delete this._headers[header.toLowerCase()];
-        return this;
-    }
-    async getParam(name, urlPosition = -1) {
-        if (urlPosition > 0 && this.url.servicePathElements.length > urlPosition) {
-            return this.url.servicePathElements[urlPosition];
-        } else if (this.url.query[name]) {
-            return this.url.query[name] || undefined;
-        }
-        if (this.data && isJson1(this.data.mimeType)) {
-            const json = await this.data.asJson() || {};
-            return json[name];
-        }
-        return undefined;
-    }
-    setServiceRedirect(servicePath) {
-        this.setHeader('X-Restspace-Service-Redirect', servicePath);
-    }
-    getServiceRedirect() {
-        const redir = this.getHeader('X-Restspace-Service-Redirect');
-        return redir;
-    }
-    applyServiceRedirect() {
-        const redirServicePath = this.getServiceRedirect();
-        if (redirServicePath) this.url.servicePath = redirServicePath;
-    }
-    getRequestRange(size) {
-        const ranges = this.getHeader('Range');
-        if (!ranges) return null;
-        const parsed = rangeParser_1(size, ranges, {
-            combine: true
-        });
-        return parsed;
-    }
-    setRange(type, size, range) {
-        this.setHeader('Content-Range', type + ' ' + (range ? range.start + '-' + range.end : '*') + '/' + size);
-        if (range && this.data) this.data.size = range.end - range.start + 1;
-        return this;
-    }
-    getCookie(name) {
-        return this.cookies[name] === undefined ? undefined : decodeURIComponent(this.cookies[name]);
-    }
-    setCookie(name, value, options) {
-        let currSetCookie = this.headers['set-cookie'] || [];
-        currSetCookie = currSetCookie.filter((sc)=>!sc.startsWith(name + '='));
-        this._headers['set-cookie'] = [
-            ...currSetCookie,
-            `${name}=${encodeURIComponent(value)}${options}`
-        ];
-        return this;
-    }
-    deleteCookie(name) {
-        this.setCookie(name, '', new CookieOptions1({
-            expires: new Date(2000, 0, 1)
-        }));
-    }
-    cancelOldStream() {
-        if (this.data?.data instanceof ReadableStream) {
-            const self1 = this;
-            (async (rs)=>{
-                try {
-                    if (rs !== self1.data?.data) {
-                        await rs.cancel('message body change');
-                    }
-                } catch  {}
-            })(this.data.data);
-        }
-    }
-    setData(data, mimeType) {
-        this.cancelOldStream();
-        if (data == null) {
-            this.data = undefined;
-        } else if (typeof data === 'string') {
-            this.data = new MessageBody1(str2ab1(data), mimeType);
-        } else {
-            this.data = new MessageBody1(data, mimeType);
-        }
-        this._status = 0;
-        this.conditionalMode = false;
-        this.setHeader("content-type", mimeType);
-        return this;
-    }
-    setText(data) {
-        this.cancelOldStream();
-        this.data = new MessageBody1(str2ab1(data), 'text/plain');
-        this._status = 0;
-        this.conditionalMode = false;
-        return this;
-    }
-    setDataJson(value, mimeType) {
-        this._status = 0;
-        this.conditionalMode = false;
-        return this.setData(JSON.stringify(value), mimeType || 'application/json');
-    }
-    setDirectoryJson(value) {
-        this.setDataJson(value);
-        this.data?.setMimeType('inode/directory+json');
-        return this;
-    }
-    setMethod(httpMethod) {
-        this.method = httpMethod;
-        return this;
-    }
-    setUrl(url) {
-        if (typeof url === 'string') {
-            this.url = Url1.inheritingBase(this.url, url);
-        } else {
-            this.url = url;
-        }
-        return this;
-    }
-    setName(name) {
-        this.name = name;
-        return this;
-    }
-    setDateModified(dateModified) {
-        if (this.data) this.data.dateModified = dateModified;
-        return this;
-    }
-    enterConditionalMode() {
-        if (!this.ok) {
-            const errorMsg = this.data && this.data.data instanceof ArrayBuffer ? ab2str1(this.data.data) : '';
-            this.conditionalMode = true;
-            this.setDataJson({
-                _errorStatus: this.status,
-                _errorMessage: errorMsg
-            }).setStatus(200);
-        }
-        return this;
-    }
-    exitConditionalMode() {
-        if (this?.data?.mimeType === 'application/json' && this?.data.data instanceof ArrayBuffer) {
-            const str = ab2str1(this.data.data);
-            const err = str ? JSON.parse(str) : {};
-            if (err && err['_errorStatus'] !== undefined && err['_errorMessage'] !== undefined) {
-                this.setStatus(err['_errorStatus'], err['_errorMessage']);
-            }
-            this.conditionalMode = false;
-        }
-        return this;
-    }
-    callDown() {
-        this.depth++;
-        return this;
-    }
-    callUp() {
-        this.depth--;
-        return this;
-    }
-    startSpan(traceparent, tracestate) {
-        if (!traceparent) traceparent = this.getHeader('traceparent');
-        if (traceparent) {
-            const traceParts = traceparent.split('-');
-            const newSpanId = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
-            this.setHeader('traceparent', `${traceParts[0]}-${traceParts[1]}-${newSpanId}-00`);
-            if (tracestate) this.setHeader('tracestate', tracestate);
-        }
-        return this;
-    }
-    loggerArgs() {
-        let traceId = 'x'.repeat(32);
-        let spanId = 'x'.repeat(16);
-        const traceparent = this.getHeader('traceparent');
-        if (traceparent) {
-            const parts = traceparent.split('-');
-            if (parts.length >= 3) {
-                traceId = parts[1];
-                spanId = parts[2];
-            }
-        }
-        return [
-            this.tenant,
-            this.user?.email || '?',
-            traceId,
-            spanId
-        ];
-    }
-    async requestExternal() {
-        let resp;
-        try {
-            resp = await fetch(this.toRequest());
-        } catch (err) {
-            console.error(`External request failed: ${err}`);
-            return this.setStatus(500, `External request fail: ${err}`);
-        }
-        const msgOut = Message1.fromResponse(resp, this.tenant);
-        msgOut.method = this.method;
-        msgOut.name = this.name;
-        this.setMetadataOn(msgOut);
-        return msgOut;
-    }
-    async divertToSpec(spec, defaultMethod, effectiveUrl, inheritMethod, headers) {
-        if (Array.isArray(spec)) {
-            const unflatMsgs = await Promise.all(spec.flatMap((stg)=>this.divertToSpec(stg, defaultMethod, effectiveUrl, inheritMethod, headers)));
-            return unflatMsgs.flat(1);
-        }
-        let obj = {};
-        const hasData = (mimeType)=>isJson1(mimeType) || mimeType === 'application/x-www-form-urlencoded';
-        const specHasObjectMacro = spec.indexOf('${') >= 0 || spec.indexOf(' $this') >= 0;
-        if (this.data && this.data.mimeType && hasData(this.data.mimeType) && specHasObjectMacro) {
-            obj = await this.data.asJson();
-        }
-        const msgs = Message1.fromSpec(spec, this.tenant, effectiveUrl || this.url, obj, defaultMethod, this.name, inheritMethod, headers);
-        (Array.isArray(msgs) ? msgs : [
-            msgs
-        ]).forEach((msg)=>{
-            msg.data = msg.data || this.data;
-            msg._headers = {
-                ...this._headers
-            };
-            msg.setStatus(this.status);
-            this.setMetadataOn(msg);
-        });
-        return msgs;
-    }
-    redirect(url, isTemporary) {
-        this.setStatus(isTemporary ? 302 : 301);
-        this.setHeader('Location', url.toString());
-        return this;
-    }
-    splitData() {
-        const datas = new AsyncQueue1();
-        if (!this.data) {
-            datas.close();
-            return datas;
-        }
-        switch(this.data.mimeType){
-            default:
-                {
-                    datas.enqueue(this);
-                    datas.close();
-                }
-        }
-        return datas;
-    }
-    async validate(validator) {
-        if (!this.data || !isJson1(this.data.mimeType)) {
-            validator.errors = [
-                {
-                    keyword: "",
-                    instancePath: "",
-                    schemaPath: "",
-                    params: {},
-                    message: "The body was not JSON"
-                }
-            ];
-            return false;
-        }
-        const json = await this.data.asJson();
-        return validator(json);
-    }
-    toString() {
-        const startLine = `${this.method} ${this.url.toString("absolute path")} HTTP/1.1`;
-        const headers = Object.entries(this.headers).flatMap(([name, vals])=>(Array.isArray(vals) ? vals : [
-                vals
-            ]).map((val)=>`${name}: ${val}`));
-        const body = this.data ? this.data.asStringSync() : '';
-        return `${startLine}\r\n${headers.join("\r\n")}${body ? "\r\n\r\n" + body : ''}`;
-    }
-    async toUint8Array() {
-        let startLine;
-        if (this.method) {
-            startLine = `${this.method} ${this.url.toString("absolute path")} HTTP/1.1`;
-        } else {
-            startLine = `HTTP/1.1 ${this.status} ${this.ok || !this.hasData ? "" : await this.data.asString()}`;
-        }
-        const headers = Object.entries(this.headers).flatMap(([name, vals])=>(Array.isArray(vals) ? vals : [
-                vals
-            ]).map((val)=>`${name}: ${val}`));
-        const hasBody = !!this.data?.data;
-        const enc = new TextEncoder().encode(`${startLine}\r\n${headers.join("\r\n")}${hasBody ? "\r\n\r\n" : ""}`);
-        if (this.data?.data) {
-            const body = await this.data.asArrayBuffer();
-            const res = new Uint8Array(enc.byteLength + body.byteLength);
-            res.set(enc, 0);
-            res.set(new Uint8Array(body), enc.byteLength);
-            return res;
-        } else {
-            return enc;
-        }
-    }
-    static fromRequest(req, tenant) {
-        const url = new Url1(req.url);
-        const msg = new Message1(url, tenant, req.method, null, req.headers, MessageBody1.fromRequest(req) || undefined);
-        const traceparent = req.headers.get('traceparent');
-        if (traceparent) {
-            msg.setHeader('traceparent', traceparent);
-            const tracestate = req.headers.get('tracestate');
-            if (tracestate) msg.setHeader('tracestate', tracestate);
-        }
-        return msg;
-    }
-    static fromResponse(resp, tenant) {
-        const msg = new Message1(resp.url, tenant, "", null, resp.headers, resp.body ? new MessageBody1(resp.body, resp.headers.get('content-type') || 'text/plain') : undefined);
-        msg.setStatus(resp.status);
-        const traceparent = resp.headers.get('traceparent');
-        if (traceparent) {
-            msg.setHeader('traceparent', traceparent);
-            const tracestate = resp.headers.get('tracestate');
-            if (tracestate) msg.setHeader('tracestate', tracestate);
-        }
-        return msg;
-    }
-    static fromUint8Array(arr, tenant) {
-        const decoder = new TextDecoder();
-        const pullString = (arr, start)=>{
-            let pos = start;
-            while(pos < arr.byteLength && arr[pos] !== 13 && arr[pos] !== 10)pos++;
-            return [
-                pos < arr.byteLength ? decoder.decode(arr.subarray(start, pos)) : '',
-                pos + 2
-            ];
-        };
-        let [line, pos] = pullString(arr, 0);
-        const initial = upTo1(line, ' ');
-        let msg;
-        if (initial === "HTTP/1.1") {
-            const lastPart = after1(line, ' ');
-            const statusStr = upTo1(lastPart, ' ');
-            const statusMsg = after1(lastPart, ' ');
-            msg = new Message1("/", tenant, "", null);
-            msg.setStatus(parseInt(statusStr), statusMsg || undefined);
-        } else {
-            const firstPart = upToLast1(line, ' ');
-            const url = after1(firstPart, ' ');
-            msg = new Message1(url, tenant, initial, null);
-        }
-        while(line){
-            [line, pos] = pullString(arr, pos);
-            if (!line) break;
-            const headerParts = line.split(':');
-            msg.setHeader(headerParts[0].trim(), headerParts[1].trim());
-        }
-        if (pos < arr.byteLength - 1 && msg.method) {
-            const body = new Uint8Array(arr.subarray(pos)).buffer;
-            const contentType = msg.getHeader('content-type');
-            if (!contentType) throw new Error('Content-Type header not set');
-            msg.setData(body, contentType);
-        }
-        return msg;
-    }
-    static isUrl(url) {
-        return (Url1.urlRegex.test(url) || url.startsWith('$')) && !url.startsWith('$this');
-    }
-    static isMethod(method) {
-        return [
-            "GET",
-            "POST",
-            "PUT",
-            "DELETE",
-            "OPTIONS",
-            "HEAD",
-            "PATCH",
-            "$METHOD"
-        ].includes(method);
-    }
-    static fromSpec(spec, tenant, referenceUrl, data, defaultMethod, name, inheritMethod, headers) {
-        const parts = spec.trim().split(' ');
-        let method = defaultMethod || 'GET';
-        let url = '';
-        let postData = null;
-        if (Message1.isUrl(parts[0]) && !Message1.isMethod(parts[0])) {
-            url = spec;
-        } else if (parts.length > 1 && Message1.isUrl(parts[1]) && Message1.isMethod(parts[0])) {
-            method = parts[0] === '$METHOD' ? inheritMethod || method : parts[0];
-            url = parts.slice(1).join(' ');
-        } else if (parts.length > 2 && Message1.isUrl(parts[2]) && Message1.isMethod(parts[0]) && data) {
-            method = parts[0] === '$METHOD' ? inheritMethod || method : parts[0];
-            const propertyPath = parts[1];
-            if (propertyPath === '$this') {
-                postData = data;
-            } else {
-                postData = getProp1(data, propertyPath);
-            }
-            url = parts.slice(2).join(' ');
-        } else {
-            console.error('bad req spec: ' + spec);
-            throw new Error('Bad request spec');
-        }
-        if (referenceUrl || data) {
-            const refUrl = referenceUrl || new Url1('/');
-            const urls = resolvePathPatternWithUrl1(url, refUrl, data, name);
-            if (Array.isArray(urls)) {
-                return urls.map((url)=>new Message1(Url1.inheritingBase(referenceUrl, url), tenant, method, null, {
-                        ...headers
-                    }, postData ? MessageBody1.fromObject(postData) : undefined));
-            }
-            url = urls;
-        }
-        return new Message1(Url1.inheritingBase(referenceUrl, url), tenant, method, null, {
-            ...headers
-        }, postData ? MessageBody1.fromObject(postData) : undefined);
-    }
-}
-function longestMatchingPath1(pathMap, path) {
-    let exactPath = '/' + path + '.';
-    let item = pathMap[exactPath];
-    if (item) return exactPath;
-    const pathParts = path.split('/');
-    while(true){
-        exactPath = '/' + pathParts.join('/');
-        item = pathMap[exactPath];
-        if (item) {
-            return exactPath;
-        } else {
-            if (pathParts.length === 0) break;
-            pathParts.pop();
-        }
-    }
-    return undefined;
-}
-function getErrors1(validator) {
-    return (validator.errors || []).map((e)=>e.message).join('; ');
-}
-var AuthorizationType1;
-(function(AuthorizationType) {
-    AuthorizationType[AuthorizationType["none"] = 0] = "none";
-    AuthorizationType[AuthorizationType["read"] = 1] = "read";
-    AuthorizationType[AuthorizationType["write"] = 2] = "write";
-    AuthorizationType[AuthorizationType["create"] = 3] = "create";
-})(AuthorizationType1 || (AuthorizationType1 = {}));
-const ajv2 = new __pika_web_default_export_for_treeshaking__1({
-    allErrors: true,
-    strictSchema: false,
-    allowUnionTypes: true
-});
-class Service1 {
-    static Identity = new Service1().setMethodPath("all", "/", (msg)=>Promise.resolve(msg));
-    methodFuncs = {};
-    schemas = {};
-    initFunc = ()=>Promise.resolve();
-    funcByUrl(method, url) {
-        const pathMap = this.methodFuncs[method];
-        if (!pathMap) return undefined;
-        const matchPath = longestMatchingPath1(pathMap, url.servicePath);
-        if (!matchPath) return undefined;
-        const matchPathElements = matchPath.split('/').filter((el)=>!!el);
-        return [
-            matchPathElements,
-            pathMap[matchPath]
-        ];
-    }
-    pathsAt(path) {
-        if (!path.startsWith('/')) path = '/' + path;
-        if (!path.endsWith('/')) path += '/';
-        const paths = new Set();
-        const isMatch = (p)=>{
-            const rest = after1(p, path);
-            return rest && !rest.includes('/');
-        };
-        Object.values(this.methodFuncs).forEach((pm)=>Object.keys(pm).filter((p)=>isMatch(p)).forEach((p)=>paths.add(p)));
-        return Array.from(paths.values()).map((p)=>{
-            const name = after1(p, path);
-            return Object.keys(this.methodFuncs["getDirectory"]).some((k)=>k === p) ? [
-                `${name}/`
-            ] : [
-                name
-            ];
-        });
-    }
-    enhanceContext(context, config, msg) {
-        const proxyAdapterSource = context.manifest.proxyAdapterSource;
-        if (proxyAdapterSource) {
-            context.makeProxyRequest = async (msg)=>{
-                const proxyAdapter = await context.getAdapter(proxyAdapterSource, config.proxyAdapterConfig || {});
-                const proxyMsg = await proxyAdapter.buildMessage(msg);
-                return await context.makeRequest(proxyMsg);
-            };
-        }
-        context.traceparent = msg?.getHeader('traceparent') || undefined;
-        context.tracestate = msg?.getHeader('tracestate') || undefined;
-        return context;
-    }
-    func = (msg, context, config)=>{
-        const method = msg.method.toLowerCase();
-        const callMethodFunc = ([matchPathElements, methodFunc], msg, context, config)=>{
-            msg.url.basePathElements = msg.url.basePathElements.concat(matchPathElements);
-            const enhancedContext = this.enhanceContext(context, config, msg);
-            return Promise.resolve(methodFunc(msg, enhancedContext, config));
-        };
-        if (method === 'options') return Promise.resolve(msg);
-        if (msg.url.isDirectory) {
-            const pathFunc = this.funcByUrl(method + 'Directory', msg.url);
-            if (pathFunc) {
-                return callMethodFunc(pathFunc, msg, context, config);
-            }
-        }
-        let pathFunc = this.funcByUrl(method, msg.url);
-        if (pathFunc) return callMethodFunc(pathFunc, msg, context, config);
-        if (method === 'put' && this.methodFuncs['post'] && !context.manifest.isFilter) {
-            pathFunc = this.funcByUrl('post', msg.url);
-            if (!pathFunc) return Promise.resolve(msg.setStatus(404, 'Not found'));
-            return callMethodFunc(pathFunc, msg, context, config).then((msg)=>{
-                if (msg.data) msg.data = undefined;
-                return msg;
-            });
-        }
-        if (method === 'head') {
-            pathFunc = this.funcByUrl('get', msg.url) || this.funcByUrl('all', msg.url);
-            if (pathFunc) {
-                return callMethodFunc(pathFunc, msg, context, config).then((msg)=>{
-                    if (msg.data) msg.data = undefined;
-                    return msg;
-                });
-            } else {
-                return Promise.resolve(msg.setStatus(404, 'Not found'));
-            }
-        }
-        if (this.methodFuncs['all']) {
-            pathFunc = this.funcByUrl('all', msg.url);
-            if (!pathFunc) return Promise.resolve(msg.setStatus(404, 'Not found'));
-            return callMethodFunc(pathFunc, msg, context, config);
-        }
-        return Promise.resolve(context.manifest.isFilter ? msg : msg.setStatus(404, 'Not found'));
-    };
-    authType = (msg)=>{
-        switch(msg.method){
-            case "OPTIONS":
-                return Promise.resolve(AuthorizationType1.none);
-            case "GET":
-            case "HEAD":
-            case "POST":
-                return Promise.resolve(AuthorizationType1.read);
-            default:
-                return Promise.resolve(AuthorizationType1.write);
-        }
-    };
-    setMethodPath(method, path, func, schema) {
-        if (!path.startsWith('/')) path = '/' + path;
-        if (schema) {
-            const validator = ajv2.compile(schema);
-            const innerFunc = func;
-            func = async (msg, context, config)=>{
-                if (!await msg.validate(validator)) {
-                    return msg.setStatus(400, getErrors1(validator));
-                } else {
-                    return innerFunc(msg, context, config);
-                }
-            };
-            if (this.schemas[method]) {
-                this.schemas[method][path] = schema;
-            } else {
-                this.schemas[method] = {
-                    [path]: schema
-                };
-            }
-        }
-        if (this.methodFuncs[method]) {
-            this.methodFuncs[method][path] = func;
-        } else {
-            this.methodFuncs[method] = {
-                [path]: func
-            };
-        }
-        return this;
-    }
-    initializer(initFunc) {
-        this.initFunc = (context, config, oldState)=>{
-            this.enhanceContext(context, config);
-            return initFunc(context, config, oldState);
-        };
-    }
-    constantDirectory(path, dirSpec) {
-        return this.setMethodPath('getDirectory', path, (msg)=>{
-            msg.setDirectoryJson(dirSpec);
-            return msg;
-        });
-    }
-    get = (func)=>this.setMethodPath('get', '/', func);
-    getPath = (path, func)=>this.setMethodPath('get', path, func);
-    getDirectory = (func)=>this.setMethodPath('getDirectory', '/', func);
-    getDirectoryPath = (path, func)=>this.setMethodPath('getDirectory', path, func);
-    post = (func, schema)=>this.setMethodPath('post', '/', func, schema);
-    postPath = (path, func, schema)=>this.setMethodPath('post', path, func, schema);
-    postDirectory = (func)=>this.setMethodPath('postDirectory', '/', func);
-    postDirectoryPath = (path, func)=>this.setMethodPath('postDirectory', path, func);
-    put = (func, schema)=>this.setMethodPath('put', '/', func, schema);
-    putPath = (path, func, schema)=>this.setMethodPath('put', path, func, schema);
-    putDirectory = (func)=>this.setMethodPath('putDirectory', '/', func);
-    putDirectoryPath = (path, func)=>this.setMethodPath('putDirectory', path, func);
-    delete = (func)=>this.setMethodPath('delete', '/', func);
-    deletePath = (path, func)=>this.setMethodPath('delete', path, func);
-    deleteDirectory = (func)=>this.setMethodPath('deleteDirectory', '/', func);
-    deleteDirectoryPath = (path, func)=>this.setMethodPath('deleteDirectory', path, func);
-    patch = (func)=>this.setMethodPath('patch', '/', func);
-    patchPath = (path, func)=>this.setMethodPath('patch', path, func);
-    all = (func)=>this.setMethodPath('all', '/', func);
-    allPath = (path, func)=>this.setMethodPath('all', path, func);
-}
 const importMeta2 = {
     url: "https://deno.land/x/deno_dom@v0.1.45/build/deno-wasm/deno-wasm.js",
     main: false
@@ -49507,7 +47811,7 @@ function register(func, fragFunc) {
     parse8 = func;
     parseFrag = fragFunc;
 }
-const __default50 = {
+const __default51 = {
     Element: null,
     Document: null,
     DocumentFragment: null
@@ -49764,10 +48068,10 @@ function isDocumentFragment(node) {
     }
     while(true){
         switch(obj.constructor){
-            case __default50.DocumentFragment:
+            case __default51.DocumentFragment:
                 return true;
             case Node1:
-            case __default50.Element:
+            case __default51.Element:
                 return false;
             case Object:
             case null:
@@ -50419,7 +48723,7 @@ class DocumentFragment1 extends Node1 {
         return nodeList;
     }
 }
-__default50.DocumentFragment = DocumentFragment1;
+__default51.DocumentFragment = DocumentFragment1;
 function documentFragmentGetElementsByTagName(tagName) {
     const search = [];
     if (tagName === "*") {
@@ -50449,7 +48753,7 @@ function documentFragmentGetElementsByTagNameWildcard(fragment, search) {
 }
 DocumentFragment1.prototype[customByTagNameSym] = documentFragmentGetElementsByTagName;
 DocumentFragment1.prototype[customByClassNameSym] = documentFragmentGetElementsByClassName;
-const __default51 = (document1)=>{
+const __default52 = (document1)=>{
     const NW = Factory({
         document: document1,
         DOMException
@@ -52908,7 +51212,7 @@ function SetupSizzle(window1) {
         window1.Sizzle = Sizzle;
     }
 }
-const __default52 = (document1)=>{
+const __default53 = (document1)=>{
     const sizzleWindow = {
         document: document1
     };
@@ -52937,9 +51241,9 @@ function getSelectorEngine() {
         }
     }
     if (codeGenerationAllowed) {
-        return __default51;
-    } else {
         return __default52;
+    } else {
+        return __default53;
     }
 }
 class DOMTokenList {
@@ -53972,8 +52276,8 @@ class HTMLDocument extends Document1 {
         return new HTMLDocument(CTOR_KEY);
     }
 }
-__default50.Document = Document1;
-__default50.Element = Element1;
+__default51.Document = Document1;
+__default51.Element = Element1;
 function fragmentNodesFromString(html, contextLocalName) {
     const parsed = JSON.parse(parseFrag(html, contextLocalName));
     const node = nodeFromArray(parsed, null);
@@ -54090,13 +52394,157 @@ async function initParser() {
     await init();
     register(parse7, parse_frag);
 }
-const service15 = new Service1();
-service15.initializer(async ()=>{
+const ensureDelay = (minDelayMs, randomOffsetMs)=>{
+    const queue = new ArrayQueue();
+    let delayHandle = null;
+    const delayThenNext = ()=>{
+        delayHandle = setTimeout(()=>{
+            if (queue.length > 0) {
+                queue.dequeue()();
+            } else {
+                delayHandle = null;
+            }
+        }, minDelayMs + Math.random() * randomOffsetMs);
+    };
+    const enqueue = (fn, resolve)=>{
+        queue.enqueue(async ()=>{
+            delayThenNext();
+            resolve(await fn());
+        });
+        if (delayHandle === null) {
+            delayThenNext();
+        }
+    };
+    const generator = (fn)=>new Promise((resolve)=>{
+            enqueue(fn, resolve);
+        });
+    Object.defineProperties(generator, {
+        pendingCount: {
+            get: ()=>queue.length
+        },
+        clearQueue: {
+            value: ()=>{
+                while(queue.length)queue.pop();
+            }
+        },
+        clearTimeout: {
+            value: ()=>{
+                if (delayHandle !== null) clearTimeout(delayHandle);
+            }
+        }
+    });
+    return generator;
+};
+const positionAtPath = (loopPosition, path)=>{
+    let current = loopPosition;
+    for (const p of path){
+        if (!(p in current)) return undefined;
+        current = current[p];
+    }
+    return current;
+};
+const incrementLoopPosition = (loopPosition, path)=>{
+    let current = loopPosition;
+    for (const p of path){
+        if (!(p in current)) current[p] = {
+            index: -1
+        };
+        current = current[p];
+    }
+    current.index++;
+    Object.keys(current).filter((k)=>k !== 'index').forEach((k)=>delete current[k]);
+};
+const setIndexAtLoopPosition = (loopPosition, path, index)=>{
+    let current = loopPosition;
+    for (const p of path){
+        if (!(p in current)) current[p] = {
+            index: 0
+        };
+        current = current[p];
+    }
+    if (current.index !== index) {
+        current.index = index ? index : -1;
+        Object.keys(current).filter((k)=>k !== 'index').forEach((k)=>delete current[k]);
+    }
+};
+class WebScraperState extends BaseStateClass {
+    minDelayMs = 1000;
+    randomOffsetMs = 200;
+    delayers = {};
+    async load(_context, config) {
+        this.minDelayMs = config.minDelayMs || 1000;
+        this.randomOffsetMs = config.randomOffsetMs || 200;
+    }
+    getDelayer(domain) {
+        if (!(domain in this.delayers)) {
+            this.delayers[domain] = ensureDelay(this.minDelayMs, this.randomOffsetMs);
+        }
+        return this.delayers[domain];
+    }
+}
+const service15 = new Service();
+service15.initializer(async (context, config)=>{
     await initParser();
+    await context.state(WebScraperState, context, config);
 });
-const scrapeFromSpec = async (spec, reqMsg, subpath, context)=>{
-    const sendMsg = await context.adapter.buildMessage(reqMsg);
-    const pageMsg = await context.makeRequest(sendMsg);
+const nodeAttribute = (node, attribute)=>{
+    if (!node) return null;
+    if (node.nodeType !== Node1.ELEMENT_NODE) return null;
+    if (attribute in node) return node[attribute]?.toString();
+    return node.getAttribute(attribute);
+};
+const parseSpec = (spec)=>{
+    let attribute = "textContent";
+    const match = spec.match(/ @([-_a-zA-Z0-9]+)$/);
+    if (match) {
+        attribute = match[1];
+        spec = spec.slice(0, -match[0].length);
+    }
+    return [
+        spec,
+        attribute
+    ];
+};
+const makeGetters = (page, mimeType)=>{
+    let itemGetter;
+    let arrayGetter;
+    switch(upTo(mimeType, ';')){
+        case 'text/html':
+            {
+                const doc = new DOMParser().parseFromString(page, "text/html");
+                if (doc === null) throw new Error(`HMTL parse failed`);
+                itemGetter = (spec)=>{
+                    let attribute;
+                    [spec, attribute] = parseSpec(spec);
+                    return nodeAttribute(doc.querySelector(spec), attribute)?.trim() || null;
+                };
+                arrayGetter = (spec)=>{
+                    let attribute;
+                    [spec, attribute] = parseSpec(spec);
+                    return Array.from(doc.querySelectorAll(spec)).map((el)=>nodeAttribute(el, attribute)?.trim() || null);
+                };
+                return {
+                    itemGetter,
+                    arrayGetter
+                };
+            }
+        case 'application/json':
+            {
+                const obj = JSON.parse(page);
+                itemGetter = (spec)=>jsonPath(obj, spec);
+                arrayGetter = (spec)=>jsonPath(obj, spec);
+                return {
+                    itemGetter,
+                    arrayGetter
+                };
+            }
+        default:
+            throw new Error(`Unsupported mime type ${mimeType}`);
+    }
+};
+const scrapeFromSpec = async (spec, path, parentResult, loopPosition, reqMsg, fetchContext)=>{
+    const sendMsg = await fetchContext.serviceContext.adapter.buildMessage(reqMsg);
+    const pageMsg = await fetchContext.delayer(()=>fetchContext.serviceContext.makeRequest(sendMsg));
     if (!pageMsg.ok) return {
         $status: pageMsg.status,
         $message: await pageMsg?.data?.asString() || ''
@@ -54110,91 +52558,297 @@ const scrapeFromSpec = async (spec, reqMsg, subpath, context)=>{
         $status: 400,
         $message: `No page ${reqMsg.url}`
     };
-    const doc = new DOMParser().parseFromString(page, "text/html");
-    if (!doc) return {
-        $status: 400,
-        $message: `HMTL parse failed ${reqMsg.url}`
-    };
+    return extractFromPage(spec, path, parentResult, loopPosition, page, upTo(pageMsg.data.mimeType, ';'), reqMsg, fetchContext);
+};
+const extractFromPage = async (spec, path, parentResult, loopPosition, page, mimeType, reqMsg, fetchContext)=>{
+    let getters;
+    try {
+        getters = makeGetters(page, mimeType);
+    } catch (e) {
+        return {
+            $status: 400,
+            $message: `Error parsing ${path.join('.')}: ${e}`
+        };
+    }
+    const { itemGetter, arrayGetter } = getters;
     const returnVal = {};
-    if (subpath.length === 0) {
-        for(const key in spec){
-            if (key.startsWith('$')) continue;
-            let value = spec[key];
-            const returnArray = Array.isArray(value);
-            if (returnArray) {
-                if (value.length !== 1) {
-                    returnVal[key] = {
-                        $status: 400,
-                        $message: `Array in spec must contain one template item`
-                    };
-                    continue;
-                }
-                value = value[0];
-            }
-            if (typeof value === 'string') {
-                returnVal[key] = returnArray ? Array.from(doc.querySelectorAll(value)).map((el)=>el.textContent) : doc.querySelector(value)?.textContent;
-            } else if (Array.isArray(value)) {
+    const startFrom = fetchContext.startFrom || {};
+    const startFromAtPath = positionAtPath(startFrom, path);
+    let keyMatched = !!startFromAtPath || Object.keys(startFrom).length === 0;
+    let keys = Object.keys(spec);
+    const nextLoopKey = fetchContext.loopPath?.[path.length];
+    if (nextLoopKey && path.every((p, i1)=>p === fetchContext.loopPath[i1])) {
+        if (keys.includes(nextLoopKey)) {
+            keys = keys.filter((k)=>k !== nextLoopKey).concat([
+                nextLoopKey
+            ]);
+        }
+    }
+    for (const key of keys){
+        if (key.startsWith('$')) continue;
+        let value = spec[key];
+        const newPath = [
+            ...path,
+            key
+        ];
+        const returnsArray = Array.isArray(value);
+        if (startFromAtPath && key in startFromAtPath) keyMatched = true;
+        if (!keyMatched && returnsArray) {
+            returnVal[key] = [];
+            continue;
+        }
+        const isLoopKey = fetchContext.loopPath && key === nextLoopKey && path.length === fetchContext.loopPath.length - 1;
+        const startFromAtKey = startFromAtPath?.[key];
+        if (returnsArray) {
+            if (value.length !== 1) {
                 returnVal[key] = {
                     $status: 400,
-                    $message: `Directly nested arrays not allowed in spec`
+                    $message: `Array in spec must contain one template item`
                 };
-            } else if (value && typeof value === 'object') {
-                if (!value['$urlselector']) {
-                    returnVal[key] = {
-                        $status: 400,
-                        $message: `No url selector specified in subspec at ${key}`
-                    };
-                    continue;
+                continue;
+            }
+            value = value[0];
+        }
+        if (typeof value === 'string') {
+            if (value === '$url') {
+                returnVal[key] = reqMsg.url.toString();
+            } else {
+                returnVal[key] = returnsArray ? arrayGetter(value) : itemGetter(value);
+            }
+        } else if (Array.isArray(value)) {
+            returnVal[key] = {
+                $status: 400,
+                $message: `Directly nested arrays not allowed in spec`
+            };
+            continue;
+        } else if (value && typeof value === 'object') {
+            let hrefs;
+            let fetchMimeType = mimeType;
+            if ('$mimeType' in value) {
+                fetchMimeType = value['$mimeType'];
+            }
+            if ('$urlSelector' in value) {
+                if (fetchContext.maxFetches !== undefined && fetchContext.maxFetches <= 0) {
+                    hrefs = [];
+                } else {
+                    let hrefsOrNull = returnsArray ? arrayGetter(value['$urlSelector'] + " @href") : [
+                        itemGetter(value['$urlSelector'] + " @href")
+                    ];
+                    if (startFromAtKey?.index && startFromAtKey.index > 0) {
+                        hrefsOrNull = hrefsOrNull.slice(startFromAtKey.index);
+                        setIndexAtLoopPosition(loopPosition, newPath, startFromAtKey.index);
+                    }
+                    if (startFromAtKey?.index && !Object.keys(startFromAtKey).some((k)=>k !== 'index')) {
+                        fetchContext.startFrom = {};
+                    }
+                    hrefs = hrefsOrNull.filter((href)=>!!href);
                 }
-                const elsArray = returnArray ? Array.from(doc.querySelectorAll(value['$urlselector'])).filter((node)=>node.nodeType === Node1.ELEMENT_NODE) : [
-                    doc.querySelector(value['$urlselector'])
-                ];
-                const els = elsArray.filter((el)=>!!el);
-                const retValues = [];
-                for (const el of els){
-                    const href = el.getAttribute('href');
-                    if (!href) {
-                        retValues.push({
+            } else if ('$pagedUrlPattern' in value) {
+                let pageCount = 1;
+                if (value['$pageCountSelector']) {
+                    pageCount = parseInt(itemGetter(value['$pageCountSelector']) || "1");
+                    if (isNaN(pageCount) || pageCount < 1) {
+                        returnVal[key] = {
                             $status: 400,
-                            $message: `No href found at ${value['$urlselector']}`
-                        });
+                            $message: `Invalid page count ${value['$pageCountSelector']}`
+                        };
                         continue;
                     }
-                    let nextUrl = new Url1(href);
-                    if (nextUrl.isRelative) {
-                        nextUrl = reqMsg.url.follow(href);
-                    } else if (href.startsWith('/')) {
-                        nextUrl = reqMsg.url.copy();
-                        nextUrl.path = href;
+                }
+                let pageLength = 1;
+                if (value['$pageLengthSelector']) {
+                    pageLength = parseInt(itemGetter(value['$pageLengthSelector']) || "1");
+                    if (isNaN(pageLength) || pageLength < 1) {
+                        returnVal[key] = {
+                            $status: 400,
+                            $message: `Invalid page length ${value['$pageLengthSelector']}`
+                        };
+                        continue;
                     }
-                    const subReqMsg = new Message1(nextUrl, context, 'GET', reqMsg);
-                    const subReqVal = await scrapeFromSpec(value, subReqMsg, subpath, context);
-                    if (subReqVal.$status && subReqVal.$message) return subReqVal;
+                }
+                let itemCount = 0;
+                if (value['$itemCountSelector']) {
+                    itemCount = parseInt(itemGetter(value['$itemCountSelector']) || "0");
+                    if (isNaN(itemCount) || itemCount < 0) {
+                        returnVal[key] = {
+                            $status: 400,
+                            $message: `Invalid item count ${value['$itemCountSelector']}`
+                        };
+                        continue;
+                    }
+                }
+                if (itemCount > 0) pageCount = Math.floor(itemCount / pageLength);
+                hrefs = [];
+                if (!returnsArray) pageCount = 1;
+                if (fetchContext.maxFetches !== undefined && fetchContext.maxFetches <= 0) pageCount = 0;
+                let initialIdx = 0;
+                if (startFromAtKey?.index && startFromAtKey.index > 0) {
+                    setIndexAtLoopPosition(loopPosition, newPath, startFromAtKey.index);
+                    initialIdx = startFromAtKey.index;
+                }
+                if (startFromAtKey?.index && !Object.keys(startFromAtKey).some((k)=>k !== 'index')) {
+                    fetchContext.startFrom = {};
+                }
+                for(let i1 = initialIdx; i1 < pageCount; i1++){
+                    const pattern = value['$pagedUrlPattern'];
+                    const url = resolvePathPatternWithUrl(pattern, reqMsg.url, {
+                        page0: i1.toString(),
+                        page1: (i1 + 1).toString(),
+                        take: pageLength.toString(),
+                        skip: (i1 * pageLength).toString()
+                    });
+                    hrefs.push(url);
+                }
+            } else if ('$embeddedDataSelector' in value) {
+                if (returnsArray) {
+                    const data = arrayGetter(value['$embeddedDataSelector']);
+                    const items = data.filter((item)=>item !== null);
+                    const val = [];
+                    for(let idx = 0; idx < items.length; idx++){
+                        setIndexAtLoopPosition(loopPosition, newPath, idx);
+                        val.push(await extractFromPage(value, newPath, parentResult, loopPosition, items[idx], fetchMimeType, reqMsg, fetchContext));
+                    }
+                    returnVal[key] = val;
+                } else {
+                    const data = itemGetter(value['$embeddedDataSelector']);
+                    if (data) {
+                        setIndexAtLoopPosition(loopPosition, newPath, -1);
+                        const val = await extractFromPage(value, newPath, parentResult, loopPosition, data, fetchMimeType, reqMsg, fetchContext);
+                        returnVal[key] = val;
+                    } else {
+                        returnVal[key] = {
+                            $status: 400,
+                            $message: `No data found at ${value['$embeddedDataSelector']}`
+                        };
+                    }
+                }
+                continue;
+            } else {
+                returnVal[key] = {
+                    $status: 400,
+                    $message: `No url selector specified in subspec at ${key}`
+                };
+                continue;
+            }
+            const retValues = [];
+            const countsAsFetch = !('$embeddedDataSelector' in value) && returnsArray && !Object.values(value).some((v)=>typeof v === 'object' && v !== null && !('$embeddedDataSelector' in v));
+            for(let idx = 0; idx < hrefs.length; idx++){
+                const href = hrefs[idx];
+                if (!href) {
+                    retValues.push({
+                        $status: 400,
+                        $message: `No href found at ${value['$urlselector']}`
+                    });
+                    continue;
+                }
+                let nextUrl = new Url(href);
+                if (nextUrl.isRelative) {
+                    nextUrl = reqMsg.url.follow(href);
+                } else if (href.startsWith('/')) {
+                    nextUrl = reqMsg.url.copy();
+                    nextUrl.path = href;
+                }
+                const subReqMsg = new Message(nextUrl, fetchContext.serviceContext, 'GET', reqMsg);
+                if (fetchMimeType.startsWith('application/json')) {
+                    subReqMsg.setHeader('accept', 'application/json, text/javascript, */*; q=0.01');
+                    subReqMsg.setHeader('X-Requested-With', 'XMLHttpRequest');
+                }
+                if (key === nextLoopKey) {
+                    parentResult = {
+                        ...parentResult,
+                        ...returnVal
+                    };
+                }
+                incrementLoopPosition(loopPosition, newPath);
+                const subReqVal = await scrapeFromSpec(value, newPath, parentResult, loopPosition, subReqMsg, fetchContext);
+                if (subReqVal.$status && subReqVal.$message) return subReqVal;
+                if (isLoopKey) {
+                    const loopOutput = {
+                        ...parentResult,
+                        [key]: subReqVal
+                    };
+                    if (fetchContext.outputWriter) {
+                        fetchContext.outputWriter.write(new TextEncoder().encode(JSON.stringify(loopOutput) + "\n"));
+                    }
+                } else if (!nextLoopKey) {
                     retValues.push(subReqVal);
                 }
-                returnVal[key] = returnArray ? retValues : retValues[0];
+                if (fetchContext.maxFetches !== undefined) {
+                    if (countsAsFetch && fetchContext.maxFetches > 0) {
+                        fetchContext.maxFetches--;
+                    }
+                    if (fetchContext.maxFetches <= 0) {
+                        break;
+                    }
+                }
             }
+            returnVal[key] = returnsArray ? retValues : retValues[0];
         }
     }
     return returnVal;
 };
-service15.post(async (msg, context)=>{
+service15.post(async (msg, context, config)=>{
     const reqSpec = msg.copy().setMethod("GET");
     const msgSpec = await context.makeRequest(reqSpec);
     if (!msgSpec.ok) return msgSpec;
     if (msgSpec?.data?.mimeType !== 'application/json') return msg.setStatus(400, 'Spec is not JSON');
-    let spec = await msgSpec.data.asJson();
+    const spec = await msgSpec.data.asJson();
     if (!spec) return msg.setStatus(400, 'No spec');
     if (!spec['$url']) return msg.setStatus(400, 'No url in spec');
+    const reqStatus = reqSpec.copy();
+    reqStatus.url.resourceName = reqStatus.url.resourceExtension ? reqStatus.url.resourceParts.slice(0, -1).concat([
+        'status',
+        'json'
+    ]).join('.') : reqStatus.url.resourceParts.concat([
+        'status',
+        'json'
+    ]).join('.');
+    const msgStatus = await context.makeRequest(reqStatus);
+    if (!msgStatus.ok && msgStatus.status !== 404) return msgStatus;
+    if (msgStatus.status !== 404 && msgSpec?.data?.mimeType !== 'application/json') return msg.setStatus(400, 'Status is not JSON');
+    const status = msgStatus.status === 404 ? {} : await msgStatus.data.asJson();
+    const startFrom = status['startFrom'] || {};
     const contextUrl = msg.url.copy();
     contextUrl.setSubpathFromUrl(msgSpec.getHeader('location') || '');
-    const reqMsg = new Message1(spec['$url'], context, 'GET', msg);
-    const scrape = await scrapeFromSpec(spec, reqMsg, contextUrl.subPathElements, context);
-    if (scrape.$status && scrape.$message) return msg.setStatus(scrape.$status, scrape.$message);
-    msg.setDataJson(scrape);
+    const url = new Url(spec['$url']);
+    const reqMsg = new Message(url, context, 'GET', msg);
+    const state = await context.state(WebScraperState, context, config);
+    const delayer = state.getDelayer(url.domain);
+    const loopProperty = spec['$loopProperty'];
+    const loopPath = loopProperty?.split('.');
+    const transformStream = loopProperty ? new TransformStream() : undefined;
+    const fetchContext = {
+        maxFetches: spec['$maxFetches'] || 0,
+        delayer,
+        serviceContext: context,
+        startFrom,
+        loopPath,
+        outputWriter: transformStream?.writable?.getWriter()
+    };
+    const loopPosition = {};
+    if (loopProperty) {
+        (async ()=>{
+            try {
+                await scrapeFromSpec(spec, [], {}, loopPosition, reqMsg, fetchContext);
+            } finally{
+                fetchContext.outputWriter.close();
+                status.startFrom = loopPosition;
+                reqStatus.setMethod('PUT').setDataJson(status);
+                await context.makeRequest(reqStatus);
+            }
+        })();
+        msg.setData(transformStream.readable, "application/x-ndjson");
+    } else {
+        const scrape = await scrapeFromSpec(spec, [], {}, loopPosition, reqMsg, fetchContext);
+        if (scrape.$status && scrape.$message) return msg.setStatus(scrape.$status, scrape.$message);
+        msg.setDataJson(scrape);
+        status.startFrom = loopPosition;
+        reqStatus.setMethod('PUT').setDataJson(status);
+        await context.makeRequest(reqStatus);
+    }
     return msg;
 });
-const __default53 = {
+const __default54 = {
     "name": "Web Scraper",
     "description": "Stores scraping specifications and runs them to extract data from multiple pages across a web site",
     "moduleUrl": "./services/webScraperService.ts",
@@ -54207,6 +52861,14 @@ const __default53 = {
     "configSchema": {
         "type": "object",
         "properties": {
+            "minDelayMs": {
+                "type": "number",
+                "description": "Minimum delay between requests in milliseconds"
+            },
+            "randomOffsetMs": {
+                "type": "number",
+                "description": "Random offset to add to the delay between requests in milliseconds"
+            },
             "store": {
                 "type": "object",
                 "description": "Configuration for the spec store",
@@ -54342,7 +53004,7 @@ service16.post(async (msg, context)=>{
     }
     return msg;
 });
-const __default54 = {
+const __default55 = {
     "name": "References",
     "description": "Manages changes to referenced values in a JSON data item using stored reference specs",
     "moduleUrl": "./services/references.ts",
@@ -55416,7 +54078,7 @@ class ServiceWrapper {
             return newMsg;
         };
         this.external = (source)=>async (msg, context, serviceConfig)=>{
-                const origin = msg.getHeader('origin');
+                const origin = msg.getHeader('origin') || '';
                 msg.url.basePathElements = serviceConfig.basePath.split('/').filter((s)=>s !== '');
                 const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
                 if (!isPermitted) {
@@ -55705,7 +54367,8 @@ class Modules {
             "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter,
             "./adapter/GraphQlQueryAdapter.ts": ElasticQueryAdapter1,
             "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter,
-            "./adapter/BotProxyAdapter.ts": BotProxyAdapter
+            "./adapter/BotProxyAdapter.ts": BotProxyAdapter,
+            "./adapter/BinanceProxyAdapter.ts": BinanceProxyAdapter
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
@@ -55721,7 +54384,8 @@ class Modules {
             "./adapter/FileLogReaderAdapter.ram.json": __default20,
             "./adapter/GraphQlQueryAdapter.ram.json": __default22,
             "./adapter/SnsSmsAdapter.ram.json": __default23,
-            "./adapter/BotProxyAdapter.ram.json": __default24
+            "./adapter/BotProxyAdapter.ram.json": __default24,
+            "./adapter/BinanceProxyAdapter.ram.json": __default25
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
         Object.entries(this.adapterManifests).forEach(([url, v])=>{
@@ -55756,33 +54420,33 @@ class Modules {
         };
         this.servicesMap[""] = Object.keys(this.services);
         this.serviceManifests = {
-            "./services/mock.rsm.json": __default25,
-            "./services/services.rsm.json": __default26,
-            "./services/auth.rsm.json": __default27,
-            "./services/data.rsm.json": __default28,
-            "./services/dataset.rsm.json": __default29,
-            "./services/file.rsm.json": __default30,
-            "./services/lib.rsm.json": __default31,
-            "./services/pipeline.rsm.json": __default32,
-            "./services/pipeline-store.rsm.json": __default33,
-            "./services/static-site-filter.rsm.json": __default34,
-            "./services/static-site.rsm.json": __default35,
-            "./services/user-data.rsm.json": __default36,
-            "./services/user-filter.rsm.json": __default37,
-            "./services/template.rsm.json": __default38,
-            "./services/proxy.rsm.json": __default39,
-            "./services/email.rsm.json": __default40,
-            "./services/account.rsm.json": __default41,
-            "./services/discord.rsm.json": __default42,
-            "./services/temporary-access.rsm.json": __default43,
-            "./services/query.rsm.json": __default44,
-            "./services/csvConverter.rsm.json": __default45,
-            "./services/logReader.rsm.json": __default46,
-            "./services/service-store.rsm.json": __default47,
-            "./services/timer.rsm.json": __default48,
-            "./services/sms.rsm.json": __default49,
-            "./services/webscraperService.rsm.json": __default53,
-            "./services/references.rsm.json": __default54
+            "./services/mock.rsm.json": __default26,
+            "./services/services.rsm.json": __default27,
+            "./services/auth.rsm.json": __default28,
+            "./services/data.rsm.json": __default29,
+            "./services/dataset.rsm.json": __default30,
+            "./services/file.rsm.json": __default31,
+            "./services/lib.rsm.json": __default32,
+            "./services/pipeline.rsm.json": __default33,
+            "./services/pipeline-store.rsm.json": __default34,
+            "./services/static-site-filter.rsm.json": __default35,
+            "./services/static-site.rsm.json": __default36,
+            "./services/user-data.rsm.json": __default37,
+            "./services/user-filter.rsm.json": __default38,
+            "./services/template.rsm.json": __default39,
+            "./services/proxy.rsm.json": __default40,
+            "./services/email.rsm.json": __default41,
+            "./services/account.rsm.json": __default42,
+            "./services/discord.rsm.json": __default43,
+            "./services/temporary-access.rsm.json": __default44,
+            "./services/query.rsm.json": __default45,
+            "./services/csvConverter.rsm.json": __default46,
+            "./services/logReader.rsm.json": __default47,
+            "./services/service-store.rsm.json": __default48,
+            "./services/timer.rsm.json": __default49,
+            "./services/sms.rsm.json": __default50,
+            "./services/webscraperService.rsm.json": __default54,
+            "./services/references.rsm.json": __default55
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
         Object.entries(this.serviceManifests).forEach(([url, v])=>{
@@ -56117,23 +54781,23 @@ class Authoriser {
         return payload;
     }
 }
-const ajv3 = new __pika_web_default_export_for_treeshaking__1({
+const ajv2 = new __pika_web_default_export_for_treeshaking__1({
     allErrors: true,
     strictSchema: false,
     allowUnionTypes: true
 });
 const config = {
     server: {},
-    modules: new Modules(ajv3),
+    modules: new Modules(ajv2),
     tenants: {},
     logger: getLogger1(),
     fixRelativeToRoot: (pathUrl)=>pathUrl.startsWith('.') ? resolve2(pathUrl) : pathUrl,
-    ajv: ajv3,
+    ajv: ajv2,
     jwtExpiryMins: 30,
     getParam: (key)=>Deno.env.get(key),
     authoriser: new Authoriser(),
-    validateChordService: ajv3.compile(schemaIChordServiceConfig),
-    validateChord: ajv3.compile({
+    validateChordService: ajv2.compile(schemaIChordServiceConfig),
+    validateChord: ajv2.compile({
         type: "object",
         properties: {
             id: {
@@ -56815,10 +55479,10 @@ const handleIncomingRequest = async (msg)=>{
         const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
         const msgOut = await messageFunction(msg.callDown());
         msgOut.depth = msg.depth;
-        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        config.logger.info(`${" ".repeat(msg.depth - 1)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         msgOut.callUp();
         if (!msgOut.ok) {
-            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            config.logger.info(`${" ".repeat(msg.depth - 1)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
@@ -56856,7 +55520,7 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
             const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, source);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
-            config.logger.info(`${" ".repeat(msgOut.depth)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            config.logger.info(`${" ".repeat(msgOut.depth - 1)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
