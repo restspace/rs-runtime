@@ -6,7 +6,6 @@ import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import {
     DOMParser,
     Element,
-    HTMLDocument,
     Node,
     initParser,
   } from "https://deno.land/x/deno_dom/deno-dom-wasm-noinit.ts";
@@ -16,9 +15,6 @@ import {
   import { Url } from "rs-core/Url.ts";
   import { BaseStateClass } from "rs-core/ServiceContext.ts";
   import { Delayer, ensureDelay } from "rs-core/utility/ensureDelay.ts";
-  import { M } from "https://cdn.jsdelivr.net/gh/intob/tweetnacl-deno@1.1.0/src/core.ts";
-  import { setProp } from "rs-core/utility/utility.ts";
-  import { getProp } from "rs-core/utility/utility.ts";
 
 interface IWebScraperServiceConfig extends IServiceConfig {
     minDelayMs?: number;

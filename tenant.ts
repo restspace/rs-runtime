@@ -10,7 +10,7 @@ import { IChord } from "./IChord.ts";
 import { after, deepEqualIfPresent, mergeDeep, upTo } from "rs-core/utility/utility.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
-import { SimpleServiceContext, StateClass, nullState, BaseStateClass } from "rs-core/ServiceContext.ts";
+import { SimpleServiceContext, StateClass, nullState, BaseStateClass, BaseContext } from "rs-core/ServiceContext.ts";
 import { applyServiceConfigTemplate } from "./Modules.ts";
 
 export interface IServicesConfig {
@@ -44,14 +44,15 @@ export class Tenant {
     _state: Record<string, BaseStateClass> = {};
     readyBasePaths: string[] = [];
 
-    state = (basePath: string) => async <T extends BaseStateClass>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => {
-        if (this._state[basePath] === undefined) {
+    state = (basePath: string) => async <T extends BaseStateClass>(cons: StateClass<T>, context: BaseContext, config: unknown) => {
+        const stateKey = `${basePath}#${cons.name}`;
+        if (this._state[stateKey] === undefined) {
             const newState = new cons();
-            this._state[basePath] = newState;
+            this._state[stateKey] = newState;
             await newState.load(context, config);
         }
-        if (!(this._state[basePath] instanceof cons)) throw new Error('Changed type of state attached to service');
-        return this._state[basePath] as T;
+        if (!(this._state[stateKey] instanceof cons)) throw new Error('Changed type of state attached to service');
+        return this._state[stateKey] as T;
     }
 
     get primaryDomain() {
