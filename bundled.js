@@ -3030,6 +3030,7 @@ dist.createSimpleScope;
 var evaluate = dist.evaluate;
 dist.evaluateStringInterpolation;
 const applySelect = (val, prop, filter)=>{
+    if (val === undefined) return undefined;
     if (filter !== undefined && Array.isArray(val)) {
         if (filter === '') return val;
         const len = val.length;
@@ -17262,7 +17263,7 @@ var scope = createCommonjsModule3(function(module1, exports) {
     (function(UsedValueState2) {
         UsedValueState2[UsedValueState2["Started"] = 0] = "Started";
         UsedValueState2[UsedValueState2["Completed"] = 1] = "Completed";
-    })(UsedValueState = exports.UsedValueState || (exports.UsedValueState = {}));
+    })(UsedValueState || (exports.UsedValueState = UsedValueState = {}));
     exports.varKinds = {
         const: new code.Name("const"),
         let: new code.Name("let"),
@@ -18213,7 +18214,7 @@ var util = createCommonjsModule3(function(module1, exports) {
     (function(Type2) {
         Type2[Type2["Num"] = 0] = "Num";
         Type2[Type2["Str"] = 1] = "Str";
-    })(Type = exports.Type || (exports.Type = {}));
+    })(Type || (exports.Type = Type = {}));
     function getErrorPath(dataProp, dataPropType, jsPropertySyntax) {
         if (dataProp instanceof codegen.Name) {
             const isNumber = dataPropType === Type.Num;
@@ -18530,7 +18531,7 @@ var dataType = createCommonjsModule3(function(module1, exports) {
     (function(DataType2) {
         DataType2[DataType2["Correct"] = 0] = "Correct";
         DataType2[DataType2["Wrong"] = 1] = "Wrong";
-    })(DataType = exports.DataType || (exports.DataType = {}));
+    })(DataType || (exports.DataType = DataType = {}));
     function getSchemaTypes(schema) {
         const types2 = getJSONTypes(schema.type);
         const hasNull = types2.includes("null");
@@ -19154,14 +19155,14 @@ var resolve3 = createCommonjsModule3(function(module1, exports) {
         }, (sch, jsonPtr, _2, parentJsonPtr)=>{
             if (parentJsonPtr === void 0) return;
             const fullPath = pathPrefix + jsonPtr;
-            let baseId2 = baseIds[parentJsonPtr];
-            if (typeof sch[schemaId] == "string") baseId2 = addRef.call(this, sch[schemaId]);
+            let innerBaseId = baseIds[parentJsonPtr];
+            if (typeof sch[schemaId] == "string") innerBaseId = addRef.call(this, sch[schemaId]);
             addAnchor.call(this, sch.$anchor);
             addAnchor.call(this, sch.$dynamicAnchor);
-            baseIds[jsonPtr] = baseId2;
+            baseIds[jsonPtr] = innerBaseId;
             function addRef(ref2) {
                 const _resolve = this.opts.uriResolver.resolve;
-                ref2 = normalizeId(baseId2 ? _resolve(baseId2, ref2) : ref2);
+                ref2 = normalizeId(innerBaseId ? _resolve(innerBaseId, ref2) : ref2);
                 if (schemaRefs.has(ref2)) throw ambiguos(ref2);
                 schemaRefs.add(ref2);
                 let schOrRef = this.refs[ref2];
@@ -20066,7 +20067,7 @@ var core = createCommonjsModule3(function(module1, exports) {
             uriResolver
         };
     }
-    class Ajv {
+    class Ajv2 {
         constructor(opts = {}){
             this.schemas = {};
             this.refs = {};
@@ -20414,9 +20415,9 @@ var core = createCommonjsModule3(function(module1, exports) {
             }
         }
     }
-    exports.default = Ajv;
-    Ajv.ValidationError = validation_error.default;
-    Ajv.MissingRefError = ref_error.default;
+    Ajv2.ValidationError = validation_error.default;
+    Ajv2.MissingRefError = ref_error.default;
+    exports.default = Ajv2;
     function checkOptions(checkOpts, options, msg, log = "error") {
         for(const key in checkOpts){
             const opt = key;
@@ -22080,10 +22081,11 @@ var types1 = createCommonjsModule3(function(module1, exports) {
         value: true
     });
     exports.DiscrError = void 0;
-    (function(DiscrError) {
-        DiscrError["Tag"] = "tag";
-        DiscrError["Mapping"] = "mapping";
-    })(exports.DiscrError || (exports.DiscrError = {}));
+    var DiscrError;
+    (function(DiscrError2) {
+        DiscrError2["Tag"] = "tag";
+        DiscrError2["Mapping"] = "mapping";
+    })(DiscrError || (exports.DiscrError = DiscrError = {}));
 });
 var discriminator = createCommonjsModule3(function(module1, exports) {
     Object.defineProperty(exports, "__esModule", {
@@ -22436,12 +22438,12 @@ var ajv = createCommonjsModule3(function(module1, exports) {
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
-    exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
+    exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv = void 0;
     const META_SUPPORT_DATA = [
         "/properties"
     ];
     const META_SCHEMA_ID = "http://json-schema.org/draft-07/schema";
-    class Ajv extends core.default {
+    class Ajv2 extends core.default {
         _addVocabularies() {
             super._addVocabularies();
             draft7.default.forEach((v)=>this.addVocabulary(v));
@@ -22458,11 +22460,13 @@ var ajv = createCommonjsModule3(function(module1, exports) {
             return this.opts.defaultMeta = super.defaultMeta() || (this.getSchema(META_SCHEMA_ID) ? META_SCHEMA_ID : void 0);
         }
     }
-    module1.exports = exports = Ajv;
+    exports.Ajv = Ajv2;
+    module1.exports = exports = Ajv2;
+    module1.exports.Ajv = Ajv2;
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
-    exports.default = Ajv;
+    exports.default = Ajv2;
     Object.defineProperty(exports, "KeywordCxt", {
         enumerable: true,
         get: function() {
@@ -22519,6 +22523,7 @@ var ajv = createCommonjsModule3(function(module1, exports) {
     });
 });
 var __pika_web_default_export_for_treeshaking__1 = getDefaultExportFromCjs2(ajv);
+ajv.Ajv;
 ajv.CodeGen;
 ajv.KeywordCxt;
 ajv.MissingRefError;
@@ -22801,7 +22806,7 @@ class PipelineCondition {
                         v[0]
                     ]));
             },
-            ...context.variables
+            ...context.variables.getVariablesForScope(msg.name)
         };
         return !!evaluate(this.exp, msgValues);
     }
@@ -24209,10 +24214,60 @@ dayjs_min.locale;
 dayjs_min.p;
 dayjs_min.unix;
 function stripHtmlTags(html, separatePWithNewline) {
+    if (!html) return '';
     if (separatePWithNewline) {
         return html.replace(/<\/p>\s*<p>/g, '\n').replace(/<[^>]*>/g, '');
     } else {
         return html.replace(/<[^>]*>/g, '');
+    }
+}
+class VariableScope {
+    scopes = {};
+    currentScope = {};
+    currentScopeName = '';
+    constructor(initialScope = {}){
+        this.scopes[''] = initialScope;
+        this.setScope('');
+    }
+    setScope(scopeName) {
+        if (!(scopeName in this.scopes)) {
+            this.scopes[scopeName] = {};
+        }
+        this.currentScope = this.scopes[scopeName];
+        this.currentScopeName = scopeName;
+    }
+    getScopeName() {
+        return this.currentScopeName;
+    }
+    getScope(scopeName) {
+        const scope = new VariableScope();
+        scope.scopes = this.scopes;
+        scope.setScope(scopeName);
+        return scope;
+    }
+    getVariables() {
+        return {
+            ...this.scopes[''],
+            ...this.currentScope
+        };
+    }
+    getVariablesForScope(scopeName) {
+        return {
+            ...this.scopes[''],
+            ...this.scopes[scopeName]
+        };
+    }
+    get(variableName) {
+        return this.currentScope[variableName] === undefined ? this.scopes[''][variableName] : this.currentScope[variableName];
+    }
+    setForScope(scopeName, variableName, value) {
+        if (!(scopeName in this.scopes)) {
+            this.scopes[scopeName] = {};
+        }
+        this.scopes[scopeName][variableName] = value;
+    }
+    set(variableName, value) {
+        this.currentScope[variableName] = value;
     }
 }
 const arrayToFunction = (arr, transformHelper)=>{
@@ -24287,14 +24342,15 @@ const groupBy = (list, keyGetter)=>{
     });
     return map;
 };
-const transformation = (transformObject, data, url = new Url('/'), name = '', variables = {})=>{
+const transformation = (transformObject, data, url = new Url('/'), name = '', variableScope = new VariableScope({}))=>{
     if (Array.isArray(data)) data = {
         ...data,
         length: data.length
     };
+    const variables = variableScope.getVariables();
     const transformHelper = {
         Math: Math,
-        transformMap: (list, transformObject)=>!list ? [] : Array.from(list, (item)=>transformation(transformObject, Object.assign({}, data, item), url, name, variables)),
+        transformMap: (list, transformObject)=>!list ? [] : Array.from(list, (item)=>transformation(transformObject, Object.assign({}, data, item), url, name, variableScope)),
         expressionReduce: (list, init, expression)=>!list ? init : Array.from(list).reduce((previous, item)=>doEvaluate(expression, item, variables, Object.assign({}, transformHelper, data, {
                     '$previous': previous
                 })), init),
@@ -24367,7 +24423,7 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
         return rectifyObject(doEvaluate(transformObject, data, variables, transformHelper));
     } else if (Array.isArray(transformObject)) {
         if (transformObject.length === 0 || typeof transformObject[0] !== 'string' || !transformObject[0].endsWith("()")) {
-            return transformObject.map((item)=>transformation(item, data, url, name, variables));
+            return transformObject.map((item)=>transformation(item, data, url, name, variableScope));
         }
         const expr = arrayToFunction(transformObject, transformHelper);
         console.log('expr ' + expr);
@@ -24377,16 +24433,16 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
         let transformed = {};
         const selfObject = transformObject['$'] || transformObject['$this'] || transformObject['.'];
         if (selfObject) {
-            transformed = shallowCopy(transformation(selfObject, data, url, name, variables));
+            transformed = shallowCopy(transformation(selfObject, data, url, name, variableScope));
         }
         for(let key in transformObject){
             if (key === '.' || key === '$this' || key === '$') continue;
             if (key.startsWith('$') && key.length > 1 && key !== '$key' && !key.startsWith('$$')) {
-                variables[key] = shallowCopy(transformation(transformObject[key], data, url, name, variables));
+                variableScope.set(key, shallowCopy(transformation(transformObject[key], data, url, name, variableScope)));
             } else {
                 let keyStart = 0;
                 if (key.startsWith('$$') && key.length > 2) keyStart = 1;
-                doTransformKey(key, keyStart, data, transformed, url, transformObject[key], name, variables);
+                doTransformKey(key, keyStart, data, transformed, url, transformObject[key], name, variableScope);
             }
         }
         return rectifyObject(transformed);
@@ -24399,7 +24455,7 @@ const rectifyObject = (obj)=>{
     }
     return newObj;
 };
-const doTransformKey = (key, keyStart, input, output, url, subTransform, name, variables)=>{
+const doTransformKey = (key, keyStart, input, output, url, subTransform, name, variableScope)=>{
     let [match, newKeyStart] = scanFirst(key, keyStart, [
         '.',
         '[',
@@ -24407,7 +24463,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name, v
     ]);
     if (newKeyStart < 0) {
         const effectiveKey = key.slice(keyStart);
-        output[effectiveKey] = shallowCopy(transformation(subTransform, input, url, name, variables));
+        output[effectiveKey] = shallowCopy(transformation(subTransform, input, url, name, variableScope));
     } else if (match === '.') {
         const keyPart = key.slice(keyStart, newKeyStart - 1).trim();
         if (!(keyPart in output)) {
@@ -24416,7 +24472,7 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name, v
             output[keyPart] = shallowCopy(output[keyPart]);
         }
         console.log(`recursing path, new start: ${newKeyStart}, new output: ${JSON.stringify(output[keyPart])}`);
-        doTransformKey(key, newKeyStart, input, output[keyPart], url, subTransform, name, variables);
+        doTransformKey(key, newKeyStart, input, output[keyPart], url, subTransform, name, variableScope);
     } else if (match === '[' || match === '{') {
         const keyPart = key.slice(keyStart, newKeyStart - 1).trim();
         let newOutput = output;
@@ -24435,9 +24491,9 @@ const doTransformKey = (key, keyStart, input, output, url, subTransform, name, v
         const transformOrRecurse = (input, index, output)=>{
             if (remainingKey) {
                 output[index] = shallowCopy(output[index]);
-                doTransformKey(remainingKey, 0, input, output[index], url, subTransform, name, variables);
+                doTransformKey(remainingKey, 0, input, output[index], url, subTransform, name, variableScope);
             } else {
-                output[index] = shallowCopy(transformation(subTransform, input, url, name, variables));
+                output[index] = shallowCopy(transformation(subTransform, input, url, name, variableScope));
             }
         };
         if (match === '[' && '0' <= indexName[0] && indexName[0] <= '9') {
@@ -24501,7 +24557,7 @@ class PipelineTransform {
         const jsonIn = msg.data ? await msg.data.asJson() : {};
         let transJson = null;
         try {
-            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url, msg.name, context.variables);
+            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url, msg.name, context.variables.getScope(msg.name));
         } catch (err) {
             if (err instanceof SyntaxError) {
                 const errx = err;
@@ -34095,8 +34151,7 @@ class Parser1 {
                         path
                     }));
                     continue;
-                }
-                if (this.#peek(tokens.prolog.start) && !this.#peek(tokens.stylesheet.start)) {
+                } else if (this.#peek(tokens.prolog.start) && !this.#peek(tokens.stylesheet.start)) {
                     if (document1.xml) {
                         throw Object.assign(new SyntaxError("Multiple prolog declaration found"), {
                             stack: false
@@ -34107,16 +34162,14 @@ class Parser1 {
                         path
                     }));
                     continue;
-                }
-                if (this.#peek(tokens.stylesheet.start)) {
+                } else if (this.#peek(tokens.stylesheet.start)) {
                     clean = false;
                     const stylesheets = document1[schema.stylesheets] ??= [];
                     stylesheets.push(this.#stylesheet({
                         path
                     }).stylesheet);
                     continue;
-                }
-                if (this.#peek(tokens.doctype.start)) {
+                } else if (this.#peek(tokens.doctype.start)) {
                     if (document1.doctype) {
                         throw Object.assign(new SyntaxError("Multiple doctype declaration found"), {
                             stack: false
@@ -34127,8 +34180,7 @@ class Parser1 {
                         path
                     }));
                     continue;
-                }
-                if (this.#peek(tokens.tag.start)) {
+                } else if (this.#peek(tokens.tag.start)) {
                     if (root) {
                         throw Object.assign(new SyntaxError("Multiple root elements found"), {
                             stack: false
@@ -34142,6 +34194,10 @@ class Parser1 {
                     this.#trim();
                     root = true;
                     continue;
+                } else {
+                    throw Object.assign(new SyntaxError("Invalid XML structure"), {
+                        stack: false
+                    });
                 }
             }
         } catch (error) {
@@ -34401,19 +34457,22 @@ class Parser1 {
     }
     #property({ path }) {
         this.#debug(path, "parsing property");
+        let property;
         const quote = this.#stream.peek();
-        const delimiter = /["']/.test(quote) ? quote : " ";
-        if (delimiter.trim().length) {
-            this.#consume(delimiter);
+        if (/["']/.test(quote)) {
+            this.#consume(quote);
+            property = this.#capture({
+                until: new RegExp(quote),
+                bytes: 1
+            });
+            this.#consume(quote);
+        } else {
+            property = this.#capture({
+                until: /[\s>]/,
+                bytes: 1
+            });
         }
-        const property = this.#capture({
-            until: new RegExp(delimiter),
-            bytes: delimiter.length
-        });
         this.#debug(path, `found property ${property}`);
-        if (delimiter.trim().length) {
-            this.#consume(delimiter);
-        }
         return {
             [`${schema.property.prefix}${property}`]: true
         };
@@ -41191,10 +41250,8 @@ const write1 = async (msg, adapter, logger, isPatch)=>{
                 }
             }
             const d = await msg.data?.asJson();
-            logger.info(`patch data ${JSON.stringify(d)}`);
             if (isPatch) {
                 val = patch(val, d);
-                logger.info(`patch result ${JSON.stringify(val)}`);
             } else {
                 setProp(val, msg.url.fragment, d);
             }
@@ -45667,7 +45724,8 @@ service10.post(async (msg, context)=>{
     const quote = context.adapter.quote;
     if (quote) {
         query = query.replace(/\$\{([^}]*)\}/gi, (_, p1)=>{
-            const quoted = quote(getProp(params, p1.split('.')) || '');
+            const val = p1 === '' ? params : getProp(params, p1.split('.')) || '';
+            const quoted = quote(val);
             if (quoted instanceof Error) {
                 error = quoted;
                 return '';
@@ -46530,6 +46588,7 @@ class CSVReader {
             }
             if (!this.inColumn && this.hasNext(this.columnSeparator)) {
                 this.debug("columnSeparator");
+                this.emptyLine = false;
                 this.processColumn();
                 this.skip(this.columnSeparator.length);
                 continue;
@@ -53955,7 +54014,7 @@ class ServiceFactory {
             if (!validator(adapterConfig)) {
                 throw new Error(`failed to validate adapter config for service ${serviceConfig.name}: ${getErrors(validator)}`);
             }
-            adapter = await config.modules.getAdapter(adapterSource, serviceContext, adapterConfig);
+            adapter = await config.modules.getAdapter(adapterSource, serviceContext, adapterConfig, this.primaryDomain);
             serviceContext = {
                 ...serviceContext,
                 manifest,
@@ -54049,7 +54108,7 @@ class ServiceWrapper {
                 const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
                 newMsg = await this.prePostPipeline("pre", newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
                 newMsg.applyServiceRedirect();
-                context.metadataOnly = newMsg.url.isDirectory && newMsg.url.query.hasOwnProperty("$metadataOnly");
+                context.metadataOnly = newMsg.url.isDirectory && "$metadataOnly" in newMsg.url.query;
                 if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
                 if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
             } catch (err) {
@@ -54489,7 +54548,7 @@ class Modules {
         const configAdapter = await config.modules.getAdapter(configStoreAdapterSpec.adapterSource, context, configStoreAdapterSpec);
         return configAdapter;
     }
-    async getAdapterConstructor(sourceUrl, tenant, manifestUrl) {
+    async getAdapterConstructor(sourceUrl, tenant, manifestUrl, primaryDomain) {
         let moduleReqUrl;
         if (manifestUrl) {
             moduleReqUrl = new Url(this.urlRelativeToManifest(manifestUrl, sourceUrl, "adapter"));
@@ -54501,6 +54560,11 @@ class Modules {
                 moduleReqUrl.query['$x-rs-source'] = [
                     'internal'
                 ];
+                if (moduleReqUrl.domain === primaryDomain) {
+                    moduleReqUrl.query['$no-cache'] = [
+                        crypto.randomUUID()
+                    ];
+                }
                 const module1 = await import(moduleReqUrl.toString());
                 this.adapterConstructors[sourceUrl] = module1.default;
                 this.addToDomainMap(this.adapterConstructorsMap, sourceUrl, tenant);
@@ -54531,17 +54595,17 @@ class Modules {
         }
         return this.adapterManifests[fullUrl];
     }
-    async getAdapter(sourceUrl, context, adapterConfig) {
+    async getAdapter(sourceUrl, context, adapterConfig, primaryDomain) {
         sourceUrl = config.canonicaliseUrl(sourceUrl, context.tenant);
         let manifestUrl;
         if (sourceUrl.split('?')[0].endsWith('.ram.json')) {
-            const manifest = await this.getAdapterManifest(sourceUrl, context.tenant);
+            const manifest = await this.getAdapterManifest(sourceUrl, context.tenant, primaryDomain);
             if (typeof manifest === 'string') throw new Error(manifest);
             manifestUrl = sourceUrl;
             sourceUrl = manifest.moduleUrl;
         }
         context.logger.debug(`Loading adapter at ${sourceUrl}`);
-        const constr = await this.getAdapterConstructor(sourceUrl, context.tenant, manifestUrl);
+        const constr = await this.getAdapterConstructor(sourceUrl, context.tenant, manifestUrl, primaryDomain);
         return new constr(context, adapterConfig);
     }
     ensureServiceConfigValidator(url) {
@@ -55132,13 +55196,14 @@ class Tenant {
         this._state = {};
         this.readyBasePaths = [];
         this.state = (basePath)=>async (cons, context, config)=>{
-                if (this._state[basePath] === undefined) {
+                const stateKey = `${basePath}#${cons.name}`;
+                if (this._state[stateKey] === undefined) {
                     const newState = new cons();
-                    this._state[basePath] = newState;
+                    this._state[stateKey] = newState;
                     await newState.load(context, config);
                 }
-                if (!(this._state[basePath] instanceof cons)) throw new Error('Changed type of state attached to service');
-                return this._state[basePath];
+                if (!(this._state[stateKey] instanceof cons)) throw new Error('Changed type of state attached to service');
+                return this._state[stateKey];
             };
         const primaryDomain = domains[0] || (name === 'main' ? '' : name + '.') + config.server.mainDomain;
         this.serviceFactory = new ServiceFactory(name, primaryDomain);
@@ -55406,7 +55471,7 @@ class PipelineStep {
                 }
                 if (this.rename) {
                     if (this.rename.startsWith('$') && this.rename !== '$this' && outMsg.data) {
-                        context.variables[this.rename] = await outMsg.data.asJson();
+                        context.variables.setForScope(msg.name, this.rename, await outMsg.data.asJson());
                     } else {
                         let prename = '';
                         if (this.rename.startsWith('.')) {
@@ -55445,7 +55510,8 @@ function makeServiceContext(tenantName, state, prePost) {
         prePost,
         logger: config.logger,
         getAdapter: (url, adapterConfig)=>{
-            return config.modules.getAdapter(url, context, adapterConfig);
+            const primaryDomain = config.tenants[tenantName].primaryDomain;
+            return config.modules.getAdapter(url, context, adapterConfig, primaryDomain);
         },
         state
     };
@@ -55482,7 +55548,7 @@ const handleIncomingRequest = async (msg)=>{
         config.logger.info(`${" ".repeat(msg.depth - 1)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         msgOut.callUp();
         if (!msgOut.ok) {
-            config.logger.info(`${" ".repeat(msg.depth - 1)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
@@ -55962,7 +56028,7 @@ function createInitialContext(pipeline, handler, callerMsg, variables, contextUr
         external,
         path: [],
         concurrencyLimiter: limitConcurrency(12),
-        variables
+        variables: new VariableScope(variables)
     };
     let stepIdx = 0;
     for(; stepIdx < pipeline.length; stepIdx++){

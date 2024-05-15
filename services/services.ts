@@ -68,6 +68,7 @@ const tenantOrUrlToDomain = (dir: string) => {
     return domain;
 }
 
+// @TODO ensure this does not break if a domain is unavailable
 const ensureAllManifests = async (tenantOrUrl: string, context: SimpleServiceContext) => {
     const domain = tenantOrUrlToDomain(tenantOrUrl);
     if (catalogue[domain]) return domain;

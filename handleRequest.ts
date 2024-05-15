@@ -102,7 +102,7 @@ export const handleIncomingRequest = async (msg: Message) => {
         config.logger.info(`${" ".repeat(msg.depth - 1)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
         msgOut.callUp();
         if (!msgOut.ok) {
-            config.logger.info(`${" ".repeat(msg.depth - 1)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
         }
         return msgOut;
     } catch (err) {
@@ -176,7 +176,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             if (msgOut.ok) {
                 config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
             } else {
-                const body = msgOut.hasData() ? await msgOut.data!.asString() : 'none';
+                const body = msgOut.hasData() ? (await msgOut.data!.asString())?.substring(0, 200) : 'none';
                 config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...msgOut.loggerArgs());
             }
             // don't process by mime type on external requests
