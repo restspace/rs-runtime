@@ -48,11 +48,11 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 
 	let stream: TransformStream | null = null;
 	let writer: WritableStreamDefaultWriter<any> | null = null;
-	let writeString = (_: string) => {};
+	let writeString = async (_: string) => {};
 	if (mode !== "validate") {
 		stream = new TransformStream();
 		writer = stream.writable.getWriter();
-		writeString = (data: string) => writer!.write(new TextEncoder().encode(data));
+		writeString = async (data: string) => await writer!.write(new TextEncoder().encode(data));
 	}
 
 	let rowIdx = 0;
@@ -61,7 +61,7 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 	const process = async () => {
 		try {
 			if (mode === "json") {
-				writeString("[");
+				await writeString("[");
 			}
 
 			for await (const row of readCSV(rdr)) {
@@ -133,9 +133,9 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 					}
 				} else if (rowObj && !(ignoreBlank && isBlank)) {
 					if (mode === "ndjson") {
-						writeString(JSON.stringify(rowObj) + '\n');
+						await writeString(JSON.stringify(rowObj) + '\n');
 					} else {
-						writeString((rowIdx === 0 ? '' : ',') + JSON.stringify(rowObj));
+						await writeString((rowIdx === 0 ? '' : ',') + JSON.stringify(rowObj));
 					}
 				}
 
@@ -147,12 +147,12 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 			}
 
 			if (mode === "json") {
-				writeString("]");
+				await writeString("]");
 			}
 		} catch (err) {
 			context.logger.error('Failure in CSV processing: ' + err.toString());
 		} finally {
-			writer?.close();
+			await writer?.close();
 		}
 	}
 
@@ -176,7 +176,7 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 				mode === "ndjson" ? "application/x-ndjson" : "application/json");
 		}
 	} catch (err) {
-		writer?.close();
+		await writer?.close();
 		return msg.setStatus(500, err.toString());
 	}
 }

@@ -75,7 +75,6 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		const data = await res.data?.asJson();
 		switch (operation) {
 			case "_search": return data.hits.hits;
-			case "_count": return data.count;
 			default: return data;
 		}
 	}

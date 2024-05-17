@@ -410,7 +410,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                         [key]: subReqVal
                     }
                     if (fetchContext.outputWriter) {
-                        fetchContext.outputWriter.write(new TextEncoder().encode(JSON.stringify(loopOutput) + "\n"));
+                        await fetchContext.outputWriter.write(new TextEncoder().encode(JSON.stringify(loopOutput) + "\n"));
                     }
                 } else if (!nextLoopKey) {
                     // only add to return value if not a loop key
@@ -477,7 +477,7 @@ service.post(async (msg, context, config) => {
             try {
                 await scrapeFromSpec(spec, [], {}, loopPosition, reqMsg, fetchContext);
             } finally {
-                fetchContext.outputWriter!.close();
+                await fetchContext.outputWriter!.close();
                 status.startFrom = loopPosition;
                 reqStatus.setMethod('PUT').setDataJson(status);
                 await context.makeRequest(reqStatus);

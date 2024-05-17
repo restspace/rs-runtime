@@ -17,11 +17,11 @@ export async function jsonObject(msgs: AsyncIterator<Message, Message, Message>)
 
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
-    const writeString = (data: string) => writer.write(new TextEncoder().encode(data));
+    const writeString = async (data: string) => await writer.write(new TextEncoder().encode(data));
     let length = -1;
-    const writeProperty = (name: string, val: string) => {
-        writeString(`  "${name}": `);
-        writeString(val);
+    const writeProperty = async (name: string, val: string) => {
+        await writeString(`  "${name}": `);
+        await writeString(val);
         if (length > -2 && /^\d+$/.test(name)) { // positive integer or zero
             const itemIdx = parseInt(name) + 1;
             if (itemIdx > length) length = itemIdx;
@@ -29,30 +29,30 @@ export async function jsonObject(msgs: AsyncIterator<Message, Message, Message>)
             length = -2; // already has length property
         }
     };
-    writeString("{\n");
+    await writeString("{\n");
 
     const writeMsg = async (msg: Message | null) => {
         if (!msg) return;
         if (msg.name === "$this") {
             // if the data is an object, merge its properties into the output
             if (!isJson(msg.data?.mimeType)) {
-                writeString('  "data": ');
-                writeString('"');
-                writeString(await msg.data?.asString() || '');
-                writeString('"');
+                await writeString('  "data": ');
+                await writeString('"');
+                await writeString(await msg.data?.asString() || '');
+                await writeString('"');
             } else {
                 const obj = await msg.data?.asJson();
                 if (typeof obj !== 'object') {
-                    writeProperty("data", JSON.stringify(obj));
+                    await writeProperty("data", JSON.stringify(obj));
                 } else {
                     let first = true;
                     for (const prop in obj) {
                         if (first) {
                             first = false;
                         } else {
-                            writeString(',\n');
+                            await writeString(',\n');
                         }
-                        writeProperty(prop, JSON.stringify(obj[prop]));
+                        await writeProperty(prop, JSON.stringify(obj[prop]));
                     }
                 }
             }
@@ -69,13 +69,13 @@ export async function jsonObject(msgs: AsyncIterator<Message, Message, Message>)
                 name = name.substring(lastDot + 1);
             }
             if (msg.data?.data === null) {
-                writeProperty(name, "null");
+                await writeProperty(name, "null");
                 return;
             }
             if (isJson(msg.data?.mimeType)) {
-                writeProperty(name, await msg.data?.asString() || '');
+                await writeProperty(name, await msg.data?.asString() || '');
             } else {
-                writeProperty(name, '"' + jsonQuote(await msg.data?.asString() || '') + '"');
+                await writeProperty(name, '"' + jsonQuote(await msg.data?.asString() || '') + '"');
             }
         }
     }
@@ -87,18 +87,18 @@ export async function jsonObject(msgs: AsyncIterator<Message, Message, Message>)
         let res = second;
         while (!res.done) {
             if (res.value && res.value.hasData()) {
-                writeString(",\n");
+                await writeString(",\n");
                 await writeMsg(res.value);
             }
             const nextMsgPromise = msgs.next();
             res = await nextMsgPromise;
         }
         if (length >= 0) { // if has numeric property names, make an ArrayLike by adding a length
-            writeString(",\n");
-            writeProperty('length', length.toString());
+            await writeString(",\n");
+            await writeProperty('length', length.toString());
         }
-        writeString("\n}");
-        writer.close();
+        await writeString("\n}");
+        await writer.close();
     });
 
     return (first.value && first.value.setData(readable, 'application/json').setName(outerName)) || null;

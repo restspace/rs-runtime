@@ -3135,7 +3135,7 @@ function resolvePathPattern(pathPattern, currentPath, basePath, subPath, fullUrl
             return '';
         }
     };
-    const result1 = pathPattern.replace('$*', currentPath + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$$', encodeURIComponent(fullUrl || '')).replace('$P*', fullPathParts.join('/') + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$N*', name || '').replace(/\$([BSNP])?([<>]\d+)([<>]\d+)?(:\((.+?)\)|:\$([BSNP])?([<>]\d+)([<>]\d+)?)?/g, (_match, p1, p2, p3, p4, p5, p6, p7, p8)=>{
+    const result1 = pathPattern.replace('$*', currentPath + (isDirectory && !currentPath.endsWith('/') ? "/" : "") + fullQueryString(query)).replace('$$', encodeURIComponent(fullUrl || '')).replace('$P*', fullPathParts.join('/') + (isDirectory ? "/" : "") + fullQueryString(query)).replace('$N*', name || '').replace(/\$([BSNP])?([<>]\d+)([<>]\d+)?(:\((.+?)\)|:\$([BSNP])?([<>]\d+)([<>]\d+)?)?/g, (_match, p1, p2, p3, p4, p5, p6, p7, p8)=>{
         const partsMatch = getPartsMatch(p1, p2, p3);
         if (partsMatch || !p4) return partsMatch || '$$';
         if (p4.startsWith(':(')) return p5;
@@ -3356,14 +3356,30 @@ class Url {
     follow(relativeUrl) {
         const newUrl = this.copy();
         if (!relativeUrl) return newUrl;
-        for (const part of relativeUrl.split('/')){
-            if (part === '..') {
+        const followUrl = new Url(relativeUrl);
+        if (!followUrl.isRelative) {
+            if (!followUrl.domain) {
+                followUrl.domain = this.domain;
+                followUrl.scheme = this.scheme;
+            }
+            return followUrl;
+        }
+        for (const el of followUrl.pathElements){
+            if (el === '..') {
                 newUrl.pathElements.pop();
-            } else if (part && part !== '.') {
-                newUrl.pathElements.push(part);
+            } else if (el && el !== '.') {
+                newUrl.pathElements.push(el);
             }
         }
-        newUrl._isDirectory = relativeUrl.endsWith('/');
+        if (!relativeUrl.toString().startsWith('#') && relativeUrl !== '.') {
+            newUrl.queryString = followUrl.queryString;
+        }
+        if (relativeUrl !== '.') {
+            newUrl.fragment = followUrl.fragment;
+        }
+        if (followUrl.pathElements.length > 0 && relativeUrl !== '.') {
+            newUrl._isDirectory = followUrl._isDirectory;
+        }
         return newUrl;
     }
     static urlRegex = /^((https?:\/\/)([^?#\/]+)|\/)?([^?#]*)(\?[^#]*)?(#.*)?$/;
@@ -52554,15 +52570,59 @@ const nodeAttribute = (node, attribute)=>{
 };
 const parseSpec = (spec)=>{
     let attribute = "textContent";
-    const match = spec.match(/ @([-_a-zA-Z0-9]+)$/);
+    let [baseSpec, filterSpec] = spec.split('|').map((s)=>s.trim());
+    const match = baseSpec.match(/ @([-_a-zA-Z0-9]+)$/);
     if (match) {
         attribute = match[1];
-        spec = spec.slice(0, -match[0].length);
+        baseSpec = baseSpec.slice(0, -match[0].length);
+    }
+    let filter = (s)=>s;
+    if (filterSpec) {
+        if (filterSpec.startsWith('regex:')) {
+            const regex = new RegExp(filterSpec.slice(6));
+            filter = (s)=>{
+                const match = s.match(regex);
+                return match ? match[1] : '';
+            };
+        } else if (filterSpec.startsWith('url:')) {
+            const pattern = filterSpec.slice(4);
+            filter = (s)=>{
+                let url = null;
+                try {
+                    url = new Url(s);
+                } catch  {
+                    return '';
+                }
+                const newUrlStr = resolvePathPatternWithUrl(pattern, url);
+                return newUrlStr;
+            };
+        } else if (filterSpec === 'trim') {
+            filter = (s)=>s.trim();
+        } else if (filterSpec === 'lowercase') {
+            filter = (s)=>s.toLowerCase();
+        } else if (filterSpec === 'uppercase') {
+            filter = (s)=>s.toUpperCase();
+        } else {
+            throw new Error(`Unsupported filter ${filterSpec}`);
+        }
     }
     return [
-        spec,
-        attribute
+        baseSpec,
+        attribute,
+        filter
     ];
+};
+const insertProperty = (spec, property)=>{
+    const parts = spec.split('|');
+    const specParts = parts[0].split('@');
+    if (specParts.length > 1) {
+        specParts[specParts.length - 1] = property;
+    } else {
+        specParts[specParts.length - 1] += ' ';
+        specParts.push(property);
+    }
+    parts[0] = specParts.join('@');
+    return parts.join('|');
 };
 const makeGetters = (page, mimeType)=>{
     let itemGetter;
@@ -52572,15 +52632,22 @@ const makeGetters = (page, mimeType)=>{
             {
                 const doc = new DOMParser().parseFromString(page, "text/html");
                 if (doc === null) throw new Error(`HMTL parse failed`);
-                itemGetter = (spec)=>{
-                    let attribute;
-                    [spec, attribute] = parseSpec(spec);
-                    return nodeAttribute(doc.querySelector(spec), attribute)?.trim() || null;
-                };
                 arrayGetter = (spec)=>{
                     let attribute;
-                    [spec, attribute] = parseSpec(spec);
-                    return Array.from(doc.querySelectorAll(spec)).map((el)=>nodeAttribute(el, attribute)?.trim() || null);
+                    let filter;
+                    [spec, attribute, filter] = parseSpec(spec);
+                    return Array.from(doc.querySelectorAll(spec)).map((el)=>{
+                        const res = nodeAttribute(el, attribute)?.trim() || null;
+                        return res === null ? null : filter(res);
+                    });
+                };
+                itemGetter = (spec, idx)=>{
+                    if (idx) return arrayGetter(spec)[idx];
+                    let attribute;
+                    let filter;
+                    [spec, attribute, filter] = parseSpec(spec);
+                    const res = nodeAttribute(doc.querySelector(spec), attribute)?.trim() || null;
+                    return res === null ? null : filter(res);
                 };
                 return {
                     itemGetter,
@@ -52590,7 +52657,7 @@ const makeGetters = (page, mimeType)=>{
         case 'application/json':
             {
                 const obj = JSON.parse(page);
-                itemGetter = (spec)=>jsonPath(obj, spec);
+                itemGetter = (spec, idx)=>idx ? jsonPath(obj, spec)?.[idx] : jsonPath(obj, spec);
                 arrayGetter = (spec)=>jsonPath(obj, spec);
                 return {
                     itemGetter,
@@ -52606,7 +52673,7 @@ const scrapeFromSpec = async (spec, path, parentResult, loopPosition, reqMsg, fe
     const pageMsg = await fetchContext.delayer(()=>fetchContext.serviceContext.makeRequest(sendMsg));
     if (!pageMsg.ok) return {
         $status: pageMsg.status,
-        $message: await pageMsg?.data?.asString() || ''
+        $message: (await pageMsg?.data?.asString())?.substring(0, 500) || ''
     };
     if (!pageMsg.data) return {
         $status: 400,
@@ -52686,21 +52753,34 @@ const extractFromPage = async (spec, path, parentResult, loopPosition, page, mim
             if ('$mimeType' in value) {
                 fetchMimeType = value['$mimeType'];
             }
+            const idx = value['$index'];
+            if (typeof idx !== 'number' && typeof idx !== 'undefined') {
+                returnVal[key] = {
+                    $status: 400,
+                    $message: `Invalid index ${idx}`
+                };
+                continue;
+            }
             if ('$urlSelector' in value) {
-                if (fetchContext.maxFetches !== undefined && fetchContext.maxFetches <= 0) {
-                    hrefs = [];
-                } else {
-                    let hrefsOrNull = returnsArray ? arrayGetter(value['$urlSelector'] + " @href") : [
-                        itemGetter(value['$urlSelector'] + " @href")
+                hrefs = [];
+                if (fetchContext.maxFetches === undefined || fetchContext.maxFetches > 0) {
+                    const hrefsOrNull = returnsArray ? arrayGetter(insertProperty(value['$urlSelector'], "href")) : [
+                        itemGetter(insertProperty(value['$urlSelector'], "href"), idx)
                     ];
+                    const hrefsSet = new Set();
+                    hrefsOrNull.forEach((href)=>{
+                        if (href && !hrefsSet.has(href)) {
+                            hrefsSet.add(href);
+                            hrefs.push(href);
+                        }
+                    });
                     if (startFromAtKey?.index && startFromAtKey.index > 0) {
-                        hrefsOrNull = hrefsOrNull.slice(startFromAtKey.index);
+                        hrefs = hrefs.slice(startFromAtKey.index);
                         setIndexAtLoopPosition(loopPosition, newPath, startFromAtKey.index);
                     }
                     if (startFromAtKey?.index && !Object.keys(startFromAtKey).some((k)=>k !== 'index')) {
                         fetchContext.startFrom = {};
                     }
-                    hrefs = hrefsOrNull.filter((href)=>!!href);
                 }
             } else if ('$pagedUrlPattern' in value) {
                 let pageCount = 1;
@@ -52740,7 +52820,7 @@ const extractFromPage = async (spec, path, parentResult, loopPosition, page, mim
                 hrefs = [];
                 if (!returnsArray) pageCount = 1;
                 if (fetchContext.maxFetches !== undefined && fetchContext.maxFetches <= 0) pageCount = 0;
-                let initialIdx = 0;
+                let initialIdx = idx || 0;
                 if (startFromAtKey?.index && startFromAtKey.index > 0) {
                     setIndexAtLoopPosition(loopPosition, newPath, startFromAtKey.index);
                     initialIdx = startFromAtKey.index;
@@ -52769,7 +52849,7 @@ const extractFromPage = async (spec, path, parentResult, loopPosition, page, mim
                     }
                     returnVal[key] = val;
                 } else {
-                    const data = itemGetter(value['$embeddedDataSelector']);
+                    const data = itemGetter(value['$embeddedDataSelector'], idx);
                     if (data) {
                         setIndexAtLoopPosition(loopPosition, newPath, -1);
                         const val = await extractFromPage(value, newPath, parentResult, loopPosition, data, fetchMimeType, reqMsg, fetchContext);
@@ -52800,13 +52880,7 @@ const extractFromPage = async (spec, path, parentResult, loopPosition, page, mim
                     });
                     continue;
                 }
-                let nextUrl = new Url(href);
-                if (nextUrl.isRelative) {
-                    nextUrl = reqMsg.url.follow(href);
-                } else if (href.startsWith('/')) {
-                    nextUrl = reqMsg.url.copy();
-                    nextUrl.path = href;
-                }
+                const nextUrl = reqMsg.url.follow(href);
                 const subReqMsg = new Message(nextUrl, fetchContext.serviceContext, 'GET', reqMsg);
                 if (fetchMimeType.startsWith('application/json')) {
                     subReqMsg.setHeader('accept', 'application/json, text/javascript, */*; q=0.01');
@@ -55616,7 +55690,7 @@ const handleOutgoingRequest = async (msg, source = Source.Internal)=>{
             if (msgOut.ok) {
                 config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
             } else {
-                const body = msgOut.hasData() ? await msgOut.data.asString() : 'none';
+                const body = msgOut.hasData() ? (await msgOut.data.asString())?.substring(0, 200) : 'none';
                 config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...msgOut.loggerArgs());
             }
             if (msgOut.data) msgOut.data.wasMimeHandled = true;
