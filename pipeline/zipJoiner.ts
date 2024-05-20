@@ -47,7 +47,7 @@ async function* messageProcessor(firstMsg: IteratorResult<Message | null, Messag
 	}
 }
 
-export async function zip(msgs: AsyncIterator<Message, Message, Message>): Promise<Message | null> {
+export async function zip(msgs: AsyncIterator<Message, Message, Message>, tenant: string): Promise<Message | null> {
     let first: IteratorResult<Message | null, Message | null> = { value: null, done: false };
     while (!((first.value && first.value.hasData()) || first.done)) {
         first = await msgs.next();

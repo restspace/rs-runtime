@@ -224,10 +224,10 @@ function runPipelineOne(pipeline: PipelineSpec, msg: Message, parentMode: Pipeli
                 case PipelineElementType.serializer:
                     switch (el) {
                         case PipelineSerializer.zip:
-                            msgs = AsyncQueue.fromPromises(zip(msgs));
+                            msgs = AsyncQueue.fromPromises(zip(msgs, context.callerTenant));
                             break;
                         case PipelineSerializer.jsonObject:
-                            msgs = AsyncQueue.fromPromises(jsonObject(msgs));
+                            msgs = AsyncQueue.fromPromises(jsonObject(msgs, context.callerTenant));
                             break;
                         // case PipelineSerializer.multipart:
                         //     msgs = AsyncQueue.fromPromises(multipart(msgs));
@@ -325,6 +325,7 @@ function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, 
         callerUrl: contextUrl || callerMsg.url,
         callerMethod: callerMsg.method,
         callerLoggerArgs: callerMsg.loggerArgs(),
+        callerTenant: callerMsg.tenant,
         external,
         path: [],
         concurrencyLimiter: limitConcurrency(DefaultConcurrencyLimit),

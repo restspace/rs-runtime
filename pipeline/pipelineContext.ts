@@ -8,6 +8,7 @@ export interface PipelineContext {
     handler: MessageFunction;
     callerUrl?: Url;
     callerMethod?: MessageMethod;
+    callerTenant: string;
     targetHost?: Url;
     targetHeaders?: Record<string, unknown>;
     outputHeaders?: Record<string, unknown>;

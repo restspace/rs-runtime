@@ -3170,7 +3170,7 @@ function resolvePathPatternWithObjectInner2(pathPattern, regex, partialResolutio
                     throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is not present in the data`);
                 }
                 if (typeof subs === 'object') {
-                    throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an object`);
+                    throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an object: ${JSON.stringify(subs)}`);
                 }
                 if (subs.toString() === '') {
                     throw new Error(`In path pattern ${pathPattern}, the data path '${path}' is an empty string`);

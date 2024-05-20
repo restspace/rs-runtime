@@ -441,6 +441,19 @@ Deno.test('split patch', async function () {
     //when PATCH implemented for DataSet: assertStrictEquals(check, { a: 123, b: 234 });
 });
 
+Deno.test('split single', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
+        [
+            { 'a': 123 }
+        ]
+    ), [
+        "jsonSplit",
+        "jsonObject"
+    ]);
+    const data = await msgOut.data?.asJson();
+    console.log('data:', data);
+});
+
 Deno.test('nested split', async function () {
     const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
         [
@@ -527,7 +540,37 @@ Deno.test('limited concurrency', async function () {
         ]
     ]);
     const output = await msgOut.data?.asJson();
+    console.log('output:', output);
     assertEquals(output, "ccc result");
+});
+
+Deno.test('split executes branches without waiting', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST'), [
+        {
+            "$": [ "'/test/bbb-75ms'", "'/test/ccc-50ms'", "'/test/aaa-100ms'" ]
+        },
+        "GET ${[]}",
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output[1], "ccc result");
+});
+
+Deno.test('lib/quota-delay works', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST'), [
+        {
+            "$": [ "'/test/bbb-75ms'", "'/test/aaa-100ms'", "'/test/ccc-50ms'", "'/test/abc'" ]
+        },
+        "jsonSplit",
+        {
+            "$": "$"
+        },
+        "/lib/quota-delay/xxx/per-second/5",
+        "GET ${}"
+    ]);
+    const output = await msgOut.data?.asJson();
+    await new Promise<void>((res) => setTimeout(() => res(), 200));
+    assertEquals(output, "bbb result");
 });
 
 Deno.test('variables', async function () {

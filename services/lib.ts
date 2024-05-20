@@ -1,6 +1,7 @@
 import { Service } from "rs-core/Service.ts";
 import { encode, decode } from "std/encoding/base64.ts"
 import { Url } from "rs-core/Url.ts";
+import { QuotaQueueConfig, QuotaQueueState } from "rs-core/state/QuotaQueueState.ts";
 
 const service = new Service();
 
@@ -67,6 +68,40 @@ service.postPath('/set-name', msg => {
     if (msg.data) {
         msg.name = msg.url.query['$name'][0] || msg.name;
     }
+    return msg;
+});
+service.postPath('/quota-delay', async (msg, context, config) => {
+    if (!msg.url.servicePathElements[0]) {
+        return Promise.resolve(msg.setStatus(400, 'missing path element 1, uid'));
+    }
+    const uid = msg.url.servicePathElements[0];
+
+    if (!msg.url.servicePathElements[1] 
+        || !['per-second', 'per-minute'].includes(msg.url.servicePathElements[1])) {
+        return Promise.resolve(msg.setStatus(400, 'missing or bad path element 2, time unit (per-second or per-minute)'));
+    }
+    const timeUnit = msg.url.servicePathElements[1];
+
+    if (!msg.url.servicePathElements[2]) {
+        return Promise.resolve(msg.setStatus(400, 'missing path element 3, requests per time unit'));
+    }
+    const reqPerTimeUnit = parseInt(msg.url.servicePathElements[2]);
+    if (isNaN(reqPerTimeUnit)) {
+        return Promise.resolve(msg.setStatus(400, 'bad path element 3, requests per time unit'));
+    }
+
+    const delayerParams = {} as QuotaQueueConfig;
+    if (timeUnit === 'per-second') {
+        delayerParams.reqSec = reqPerTimeUnit;
+    } else {
+        delayerParams.reqMin = reqPerTimeUnit;
+    }
+
+    const delayer = await context.state(QuotaQueueState, context, config);
+    delayer.ensureDelayer(uid, delayerParams);
+
+    await delayer.wait(uid);
+    
     return msg;
 });
 
