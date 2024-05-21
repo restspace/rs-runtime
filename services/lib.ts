@@ -64,6 +64,22 @@ service.postPath('/log/body', async (msg, context) => {
     context.logger.info('BODY ' + JSON.stringify(json || {}), ...msg.loggerArgs());
     return msg;
 });
+service.postPath('/log/headers', (msg, context) => {
+    context.logger.info('HEADERS ' + JSON.stringify(msg.headers), ...msg.loggerArgs());
+    return msg;
+});
+service.postPath('/set-browser-headers', msg => {
+    Object.entries(msg.headers).forEach(([key]) => {
+        if (![ 'content-type', 'content-length' ].includes(key)) {
+            msg.removeHeader(key);
+        }
+    });
+    msg.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
+    msg.setHeader('Accept-Language', 'en-US,en;q=0.9');
+    msg.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9');
+    msg.setHeader('Referer', 'https://www.google.com/');
+    return msg;
+} )
 service.postPath('/set-name', msg => {
     if (msg.data) {
         msg.name = msg.url.query['$name'][0] || msg.name;

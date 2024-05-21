@@ -23160,7 +23160,7 @@ async function* messageProcessor(firstMsg, msgs) {
         msgResult = await msgs.next();
     }
 }
-async function zip(msgs) {
+async function zip(msgs, tenant) {
     let first = {
         value: null,
         done: false
@@ -23176,7 +23176,7 @@ async function zip(msgs) {
     const filename = msgOut.url.isDirectory ? last(msgOut.url.pathElements) : msgOut.url.resourceName;
     return msgOut.copy().setData(stream, 'application/zip').setHeader('Content-Disposition', 'attachment; filename="' + filename + '.zip"');
 }
-async function jsonObject(msgs) {
+async function jsonObjectInner(msgs) {
     let outerName = '';
     let first = {
         value: null
@@ -23191,86 +23191,111 @@ async function jsonObject(msgs) {
         return nullMessage.setNullMessage(false).setData("{}", "application/json");
     }
     const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const writeString = (data)=>writer.write(new TextEncoder().encode(data));
-    let length = -1;
-    const writeProperty = (name, val)=>{
-        writeString(`  "${name}": `);
-        writeString(val);
-        if (length > -2 && /^\d+$/.test(name)) {
-            const itemIdx = parseInt(name) + 1;
-            if (itemIdx > length) length = itemIdx;
-        } else if (name === 'length') {
-            length = -2;
-        }
-    };
-    writeString("{\n");
-    const writeMsg = async (msg)=>{
-        if (!msg) return;
-        if (msg.name === "$this") {
-            if (!isJson(msg.data?.mimeType)) {
-                writeString('  "data": ');
-                writeString('"');
-                writeString(await msg.data?.asString() || '');
-                writeString('"');
-            } else {
-                const obj = await msg.data?.asJson();
-                if (typeof obj !== 'object') {
-                    writeProperty("data", JSON.stringify(obj));
+    const msgOut = first.value.copy();
+    msgOut.setData(readable, 'application/json').setName(outerName);
+    (async ()=>{
+        const writer = writable.getWriter();
+        const writeString = async (data)=>{
+            const writeData = new TextEncoder().encode(data);
+            try {
+                await writer.ready;
+                await writer.write(writeData);
+            } catch (e) {
+                console.error(`Error in writeString: ${e}`);
+            }
+        };
+        let length = -1;
+        const writeProperty = async (name, val)=>{
+            await writeString(`  "${name}": `);
+            await writeString(val);
+            if (length > -2 && /^\d+$/.test(name)) {
+                const itemIdx = parseInt(name) + 1;
+                if (itemIdx > length) length = itemIdx;
+            } else if (name === 'length') {
+                length = -2;
+            }
+        };
+        const writeMsg = async (msg)=>{
+            if (!msg) return;
+            if (msg.name === "$this") {
+                if (!isJson(msg.data?.mimeType)) {
+                    await writeString('  "data": ');
+                    await writeString('"');
+                    await writeString(await msg.data?.asString() || '');
+                    await writeString('"');
                 } else {
-                    let first = true;
-                    for(const prop in obj){
-                        if (first) {
-                            first = false;
-                        } else {
-                            writeString(',\n');
+                    const obj = await msg.data?.asJson();
+                    if (typeof obj !== 'object') {
+                        await writeProperty("data", JSON.stringify(obj));
+                    } else {
+                        let first = true;
+                        for(const prop in obj){
+                            if (first) {
+                                first = false;
+                            } else {
+                                await writeString(',\n');
+                            }
+                            await writeProperty(prop, JSON.stringify(obj[prop]));
                         }
-                        writeProperty(prop, JSON.stringify(obj[prop]));
                     }
                 }
-            }
-        } else {
-            let name = msg.name.replace('"', '');
-            if (name.includes('.')) {
-                const lastDot = name.lastIndexOf('.');
-                const newOuterName = name.substring(0, lastDot);
-                if (newOuterName && !outerName) {
-                    outerName = newOuterName;
-                } else if (newOuterName !== outerName) {
-                    outerName = "_mixed_";
-                }
-                name = name.substring(lastDot + 1);
-            }
-            if (msg.data?.data === null) {
-                writeProperty(name, "null");
-                return;
-            }
-            if (isJson(msg.data?.mimeType)) {
-                writeProperty(name, await msg.data?.asString() || '');
             } else {
-                writeProperty(name, '"' + jsonQuote(await msg.data?.asString() || '') + '"');
+                let name = msg.name.replace('"', '');
+                if (name.includes('.')) {
+                    const lastDot = name.lastIndexOf('.');
+                    const newOuterName = name.substring(0, lastDot);
+                    if (newOuterName && !outerName) {
+                        outerName = newOuterName;
+                    } else if (newOuterName !== outerName) {
+                        outerName = "_mixed_";
+                    }
+                    name = name.substring(lastDot + 1);
+                }
+                if (msg.data?.data === null) {
+                    await writeProperty(name, "null");
+                    return;
+                }
+                if (isJson(msg.data?.mimeType)) {
+                    await writeProperty(name, await msg.data?.asString() || '');
+                } else {
+                    await writeProperty(name, '"' + jsonQuote(await msg.data?.asString() || '') + '"');
+                }
             }
-        }
-    };
-    await writeMsg(first.value);
-    msgs.next().then(async (second)=>{
-        let res = second;
-        while(!res.done){
-            if (res.value && res.value.hasData()) {
-                writeString(",\n");
-                await writeMsg(res.value);
+        };
+        await writeString("{\n");
+        await writeMsg(first.value);
+        msgs.next().then(async (second)=>{
+            console.log(`wrote msg name: ${first.value?.name}`);
+            try {
+                let res = second;
+                while(!res.done){
+                    if (res.value && res.value.hasData()) {
+                        await writeString(",\n");
+                        await writeMsg(res.value);
+                    }
+                    const nextMsgPromise = msgs.next();
+                    res = await nextMsgPromise;
+                }
+                if (length >= 0) {
+                    await writeString(",\n");
+                    await writeProperty('length', length.toString());
+                }
+                await writeString("\n}");
+                await writer.ready;
+                await writer.close();
+            } catch (e) {
+                console.error(`Error in jsonObjectInner: ${e}`);
             }
-            const nextMsgPromise = msgs.next();
-            res = await nextMsgPromise;
-        }
-        if (length >= 0) {
-            writeString(",\n");
-            writeProperty('length', length.toString());
-        }
-        writeString("\n}");
-        writer.close();
-    });
-    return first.value && first.value.setData(readable, 'application/json').setName(outerName) || null;
+        });
+    })();
+    return msgOut;
+}
+function jsonObject(msgs, tenant) {
+    try {
+        return jsonObjectInner(msgs);
+    } catch (e) {
+        return Promise.resolve(new Message("/", tenant).setStatus(500, e.message));
+    }
 }
 const GZIP_HEADER = Uint8Array.from([
     31,
@@ -24445,7 +24470,7 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
         console.log('expr ' + expr);
         const arrResult = doEvaluate(expr, data, variables, transformHelper);
         return arrResult;
-    } else {
+    } else if (typeof transformObject === 'object') {
         let transformed = {};
         const selfObject = transformObject['$'] || transformObject['$this'] || transformObject['.'];
         if (selfObject) {
@@ -24462,6 +24487,8 @@ const transformation = (transformObject, data, url = new Url('/'), name = '', va
             }
         }
         return rectifyObject(transformed);
+    } else {
+        return transformObject;
     }
 };
 const rectifyObject = (obj)=>{
@@ -35856,8 +35883,6 @@ class ElasticQueryAdapter {
         switch(operation){
             case "_search":
                 return data.hits.hits;
-            case "_count":
-                return data.count;
             default:
                 return data;
         }
@@ -41870,6 +41895,66 @@ function decode3(b64) {
     }
     return bytes;
 }
+const ensureDelay = (minDelayMs, randomOffsetMs)=>{
+    const queue = new ArrayQueue();
+    let delayHandle = null;
+    const delayThenNext = ()=>{
+        delayHandle = setTimeout(()=>{
+            if (queue.length > 0) {
+                queue.dequeue()();
+            } else {
+                delayHandle = null;
+            }
+        }, minDelayMs + Math.random() * randomOffsetMs);
+    };
+    const enqueue = (fn, resolve)=>{
+        queue.enqueue(async ()=>{
+            delayThenNext();
+            resolve(await fn());
+        });
+        if (delayHandle === null) {
+            delayThenNext();
+        }
+    };
+    const generator = (fn)=>new Promise((resolve)=>{
+            enqueue(fn, resolve);
+        });
+    Object.defineProperties(generator, {
+        pendingCount: {
+            get: ()=>queue.length
+        },
+        clearQueue: {
+            value: ()=>{
+                while(queue.length)queue.pop();
+            }
+        },
+        clearTimeout: {
+            value: ()=>{
+                if (delayHandle !== null) clearTimeout(delayHandle);
+            }
+        }
+    });
+    return generator;
+};
+class QuotaQueueState extends BaseStateClass {
+    delayers = {};
+    async load(_context, config) {}
+    ensureDelayer(key, qConfig) {
+        if (this.delayers[key]) return;
+        const secDelayMs = qConfig?.reqSec && 1000 / (qConfig.reqSec || 1) + 1;
+        const minDelayMs = qConfig?.reqMin && 60000 / (qConfig.reqMin || 1) + 1;
+        let delayMs;
+        if (secDelayMs && minDelayMs) {
+            delayMs = Math.min(secDelayMs, minDelayMs);
+        } else {
+            delayMs = secDelayMs || minDelayMs || 0;
+        }
+        this.delayers[key] = ensureDelay(delayMs, 0);
+    }
+    async wait(key) {
+        await this.delayers[key](()=>Promise.resolve());
+    }
+}
 const service4 = new Service();
 service4.postPath('/bypass', (msg)=>msg);
 service4.postPath('/devnull', (msg)=>msg.setData(null, "text/plain"));
@@ -41930,6 +42015,36 @@ service4.postPath('/set-name', (msg)=>{
     if (msg.data) {
         msg.name = msg.url.query['$name'][0] || msg.name;
     }
+    return msg;
+});
+service4.postPath('/quota-delay', async (msg, context, config)=>{
+    if (!msg.url.servicePathElements[0]) {
+        return Promise.resolve(msg.setStatus(400, 'missing path element 1, uid'));
+    }
+    const uid = msg.url.servicePathElements[0];
+    if (!msg.url.servicePathElements[1] || ![
+        'per-second',
+        'per-minute'
+    ].includes(msg.url.servicePathElements[1])) {
+        return Promise.resolve(msg.setStatus(400, 'missing or bad path element 2, time unit (per-second or per-minute)'));
+    }
+    const timeUnit = msg.url.servicePathElements[1];
+    if (!msg.url.servicePathElements[2]) {
+        return Promise.resolve(msg.setStatus(400, 'missing path element 3, requests per time unit'));
+    }
+    const reqPerTimeUnit = parseInt(msg.url.servicePathElements[2]);
+    if (isNaN(reqPerTimeUnit)) {
+        return Promise.resolve(msg.setStatus(400, 'bad path element 3, requests per time unit'));
+    }
+    const delayerParams = {};
+    if (timeUnit === 'per-second') {
+        delayerParams.reqSec = reqPerTimeUnit;
+    } else {
+        delayerParams.reqMin = reqPerTimeUnit;
+    }
+    const delayer = await context.state(QuotaQueueState, context, config);
+    delayer.ensureDelayer(uid, delayerParams);
+    await delayer.wait(uid);
     return msg;
 });
 const __default32 = {
@@ -47169,18 +47284,18 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
         const ignoreBlank = config.ignoreBlankLines === undefined ? true : config.ignoreBlankLines;
         let stream = null;
         let writer = null;
-        let writeString = (_)=>{};
+        let writeString = async (_)=>{};
         if (mode !== "validate") {
             stream = new TransformStream();
             writer = stream.writable.getWriter();
-            writeString = (data)=>writer.write(new TextEncoder().encode(data));
+            writeString = async (data)=>await writer.write(new TextEncoder().encode(data));
         }
         let rowIdx = 0;
         let blanks = 0;
         const process1 = async ()=>{
             try {
                 if (mode === "json") {
-                    writeString("[");
+                    await writeString("[");
                 }
                 for await (const row of readCSV(rdr)){
                     let idx = 0;
@@ -47246,9 +47361,9 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
                         }
                     } else if (rowObj && !(ignoreBlank && isBlank)) {
                         if (mode === "ndjson") {
-                            writeString(JSON.stringify(rowObj) + '\n');
+                            await writeString(JSON.stringify(rowObj) + '\n');
                         } else {
-                            writeString((rowIdx === 0 ? '' : ',') + JSON.stringify(rowObj));
+                            await writeString((rowIdx === 0 ? '' : ',') + JSON.stringify(rowObj));
                         }
                     }
                     if (mode === "validate" && errors.length > 100) {
@@ -47258,12 +47373,12 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
                     rowIdx++;
                 }
                 if (mode === "json") {
-                    writeString("]");
+                    await writeString("]");
                 }
             } catch (err) {
                 context.logger.error('Failure in CSV processing: ' + err.toString());
             } finally{
-                writer?.close();
+                await writer?.close();
             }
         };
         try {
@@ -47285,7 +47400,7 @@ const csvToJson = (mode)=>async (msg, context, config)=>{
                 return msg.setData(stream.readable, mode === "ndjson" ? "application/x-ndjson" : "application/json");
             }
         } catch (err) {
-            writer?.close();
+            await writer?.close();
             return msg.setStatus(500, err.toString());
         }
     };
@@ -52469,47 +52584,6 @@ async function initParser() {
     await init();
     register(parse7, parse_frag);
 }
-const ensureDelay = (minDelayMs, randomOffsetMs)=>{
-    const queue = new ArrayQueue();
-    let delayHandle = null;
-    const delayThenNext = ()=>{
-        delayHandle = setTimeout(()=>{
-            if (queue.length > 0) {
-                queue.dequeue()();
-            } else {
-                delayHandle = null;
-            }
-        }, minDelayMs + Math.random() * randomOffsetMs);
-    };
-    const enqueue = (fn, resolve)=>{
-        queue.enqueue(async ()=>{
-            delayThenNext();
-            resolve(await fn());
-        });
-        if (delayHandle === null) {
-            delayThenNext();
-        }
-    };
-    const generator = (fn)=>new Promise((resolve)=>{
-            enqueue(fn, resolve);
-        });
-    Object.defineProperties(generator, {
-        pendingCount: {
-            get: ()=>queue.length
-        },
-        clearQueue: {
-            value: ()=>{
-                while(queue.length)queue.pop();
-            }
-        },
-        clearTimeout: {
-            value: ()=>{
-                if (delayHandle !== null) clearTimeout(delayHandle);
-            }
-        }
-    });
-    return generator;
-};
 const positionAtPath = (loopPosition, path)=>{
     let current = loopPosition;
     for (const p of path){
@@ -52901,7 +52975,7 @@ const extractFromPage = async (spec, path, parentResult, loopPosition, page, mim
                         [key]: subReqVal
                     };
                     if (fetchContext.outputWriter) {
-                        fetchContext.outputWriter.write(new TextEncoder().encode(JSON.stringify(loopOutput) + "\n"));
+                        await fetchContext.outputWriter.write(new TextEncoder().encode(JSON.stringify(loopOutput) + "\n"));
                     }
                 } else if (!nextLoopKey) {
                     retValues.push(subReqVal);
@@ -52964,7 +53038,7 @@ service15.post(async (msg, context, config)=>{
             try {
                 await scrapeFromSpec(spec, [], {}, loopPosition, reqMsg, fetchContext);
             } finally{
-                fetchContext.outputWriter.close();
+                await fetchContext.outputWriter.close();
                 status.startFrom = loopPosition;
                 reqStatus.setMethod('PUT').setDataJson(status);
                 await context.makeRequest(reqStatus);
@@ -56007,10 +56081,10 @@ function runPipelineOne(pipeline, msg, parentMode, context) {
                 case PipelineElementType.serializer:
                     switch(el){
                         case PipelineSerializer.zip:
-                            msgs = AsyncQueue.fromPromises(zip(msgs));
+                            msgs = AsyncQueue.fromPromises(zip(msgs, context.callerTenant));
                             break;
                         case PipelineSerializer.jsonObject:
-                            msgs = AsyncQueue.fromPromises(jsonObject(msgs));
+                            msgs = AsyncQueue.fromPromises(jsonObject(msgs, context.callerTenant));
                             break;
                     }
                     break;
@@ -56099,6 +56173,7 @@ function createInitialContext(pipeline, handler, callerMsg, variables, contextUr
         callerUrl: contextUrl || callerMsg.url,
         callerMethod: callerMsg.method,
         callerLoggerArgs: callerMsg.loggerArgs(),
+        callerTenant: callerMsg.tenant,
         external,
         path: [],
         concurrencyLimiter: limitConcurrency(12),
