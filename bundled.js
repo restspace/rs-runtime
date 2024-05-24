@@ -15470,7 +15470,10 @@ class Message {
     }
     forbiddenHeaders;
     nonForbiddenHeaders() {
-        const isForbidden = (h)=>this.forbiddenHeaders.includes(h) || h.startsWith('proxy-') || h.startsWith('sec-') || !this.data && h.startsWith('content-');
+        const isForbidden = (h)=>this.forbiddenHeaders.includes(h) || h.startsWith('proxy-') || h.startsWith('sec-') || (!this.data || [
+                "GET",
+                "HEAD"
+            ].includes(this.method)) && h.startsWith('content-');
         return Object.fromEntries(Object.entries(this.headers).filter(([k, _])=>!isForbidden(k)));
     }
     responsify() {
@@ -42009,6 +42012,25 @@ service4.postPath('/reload-referer', (msg)=>{
 service4.postPath('/log/body', async (msg, context)=>{
     const json = await msg.data?.asJson();
     context.logger.info('BODY ' + JSON.stringify(json || {}), ...msg.loggerArgs());
+    return msg;
+});
+service4.postPath('/log/headers', (msg, context)=>{
+    context.logger.info('HEADERS ' + JSON.stringify(msg.headers), ...msg.loggerArgs());
+    return msg;
+});
+service4.postPath('/set-browser-headers', (msg)=>{
+    Object.entries(msg.headers).forEach(([key])=>{
+        if (![
+            'content-type',
+            'content-length'
+        ].includes(key)) {
+            msg.removeHeader(key);
+        }
+    });
+    msg.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
+    msg.setHeader('Accept-Language', 'en-US,en;q=0.9');
+    msg.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9');
+    msg.setHeader('Referer', 'https://www.google.com/');
     return msg;
 });
 service4.postPath('/set-name', (msg)=>{

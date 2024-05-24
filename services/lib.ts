@@ -70,7 +70,7 @@ service.postPath('/log/headers', (msg, context) => {
 });
 service.postPath('/set-browser-headers', msg => {
     Object.entries(msg.headers).forEach(([key]) => {
-        if (![ 'content-type', 'content-length' ].includes(key)) {
+        if (![ 'content-type', 'content-length', 'content-disposition' ].includes(key)) {
             msg.removeHeader(key);
         }
     });

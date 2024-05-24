@@ -255,15 +255,18 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
             value = value[0];
         }
 
+        // if the value is a string, this is a selector to extract data from the page
         if (typeof value === 'string') {
             if (value === '$url') {
                 returnVal[key] = reqMsg.url.toString();
             } else {
                 returnVal[key] = returnsArray ? arrayGetter(value) : itemGetter(value);
             }
+        // The value should not be an array as we've already checked for that
         } else if (Array.isArray(value)) {
             returnVal[key] = { $status: 400, $message: `Directly nested arrays not allowed in spec` };
             continue;
+        // If the value is an object, this means we move to another page (or context within this one)
         } else if (value && typeof value === 'object') {
             let hrefs: string[];
             let fetchMimeType = mimeType;
@@ -276,6 +279,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                 continue;
             }
 
+            // We move to a page by following a link
             if ('$urlSelector' in value) {
                 hrefs = [];
                 if (fetchContext.maxFetches === undefined || fetchContext.maxFetches > 0) {
@@ -298,6 +302,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                         fetchContext.startFrom = {} as LoopPosition;
                     }
                 }
+            // We find paging information and loop through the pages
             } else if ('$pagedUrlPattern' in value) {
                 let pageCount = 1;
                 if (value['$pageCountSelector']) {
@@ -351,6 +356,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                     });
                     hrefs.push(url as string);
                 }
+            // We recurse into a data object on this page
             } else if ('$embeddedDataSelector' in value) {
                 if (returnsArray) {
                     const data = arrayGetter(value['$embeddedDataSelector']);
@@ -373,11 +379,13 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                     }
                 }
                 continue;
+            // An object must have properties defined to create a new context for the other properties to extract data
             } else {
                 returnVal[key] = { $status: 400, $message: `No url selector specified in subspec at ${key}` };
                 continue;
             }
 
+            // if we get this far, we have a list of hrefs to follow
             const retValues = [];
             const countsAsFetch = !('$embeddedDataSelector' in value) // embedded data doesn't need a fetch
                 && returnsArray // don't count single items as fetches
