@@ -6,7 +6,7 @@ import { mimeHandlers } from "./mimeHandlers.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { pipeline } from "./pipeline/pipeline.ts";
 import { handleOutgoingRequest } from "./handleRequest.ts";
-import { handleOutgoingRequestFromPrivateServices } from "./handleRequest.ts";
+import { handleOutgoingRequestWithPrivateServices } from "./handleRequest.ts";
 import { pipelineConcat, PipelineSpec } from "rs-core/PipelineSpec.ts";
 import { AuthUser } from "./auth/AuthUser.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
@@ -17,10 +17,10 @@ export class ServiceWrapper {
     constructor(public service: Service) {
     }
 
-    private async prePostPipeline(prePost: PrePost, msg: Message, pipelineSpec?: PipelineSpec, privateServiceConfigs?: Record<string, IServiceConfig>) {
+    private async prePostPipeline(prePost: PrePost, basePath: string, msg: Message, pipelineSpec?: PipelineSpec, privateServiceConfigs?: Record<string, IServiceConfig>) {
         if (pipelineSpec) {
             let handler = handleOutgoingRequest;
-            if (privateServiceConfigs) handler = handleOutgoingRequestFromPrivateServices(prePost, privateServiceConfigs, msg.tenant);
+            if (privateServiceConfigs) handler = handleOutgoingRequestWithPrivateServices(basePath, privateServiceConfigs, msg.tenant, prePost);
             return await pipeline(msg, pipelineSpec, msg.url, false, handler);
         }
         return msg;
@@ -34,11 +34,11 @@ export class ServiceWrapper {
             const { manifestConfig } = serviceConfig;
             const prePipeline = pipelineConcat(manifestConfig?.prePipeline || serviceConfig?.prePipeline);
             const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
-            newMsg = await this.prePostPipeline("pre", newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
+            newMsg = await this.prePostPipeline("pre", serviceConfig.basePath, newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
             newMsg.applyServiceRedirect();
             context.metadataOnly = newMsg.url.isDirectory && ("$metadataOnly" in newMsg.url.query);
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
-            if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
+            if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", serviceConfig.basePath, newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
         } catch (err) {
             if (err.message === 'Not found') {
                 newMsg.setStatus(404, 'Not found');

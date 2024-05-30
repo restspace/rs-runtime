@@ -28,7 +28,7 @@ export default {
     "defaults": {
         "metadataProperty": "$message"
     },
-    "postPipeline": [ "if (method !== 'POST') $METHOD store/$*" ],
+    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*" ],
     "privateServices": {
         "store": {
             "name": "'Template Store'",
@@ -40,7 +40,7 @@ export default {
             "adapterConfig": "store.adapterConfig",
             "extensions": "[ store.extension ]",
             "parentIfMissing": "store.parentIfMissing === false ? false : true",
-            "storesTransforms": "true",
+            "storePattern": "'store-transform'",
             "manualMimeTypes": {
                 "requestMimeType": "'application/json'",
                 "responseMimeType": "'text/plain'"

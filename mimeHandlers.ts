@@ -1,7 +1,7 @@
 import { Message } from "rs-core/Message.ts";
 import { Url } from "rs-core/Url.ts";
 import { DirDescriptor } from "rs-core/DirDescriptor.ts";
-import { getProp, last, slashTrim, slashTrimLeft } from "rs-core/utility/utility.ts";
+import { last, slashTrimLeft } from "rs-core/utility/utility.ts";
 import { AsyncQueue } from "rs-core/utility/asyncQueue.ts";
 import { zip } from "./pipeline/zipJoiner.ts"
 
@@ -120,7 +120,7 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
 
         if (isZip) {
             zipQueue.close();
-            let zipMsg = await zip(zipQueue);
+            let zipMsg = await zip(zipQueue, msg.tenant);
             if (zipMsg === null) zipMsg = msg.setStatus(500, 'Zip output null');
             return zipMsg;
         }

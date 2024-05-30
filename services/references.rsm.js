@@ -23,7 +23,7 @@ export default {
     "privateServices": {
         "store": {
             "name": "'Reference Sepc Store'",
-            "storesTransforms": "true",
+            "storePattern": "'store-transform'",
             "source": "./services/file.rsm.json",
             "access": { "readRoles": "access.readRoles", "writeRoles": "access.writeRoles" },
             "adapterInterface": "IFileAdapter",

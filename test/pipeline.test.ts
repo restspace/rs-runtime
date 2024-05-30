@@ -444,14 +444,15 @@ Deno.test('split patch', async function () {
 Deno.test('split single', async function () {
     const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson(
         [
-            { 'a': 123 }
+            { 'a': 123 },
+            { 'b': 234 }
         ]
     ), [
         "jsonSplit",
         "jsonObject"
     ]);
     const data = await msgOut.data?.asJson();
-    console.log('data:', data);
+    assertEquals(data, { "0": { a: 123 }, "1": { b: 234 }, length: 2 });
 });
 
 Deno.test('nested split', async function () {
@@ -473,6 +474,7 @@ Deno.test('nested split', async function () {
         "jsonObject"
     ]);
     const output = await msgOut.data?.asJson();
+    console.log('output:', output);
     assertEquals(output, {
         "0": { x: { a: 123 }, y: { a: 123 } },
         "1": { x: { b: 234 }, y: { b: 234 } },
@@ -559,7 +561,7 @@ Deno.test('split executes branches without waiting', async function () {
 Deno.test('lib/quota-delay works', async function () {
     const msgOut = await pipeline(testMessage('/', 'POST'), [
         {
-            "$": [ "'/test/bbb-75ms'", "'/test/aaa-100ms'", "'/test/ccc-50ms'", "'/test/abc'" ]
+            "$": [ "'/test/bbb-75ms'", "'/test/aaa-100ms'", "'/test/ccc-50ms'" ]
         },
         "jsonSplit",
         {

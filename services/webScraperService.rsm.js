@@ -23,11 +23,11 @@ export default {
         },
         "required": [ "store" ]
     },
-    "postPipeline": [ "if (method !== 'POST') $METHOD store/$*" ],
+    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*" ],
     "privateServices": {
         "store": {
             "name": "'Scraper Spec Store'",
-            "storesTransforms": "true",
+            "storePattern": "'store-transform'",
             "source": "./services/file.rsm.json",
             "access": { "readRoles": "access.readRoles", "writeRoles": "access.writeRoles" },
             "adapterInterface": "IFileAdapter",

@@ -4,7 +4,7 @@ export default {
     "moduleUrl": "./services/file.ts",
     "apis": [ "store", "file.base" ],
     "adapterInterface": "IFileAdapter",
-    "prePipeline": [ "$METHOD staticSiteFilter/$*?targetPath=$*&outerUrl=$$" ],
+    "prePipeline": [ "$METHOD *staticSiteFilter/$*?targetPath=$*&outerUrl=$$" ],
     "configSchema": {
         "type": "object",
         "properties": {

@@ -3,13 +3,15 @@ import { MessageFunction, Service } from "rs-core/Service.ts";
 import { Source } from "rs-core/Source.ts";
 import { Url } from "rs-core/Url.ts";
 import { config } from "./config.ts";
-import { IServiceConfigTemplate, IServiceConfig, IAccessControl } from "rs-core/IServiceConfig.ts";
+import { IServiceConfigTemplate, IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { ServiceWrapper } from "./ServiceWrapper.ts";
 import { applyServiceConfigTemplate } from "./Modules.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
 import { BaseStateClass, ServiceContext, StateFunction } from "rs-core/ServiceContext.ts";
+import { handleIncomingRequest, handleOutgoingRequestWithPrivateServices } from "./handleRequest.ts";
+import { pathCombine } from "rs-core/utility/utility.ts";
 
 interface ITemplateConfigFromManifest {
     serviceConfigTemplates?: Record<string, IServiceConfigTemplate>;
@@ -115,7 +117,8 @@ export class ServiceFactory {
         Object.entries(manifest.privateServices).forEach(([ name, configTemplate ]) => {
             let innerServiceConfig = applyServiceConfigTemplate(serviceConfig, configTemplate);
             innerServiceConfig.source = configTemplate.source;
-            innerServiceConfig.basePath = name;
+            // Convention is the base path of a private service is the parent's basePath as the root and the private service name prefixed by '*'
+            innerServiceConfig.basePath = pathCombine(serviceConfig.basePath, '*' + name);
             const innerManifest = this.serviceManifestsBySource[innerServiceConfig.source];
             innerServiceConfig = this.addPrivateServiceConfig(innerServiceConfig, innerManifest);
             privateServiceConfigs[name] = innerServiceConfig;
@@ -160,6 +163,16 @@ export class ServiceFactory {
 
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
         serviceConfig = this.addPrivateServiceConfig(serviceConfig, manifest);
+        const handlerWithPrivateServices = (msg: Message, source?: Source) => {
+			if (!msg.url.domain) msg.url.domain = config.tenants[this.tenant].primaryDomain;
+			return source === Source.External
+                ? handleIncomingRequest(msg)
+                : handleOutgoingRequestWithPrivateServices(
+                    serviceConfig.basePath,
+                    serviceConfig.manifestConfig?.privateServiceConfigs || {},
+                    this.tenant)(msg);
+		}
+        serviceContext = { ...serviceContext, manifest, makeRequest: handlerWithPrivateServices };
 
         const canonicalSource = config.canonicaliseUrl(serviceConfig.source, this.tenant, this.primaryDomain);
         const configValidator = config.modules.validateServiceConfig[canonicalSource];
@@ -185,9 +198,7 @@ export class ServiceFactory {
             }
 
             adapter = await config.modules.getAdapter(adapterSource as string, serviceContext, adapterConfig, this.primaryDomain);
-            serviceContext = { ...serviceContext, manifest, adapter } as ServiceContext<IAdapter>;
-        } else {
-            serviceContext = { ...serviceContext, manifest };
+            serviceContext = { ...serviceContext, adapter } as ServiceContext<IAdapter>;
         }
         const serviceWrapper = new ServiceWrapper(service);
         const sourceServiceFunc = source === Source.External || source === Source.Outer ? serviceWrapper.external(source) : serviceWrapper.internal;

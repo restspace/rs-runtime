@@ -2,15 +2,17 @@ import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
 import { IDataAdapter } from "rs-core/adapter/IDataAdapter.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
-import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
+import { DirDescriptor, StorePattern, storeDescriptor } from "rs-core/DirDescriptor.ts";
 import { IReadOnlySchemaAdapter, ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
-import { IServiceConfig } from "rs-core/IServiceConfig.ts";
+import { IServiceConfig, ManualMimeTypes } from "rs-core/IServiceConfig.ts";
 
 interface IDatasetConfig extends IServiceConfig {
     datasetName: string;
     schema?: Record<string, unknown>;
     uploadBaseUrl?: string;
+    storePattern?: StorePattern;
+    transformMimeTypes?: ManualMimeTypes;
 }
 
 const service = new Service<IDataAdapter, IDatasetConfig>();
@@ -105,12 +107,8 @@ service.getDirectory(async (msg, { adapter }, config: IDatasetConfig) => {
         dirState = DirState.createInstanceConfigSchema
     }
 
-    const spec: StoreSpec = {
-        pattern: "store",
-        storeMimeTypes: [],
-        createDirectory: false,
-        createFiles: true
-    };
+    const spec = storeDescriptor(config.storePattern || "store", false, true, [], config.transformMimeTypes)
+
     switch (dirState) {
         case DirState.mustCreateSchema:
             spec.exceptionMimeTypes = { "/.schema.json": [ 'application/schema+json', 'application/schema+json' ] };

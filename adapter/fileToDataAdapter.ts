@@ -31,7 +31,8 @@ export function fileToDataAdapter<TFileAdapter extends IFileAdapterConstructor>(
                         return msgBody.statusCode;
                     }
                 }
-                const paths = ((await msgBody.asJson()) || []) as PathInfo[];
+                const str = await msgBody.asString();
+                const paths = ((str && JSON.parse(str)) || []) as PathInfo[];
                 return paths;
             };
         

@@ -4,6 +4,7 @@ import { IServiceConfig, PrePost } from "rs-core/IServiceConfig.ts";
 import { config } from "./config.ts";
 import { IRawServicesConfig, Tenant } from "./tenant.ts";
 import { Url } from "rs-core/Url.ts";
+import { slashTrim } from "rs-core/utility/utility.ts";
 
 const tenantLoads = {} as Record<string, Promise<void>>;
 
@@ -200,13 +201,18 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
     }
 }
 
-export const handleOutgoingRequestFromPrivateServices = (prePost: PrePost, privateServices: Record<string, IServiceConfig>, tenantName: string) =>
+export const handleOutgoingRequestWithPrivateServices = (basePath: string, privateServices: Record<string, IServiceConfig>, tenantName: string, prePost?: PrePost) =>
     async (msg: Message) => {
-        if (msg.url.isRelative) {
+        if (msg.url.isRelative && msg.url.pathElements[0]?.startsWith('*')) {
             const privateServiceName = msg.url.pathElements[0];
-            const serviceConfig = privateServices[privateServiceName];
+            const serviceConfig = privateServices[privateServiceName.substring(1)];
             if (!serviceConfig) return msg.setStatus(404, 'Not found');
-            msg.url.basePathElements = [ privateServiceName ]; // sets service path to path after service name
+            
+            const newUrl = new Url(basePath).follow(msg.url);
+            newUrl.scheme = msg.url.scheme;
+            newUrl.domain = msg.url.domain;
+            newUrl.basePathElements = slashTrim(basePath).split('/').concat([ privateServiceName ]);
+            msg.url = newUrl;
             const tenant = config.tenants[tenantName || 'main'];
             const messageFunction = await tenant.getMessageFunctionForService(serviceConfig, Source.Internal, prePost);
             const msgOut = await messageFunction(msg.callDown());

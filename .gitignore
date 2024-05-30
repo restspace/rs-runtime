@@ -6,3 +6,4 @@ dist
 *.tar
 main.log.*
 cookies.dat
+bundled.js

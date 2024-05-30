@@ -198,14 +198,15 @@ const scrapeFromSpec = async (spec: any, path: string[], parentResult: Record<st
         $status: pageMsg.status,
         $message: (await pageMsg?.data?.asString())?.substring(0, 500) || ''
     };
-    if (!pageMsg.data) return { $status: 400, $message: `No data ${reqMsg.url}` };
+    if (!pageMsg.data) return { $status: 400, $message: `No data ${reqMsg.url}`, $loopPosition: loopPosition};
     const page = await pageMsg.data.asString();
-    if (!page) return { $status: 400, $message: `No page ${reqMsg.url}` };
+    if (!page) return { $status: 400, $message: `No page ${reqMsg.url}`, $loopPosition: loopPosition };
     return extractFromPage(spec, path, parentResult, loopPosition, page, upTo(pageMsg.data.mimeType, ';'), reqMsg, fetchContext);
 }
 
 const extractFromPage = async (spec: any, path: string[], parentResult: Record<string, unknown>, loopPosition: LoopPosition, page: string, mimeType: string, reqMsg: Message, fetchContext: IFetchContext) => {
     let getters: IGetters;
+    const errorOutput = (message: string) => ({ $status: 400, $message: message, $loopPosition: loopPosition });
 
     try {
         getters = makeGetters(page, mimeType);
@@ -249,7 +250,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
 
         if (returnsArray) {
             if (value.length !== 1) {
-                returnVal[key] = { $status: 400, $message: `Array in spec must contain one template item` };
+                returnVal[key] = errorOutput(`Array in spec must contain one template item`);
                 continue;
             }
             value = value[0];
@@ -259,12 +260,14 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
         if (typeof value === 'string') {
             if (value === '$url') {
                 returnVal[key] = reqMsg.url.toString();
+            } else if (value === '$loopPosition') {
+                returnVal[key] = loopPosition;
             } else {
                 returnVal[key] = returnsArray ? arrayGetter(value) : itemGetter(value);
             }
         // The value should not be an array as we've already checked for that
         } else if (Array.isArray(value)) {
-            returnVal[key] = { $status: 400, $message: `Directly nested arrays not allowed in spec` };
+            returnVal[key] = errorOutput(`Directly nested arrays not allowed in spec`);
             continue;
         // If the value is an object, this means we move to another page (or context within this one)
         } else if (value && typeof value === 'object') {
@@ -275,7 +278,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
             }
             const idx = value['$index'] as number | undefined;
             if (typeof idx !== 'number' && typeof idx !== 'undefined') {
-                returnVal[key] = { $status: 400, $message: `Invalid index ${idx}` };
+                returnVal[key] = errorOutput(`Invalid index ${idx}`);
                 continue;
             }
 
@@ -310,7 +313,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                         itemGetter(value['$pageCountSelector']) || "1"
                     );
                     if (isNaN(pageCount) || pageCount < 1) {
-                        returnVal[key] = { $status: 400, $message: `Invalid page count ${value['$pageCountSelector']}` };
+                        returnVal[key] = errorOutput(`Invalid page count ${value['$pageCountSelector']}`);
                         continue;
                     }
                 }
@@ -320,7 +323,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                         itemGetter(value['$pageLengthSelector']) || "1"
                     );
                     if (isNaN(pageLength) || pageLength < 1) {
-                        returnVal[key] = { $status: 400, $message: `Invalid page length ${value['$pageLengthSelector']}` };
+                        returnVal[key] = errorOutput(`Invalid page length ${value['$pageLengthSelector']}`);
                         continue;
                     }
                 }
@@ -330,7 +333,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                         itemGetter(value['$itemCountSelector']) || "0"
                     );
                     if (isNaN(itemCount) || itemCount < 0) {
-                        returnVal[key] = { $status: 400, $message: `Invalid item count ${value['$itemCountSelector']}` };
+                        returnVal[key] = errorOutput(`Invalid item count ${value['$itemCountSelector']}`);
                         continue;
                     }
                 }
@@ -375,13 +378,13 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
                         const val = await extractFromPage(value, newPath, parentResult, loopPosition, data, fetchMimeType, reqMsg, fetchContext);
                         returnVal[key] = val;
                     } else {
-                        returnVal[key] = { $status: 400, $message: `No data found at ${value['$embeddedDataSelector']}` };
+                        returnVal[key] = errorOutput(`No data found at ${value['$embeddedDataSelector']}`);
                     }
                 }
                 continue;
             // An object must have properties defined to create a new context for the other properties to extract data
             } else {
-                returnVal[key] = { $status: 400, $message: `No url selector specified in subspec at ${key}` };
+                returnVal[key] = errorOutput(`No url selector specified in subspec at ${key}`);
                 continue;
             }
 
@@ -397,7 +400,7 @@ const extractFromPage = async (spec: any, path: string[], parentResult: Record<s
             {
                 const href = hrefs[idx];
                 if (!href) {
-                    retValues.push({ $status: 400, $message: `No href found at ${value['$urlselector']}` });
+                    retValues.push(errorOutput(`No href found at ${value['$urlselector']}`));
                     continue;
                 }
                 const nextUrl = reqMsg.url.follow(href);

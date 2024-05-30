@@ -41,7 +41,7 @@ const sendTokenUrl = async (msg: Message, context: ServiceContext<IAdapter>, ser
     const returnPageUrl = new Url(subservice.returnPageUrl);
     if (!returnPageUrl.domain) {
         returnPageUrl.scheme = msg.url.scheme;
-        returnPageUrl.domain = config.tenants[context.tenant].primaryDomain;
+        returnPageUrl.domain = context.primaryDomain;
     }
     returnPageUrl.query = {
         token: [ user.token ],

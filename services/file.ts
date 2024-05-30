@@ -3,7 +3,7 @@ import { Service } from "rs-core/Service.ts";
 import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
-import { ApiSpec, DirDescriptor, StoreSpec, StoreTransformSpec } from "rs-core/DirDescriptor.ts";
+import { DirDescriptor, StorePattern, storeDescriptor } from "rs-core/DirDescriptor.ts";
 import { IServiceConfig, ManualMimeTypes } from "rs-core/IServiceConfig.ts";
 import { getType, isZip } from "rs-core/mimeType.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
@@ -14,7 +14,7 @@ interface IFileServiceConfig extends IServiceConfig {
     extensions?: string[];
     parentIfMissing?: boolean;
     defaultResource?: string;
-    storesTransforms?: boolean;
+    storePattern?: StorePattern;
     transformMimeTypes?: ManualMimeTypes;
 }
 
@@ -40,19 +40,10 @@ const findParent = async (url: Url,
 const service = new Service<IFileAdapter>();
 
 const getDirectory = async (msg: Message, { adapter }: ServiceContext<IFileAdapter>, config: IFileServiceConfig) => {
-    const spec: ApiSpec = config.storesTransforms ? {
-        pattern: "store-transform",
-        storeMimeTypes: (config.extensions || []).map(ext => getType(ext)),
-        createDirectory: true,
-        createFiles: true,
-        reqMimeType: config.transformMimeTypes?.requestMimeType,
-        respMimeType: config.transformMimeTypes?.responseMimeType
-    } as StoreTransformSpec : {
-        pattern: "store",
-        storeMimeTypes: (config.extensions || []).map(ext => getType(ext)),
-        createDirectory: true,
-        createFiles: true
-    } as StoreSpec;
+    const storeMimeTypes = (config.extensions || [])
+        .map(ext => getType(ext))
+        .filter(mime => mime !== null) as string[];
+    const spec = storeDescriptor(config.storePattern || "store", true, true, storeMimeTypes, config.transformMimeTypes);
 
     // TODO manage as a stream as adapter can list directory files as a stream
     const readDirPath = async (path: string) => {

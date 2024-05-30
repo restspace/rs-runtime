@@ -24,11 +24,11 @@ export default {
         },
         "required": [ "outputMime", "store" ]
     },
-    "postPipeline": [ "if (method !== 'POST') $METHOD store/$*" ],
+    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*" ],
     "privateServices": {
         "store": {
             "name": "'Query Store'",
-            "storesTransforms": "true",
+            "storePattern": "'store-transform'",
             "source": "./services/file.rsm.json",
             "access": { "readRoles": "access.readRoles", "writeRoles": "access.writeRoles" },
             "adapterInterface": "IFileAdapter",
