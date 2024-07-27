@@ -56,6 +56,23 @@ export type LogLevel = "NOTSET" | "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRIT
 // we allow for extra schema properties like 'editor' to direct UI
 const ajv = new Ajv({ allErrors: true, strictSchema: false, allowUnionTypes: true });
 
+class RequestAbortActions {
+    actions: Record<string, (() => void)[]> = {};
+    add(id: string, action: () => void) {
+        if (this.actions[id] === undefined) {
+            this.actions[id] = [ action ];
+        } else {
+            this.actions[id].push(action);
+        }
+    }
+    abort(id: string) {
+        if (this.actions[id]) this.actions[id].forEach(action => action());
+    }
+    clear(id: string) {
+        if (id) delete this.actions[id];
+    }
+}
+
 export const config = {
     server: {} as IServerConfig,
     modules: new Modules(ajv),
@@ -82,7 +99,8 @@ export const config = {
     }),
     requestExternal: null as null | ((msg: Message) => Promise<Message>),
     canonicaliseUrl: (url: string, tenant?: string, primaryDomain?: string) =>
-        url.startsWith('/') ? "https://" + (primaryDomain || config.tenants[tenant || ''].primaryDomain) + url : url
+        url.startsWith('/') ? "https://" + (primaryDomain || config.tenants[tenant || ''].primaryDomain) + url : url,
+    requestAbortActions: new RequestAbortActions()
 }
 
 export const setupLogging = async (level: LogLevel) => {

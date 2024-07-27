@@ -19,8 +19,10 @@ for await (const conn of listener) {
     (async () => {
         try {
             for await (const { request, respondWith } of Deno.serveHttp(conn)) {
+                let msgIn: Message | null = null;
+                let response: Response | null = null;
                 try {
-                    const msgIn = Message.fromRequest(request, '');
+                    msgIn = Message.fromRequest(request, '');
                     if (config.server.incomingAlwaysHttps) msgIn.url.scheme = "https://";
                     if (msgIn.getHeader("upgrade") === "websocket") {
                         const { socket, response } = Deno.upgradeWebSocket(request);
@@ -29,10 +31,17 @@ for await (const conn of listener) {
                         await respondWith(response);
                     }
                     const msgOut = await handleIncomingRequest(msgIn);
-                    await respondWith(msgOut.toResponse());
+                    response = msgOut.toResponse();
+                    await respondWith(response);
                 } catch (err) {
-                    console.error('Request loop error: ' + err.toString());
+                    if (msgIn && err.toString().includes("connection closed")) {
+                        // client aborted request
+                        config.requestAbortActions.abort(msgIn.traceId);
+                    } else {
+                        console.error('Request loop error: ' + err.toString());
+                    }
                 }
+                config.requestAbortActions.clear(msgIn?.traceId || '');
             }
         } catch (err) {
             console.error(err);

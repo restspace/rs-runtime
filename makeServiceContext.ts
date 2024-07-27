@@ -26,7 +26,10 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 			const primaryDomain = config.tenants[tenantName].primaryDomain;
 			return config.modules.getAdapter<T>(url, context, adapterConfig, primaryDomain);
 		},
-		state
+		state,
+		registerAbortAction: (msg: Message, action: () => void) => {
+			config.requestAbortActions.add(msg.traceId, action);
+		}
 	} as ServiceContext<IAdapter>;
 	return context;
 }

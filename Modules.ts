@@ -93,6 +93,8 @@ import References from "./services/references.ts";
 import ReferencesManifest from "./services/references.rsm.js";
 import TimerStore from "./services/timer-store.ts";
 import TimerStoreManifest from "./services/timer-store.rsm.js";
+import ServerSideEvents from "./services/server-side-events.ts";
+import serverSideEventsManifest from "./services/server-side-events.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -257,7 +259,8 @@ export class Modules {
             "./services/sms.ts": Sms as unknown as Service<IAdapter, IServiceConfig>,
             "./services/webScraperService.ts": WebScraper as unknown as Service<IAdapter, IServiceConfig>,
             "./services/references.ts": References as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/timer-store.ts": TimerStore as unknown as Service<IAdapter, IServiceConfig>
+            "./services/timer-store.ts": TimerStore as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/server-side-events.ts": ServerSideEvents as unknown as Service<IAdapter, IServiceConfig>
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -290,7 +293,8 @@ export class Modules {
             "./services/sms.rsm.json": SmsManifest as unknown as IServiceManifest,
             "./services/webscraperService.rsm.json": WebScraperManifest as unknown as IServiceManifest,
             "./services/references.rsm.json": ReferencesManifest as unknown as IServiceManifest,
-            "./services/timer-store.rsm.json": TimerStoreManifest as unknown as IServiceManifest
+            "./services/timer-store.rsm.json": TimerStoreManifest as unknown as IServiceManifest,
+            "./services/server-side-events.rsm.json": serverSideEventsManifest as unknown as IServiceManifest
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 

@@ -1,10 +1,9 @@
 import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
-import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
+import { BaseStateClass, SimpleServiceContext } from "rs-core/ServiceContext.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 
-class State {
-	constructor() { }
+class State extends BaseStateClass {
 	pathSockets: Record<string, WebSocket[]> = {};
 
 	addSocket(path: string, socket: WebSocket) {
@@ -32,18 +31,19 @@ const onIncoming = async (ev: MessageEvent<any>, context: SimpleServiceContext) 
 
 const service = new Service();
 
-service.get((msg, context, config) => {
+service.get(async (msg, context, config) => {
 	if (msg.websocket) {
 		const websocket = msg.websocket;
-		websocket.onopen = () => service.state(State, context, config).addSocket(msg.url.servicePath, websocket);
-		websocket.onclose = () => service.state(State, context, config).removeSocket(msg.url.servicePath, websocket);
+		const state = await context.state(State, context, config);
+		websocket.onopen = () => state.addSocket(msg.url.servicePath, websocket);
+		websocket.onclose = () => state.removeSocket(msg.url.servicePath, websocket);
 		websocket.onmessage = (ev) => onIncoming(ev, context);
 	}
 	return Promise.resolve(msg);
 });
 
 service.post(async (msg, context, config) => {
-	const sockets = service.state(State, context, config).pathSockets[msg.url.servicePath];
+	const sockets = (await context.state(State, context, config)).pathSockets[msg.url.servicePath];
 	if (!sockets) return msg.setStatus(404, "No sockets found");
 	const msgData = await msg.data?.asArrayBuffer();
 	if (!msgData) return msg.setStatus(400, "No data to send to sockets");
