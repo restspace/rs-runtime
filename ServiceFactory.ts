@@ -177,7 +177,7 @@ export class ServiceFactory {
         const canonicalSource = config.canonicaliseUrl(serviceConfig.source, this.tenant, this.primaryDomain);
         const configValidator = config.modules.validateServiceConfig[canonicalSource];
         const serviceName = serviceConfig.name;
-        if (!configValidator(serviceConfig)) {
+        if (!configValidator(serviceConfig as any)) {
             throw new Error(`failed to validate config for service ${serviceName}: ${getErrors(configValidator)}`);
         }
 
@@ -193,7 +193,7 @@ export class ServiceFactory {
 
             const canonicalAdapterSource = config.canonicaliseUrl(adapterSource as string, this.tenant, this.primaryDomain);
             const validator = config.modules.validateAdapterConfig[canonicalAdapterSource];
-            if (!validator(adapterConfig)) {
+            if (!validator(adapterConfig as any)) {
                 throw new Error(`failed to validate adapter config for service ${serviceConfig.name}: ${getErrors(validator)}`);
             }
 

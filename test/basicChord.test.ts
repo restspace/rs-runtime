@@ -117,7 +117,7 @@ testServicesConfig['basicChord'] = JSON.parse(`{
             "name": "Dataset with Auth",
             "source": "./services/dataset.rsm.json",
             "infraName": "localStore",
-            "access": { "readRoles": "U", "writeRoles": "E" },
+            "access": { "readRoles": "U T", "writeRoles": "E T" },
             "adapterConfig": {
                 "basePath": "/data/ds"
             },
@@ -129,6 +129,13 @@ testServicesConfig['basicChord'] = JSON.parse(`{
                     "email": { "type": "string" }
                 }
             }
+        },
+        "/tempacc": {
+            "name": "Temporary Access",
+            "source": "./services/temporary-access.rsm.json",
+            "access": { "readRoles": "all", "writeRoles": "all" },
+            "acquiredRole": "T",
+            "expirySecs": 0.5
         }
     }
 }`);
@@ -522,4 +529,78 @@ Deno.test("authenticated access", async () => {
 
     await deleteUrl("/user-bypass/jamesej2@outlook.com.json", tokenEditor);
     await deleteUrl("/user-bypass/jamesej3@outlook.com.json", tokenUser);
+});
+
+Deno.test("temporary access", async () => {
+    const editor = new AuthUser({
+        email: "jamesej4@outlook.com",
+        password: "hello",
+        roles: "U E T"
+    });
+    await editor.hashPassword();
+
+    await writeJson("/user-bypass/jamesej4@outlook.com.json", editor, "failed to write editor");
+
+    const tokenEditor = await logIn("jamesej4@outlook.com");
+
+    let msg = testMessage("/tempacc/abc", "GET");
+    let msgOut = await handleIncomingRequest(msg);
+    assert(!msgOut.ok, "anon user should fail to get temp token");
+
+    msg = testMessage("/tempacc/data/ds-auth/ta1", "GET", tokenEditor);
+    msgOut = await handleIncomingRequest(msg);
+    let tempToken = msgOut.data ? await msgOut.data.asString() : '';
+    assert(tempToken, "failed to get temp token");
+    console.log(tempToken);
+
+    await writeJson("/data/ds-auth/ta1.json", { name: "ta1", email: "fred@abc.com" }, "failed to write data", tokenEditor);
+    await writeJson("/data/ds-auth/ta2.json", { name: "ta2", email: "fred@abc.com" }, "failed to write data", tokenEditor);
+
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta2`, "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assertEquals(msgOut.status, 403, "Should not authorize read outside base path");
+
+    msg = testMessage(`/tempacc/${tempToken + 'a'}/data/ds-auth/ta1`, "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assertEquals(msgOut.status, 401, "Should not authorize read with invalid temp token");
+
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "Should authorize read with valid temp token");
+    let data = msgOut.data ? await msgOut.data.asJson() : null;
+    assertEquals(data?.name, "ta1");
+
+    // wait for token to expire
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assertEquals(msgOut.status, 401, "Should not authorize read with expired temp token");
+
+    // token cancellation
+
+    msg = testMessage("/tempacc/data/ds-auth/ta1", "GET", tokenEditor);
+    msgOut = await handleIncomingRequest(msg);
+    tempToken = msgOut.data ? await msgOut.data.asString() : '';
+    assert(tempToken, "failed to get temp token");
+
+    msg = testMessage(`/tempacc/${tempToken}`, "DELETE");
+    msgOut = await handleIncomingRequest(msg);
+    assertEquals(msgOut.status, 401, "Should not authorize token deletion for anon user");
+
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "Should authorize read with valid temp token after failed deletion");
+    data = msgOut.data ? await msgOut.data.asJson() : null;
+    assertEquals(data?.name, "ta1");
+
+    msg = testMessage(`/tempacc/${tempToken}`, "DELETE", tokenEditor);
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "Token deletion failed for authorised user");
+
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assertEquals(msgOut.status, 401, "Should not authorize read with cancelled temp token");
+
+    await deleteUrl("/user-bypass/jamesej4@outlook.com.json", tokenEditor);
 });

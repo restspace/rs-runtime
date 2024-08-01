@@ -1,12 +1,12 @@
 import { Service } from "rs-core/Service.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
-import Ajv, { ValidateFunction } from "https://cdn.skypack.dev/ajv?dts";
+import { Validate } from "https://cdn.skypack.dev/@exodus/schemasafe?dts"
 import { getErrors } from "rs-core/utility/errors.ts";
 import { assignProperties } from "rs-core/utility/schema.ts";
 import { IServiceConfig, IServiceConfigTemplate, schemaIServiceConfig } from "rs-core/IServiceConfig.ts";
 import { Url } from "rs-core/Url.ts";
 import { IAdapterManifest, IManifest, IServiceManifest } from "rs-core/IManifest.ts";
-import { config, Infra } from "./config.ts";
+import { Infra, config } from "./config.ts";
 import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 
 import TestConfigFileAdapter from "./test/TestConfigFileAdapter.ts";
@@ -181,15 +181,15 @@ export class Modules {
     manifestsAllLoaded = new Set<string>();
 
 
-    validateServiceManifest: ValidateFunction<IServiceManifest>;
-    validateAdapterManifest: ValidateFunction<IAdapterManifest>;
+    validateServiceManifest: Validate;
+    validateAdapterManifest: Validate;
     // keyed by source as full url with domain or file path
-    validateAdapterConfig: Record<string, ValidateFunction> = {};
-    validateServiceConfig: Record<string, ValidateFunction> = {};
+    validateAdapterConfig: Record<string, Validate> = {};
+    validateServiceConfig: Record<string, Validate> = {};
 
-    constructor(public ajv: Ajv) {
-        this.validateServiceManifest = ajv.compile<IServiceManifest>(schemaIServiceManifest);
-        this.validateAdapterManifest = ajv.compile<IAdapterManifest>(schemaIAdapterManifest);
+    constructor(public defaultValidator: (schema: any) => Validate) {
+        this.validateServiceManifest = defaultValidator(schemaIServiceManifest);
+        this.validateAdapterManifest = defaultValidator(schemaIAdapterManifest);
 
         // Statically load core services & adapters
         
@@ -230,7 +230,7 @@ export class Modules {
 
         Object.entries(this.adapterManifests).forEach(([url, v]) => {
             (v as any).source = url;
-            this.validateAdapterConfig[url] = this.ajv.compile(this.adapterManifests[url].configSchema || {});
+            this.validateAdapterConfig[url] = defaultValidator(this.adapterManifests[url].configSchema || {});
         });
 
         this.services = {
@@ -383,12 +383,12 @@ export class Modules {
                 return `failed to load manifest at ${url}: ${err}`;
             }
 
-            if (!this.validateAdapterManifest(this.adapterManifests[fullUrl])) {
+            if (!this.validateAdapterManifest(this.adapterManifests[fullUrl] as any)) {
                 return `bad format manifest at ${fullUrl}: ${getErrors(this.validateAdapterManifest)}`;
             }
 
             if (!this.validateAdapterConfig[fullUrl]) {
-                this.validateAdapterConfig[fullUrl] = this.ajv.compile(this.adapterManifests[fullUrl].configSchema || {})
+                this.validateAdapterConfig[fullUrl] = this.defaultValidator(this.adapterManifests[fullUrl].configSchema || {})
             }
         }
         return this.adapterManifests[fullUrl];
@@ -422,7 +422,7 @@ export class Modules {
                     configSchema.$id = resolvedUrl;
                 }
 
-                this.validateServiceConfig[url] = this.ajv.compile(configSchema);
+                this.validateServiceConfig[url] = this.defaultValidator(configSchema);
             } catch (err) {
                 throw new Error(`Failed to compile service config validator for ${url}`, err);
             }
@@ -442,8 +442,8 @@ export class Modules {
                 return `failed to load manifest at ${url}: ${err}`;
             }
 
-            if (!this.validateServiceManifest(this.serviceManifests[fullUrl])) {
-                return `bad format manifest at ${fullUrl}: ${(this.validateServiceManifest.errors || []).map(e => e.message).join('; ')}`;
+            if (!this.validateServiceManifest(this.serviceManifests[fullUrl] as any)) {
+                return `bad format manifest at ${fullUrl}: ${getErrors(this.validateServiceManifest)}`;
             }
 
             this.ensureServiceConfigValidator(fullUrl);
@@ -537,7 +537,7 @@ export class Modules {
                     manifest.source = itemUrl;
                     if (!this.validateServiceManifest(manifest)) {
                         const desc = (this.validateServiceManifest.errors || [])
-                            .map(e => `${e.message} at ${e.instancePath}`).join('; ')
+                            .map(e => `keyword location ${e.keywordLocation} isntance location ${e.instanceLocation}`).join('; ')
                         throw new Error(`bad format manifest at ${itemUrl}: ${desc}`);
                     }
 
@@ -553,14 +553,14 @@ export class Modules {
                     manifest.source = itemUrl;
                     if (!this.validateAdapterManifest(manifest)) {
                         const desc = (this.validateAdapterManifest.errors || [])
-                            .map(e => `${e.message} at ${e.instancePath}`).join('; ')
+                            .map(e => `keyword location ${e.keywordLocation} instance location ${e.instanceLocation}`).join('; ')
                         throw new Error(`bad format manifest at ${itemUrl}: ${desc}`);
                     }
 
                     this.adapterManifests[itemUrl] = manifest;
                     this.addToDomainMap(this.adapterManifestsMap, itemUrl, context.tenant);
                     if (!this.validateAdapterConfig[itemUrl]) {
-                        this.validateAdapterConfig[itemUrl] = this.ajv.compile(this.adapterManifests[itemUrl].configSchema || {})
+                        this.validateAdapterConfig[itemUrl] = this.defaultValidator(this.adapterManifests[itemUrl].configSchema || {})
                     }
                 } catch (err) {
                     context.logger.error(`failed to load manifest at ${itemUrl}: ${err}`);

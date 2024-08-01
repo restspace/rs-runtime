@@ -117,7 +117,7 @@ export class Tenant {
     private async applyChord(services: Record<string, IServiceConfig>, chordKey: string, chord: IChord) {
         this.chordMap[chordKey] = {};
         for (const service of chord.newServices || []) {
-            if (!config.validateChordService(service)) {
+            if (!config.validateChordService(service as any)) {
                 throw new Error(`Chord ${chord['id']} service ${service['name'] || '<unnamed>'} was misformatted: ${getErrors(config.validateChordService)}` );
             }
             if (services[service.basePath]) {

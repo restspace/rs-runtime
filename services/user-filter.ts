@@ -60,7 +60,8 @@ async function validateChange(msg: Message, context: SimpleServiceContext): Prom
 
     let currUserMsg = msg.copy().setMethod("GET");
     currUserMsg.url.pathElements.shift(); // remove the service name
-    currUserMsg.url.isRelative = false;
+    currUserMsg.url.domain = '';
+    currUserMsg.url.isRelative = true;
 
     currUserMsg.internalPrivilege = true;
     currUserMsg = await context.makeRequest(currUserMsg);

@@ -29,16 +29,32 @@ service.all(async (msg, context, config) => {
 		}
 	}
 
-	const key = msg.url.servicePathElements[0];
+	const key = msg.url.servicePathElements[0] || '';
 	expireTokens();
-	if (key && state.tokenBaseUrls[key]) {
+	const baseUrl = key && state.tokenBaseUrls[key];
+	if (baseUrl
+		&& msg.url.servicePathElements.length === 1
+		&& !msg.url.isDirectory) {
+		// request /basePath/<token> to operate on token record
+		if (!(msg.user && new AuthUser(msg.user).authorizedFor(config.acquiredRole))) {
+			return msg.setStatus(401, "Unauthorized");
+		}
+		if (msg.method === 'DELETE') {
+			delete state.tokenBaseUrls[key];
+			state.validTokenExpiries = state.validTokenExpiries.filter(([_, token]) => token !== key);
+			return msg.setStatus(204);
+		}
+		return msg.setStatus(405, "Method not allowed");
+	} else if (baseUrl) {
+		// forward to path after token
 		msg.url = new Url('/' + msg.url.servicePathElements.slice(1).join('/'));
-		if (!msg.url.toString().startsWith(state.tokenBaseUrls[key])) {
+		if (!msg.url.toString().startsWith(baseUrl)) {
 			return msg.setStatus(403, "Attempt to access a url outside the base url for which this token is valid"); 
 		}
 		msg.user = new AuthUser(msg.user || AuthUser.anon).addRole(config.acquiredRole);
 		return context.makeRequest(msg, Source.External); // requested service will check user's authorization
 	} else if (msg.method === 'GET') {
+		// get a new token authorised for the subpath after the token
 		if (!(msg.user && new AuthUser(msg.user).authorizedFor(config.acquiredRole))) {
 			return msg.setStatus(401, "Cannot generate a temporary access token with an acquired role for which the user is not authorized");
 		}

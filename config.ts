@@ -1,14 +1,13 @@
 import { Modules } from "./Modules.ts";
 import { Tenant } from "./tenant.ts";
 import * as log from "std/log/mod.ts";
-import Ajv from "https://cdn.skypack.dev/ajv?dts";
+import { Validate, validator } from "https://cdn.skypack.dev/@exodus/schemasafe?dts";
 import * as path from "std/path/mod.ts";
 import { LogRecord } from "std/log/logger.ts";
 import { Authoriser } from "./auth/Authoriser.ts";
-import { IChordServiceConfig } from "rs-core/IServiceConfig.ts";
 import { schemaIChordServiceConfig } from "rs-core/IServiceConfig.ts";
-import { IChord } from "./IChord.ts";
 import { Message } from "rs-core/Message.ts";
+import { stripUndefined } from "rs-core/utility/schema.ts";
 
 export interface Infra {
     adapterSource: string; // cannot be site relative
@@ -54,9 +53,19 @@ const formatter = (rec: LogRecord) => {
 export type LogLevel = "NOTSET" | "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL";
 
 // we allow for extra schema properties like 'editor' to direct UI
-const ajv = new Ajv({ allErrors: true, strictSchema: false, allowUnionTypes: true });
+const defaultValidator = (schema: any) => {
+    const v = validator(schema, { includeErrors: true, allErrors: true, allowUnusedKeywords: true });
+    const v2 = ((data: any) => {
+        const newData = stripUndefined(data);
+        return v(newData);
+    }) as unknown as Validate;
+    v2.toModule = v.toModule;
+    v2.toJSON = v.toJSON;
+    
+    return v2;
+};
 
-class RequestAbortActions {
+export class RequestAbortActions {
     actions: Record<string, (() => void)[]> = {};
     add(id: string, action: () => void) {
         if (this.actions[id] === undefined) {
@@ -75,17 +84,17 @@ class RequestAbortActions {
 
 export const config = {
     server: {} as IServerConfig,
-    modules: new Modules(ajv),
+    modules: new Modules(defaultValidator),
     tenants: {} as { [ name: string ]: Tenant },
     logger: log.getLogger(),
     // path.resolves resolves relative to dir of current source file, which is repo root
     fixRelativeToRoot: (pathUrl: string) => pathUrl.startsWith('.') ? path.resolve(pathUrl) : pathUrl,
-    ajv,
+    defaultValidator,
     jwtExpiryMins: 30,
     getParam: (key: string) => Deno.env.get(key),
     authoriser: new Authoriser(),
-    validateChordService: ajv.compile<IChordServiceConfig>(schemaIChordServiceConfig),
-    validateChord: ajv.compile<IChord>({
+    validateChordService: defaultValidator(schemaIChordServiceConfig),
+    validateChord: defaultValidator({
         type: "object",
         properties: {
             id: { type: "string" },

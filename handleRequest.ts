@@ -203,7 +203,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
 
 export const handleOutgoingRequestWithPrivateServices = (basePath: string, privateServices: Record<string, IServiceConfig>, tenantName: string, prePost?: PrePost) =>
     async (msg: Message) => {
-        if (msg.url.isRelative && msg.url.pathElements[0]?.startsWith('*')) {
+        if (msg.url.pathElements[0]?.startsWith('*')) {
             const privateServiceName = msg.url.pathElements[0];
             const serviceConfig = privateServices[privateServiceName.substring(1)];
             if (!serviceConfig) return msg.setStatus(404, 'Not found');

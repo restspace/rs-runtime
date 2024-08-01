@@ -2,7 +2,7 @@ import { Message, MessageMethod } from "rs-core/Message.ts";
 import { Url } from "rs-core/Url.ts";
 import { handleIncomingRequest } from "../handleRequest.ts";
 import { assert } from "std/testing/asserts.ts";
-import { config } from "../config.ts";
+import { config as sysConfig } from "../config.ts";
 import { AdapterContext, nullState } from "rs-core/ServiceContext.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 
@@ -26,7 +26,7 @@ export const utilsForHost = (host: string) => ({
 	},
 
 	setDomainHandler: (domain: string, func: (msg: Message) => void) => {
-		config.requestExternal = (msg: Message) => {
+		sysConfig.requestExternal = (msg: Message) => {
 			if (msg.url.domain === domain) {
 				func(msg);
 				return Promise.resolve(msg.setStatus(200));
@@ -40,9 +40,13 @@ export const utilsForHost = (host: string) => ({
 export const makeAdapterContext = (tenant: string, getAdapter?: <T extends IAdapter>(url: string, config: unknown) => Promise<T>) => {
 	return {
 		tenant,
+		primaryDomain: sysConfig.tenants?.[tenant]?.primaryDomain || 'nodomain',
+		registerAbortAction: (msg: Message, action: () => void) => {
+			sysConfig.requestAbortActions.add(msg.traceId, action);
+		},
 		makeRequest: msg => msg.requestExternal(),
 		runPipeline: (msg) => Promise.resolve(msg),
-		logger: config.logger,
+		logger: sysConfig.logger,
 		getAdapter: getAdapter || (<T extends IAdapter>(_url: string, _config: unknown) => Promise.resolve({} as T)),
 		state: nullState
 	} as AdapterContext;

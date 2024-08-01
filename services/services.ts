@@ -226,7 +226,7 @@ const putChords = async (msg: Message, context: SimpleServiceContext) => {
 
     const tenantChords = { ...(tenant.rawServicesConfig.chords || {}) };
     for (const chord of Object.values(chords)) {
-        if (!config.validateChord(chord)) {
+        if (!config.validateChord(chord as any)) {
             const errors = getErrors(config.validateChord);
             return msg.setStatus(400, chord['id']
                 ? `Chord ${chord['id']} was misformatted: ${errors}`

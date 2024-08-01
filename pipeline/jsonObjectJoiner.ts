@@ -1,9 +1,8 @@
 import { Message } from "rs-core/Message.ts";
 import { isJson } from "rs-core/mimeType.ts";
-import { jsonQuote } from "rs-core/utility/utility.ts";
+import { after, afterLast, jsonQuote, upTo, upToLast } from "rs-core/utility/utility.ts";
 
 async function jsonObjectInner(msgs: AsyncIterator<Message, Message, Message>): Promise<Message | null> {
-    let outerName = '';
     let first: IteratorResult<Message | null, Message | null> = { value: null };
     let nullMessage = null as Message | null;
     while (!((first.value && first.value.hasData()) || first.done)) {
@@ -17,6 +16,7 @@ async function jsonObjectInner(msgs: AsyncIterator<Message, Message, Message>): 
 
     const { readable, writable } = new TransformStream();
     const msgOut = first.value!.copy(); // we need the data in 'first' later so we don't want to overwrite it
+    const outerName = msgOut.name.includes('.') ? upToLast(msgOut.name, '.') : '';
     msgOut.setData(readable, 'application/json').setName(outerName);
 
     (async () => {
@@ -69,16 +69,9 @@ async function jsonObjectInner(msgs: AsyncIterator<Message, Message, Message>): 
                     }
                 }
             } else {
-                let name = msg.name.replace('"', '');
+                let name = msg.name;
                 if (name.includes('.')) {
-                    const lastDot = name.lastIndexOf('.');
-                    const newOuterName = name.substring(0, lastDot);
-                    if (newOuterName && !outerName) {
-                        outerName = newOuterName;
-                    } else if (newOuterName !== outerName) {
-                        outerName = "_mixed_";
-                    }
-                    name = name.substring(lastDot + 1);
+                    name = afterLast(name, '.');
                 }
                 if (msg.data?.data === null) {
                     await writeProperty(name, "null");

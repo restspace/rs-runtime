@@ -3,7 +3,7 @@
     "description": "Routes under control of test construction",
     "moduleUrl": "./services/mock.ts",
     "apis": [ ],
-    "prePipeline": [ "GET serv1/$*", "POST serv2/bypass" ],
+    "prePipeline": [ "GET *serv1/$*", "POST *serv2/bypass" ],
     "privateServices": {
         "serv1": {
             "name": "'Serv 1'",

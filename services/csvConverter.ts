@@ -3,8 +3,8 @@ import { readCSV } from "https://deno.land/x/csv/mod.ts";
 import { readerFromStreamReader } from "std/streams/reader_from_stream_reader.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
-import Ajv, { ValidateFunction } from "https://cdn.skypack.dev/ajv?dts";
 import { BaseStateClass, SimpleServiceContext } from "rs-core/ServiceContext.ts";
+import { Validate, ValidationError, validator, ValidatorOptions } from "https://cdn.skypack.dev/@exodus/schemasafe?dts";
 
 export interface ICSVConverterConfig extends IServiceConfig {
 	lineSchema: Record<string, unknown>;
@@ -14,12 +14,12 @@ export interface ICSVConverterConfig extends IServiceConfig {
 const service = new Service<IAdapter, ICSVConverterConfig>();
 
 export class CSVState extends BaseStateClass {
-	validate: ValidateFunction<unknown> | null = null;
+	validate: Validate | null = null;
 
 	load(_context: SimpleServiceContext, config: ICSVConverterConfig) {
-        const ajv = new Ajv({ strictSchema: false, allowUnionTypes: true });
+        const options: ValidatorOptions = { includeErrors: true, allErrors: true };
 		if (config.lineSchema) {
-			this.validate = ajv.compile(config.lineSchema);
+			this.validate = validator(config.lineSchema, options);
 			_context.logger.info('TT Compiled validation func');
 		}
 		return Promise.resolve();
@@ -127,8 +127,8 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 					if (idx < rowProps.length) {
 						warnings.push(`line ${rowIdx} too short (< ${rowProps.length} fields)`);
 					}
-					if (validate && rowObj && !validate(rowObj)) {
-						const errorMsg = (validate.errors || []).map((e: any) => e.message).join('; ');
+					if (validate && rowObj && !validate(rowObj as any)) {
+						const errorMsg = (validate.errors || []).map((e: ValidationError) => `keyword location ${e.keywordLocation} instance location ${e.instanceLocation}`).join('; ');
 						errors.push(`bad format line ${rowIdx}: ${errorMsg}`);
 					}
 				} else if (rowObj && !(ignoreBlank && isBlank)) {
