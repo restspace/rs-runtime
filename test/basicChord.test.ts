@@ -547,7 +547,7 @@ Deno.test("temporary access", async () => {
     let msgOut = await handleIncomingRequest(msg);
     assert(!msgOut.ok, "anon user should fail to get temp token");
 
-    msg = testMessage("/tempacc/data/ds-auth/ta1", "GET", tokenEditor);
+    msg = testMessage("/tempacc#/data/ds-auth/ta1", "POST", tokenEditor);
     msgOut = await handleIncomingRequest(msg);
     let tempToken = msgOut.data ? await msgOut.data.asString() : '';
     assert(tempToken, "failed to get temp token");
@@ -555,6 +555,11 @@ Deno.test("temporary access", async () => {
 
     await writeJson("/data/ds-auth/ta1.json", { name: "ta1", email: "fred@abc.com" }, "failed to write data", tokenEditor);
     await writeJson("/data/ds-auth/ta2.json", { name: "ta2", email: "fred@abc.com" }, "failed to write data", tokenEditor);
+
+    msg = testMessage(`/tempacc/${tempToken}`, "GET");
+    msgOut = await handleIncomingRequest(msg);
+    let data = msgOut.data ? await msgOut.data.asJson() : null;
+    assertEquals(data?.baseUrl, "/data/ds-auth/ta1");
 
     msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta2`, "GET");
     msgOut = await handleIncomingRequest(msg);
@@ -567,7 +572,7 @@ Deno.test("temporary access", async () => {
     msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
     msgOut = await handleIncomingRequest(msg);
     assert(msgOut.ok, "Should authorize read with valid temp token");
-    let data = msgOut.data ? await msgOut.data.asJson() : null;
+    data = msgOut.data ? await msgOut.data.asJson() : null;
     assertEquals(data?.name, "ta1");
 
     // wait for token to expire
@@ -577,16 +582,22 @@ Deno.test("temporary access", async () => {
     msgOut = await handleIncomingRequest(msg);
     assertEquals(msgOut.status, 401, "Should not authorize read with expired temp token");
 
+    msg = testMessage(`/tempacc/${tempToken}`, "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assertEquals(msgOut.status, 404, "Should report expired token as not found");
+
     // token cancellation
 
-    msg = testMessage("/tempacc/data/ds-auth/ta1", "GET", tokenEditor);
+    msg = testMessage(`/tempacc/${tempToken}/#data/ds-auth/ta1`, "POST", tokenEditor);
     msgOut = await handleIncomingRequest(msg);
-    tempToken = msgOut.data ? await msgOut.data.asString() : '';
+    const newTempToken = msgOut.data ? await msgOut.data.asString() : '';
+    assert(tempToken === newTempToken, "Should return same token on reissue");
+    tempToken = newTempToken;
     assert(tempToken, "failed to get temp token");
 
     msg = testMessage(`/tempacc/${tempToken}`, "DELETE");
     msgOut = await handleIncomingRequest(msg);
-    assertEquals(msgOut.status, 401, "Should not authorize token deletion for anon user");
+    assertEquals(msgOut.status, 403, "Should not authorize token deletion for anon user");
 
     msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
     msgOut = await handleIncomingRequest(msg);

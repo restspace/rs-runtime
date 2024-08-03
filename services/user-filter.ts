@@ -59,9 +59,11 @@ async function validateChange(msg: Message, context: SimpleServiceContext): Prom
     }
 
     let currUserMsg = msg.copy().setMethod("GET");
-    currUserMsg.url.pathElements.shift(); // remove the service name
-    currUserMsg.url.domain = '';
-    currUserMsg.url.isRelative = true;
+    const url = currUserMsg.url;
+    // remove local service name
+    url.basePathElements = url.basePathElements.filter(el => !el.startsWith('*'));
+    // append user email
+    url.servicePathElements = url.servicePathElements.slice(-1);
 
     currUserMsg.internalPrivilege = true;
     currUserMsg = await context.makeRequest(currUserMsg);

@@ -29,8 +29,6 @@ import ElasticQueryAdapter from "./adapter/ElasticQueryAdapter.ts";
 import ElasticQueryAdapterManifest from "./adapter/ElasticQueryAdapter.ram.js";
 import FileLogReaderAdapter from "./adapter/FileLogReaderAdapter.ts";
 import FileLogReaderAdapterManifest from "./adapter/FileLogReaderAdapter.ram.js";
-import GraphQlQueryAdapter from "./adapter/GraphQlQueryAdapter.ts";
-import GraphQlQueryAdapterManifest from "./adapter/GraphQlQueryAdapter.ram.js";
 import SnsSmsAdapter from "./adapter/SnsSmsAdapter.ts";
 import SnsSmsAdapterManifest from "./adapter/SnsSmsAdapter.ram.js";
 import BotProxyAdapter from "./adapter/BotProxyAdapter.ts";
@@ -204,7 +202,6 @@ export class Modules {
             "./adapter/ElasticDataAdapter.ts": ElasticDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/GraphQlQueryAdapter.ts": GraphQlQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/BotProxyAdapter.ts": BotProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/BinanceProxyAdapter.ts": BinanceProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
@@ -221,7 +218,6 @@ export class Modules {
             "./adapter/ElasticDataAdapter.ram.json": ElasticDataAdapterManifest,
             "./adapter/ElasticQueryAdapter.ram.json": ElasticQueryAdapterManifest,
             "./adapter/FileLogReaderAdapter.ram.json": FileLogReaderAdapterManifest,
-            "./adapter/GraphQlQueryAdapter.ram.json": GraphQlQueryAdapterManifest,
             "./adapter/SnsSmsAdapter.ram.json": SnsSmsAdapterManifest,
             "./adapter/BotProxyAdapter.ram.json": BotProxyAdapterManifest,
             "./adapter/BinanceProxyAdapter.ram.json": BinanceProxyAdapterManifest,

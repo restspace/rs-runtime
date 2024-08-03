@@ -8,7 +8,9 @@
     "https://deno.land/x/denomailer/mod.ts": "https://deno.land/x/denomailer@1.6.0/mod.ts",
     "https://deno.land/x/string/mod.ts": "https://deno.land/x/string@v0.1.2/mod.ts",
     "https://deno.land/x/xml/mod.ts": "https://deno.land/x/xml@2.1.3/mod.ts",
-    "https://deno.land/x/xml/utils/types.ts": "https://deno.land/x/xml@2.1.3/utils/types.ts"
+    "https://deno.land/x/xml/utils/types.ts": "https://deno.land/x/xml@2.1.3/utils/types.ts",
+    "https://esm.sh/v135/@types/extract-files@latest/extractFiles~.d.ts": "https://esm.sh/v135/@types/extract-files@13.0.1/extractFiles~.d.ts",
+    "https://esm.sh/v135/@types/extract-files@latest/isExtractableFile~.d.ts": "https://esm.sh/v135/@types/extract-files@13.0.1/isExtractableFile~.d.ts"
   },
   "remote": {
     "https://cdn.jsdelivr.net/gh/intob/tweetnacl-deno@1.1.0/src/array.ts": "75e04b24ab9a0e39b8c23e5000790e41d717c8ad4d6092db20afe2f3c4d58a5b",
@@ -358,6 +360,7 @@
     "https://deno.land/x/nunjucks@3.2.3/src/transformer.js": "96afbce7c28b944216fab1d2039cf225e867034a0109b62612ee5d0a13c3ac2a",
     "https://deno.land/x/nunjucks@3.2.3/src/waterfall.js": "4d8878b3ebcf0a1b4bf9e7575e2f30bc6467cb8ee3717b80754c945cde661b9e",
     "https://deno.land/x/stream_slicing@v1.0.1/exact_bytes_transform_stream.ts": "bf915933dbd0a57d45c2508b68e723b717c5d02df83fb6f9c38720da9f17c82a",
+    "https://deno.land/x/streaming_zip@v1.0.1/_read_extra_field.ts": "84f2d87fd197609df67110be83044dfd7d1c8b528c8715ed13174d7eb3b1fc69",
     "https://deno.land/x/streaming_zip@v1.0.1/write.ts": "46752c0b2abbfb872eb48c9349b1b350f0d99a9d12c1d23f230a209b1113f5ac",
     "https://deno.land/x/string@v0.1.2/mod.ts": "b92e484db62edea5c06eb8c6b11db490b7e3458b7f7762ec5871c23de5007cbb",
     "https://deno.land/x/string@v0.1.2/stripBom.ts": "2512e09e213fa76dfc7b1b324adb7f0ebca9619d5cb0c12875644b0899899b0d",

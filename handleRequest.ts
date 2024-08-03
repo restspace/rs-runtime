@@ -208,6 +208,8 @@ export const handleOutgoingRequestWithPrivateServices = (basePath: string, priva
             const serviceConfig = privateServices[privateServiceName.substring(1)];
             if (!serviceConfig) return msg.setStatus(404, 'Not found');
             
+            // url received by private service on msg is made absolute, with basePath set correctly
+            // this enables the private service to know from where it was called
             const newUrl = new Url(basePath).follow(msg.url);
             newUrl.scheme = msg.url.scheme;
             newUrl.domain = msg.url.domain;

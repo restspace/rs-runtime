@@ -5,6 +5,7 @@ import { Url } from "rs-core/Url.ts";
 import { BaseStateClass } from "rs-core/ServiceContext.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
 import { Source } from "rs-core/Source.ts";
+import { _121665 } from "https://cdn.jsdelivr.net/gh/intob/tweetnacl-deno@1.1.0/src/core.ts";
 
 interface ITemporaryAccessConfig extends IServiceConfig {
 	acquiredRole: string;
@@ -36,8 +37,20 @@ service.all(async (msg, context, config) => {
 		&& msg.url.servicePathElements.length === 1
 		&& !msg.url.isDirectory) {
 		// request /basePath/<token> to operate on token record
+		if (msg.method === 'GET') {
+			const tokenBaseUrl = state.tokenBaseUrls[key];
+			if (!tokenBaseUrl) {
+				return msg.setStatus(404, "Token expired or invalid");
+			};
+			const retVal = {
+				baseUrl: tokenBaseUrl,
+				expiry: state.validTokenExpiries.find(([_, token]) => token === key)?.[0].toISOString(),
+			};
+			return msg.setDataJson(retVal);
+		}
+
 		if (!(msg.user && new AuthUser(msg.user).authorizedFor(config.acquiredRole))) {
-			return msg.setStatus(401, "Unauthorized");
+			return msg.setStatus(403, "User does not have acquired role of token requested");
 		}
 		if (msg.method === 'DELETE') {
 			delete state.tokenBaseUrls[key];
@@ -53,19 +66,32 @@ service.all(async (msg, context, config) => {
 		}
 		msg.user = new AuthUser(msg.user || AuthUser.anon).addRole(config.acquiredRole);
 		return context.makeRequest(msg, Source.External); // requested service will check user's authorization
-	} else if (msg.method === 'GET') {
-		// get a new token authorised for the subpath after the token
+	} else if (msg.method === 'POST' && msg.url.servicePathElements.length <= 1 && msg.url.fragment) {
+		// get a new token authorised for the subpath in the fragment
 		if (!(msg.user && new AuthUser(msg.user).authorizedFor(config.acquiredRole))) {
 			return msg.setStatus(401, "Cannot generate a temporary access token with an acquired role for which the user is not authorized");
 		}
-		const newToken: string = crypto.randomUUID();
+		const newToken: string = msg.url.servicePathElements.length === 1
+			? msg.url.servicePathElements[0]
+			: crypto.randomUUID();
+		// check newToken is valid guid
+		if (!newToken.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
+			return msg.setStatus(400, "Token must be a valid guid");
+		}
 		const now = new Date();
 		const expiry = new Date().setTime(now.getTime() + 1000 * config.expirySecs);
 		state.validTokenExpiries.push([ new Date(expiry), newToken ]);
-		state.tokenBaseUrls[newToken] = '/' + msg.url.servicePath;
+		state.tokenBaseUrls[newToken] = msg.url.fragment;
+		if (!state.tokenBaseUrls[newToken].startsWith('/')) {
+			state.tokenBaseUrls[newToken] = '/' + state.tokenBaseUrls[newToken];
+		}
 		return msg.setText(newToken);
 	} else {
-		return msg.setStatus(404, "Not found");
+		if (msg.url.servicePathElements.length === 1) {
+			return msg.setStatus(404, "Not found");
+		} else {
+			return msg.setStatus(401, "Token not valid");
+		}
 	}
 });
 
