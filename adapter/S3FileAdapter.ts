@@ -1,8 +1,7 @@
 import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { ItemMetadata } from "rs-core/ItemMetadata.ts";
-import { arrayify, last, pathCombine, slashTrim } from "rs-core/utility/utility.ts";
-import * as path from "std/path/mod.ts";
+import { arrayify, last, pathCombine } from "rs-core/utility/utility.ts";
 import { toBlockChunks } from "rs-core/streams/streams.ts";
 import { readableStreamFromIterable } from "std/streams/readable_stream_from_iterable.ts";
 import { fileToDataAdapter } from "./fileToDataAdapter.ts";
@@ -10,10 +9,8 @@ import { dataToSchemaAdapter } from "./dataToSchemaAdapter.ts";
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { Message } from "rs-core/Message.ts";
-import { parse } from "https://deno.land/x/xml/mod.ts";
-import { node } from "https://deno.land/x/xml/utils/types.ts";
+import { parse, xml_node } from "@libs/xml";
 import { Url } from "rs-core/Url.ts";
-import { config } from "../config.ts";
 
 export interface S3FileAdapterProps {
     rootPath: string;
@@ -199,7 +196,7 @@ class S3FileAdapterBase implements IFileAdapter {
             if (status && status !== 200) return status;
 			const text = await msgOut.data!.asString();
 			const output = parse(text!);
-			const contents = (output?.['ListBucketResult'] as node)?.['Contents'] as Contents | Contents[];
+			const contents = (output?.['ListBucketResult'] as xml_node)?.['Contents'] as Contents | Contents[];
             for (const item of arrayify(contents)) {
                 yield {
                     key: this.decanonicalisePath(item.Key || ''),
@@ -208,7 +205,7 @@ class S3FileAdapterBase implements IFileAdapter {
                     size: item.Size
                 } as ListItem;
             }
-			const commonPrefixes = (output?.['ListBucketResult'] as node)?.['CommonPrefixes'] as CommonPrefix | CommonPrefix[];
+			const commonPrefixes = (output?.['ListBucketResult'] as xml_node)?.['CommonPrefixes'] as CommonPrefix | CommonPrefix[];
             for (const item of arrayify(commonPrefixes)) {
                 yield {
                     key: this.decanonicalisePath(item.Prefix || ''),
