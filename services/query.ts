@@ -27,7 +27,7 @@ service.post(async (msg: Message, context: ServiceContext<IQueryAdapter>) => {
 		query = query.replace(/\$\{([^}]*)\}/gi, (_, p1) => {
 			const val = p1 === ''
 				? params
-				: (getProp(params, p1.split('.')) || '');
+				: (getProp(params, p1.split('.')) ?? '');
 			const quoted = quote(val);
 			if (quoted instanceof Error) {
 				error = quoted;

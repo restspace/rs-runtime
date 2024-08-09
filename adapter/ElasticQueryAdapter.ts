@@ -42,6 +42,7 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		try {
 			queryObj = JSON.parse(query);
 		} catch {
+			this.context.logger.error(`Invalid JSON in ES query: ${query}`);
 			return 400;
 		}
 		if (queryObj.index) {
