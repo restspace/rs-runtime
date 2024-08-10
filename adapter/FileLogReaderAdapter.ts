@@ -51,6 +51,7 @@ class FileLogReaderAdapter implements ILogReaderAdapter {
                 const newIdx = str.lastIndexOf("\n", idx);
                 if (newIdx > 0) {
                     const line = new LogLine(str.substring(newIdx + 1, idx + 1) + overflow);
+                    // filter logs to current tenant
                     if (line.tenant === this.context.tenant) {
                         yield line.line;
                         count--;

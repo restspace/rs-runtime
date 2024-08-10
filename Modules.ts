@@ -79,8 +79,6 @@ import CSVConverterManifest from "./services/csvConverter.rsm.js";
 import LogReader from "./services/logReader.ts";
 import LogReaderManifest from "./services/logReader.rsm.js";
 import ServiceStoreManifest from "./services/service-store.rsm.js"
-//import EvmEventer from "./services/evmEventer.ts";
-//import EvmEventerManifest from "./services/evmEventer.rsm.js";
 import Timer from "./services/timer.ts";
 import TimerManifest from "./services/timer.rsm.js";
 import Sms from "./services/sms.ts";
@@ -250,7 +248,6 @@ export class Modules {
             "./services/query.ts": Query as unknown as Service<IAdapter, IServiceConfig>,
             "./services/csvConverter.ts": CSVConverter as unknown as Service<IAdapter, IServiceConfig>,
             "./services/logReader.ts": LogReader as unknown as Service<IAdapter, IServiceConfig>,
-            //"./services/evmEventer.ts": EvmEventer as unknown as Service<IAdapter, IServiceConfig>,
             "./services/timer.ts": Timer as unknown as Service<IAdapter, IServiceConfig>,
             "./services/sms.ts": Sms as unknown as Service<IAdapter, IServiceConfig>,
             "./services/webScraperService.ts": WebScraper as unknown as Service<IAdapter, IServiceConfig>,
@@ -284,7 +281,6 @@ export class Modules {
             "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest,
             "./services/logReader.rsm.json": LogReaderManifest as unknown as IServiceManifest,
             "./services/service-store.rsm.json": ServiceStoreManifest as unknown as IServiceManifest,
-            //"./services/evmEventer.rsm.json": EvmEventerManifest as unknown as IServiceManifest,
             "./services/timer.rsm.json": TimerManifest as unknown as IServiceManifest,
             "./services/sms.rsm.json": SmsManifest as unknown as IServiceManifest,
             "./services/webscraperService.rsm.json": WebScraperManifest as unknown as IServiceManifest,
@@ -533,7 +529,7 @@ export class Modules {
                     manifest.source = itemUrl;
                     if (!this.validateServiceManifest(manifest)) {
                         const desc = (this.validateServiceManifest.errors || [])
-                            .map(e => `keyword location ${e.keywordLocation} isntance location ${e.instanceLocation}`).join('; ')
+                            .map((e: any) => `keyword location ${e.keywordLocation} isntance location ${e.instanceLocation}`).join('; ')
                         throw new Error(`bad format manifest at ${itemUrl}: ${desc}`);
                     }
 
@@ -549,7 +545,7 @@ export class Modules {
                     manifest.source = itemUrl;
                     if (!this.validateAdapterManifest(manifest)) {
                         const desc = (this.validateAdapterManifest.errors || [])
-                            .map(e => `keyword location ${e.keywordLocation} instance location ${e.instanceLocation}`).join('; ')
+                            .map((e: any) => `keyword location ${e.keywordLocation} instance location ${e.instanceLocation}`).join('; ')
                         throw new Error(`bad format manifest at ${itemUrl}: ${desc}`);
                     }
 

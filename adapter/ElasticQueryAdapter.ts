@@ -1,6 +1,6 @@
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import { Message } from "rs-core/Message.ts";
-import { AdapterContext } from "rs-core/ServiceContext.ts";
+import { AdapterContext, contextLoggerArgs } from "rs-core/ServiceContext.ts";
 import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
 import { upTo } from "rs-core/utility/utility.ts";
 
@@ -41,8 +41,8 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		let queryObj = {} as any;
 		try {
 			queryObj = JSON.parse(query);
-		} catch {
-			this.context.logger.error(`Invalid JSON in ES query: ${query}`);
+		} catch (e) {
+			this.context.logger.error(`Invalid JSON (${e}) in ES query: ${query}`, ...contextLoggerArgs(this.context));
 			return 400;
 		}
 		if (queryObj.index) {
@@ -56,7 +56,7 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			if ([ "_update_by_query", "_delete_by_query", "_count" ].includes(opName)) {
 				paged = false;
 			} else if (![ "_search" ].includes(opName)) {
-				this.context.logger.error(`Unknown operation in ES query: ${operation}`);
+				this.context.logger.error(`Unknown operation in ES query: ${operation}`, ...contextLoggerArgs(this.context));
 				return 400;
 			}
 		}
