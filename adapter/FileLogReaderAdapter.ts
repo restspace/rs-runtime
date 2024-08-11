@@ -1,3 +1,4 @@
+import { LimitedBytesTransformStream } from "std/streams/limited_bytes_transform_stream.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { ILogReaderAdapter } from "rs-core/adapter/ILogReaderAdapter.ts";
 
@@ -21,7 +22,7 @@ class FileLogReaderAdapter implements ILogReaderAdapter {
         this.logPath = props.logPath;
     }
 
-    async *scanBack(count: number) {
+    async *scanBack(count: number, filter?: (line: string) => boolean) {
         const stat = await Deno.stat(this.logPath);
         const fileLen = stat.size;
         const file = await Deno.open(this.logPath, { read: true });
@@ -37,6 +38,7 @@ class FileLogReaderAdapter implements ILogReaderAdapter {
         file.seek((blocks - 1) * blockSize, Deno.SeekMode.Start);
         let overflow = '';
         while (count > 0 && blocks > 0) {
+            // read at least toRead bytes
             let nRead = await file.read(buf) as number;
             while (nRead < toRead) {
                 const nThisRead = await file.read(buf.subarray(nRead));
@@ -48,11 +50,15 @@ class FileLogReaderAdapter implements ILogReaderAdapter {
             const str = decoder.decode(buf.subarray(0, nRead));
             let idx = str.length - 1;
             while (idx > 0 && count > 0) {
-                const newIdx = str.lastIndexOf("\n", idx);
-                if (newIdx > 0) {
+                let newIdx = str.lastIndexOf("\n", idx);
+                // part of preceding log line if it doesn't start with a log level
+                while (newIdx >= 0 && !"CEWDI".includes(str[newIdx + 1])) {
+                    newIdx = str.lastIndexOf("\n", newIdx - 1);
+                }
+                if (newIdx >= 0) {
                     const line = new LogLine(str.substring(newIdx + 1, idx + 1) + overflow);
                     // filter logs to current tenant
-                    if (line.tenant === this.context.tenant) {
+                    if (line.tenant === this.context.tenant && (!filter || filter(line.line))) {
                         yield line.line;
                         count--;
                     }
@@ -69,16 +75,16 @@ class FileLogReaderAdapter implements ILogReaderAdapter {
 
         if (overflow.length && count > 0) {
             const line = new LogLine(overflow);
-            if (line.tenant === this.context.tenant) {
-                yield overflow;
+            if (line.tenant === this.context.tenant && (!filter || filter(line.line))) {
+                yield line.line;
             }
         }
     }
 
-    async tail(nLines: number): Promise<string[]> {
+    async tail(nLines: number, filter?: (line: string) => boolean): Promise<string[]> {
         const lines = [] as string[];
 
-        for await (const line of this.scanBack(nLines)) {
+        for await (const line of this.scanBack(nLines, filter)) {
             lines.unshift(line);
         }
 

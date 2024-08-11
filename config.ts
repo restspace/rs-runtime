@@ -42,12 +42,13 @@ const formatter = (rec: LogRecord) => {
             severity = "FATAL";
             break;
     }
-    let [ tenant, username, traceId, spanId ] = rec.args;
+    let [ tenant, service, username, traceId, spanId ] = rec.args;
     if (!tenant) tenant = 'global';
+    if (!service) service = '?'; else service = (service as string).replace(/ /g, '_');
     if (!username) username = '?';
     if (!traceId) traceId = 'x'.repeat(32);
     if (!spanId) spanId = 'x'.repeat(16);
-    return `${severity} ${rec.datetime.toISOString()} ${traceId} ${spanId} ${tenant} ${username} ${rec.msg}`;
+    return `${severity} ${rec.datetime.toISOString()} ${traceId} ${spanId} ${tenant} ${service} ${username} ${rec.msg}`;
 }
 
 export type LogLevel = "NOTSET" | "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL";

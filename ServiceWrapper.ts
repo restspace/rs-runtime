@@ -47,13 +47,13 @@ export class ServiceWrapper {
                 if (err instanceof Error) {
                     errStack = ` at \n${err.stack || ''}`;
                 }
-                config.logger.error(`Service: ${serviceConfig.name} error: ${err}${errStack}`, ...msg.loggerArgs());
+                config.logger.error(`error: ${err}${errStack}`, ...msg.loggerArgs(serviceConfig.name));
                 newMsg.setStatus(500, 'Internal Server Error');
             }
         }
     
         if (newMsg && !newMsg.ok) {
-            config.logger.warning(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`, ...msg.loggerArgs());
+            config.logger.warning(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`, ...msg.loggerArgs(serviceConfig.name));
         }
         newMsg.setHeader('X-Restspace-Service', serviceConfig.name);
 
@@ -181,7 +181,7 @@ export class ServiceWrapper {
         const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
         
         if (!isPermitted) {
-            config.logger.warning(`Unauthorized for ${msg.url}`, ...msg.loggerArgs());
+            config.logger.warning(`Unauthorized for ${msg.url}`, ...msg.loggerArgs(serviceConfig.name));
             return this.setCors(msg, origin).setStatus(401, "Unauthorized");
         }
         msg.authenticated = true;

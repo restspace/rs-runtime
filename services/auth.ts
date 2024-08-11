@@ -73,7 +73,7 @@ service.postPath('login', async (msg, context, config) => {
                 newMsg.redirect(new Url(redirUrl.query['redirect'][0]), true);
             } else {
                 redirUrl.query = { ...redirUrl.query, 'result': [ 'succeed' ] };
-                context.logger.info(`authenticationService redirect from ${msg.url} to add suceed query to ${redirUrl}`);
+                context.logger.info(`authenticationService redirect from ${msg.url} to add succeed query to ${redirUrl}`);
                 newMsg.redirect(redirUrl, true);
             }
         } else {
@@ -129,7 +129,7 @@ service.setUser(async (msg, _context, { sessionTimeoutMins }) => {
             const timeToExpirySecs = await setJwt(msg, msg.user as AuthUser, sessionTimeoutMins || 30);
             const newExpiryTime = nowTime + timeToExpirySecs * 1000;
             msg.user.exp = newExpiryTime;
-            config.logger.info(`refreshed to ${new Date(newExpiryTime)}`, ...msg.loggerArgs());
+            config.logger.info(`refreshed to ${new Date(newExpiryTime)}`);
         }
     }
 

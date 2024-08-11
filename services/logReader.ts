@@ -9,9 +9,22 @@ const service = new Service<ILogReaderAdapter>();
 
 service.getPath("tail", async (msg: Message, { adapter, logger }: ServiceContext<ILogReaderAdapter>) => {
 	(logger.handlers[1] as FileHandler).flush();
-	const nLines = parseInt(msg.url.servicePathElements?.[0]);
+	let nLines: number;
+	let filter: ((line: string) => boolean) | undefined;
+	if (msg.url.servicePathElements.length >= 2) {
+		nLines = parseInt(msg.url.servicePathElements[1]);
+		const serviceName = msg.url.servicePathElements[0];
+		filter = (line: string) => {
+			const posName = line.indexOf(' ', 81);
+			const posEnd = line.indexOf(' ', posName + 1);
+			return line.substring(posName + 1, posEnd) === serviceName;
+		};
+	} else {
+		nLines = parseInt(msg.url.servicePathElements[0]);
+		filter = undefined;
+	}
 	if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
-	const lines = await adapter.tail(nLines);
+	const lines = await adapter.tail(nLines, filter);
 	return msg.setData(lines.join('\n'), 'text/plain');
 });
 

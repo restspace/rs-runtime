@@ -18,10 +18,11 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 			return source === Source.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg, source)
 		},
 		runPipeline: (msg: Message, pipelineSpec: PipelineSpec, contextUrl?: Url) => {
-			pipeline(msg, pipelineSpec, contextUrl);
+			return pipeline(msg, pipelineSpec, contextUrl);
 		},
 		prePost,
 		logger: config.logger,
+		baseLogger: config.logger,
 		getAdapter: <T extends IAdapter>(url: string, adapterConfig: unknown) => {
 			const primaryDomain = config.tenants[tenantName].primaryDomain;
 			return config.modules.getAdapter<T>(url, context, adapterConfig, primaryDomain);
@@ -30,6 +31,6 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 		registerAbortAction: (msg: Message, action: () => void) => {
 			config.requestAbortActions.add(msg.traceId, action);
 		}
-	} as ServiceContext<IAdapter>;
+	} as unknown as ServiceContext<IAdapter>;
 	return context;
 }

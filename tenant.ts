@@ -10,7 +10,7 @@ import { IChord } from "./IChord.ts";
 import { after, deepEqualIfPresent, mergeDeep, upTo } from "rs-core/utility/utility.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
-import { SimpleServiceContext, StateClass, nullState, BaseStateClass, BaseContext } from "rs-core/ServiceContext.ts";
+import { StateClass, nullState, BaseStateClass, BaseContext } from "rs-core/ServiceContext.ts";
 import { applyServiceConfigTemplate } from "./Modules.ts";
 
 export interface IServicesConfig {

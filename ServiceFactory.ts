@@ -243,7 +243,7 @@ export class ServiceFactory {
     }
 
     /** select service with longest path match */
-    async getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => StateFunction, source: Source): Promise<MessageFunction> {
+    async getMessageFunctionByUrl(url: Url, serviceContext: ServiceContext<IAdapter>, stateByBasePath: (basePath: string) => StateFunction, source: Source): Promise<[MessageFunction, string]> {
         if (this.serviceConfigs!['()'] && source === Source.External) {
             // the service with outer basePath (i.e. "()") can only make requests with Source.Outer.
             // Source.External would cause it to recurse. This service should be accessible by anyone who
@@ -252,7 +252,10 @@ export class ServiceFactory {
                 ...serviceContext,
                 makeRequest: (msg: Message) => serviceContext.makeRequest(msg, Source.Outer)
             } as ServiceContext<IAdapter>;
-            return this.getMessageFunctionForService(this.serviceConfigs!['()'], newServiceContext, source);
+            return [
+                await this.getMessageFunctionForService(this.serviceConfigs!['()'], newServiceContext, source),
+                '()'
+            ];
         }
 
         const configPath = this.basePathFromUrl(url);
@@ -260,16 +263,21 @@ export class ServiceFactory {
             const serviceConfig = this.serviceConfigs![configPath];
             serviceContext.state = stateByBasePath(configPath);
             const innerFunc = await this.getMessageFunctionForService(serviceConfig, serviceContext, source);
-            return await this.attachFilter(url, innerFunc, serviceContext);
+            return [
+                this.attachFilter(url, innerFunc, serviceContext),
+                serviceConfig.name
+            ];
         }
 
-        return Promise.resolve((msg: Message) => 
-            Promise.resolve(
-                msg.method === 'OPTIONS'
-                ? config.server.setServerCors(msg).setStatus(204)
-                : config.server.setServerCors(msg).setStatus(404, 'Not found')
-            )
-        );
+        return [
+            (msg: Message) => 
+                Promise.resolve(
+                    msg.method === 'OPTIONS'
+                    ? config.server.setServerCors(msg).setStatus(204)
+                    : config.server.setServerCors(msg).setStatus(404, 'Not found')
+                ),
+            '?'
+        ];
     }
 
     getServiceConfigByApi(api: string): IServiceConfig | undefined {

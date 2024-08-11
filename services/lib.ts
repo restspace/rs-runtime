@@ -17,7 +17,7 @@ service.postPath('/destream', async msg => {
 service.postPath('/to-b64', async msg => {
     if (!msg.data) return msg;
     const arry = new Uint8Array((await msg.data.asArrayBuffer())!);
-    return msg.setData(encode(arry), msg.data.mimeType);
+    return msg.setData(encode(arry), "text/plain");
 });
 service.postPath('/from-b64', async msg => {
     if (!msg.data) return msg;
@@ -61,11 +61,11 @@ service.postPath('/reload-referer', msg => {
 });
 service.postPath('/log/body', async (msg, context) => {
     const json = await msg.data?.asJson();
-    context.logger.info('BODY ' + JSON.stringify(json || {}), ...msg.loggerArgs());
+    context.logger.info('BODY ' + JSON.stringify(json || {}));
     return msg;
 });
 service.postPath('/log/headers', (msg, context) => {
-    context.logger.info('HEADERS ' + JSON.stringify(msg.headers), ...msg.loggerArgs());
+    context.logger.info('HEADERS ' + JSON.stringify(msg.headers));
     return msg;
 });
 service.postPath('/set-browser-headers', msg => {

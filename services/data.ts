@@ -5,7 +5,7 @@ import { MessageBody } from "rs-core/MessageBody.ts";
 import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { IReadOnlySchemaAdapter, ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
-import { ServiceContext } from "rs-core/ServiceContext.ts";
+import { ServiceContext, WrappedLogger } from "rs-core/ServiceContext.ts";
 import { deleteProp, patch, setProp } from "rs-core/utility/utility.ts";
 import * as log from "std/log/mod.ts";
 
@@ -128,7 +128,7 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
     return msg.setDirectoryJson(dirDesc);
 });
 
-const write = async (msg: Message, adapter: IDataAdapter, logger: log.Logger, isPatch: boolean) => {
+const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger, isPatch: boolean) => {
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data write request should have a service path like <dataset>/<key>');
     }

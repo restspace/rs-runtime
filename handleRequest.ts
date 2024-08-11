@@ -5,6 +5,7 @@ import { config } from "./config.ts";
 import { IRawServicesConfig, Tenant } from "./tenant.ts";
 import { Url } from "rs-core/Url.ts";
 import { slashTrim } from "rs-core/utility/utility.ts";
+import { MessageFunction } from "rs-core/Service.ts";
 
 const tenantLoads = {} as Record<string, Promise<void>>;
 
@@ -90,20 +91,22 @@ const tenantFromHostname = (hostname: string): string | null => {
 
 export const handleIncomingRequest = async (msg: Message) => {
     const originalMethod = msg.method;
+    let serviceName = '?' as string | undefined;
     try {
         const tenantName = tenantFromHostname(msg.getHeader('host') || 'none');
         if (tenantName === null) return msg.setStatus(404, 'Not found');
         const tenant = await getTenant(msg.url, tenantName || 'main');
         msg.tenant = tenant.name;
         msg = await tenant.attachUser(msg);
-        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
-        const messageFunction = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
+        let messageFunction: MessageFunction;
+        [messageFunction, serviceName] = await tenant.getMessageFunctionByUrl(msg.url, Source.External);
+        config.logger.info(`${" ".repeat(msg.depth)}(Incoming) Request ${msg.method} ${msg.url}`, ...msg.loggerArgs(serviceName));
         const msgOut = await messageFunction(msg.callDown());
         msgOut.depth = msg.depth;
-        config.logger.info(`${" ".repeat(msg.depth - 1)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+        config.logger.info(`${" ".repeat(msg.depth - 1)}(Incoming) Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs(serviceName));
         msgOut.callUp();
         if (!msgOut.ok) {
-            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            config.logger.info(`${" ".repeat(msg.depth)}Respnse ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs(serviceName));
         }
         return msgOut;
     } catch (err) {
@@ -111,7 +114,7 @@ export const handleIncomingRequest = async (msg: Message) => {
         if (err instanceof Error) {
             errStack = ` at \n${err.stack || ''}`;
         }
-        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs());
+        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs(serviceName));
         return originalMethod === 'OPTIONS'
             ? config.server.setServerCors(msg).setStatus(204)
             : msg.setStatus(500, 'Server error');
@@ -121,6 +124,7 @@ export const handleIncomingRequest = async (msg: Message) => {
 export const handleOutgoingRequest = async (msg: Message, source = Source.Internal) => {
     const originalMethod = msg.method;
     let tenantName: string | null = '';
+    let serviceName = '?' as string | undefined;
     try {
         if (msg.url.domain === '' || msg.url.domain === undefined) {
             tenantName = msg.tenant;
@@ -141,12 +145,13 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         }
 
         if (tenantName !== null) {
-            config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs());
             msg.tenant = tenantName;
-            const messageFunction = await tenant!.getMessageFunctionByUrl(msg.url, source);
+            let messageFunction: MessageFunction;
+            [messageFunction, serviceName] = await tenant!.getMessageFunctionByUrl(msg.url, source);
+            config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs(serviceName));
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
-            config.logger.info(`${" ".repeat(msgOut.depth - 1)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            config.logger.info(`${" ".repeat(msgOut.depth - 1)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs(serviceName));
             msgOut.callUp();
         } else {
             config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
@@ -186,7 +191,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         }
         
         if (!msgOut.ok) {
-            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs(serviceName));
         }
         return msgOut;
     } catch (err) {
@@ -194,7 +199,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         if (err instanceof Error) {
             errStack = ` at \n${err.stack || ''}`;
         }
-        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs());
+        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs(serviceName));
         return originalMethod === 'OPTIONS' && tenantName
             ? config.server.setServerCors(msg).setStatus(204)
             : msg.setStatus(500, 'Server error');
