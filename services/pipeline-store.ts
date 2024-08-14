@@ -23,7 +23,9 @@ service.all(async (msg, context) => {
 
 	// find the applicable url
 	const pipelineUrl: Url = msg.url.copy();
-	pipelineUrl.setSubpathFromUrl(msgPipelineSpec.getHeader('location') || '');
+	let pipelinePath = msgPipelineSpec.getHeader('location') || '';
+	pipelinePath = pipelinePath.replace('/*store', '');
+	pipelineUrl.setSubpathFromUrl(pipelinePath);
 	
 	return pipeline(msg, pipelineSpec, pipelineUrl, false, msg => context.makeRequest(msg));
 })
