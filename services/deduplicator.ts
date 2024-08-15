@@ -49,7 +49,9 @@ service.all(async (msg, context) => {
 	
 	const dedupSpec = await msgDedupSpec.data!.asJson() as DedupSpec;
 	const specUrl: Url = msg.url.copy();
-	specUrl.setSubpathFromUrl(msgDedupSpec.getHeader('location') || '');
+	const location = msgDedupSpec.getHeader('location');
+    const locationUrl = location ? new Url(location).stripPrivateServices() : '';
+	specUrl.setSubpathFromUrl(locationUrl);
 
 	const arrivedState = await context.state(ArrivedState, context, dedupSpec);
 	const data = await msg.data?.asJson() as Record<string, unknown> | Record<string, unknown>[];

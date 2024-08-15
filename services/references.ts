@@ -94,7 +94,9 @@ service.post(async (msg, context) => {
     }
 
     const contextUrl: Url = msg.url.copy();
-	contextUrl.setSubpathFromUrl(msgReferences.getHeader('location') || '');
+    const location = msgReferences.getHeader('location');
+    const locationUrl = location ? new Url(location).stripPrivateServices() : '';
+	contextUrl.setSubpathFromUrl(locationUrl);
 
     const fromReferredUrls = new Set<string>(references.map(ref => extractReferences(ref, from)).flat());
     const toReferredUrls = new Set<string>(references.map(ref => extractReferences(ref, change.to || {})).flat());

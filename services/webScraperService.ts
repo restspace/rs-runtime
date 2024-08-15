@@ -464,7 +464,9 @@ service.post(async (msg, context, config) => {
     // find the applicable url: the msgSpec location header tells you the url of the actual spec file
 	// - the rest is the subpath of the url
 	const contextUrl: Url = msg.url.copy();
-	contextUrl.setSubpathFromUrl(msgSpec.getHeader('location') || '');
+    const location = msgSpec.getHeader('location');
+    const locationUrl = location ? new Url(location).stripPrivateServices() : '';
+	contextUrl.setSubpathFromUrl(locationUrl);
 
     const url = new Url(spec['$url']);
 

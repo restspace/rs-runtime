@@ -166,7 +166,9 @@ const getSpec = async (msg: Message, context: SimpleServiceContext): Promise<[IT
 	const spec = await msgSpec.data!.asJson() as ITimerConfig;
 	if (!spec) return 400;
     const specUrl: Url = msg.url.copy();
-	specUrl.setSubpathFromUrl(msgSpec.getHeader('location') || '');
+    const location = msgSpec.getHeader('location');
+    const locationUrl = location ? new Url(location).stripPrivateServices() : '';
+	specUrl.setSubpathFromUrl(locationUrl);
     return [spec, specUrl];
 }
 

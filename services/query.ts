@@ -18,7 +18,9 @@ service.post(async (msg: Message, context: ServiceContext<IQueryAdapter>) => {
 	// find the applicable url: the msgQuery location header tells you the url of the actual query file
 	// - the rest is the subpath of the url
 	const contextUrl: Url = msg.url.copy();
-	contextUrl.setSubpathFromUrl(msgQuery.getHeader('location') || '');
+	const location = msgQuery.getHeader('location');
+    const locationUrl = location ? new Url(location).stripPrivateServices() : '';
+	contextUrl.setSubpathFromUrl(locationUrl);
 
 	let error = null as Error | null;
 
