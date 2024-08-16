@@ -66,7 +66,7 @@ service.all(async (msg, context, config) => {
 		}
 		msg.user = new AuthUser(msg.user || AuthUser.anon).addRole(config.acquiredRole);
 		return context.makeRequest(msg, Source.External); // requested service will check user's authorization
-	} else if (msg.method === 'POST' && msg.url.servicePathElements.length <= 1 && msg.url.fragment) {
+	} else if (msg.method === 'POST' && msg.url.servicePathElements.length <= 1 && msg.url.query['path']) {
 		// get a new token authorised for the subpath in the fragment
 		if (!(msg.user && new AuthUser(msg.user).authorizedFor(config.acquiredRole))) {
 			return msg.setStatus(401, "Cannot generate a temporary access token with an acquired role for which the user is not authorized");
@@ -81,7 +81,7 @@ service.all(async (msg, context, config) => {
 		const now = new Date();
 		const expiry = new Date().setTime(now.getTime() + 1000 * config.expirySecs);
 		state.validTokenExpiries.push([ new Date(expiry), newToken ]);
-		state.tokenBaseUrls[newToken] = msg.url.fragment;
+		state.tokenBaseUrls[newToken] = msg.url.query.path[0];
 		if (!state.tokenBaseUrls[newToken].startsWith('/')) {
 			state.tokenBaseUrls[newToken] = '/' + state.tokenBaseUrls[newToken];
 		}

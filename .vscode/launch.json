@@ -33,7 +33,6 @@
                 "--unstable",
                 "--inspect-brk",
                 "--allow-all",
-                "--import-map=importMap.json",
                 "test/"
             ],
             "attachSimplePort": 9229,
@@ -50,7 +49,6 @@
                 "--no-check",
                 "--inspect-brk",
                 "--allow-all",
-                "--import-map=importMap.json",
                 "${file}"
             ],
             "env": { "DENO_DIR": "C:\\Users\\james\\AppData\\Local\\deno" },

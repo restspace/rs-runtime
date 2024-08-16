@@ -547,7 +547,7 @@ Deno.test("temporary access", async () => {
     let msgOut = await handleIncomingRequest(msg);
     assert(!msgOut.ok, "anon user should fail to get temp token");
 
-    msg = testMessage("/tempacc#/data/ds-auth/ta1", "POST", tokenEditor);
+    msg = testMessage("/tempacc?path=/data/ds-auth/ta1", "POST", tokenEditor);
     msgOut = await handleIncomingRequest(msg);
     let tempToken = msgOut.data ? await msgOut.data.asString() : '';
     assert(tempToken, "failed to get temp token");
@@ -588,7 +588,7 @@ Deno.test("temporary access", async () => {
 
     // token cancellation
 
-    msg = testMessage(`/tempacc/${tempToken}/#data/ds-auth/ta1`, "POST", tokenEditor);
+    msg = testMessage(`/tempacc/${tempToken}/?path=data/ds-auth/ta1`, "POST", tokenEditor);
     msgOut = await handleIncomingRequest(msg);
     const newTempToken = msgOut.data ? await msgOut.data.asString() : '';
     assert(tempToken === newTempToken, "Should return same token on reissue");
