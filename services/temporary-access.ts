@@ -61,7 +61,7 @@ service.all(async (msg, context, config) => {
 	} else if (baseUrl) {
 		// forward to path after token
 		msg.url = new Url('/' + msg.url.servicePathElements.slice(1).join('/'));
-		if (!msg.url.toString().startsWith(baseUrl)) {
+		if (!decodeURI(msg.url.toString()).startsWith(baseUrl)) {
 			return msg.setStatus(403, "Attempt to access a url outside the base url for which this token is valid"); 
 		}
 		msg.user = new AuthUser(msg.user || AuthUser.anon).addRole(config.acquiredRole);
@@ -81,7 +81,7 @@ service.all(async (msg, context, config) => {
 		const now = new Date();
 		const expiry = new Date().setTime(now.getTime() + 1000 * config.expirySecs);
 		state.validTokenExpiries.push([ new Date(expiry), newToken ]);
-		state.tokenBaseUrls[newToken] = msg.url.query.path[0];
+		state.tokenBaseUrls[newToken] = decodeURI(msg.url.query.path[0]);
 		if (!state.tokenBaseUrls[newToken].startsWith('/')) {
 			state.tokenBaseUrls[newToken] = '/' + state.tokenBaseUrls[newToken];
 		}

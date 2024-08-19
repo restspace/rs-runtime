@@ -135,7 +135,7 @@ testServicesConfig['basicChord'] = JSON.parse(`{
             "source": "./services/temporary-access.rsm.json",
             "access": { "readRoles": "all", "writeRoles": "all" },
             "acquiredRole": "T",
-            "expirySecs": 0.5
+            "expirySecs": 100
         }
     }
 }`);
@@ -547,29 +547,29 @@ Deno.test("temporary access", async () => {
     let msgOut = await handleIncomingRequest(msg);
     assert(!msgOut.ok, "anon user should fail to get temp token");
 
-    msg = testMessage("/tempacc?path=/data/ds-auth/ta1", "POST", tokenEditor);
+    msg = testMessage("/tempacc?path=/data/ds-auth/ta 1", "POST", tokenEditor);
     msgOut = await handleIncomingRequest(msg);
     let tempToken = msgOut.data ? await msgOut.data.asString() : '';
     assert(tempToken, "failed to get temp token");
     console.log(tempToken);
 
-    await writeJson("/data/ds-auth/ta1.json", { name: "ta1", email: "fred@abc.com" }, "failed to write data", tokenEditor);
+    await writeJson("/data/ds-auth/ta 1.json", { name: "ta1", email: "fred@abc.com" }, "failed to write data", tokenEditor);
     await writeJson("/data/ds-auth/ta2.json", { name: "ta2", email: "fred@abc.com" }, "failed to write data", tokenEditor);
 
     msg = testMessage(`/tempacc/${tempToken}`, "GET");
     msgOut = await handleIncomingRequest(msg);
     let data = msgOut.data ? await msgOut.data.asJson() : null;
-    assertEquals(data?.baseUrl, "/data/ds-auth/ta1");
+    assertEquals(data?.baseUrl, "/data/ds-auth/ta 1");
 
     msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta2`, "GET");
     msgOut = await handleIncomingRequest(msg);
     assertEquals(msgOut.status, 403, "Should not authorize read outside base path");
 
-    msg = testMessage(`/tempacc/${tempToken + 'a'}/data/ds-auth/ta1`, "GET");
+    msg = testMessage(`/tempacc/${tempToken + 'a'}/data/ds-auth/ta 1`, "GET");
     msgOut = await handleIncomingRequest(msg);
     assertEquals(msgOut.status, 401, "Should not authorize read with invalid temp token");
 
-    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta%201`, "GET"); // encoded space should not cause problems
     msgOut = await handleIncomingRequest(msg);
     assert(msgOut.ok, "Should authorize read with valid temp token");
     data = msgOut.data ? await msgOut.data.asJson() : null;
