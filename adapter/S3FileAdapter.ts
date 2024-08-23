@@ -245,19 +245,20 @@ class S3FileAdapterBase implements IFileAdapter {
     }
 
     async deleteDirectory(path: string, deleteableFileSuffix = ''): Promise<number> {
-        const filePath = this.getPath(path, undefined, true);
+        let filePath = this.getPath(path, undefined, true);
+        if (!filePath.endsWith('/')) filePath += '/';
 
         const files = this.listPrefixed(filePath);
         let file = await files.next();
         if (file.done) return 200; // delete non-existent dir is 200
 
-        if (deleteableFileSuffix !== '*') {
-            while (!file.done) {
-                if (file.value.name.includes('/') ||
-                    !(deleteableFileSuffix && file.value.name.endsWith(deleteableFileSuffix)))
-                    return 400;
-                file = await files.next();
-            }
+        while (!file.done) {
+            if (file.value.name.includes('/') ||
+                !(deleteableFileSuffix && (deleteableFileSuffix === '*' || file.value.name.endsWith(deleteableFileSuffix))))
+                return 400;
+            const delresult = await this.delete(pathCombine(path, file.value.name));
+            if (delresult !== 200) return delresult;
+            file = await files.next();
         }
         
         return 200;
