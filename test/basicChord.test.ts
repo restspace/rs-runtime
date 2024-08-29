@@ -135,7 +135,7 @@ testServicesConfig['basicChord'] = JSON.parse(`{
             "source": "./services/temporary-access.rsm.json",
             "access": { "readRoles": "all", "writeRoles": "all" },
             "acquiredRole": "T",
-            "expirySecs": 100
+            "expirySecs": 1
         }
     }
 }`);
@@ -576,9 +576,9 @@ Deno.test("temporary access", async () => {
     assertEquals(data?.name, "ta1");
 
     // wait for token to expire
-    await new Promise(resolve => setTimeout(resolve, 600));
+    await new Promise(resolve => setTimeout(resolve, 1100));
 
-    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta 1`, "GET");
     msgOut = await handleIncomingRequest(msg);
     assertEquals(msgOut.status, 401, "Should not authorize read with expired temp token");
 
@@ -588,7 +588,7 @@ Deno.test("temporary access", async () => {
 
     // token cancellation
 
-    msg = testMessage(`/tempacc/${tempToken}/?path=data/ds-auth/ta1`, "POST", tokenEditor);
+    msg = testMessage(`/tempacc/${tempToken}/?path=data/ds-auth/ta 1`, "POST", tokenEditor);
     msgOut = await handleIncomingRequest(msg);
     const newTempToken = msgOut.data ? await msgOut.data.asString() : '';
     assert(tempToken === newTempToken, "Should return same token on reissue");
@@ -599,7 +599,7 @@ Deno.test("temporary access", async () => {
     msgOut = await handleIncomingRequest(msg);
     assertEquals(msgOut.status, 403, "Should not authorize token deletion for anon user");
 
-    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta 1`, "GET");
     msgOut = await handleIncomingRequest(msg);
     assert(msgOut.ok, "Should authorize read with valid temp token after failed deletion");
     data = msgOut.data ? await msgOut.data.asJson() : null;
@@ -609,7 +609,7 @@ Deno.test("temporary access", async () => {
     msgOut = await handleIncomingRequest(msg);
     assert(msgOut.ok, "Token deletion failed for authorised user");
 
-    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta1`, "GET");
+    msg = testMessage(`/tempacc/${tempToken}/data/ds-auth/ta 1`, "GET");
     msgOut = await handleIncomingRequest(msg);
     assertEquals(msgOut.status, 401, "Should not authorize read with cancelled temp token");
 
