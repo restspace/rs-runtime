@@ -35,6 +35,8 @@ import BotProxyAdapter from "./adapter/BotProxyAdapter.ts";
 import BotProxyAdapterManifest from "./adapter/BotProxyAdapter.ram.js";
 import BinanceProxyAdapter from "./adapter/BinanceProxyAdapter.ts";
 import BinanceProxyAdapterManifest from "./adapter/BinanceProxyAdapter.ram.js";
+import ImageProcessor from "./services/imageProcessor.ts";
+import ImageProcessorManifest from "./services/imageProcessor.rsm.js";
 
 import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
@@ -188,7 +190,6 @@ export class Modules {
         this.validateAdapterManifest = defaultValidator(schemaIAdapterManifest);
 
         // Statically load core services & adapters
-        
         this.adapterConstructors = {
             "./test/TestConfigFileAdapter.ts": TestConfigFileAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/LocalFileAdapter.ts": LocalFileAdapter,
@@ -253,7 +254,8 @@ export class Modules {
             "./services/webScraperService.ts": WebScraper as unknown as Service<IAdapter, IServiceConfig>,
             "./services/references.ts": References as unknown as Service<IAdapter, IServiceConfig>,
             "./services/timer-store.ts": TimerStore as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/server-side-events.ts": ServerSideEvents as unknown as Service<IAdapter, IServiceConfig>
+            "./services/server-side-events.ts": ServerSideEvents as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/imageProcessor.ts": ImageProcessor as unknown as Service<IAdapter, IServiceConfig>,
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -286,7 +288,8 @@ export class Modules {
             "./services/webscraperService.rsm.json": WebScraperManifest as unknown as IServiceManifest,
             "./services/references.rsm.json": ReferencesManifest as unknown as IServiceManifest,
             "./services/timer-store.rsm.json": TimerStoreManifest as unknown as IServiceManifest,
-            "./services/server-side-events.rsm.json": serverSideEventsManifest as unknown as IServiceManifest
+            "./services/server-side-events.rsm.json": serverSideEventsManifest as unknown as IServiceManifest,
+            "./services/imageProcessor.rsm.json": ImageProcessorManifest as unknown as IServiceManifest,
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 
@@ -408,8 +411,7 @@ export class Modules {
                 let configSchema: Record<string, unknown> = schemaIServiceConfig;
                 const serviceManifest = this.serviceManifests[url];
                 if (serviceManifest.configSchema) {
-                    configSchema = assignProperties(serviceManifest.configSchema, schemaIServiceConfig);
-                    let resolvedUrl = url;
+                    configSchema = assignProperties(serviceManifest.configSchema, schemaIServiceConfig);                    let resolvedUrl = url;
                     if (resolvedUrl.startsWith('.')) resolvedUrl = 'https://restspace.io/builtin-services' + resolvedUrl.substring(1);
                     configSchema.$id = resolvedUrl;
                 }
