@@ -29,6 +29,26 @@ service.post(async (msg: Message, _context: ServiceContext<never>, config: IImag
     return msg.setStatus(400).setData("No image data provided", "text/plain");
   }
 
+  // Check for 'info' query parameter
+  if (msg.url.query["info"]) {
+    try {
+      const info = await ImageMagick.read(new Uint8Array(imageData), (image) => {
+        return {
+          width: image.width,
+          height: image.height,
+          format: image.format,
+          quality: image.quality,
+          size: imageData.byteLength,
+        };
+      });
+
+      return msg.setData(JSON.stringify(info), "application/json");
+    } catch (error) {
+      console.error("Image info retrieval error:", error);
+      return msg.setStatus(500).setData("Error retrieving image info", "text/plain");
+    }
+  }
+
   const width = Number(msg.url.query["width"]?.[0]) || 0;
   const height = Number(msg.url.query["height"]?.[0]) || 0;
   const quality = Number(msg.url.query["quality"]?.[0]) || 0;
