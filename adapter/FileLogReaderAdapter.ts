@@ -79,6 +79,8 @@ class FileLogReaderAdapter implements ILogReaderAdapter {
                 yield line.line;
             }
         }
+
+        file.close();
     }
 
     async tail(nLines: number, filter?: (line: string) => boolean): Promise<string[]> {

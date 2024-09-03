@@ -19,14 +19,14 @@ service.initializer(async (context) => {
   try {
     await initialize();
   } catch (error) {
-    context.logger.error("ImageMagick initialization error:", error);
+    context.logger.error(`ImageMagick initialization error: ${JSON.stringify(error)}`);
   }
 });
 
-service.post(async (msg: Message, _context: ServiceContext<never>, config: IImageProcessorConfig) => {
+service.post(async (msg: Message, context: ServiceContext<never>, config: IImageProcessorConfig) => {
   const imageData = await msg.data?.asArrayBuffer();
   if (!imageData) {
-    return msg.setStatus(400).setData("No image data provided", "text/plain");
+    return msg.setStatus(400, "No image data provided");
   }
 
   // Check for 'info' query parameter
@@ -44,8 +44,8 @@ service.post(async (msg: Message, _context: ServiceContext<never>, config: IImag
 
       return msg.setData(JSON.stringify(info), "application/json");
     } catch (error) {
-      console.error("Image info retrieval error:", error);
-      return msg.setStatus(500).setData("Error retrieving image info", "text/plain");
+      context.logger.error(`Image info retrieval error: ${JSON.stringify(error)}`);
+      return msg.setStatus(500, "Error retrieving image info");
     }
   }
 
@@ -55,7 +55,7 @@ service.post(async (msg: Message, _context: ServiceContext<never>, config: IImag
 
   // Validate input
   if (width > config.maxWidth || height > config.maxHeight || quality > config.maxQuality) {
-    return msg.setStatus(400).setData("Invalid dimensions or quality", "text/plain");
+    return msg.setStatus(400, "Invalid dimensions or quality");
   }
 
   try {
@@ -75,8 +75,8 @@ service.post(async (msg: Message, _context: ServiceContext<never>, config: IImag
 
     return result;
   } catch (error) {
-    console.error("Image processing error:", error);
-    return msg.setStatus(500).setData("Error processing image", "text/plain");
+    context.logger.error(`Image processing error: ${JSON.stringify(error)}`);
+    return msg.setStatus(500, "Error processing image");
   }
 });
 

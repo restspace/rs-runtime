@@ -13,7 +13,7 @@ service.getPath("tail", async (msg: Message, { adapter, logger }: ServiceContext
 	let filter: ((line: string) => boolean) | undefined;
 	if (msg.url.servicePathElements.length >= 2) {
 		nLines = parseInt(msg.url.servicePathElements[1]);
-		const serviceName = msg.url.servicePathElements[0];
+		const serviceName = msg.url.servicePathElements[0].replace(/ /g, '_');
 		filter = (line: string) => {
 			const posName = line.indexOf(' ', 81);
 			const posEnd = line.indexOf(' ', posName + 1);
