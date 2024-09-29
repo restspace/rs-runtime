@@ -91,10 +91,14 @@ service.getPath('user', async (msg, context, config) => {
     if (!msg.user || userIsAnon(msg.user)) {
         return msg.setStatus(401, 'Unauthorized');
     }
-    const user = await getUserFromEmail(context, config.userUrlPattern!, msg, msg.user.email);
+    const user = (await getUserFromEmail(context, config.userUrlPattern!, msg, msg.user.email));
     if (user) {
         user.exp = msg.user.exp;
-        return msg.setDataJson(user);
+        const sessionInfo = {} as { msRemaining?: number }
+        if (msg.user.exp) {
+            sessionInfo.msRemaining = msg.user.exp - new Date().getTime();
+        }
+        return msg.setDataJson({ ...user, ...sessionInfo });   
     } else {
         return msg.setStatus(404, "No such user");
     }

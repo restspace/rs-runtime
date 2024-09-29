@@ -69,7 +69,7 @@ export class PipelineStep {
             try {
                 let outMsg = msg;
                 if (this.spec) {
-                    const newMsg_s = await msg.divertToSpec(this.spec, "POST", context.callerUrl, context.callerMethod, msg.headers);
+                    const newMsg_s = await msg.divertToSpec(this.spec, "POST", context.callerUrl, context.callerMethod, msg.headers, context.variables.getVariablesForScope(msg.name));
                     if (Array.isArray(newMsg_s)) {
                         if (newMsg_s.length === 0) { // ensure a null message continues on the queue if no messages are found
                             return new AsyncQueue<Message>(1).enqueue(msg.copy().setNullMessage(true));

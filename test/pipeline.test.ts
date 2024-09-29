@@ -174,16 +174,17 @@ Deno.test('expansion 2', async function () {
         "jsonObject"
     ]);
     const output = await msgOut.data?.asJson();
-    console.log('output:', output);
+    assertEquals(output, {});
 });
-Deno.test('expansion ', async function () {
+Deno.test('variable in url', async function () {
     const msgOut = await pipeline(testMessage('/', 'POST'), [
-        "GET /test/post-list",
-        "POST /test/${[]}",
-        "jsonObject"
+        {
+            "$var": "[ 'abc', 'def' ]"
+        },
+        "GET /test/${$var[0]}",
     ]);
     const output = await msgOut.data?.asJson();
-    console.log('output:', output);
+    assertEquals(output, 'abc result');
 });
 Deno.test('error normal abort', async function () {
     const msgOut = await pipeline(testMessage('/', 'GET'), [
@@ -635,6 +636,22 @@ Deno.test('variable with multi', async function () {
         "0": { x: "aaa-100ms" },
         "1": { x: "bbb-75ms" },
         "2": { x: "ccc-50ms" },
+        length: 3
+      });
+});
+Deno.test('variable in path pattern', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson({ a: 1, b: 2}), [
+        {
+            "$var": [ "'abc'", "'def'", "'ghi'" ]
+        },
+        "GET /test/${$var[]}",
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output, {
+        "0": "abc result",
+        "1": "def result",
+        "2": "ghi result",
         length: 3
       });
 });
