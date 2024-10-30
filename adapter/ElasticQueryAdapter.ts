@@ -61,8 +61,8 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			}
 		}
 		if (paged) {
-			if (!queryObj.size) queryObj.size = take;
-			if (!queryObj.from) queryObj.from = skip;
+			if (queryObj.size === undefined) queryObj.size = take;
+			if (queryObj.from === undefined) queryObj.from = skip;
 		}
 
 		const msg = new Message(`${index}/${operation}`, this.context.tenant, "POST", null);
