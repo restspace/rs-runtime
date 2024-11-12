@@ -7,7 +7,7 @@ import { AdapterContext } from "rs-core/ServiceContext.ts";
 export const testServicesConfig: { [ tenant: string ]: IServicesConfig } = {};
 
 export default class TestConfigFileAdapter implements IFileAdapter {
-    constructor(public context: AdapterContext) {
+    constructor(public context: AdapterContext, public props: Record<string, any>) {
     }
 
     readDirectory: (path: string) => Promise<MessageBody> = () => Promise.resolve(new MessageBody(null));

@@ -43,7 +43,7 @@ class RestspaceLoader {
 class NunjucksTemplateAdapter implements ITemplateAdapter {
     env: Environment;
 
-    constructor(public context: AdapterContext) {
+    constructor(public context: AdapterContext, public props: Record<string, any>) {
         this.env = new nunjucks.Environment(new RestspaceLoader(context));
         this.env.addGlobal('$this', function(this: any) {
             delete this.ctx['$url'];

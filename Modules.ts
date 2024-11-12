@@ -161,7 +161,7 @@ export function applyServiceConfigTemplate(serviceConfig: IServiceConfig, config
     return outputConfig;
 }
 
-export type AdapterConstructor = new (context: AdapterContext, config: unknown) => IAdapter;
+export type AdapterConstructor = new (context: AdapterContext, config: Record<string, any>) => IAdapter;
 
 /** Modules is a singleton which holds compiled services and adapters for all tenants */
 export class Modules {
