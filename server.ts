@@ -29,11 +29,11 @@ await Deno.serve({ port }, async (request) => {
         const msgOut = await handleIncomingRequest(msgIn);
         return msgOut.toResponse();
     } catch (err) {
-        if (msgIn && err.toString().includes("connection closed")) {
+        if (msgIn && (err as Error)?.toString()?.includes("connection closed")) {
             // client aborted request
             config.requestAbortActions.abort(msgIn.traceId);
         } else {
-            console.error('Request handler error: ' + err.toString());
+            console.error('Request handler error: ' + (err as Error)?.toString());
         }
         return new Response("Internal Server Error", { status: 500 });
     } finally {

@@ -183,7 +183,7 @@ export class ServiceFactory {
 
         let adapter: IAdapter | undefined = undefined;
         if (serviceConfig.adapterSource || serviceConfig.infraName) {
-            const adapterConfig = { ...serviceConfig.adapterConfig } || {};
+            const adapterConfig = { ...serviceConfig.adapterConfig };
             let adapterSource = serviceConfig.adapterSource;
             if (serviceConfig.infraName) {
                 const infra = config.server.infra[serviceConfig.infraName];

@@ -36,7 +36,7 @@ export function unzip(msg: Message): AsyncQueue<Message> {
 			}
 			queue.close();
 		} catch (err) {
-			queue.enqueue(err).close();
+			queue.enqueue(err as Error).close();
 		}
 	})();
 

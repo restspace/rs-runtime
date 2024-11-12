@@ -102,7 +102,7 @@ class SSEState extends BaseStateClass {
         return session;
     }
 
-    unload(_newState?: BaseStateClass | undefined): Promise<void> {
+    override unload(_newState?: BaseStateClass | undefined): Promise<void> {
         return Promise.resolve();
     }
 }

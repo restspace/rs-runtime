@@ -69,7 +69,7 @@ class WebScraperState extends BaseStateClass {
     randomOffsetMs = 200;
     delayers: Record<string, Delayer> = {};
 
-    async load(_context: ServiceContext<IProxyAdapter>, config: IWebScraperServiceConfig) {
+    override async load(_context: ServiceContext<IProxyAdapter>, config: IWebScraperServiceConfig) {
         this.minDelayMs = config.minDelayMs || 1000;
         this.randomOffsetMs = config.randomOffsetMs || 200;
     }

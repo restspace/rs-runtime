@@ -70,8 +70,6 @@ import Email from "./services/email.ts";
 import EmailManifest from "./services/email.rsm.js";
 import Account from "./services/account.ts";
 import AccountManifest from "./services/account.rsm.js";
-import Discord from "./services/discord.ts";
-import DiscordManifest from "./services/discord.rsm.js";
 import TemporaryAccess from "./services/temporary-access.ts";
 import TemporaryAccessManifest from "./services/temporary-access.rsm.js";
 import Query from "./services/query.ts";
@@ -244,7 +242,6 @@ export class Modules {
             "./services/proxy.ts": Proxy as unknown as Service<IAdapter, IServiceConfig>,
             "./services/email.ts": Email as unknown as Service<IAdapter, IServiceConfig>,
             "./services/account.ts": Account as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/discord.ts": Discord as unknown as Service<IAdapter, IServiceConfig>,
             "./services/temporary-access.ts": TemporaryAccess as unknown as Service<IAdapter, IServiceConfig>,
             "./services/query.ts": Query as unknown as Service<IAdapter, IServiceConfig>,
             "./services/csvConverter.ts": CSVConverter as unknown as Service<IAdapter, IServiceConfig>,
@@ -277,7 +274,6 @@ export class Modules {
             "./services/proxy.rsm.json": ProxyManifest,
             "./services/email.rsm.json": EmailManifest,
             "./services/account.rsm.json": AccountManifest,
-            "./services/discord.rsm.json": DiscordManifest,
             "./services/temporary-access.rsm.json": TemporaryAccessManifest,
             "./services/query.rsm.json": QueryManifest as unknown as IServiceManifest,
             "./services/csvConverter.rsm.json": CSVConverterManifest as unknown as IServiceManifest,
@@ -418,7 +414,7 @@ export class Modules {
 
                 this.validateServiceConfig[url] = this.defaultValidator(configSchema);
             } catch (err) {
-                throw new Error(`Failed to compile service config validator for ${url}`, err);
+                throw new Error(`Failed to compile service config validator for ${url}`, err as Error);
             }
         }
     }

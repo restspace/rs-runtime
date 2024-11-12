@@ -105,14 +105,14 @@ class TimerState extends BaseStateClass {
         this.runLoop(this.context!);
     }
 
-    load(context: SimpleServiceContext, config: ITimerConfig) {
+    override load(context: SimpleServiceContext, config: ITimerConfig) {
         this._config = config;
         this.context = context;
         this.runLoop(context);
         return Promise.resolve();
     }
 
-    unload(_newState?: BaseStateClass | undefined): Promise<void> {
+    override unload(_newState?: BaseStateClass | undefined): Promise<void> {
         this.stop();
         return Promise.resolve();
     }
@@ -144,13 +144,13 @@ class TimerStoreState extends MultiStateClass<TimerState, ITimerConfig> {
         }));
     }
 
-    async load(context: SimpleServiceContext, config: IServiceConfig) {
+    override async load(context: SimpleServiceContext, config: IServiceConfig) {
         // don't await this as it needs to make reentrant requests to this service
         // which won't be available until this method completes
         this.getSpecs(context, config);
     }
 
-    async unload(_newState?: BaseStateClass | undefined): Promise<void> {
+    override async unload(_newState?: BaseStateClass | undefined): Promise<void> {
         await Promise.all(
             Object.values(this.states).map((state) => state.unload())
         );

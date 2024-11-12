@@ -16,7 +16,7 @@ const service = new Service<IAdapter, ICSVConverterConfig>();
 export class CSVState extends BaseStateClass {
 	validate: Validate | null = null;
 
-	load(_context: SimpleServiceContext, config: ICSVConverterConfig) {
+	override load(_context: SimpleServiceContext, config: ICSVConverterConfig) {
         const options: ValidatorOptions = { includeErrors: true, allErrors: true };
 		if (config.lineSchema) {
 			this.validate = validator(config.lineSchema, options);
@@ -150,7 +150,7 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 				await writeString("]");
 			}
 		} catch (err) {
-			context.logger.error('Failure in CSV processing: ' + err.toString());
+			context.logger.error('Failure in CSV processing: ' + (err as Error)?.toString());
 		} finally {
 			await writer?.close();
 		}
@@ -177,7 +177,7 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 		}
 	} catch (err) {
 		await writer?.close();
-		return msg.setStatus(500, err.toString());
+		return msg.setStatus(500, (err as Error)?.toString());
 	}
 }
 

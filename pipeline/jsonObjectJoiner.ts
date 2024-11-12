@@ -121,6 +121,6 @@ export function jsonObject(msgs: AsyncIterator<Message, Message, Message>, tenan
     try {
         return jsonObjectInner(msgs);
     } catch (e) {
-        return Promise.resolve(new Message("/", tenant).setStatus(500, e.message));
+        return Promise.resolve(new Message("/", tenant).setStatus(500, (e as Error)?.message));
     }
 }

@@ -48,12 +48,12 @@ class TimerState extends BaseStateClass {
         }
     }
 
-    load(context: SimpleServiceContext, config: ITimerConfig) {
+    override async load(context: SimpleServiceContext, config: ITimerConfig) {
         this.runLoop(context, config);
         return Promise.resolve();
     }
 
-    unload(_newState?: BaseStateClass | undefined): Promise<void> {
+    override async unload(_newState?: BaseStateClass | undefined): Promise<void> {
         this.ended = true;
         if (this.timeout) clearTimeout(this.timeout);
         return Promise.resolve();

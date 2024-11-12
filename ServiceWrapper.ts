@@ -40,7 +40,7 @@ export class ServiceWrapper {
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", serviceConfig.basePath, newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
         } catch (err) {
-            if (err.message === 'Not found') {
+            if ((err as Error)?.message === 'Not found') {
                 newMsg.setStatus(404, 'Not found');
             } else {
                 let errStack = '';

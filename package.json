@@ -5,7 +5,7 @@
         "run-nocheck": "deno run --allow-all --unstable --no-check --unsafely-ignore-certificate-errors server.ts ./serverConfig.json",
         "run-nocheck-lib": "deno run --allow-all --unstable --no-check --import-map=importMapLib.json --unsafely-ignore-certificate-errors server.ts ./serverConfig.json",
         "run-verbose": "deno run --allow-all --unstable --no-check --import-map=importMapLib.json --unsafely-ignore-certificate-errors=restspace.local server.ts ./serverConfig.json 3100 DEBUG",
-        "check": "deno check --unstable server.ts",
+        "check": "deno check --allow-import --unstable server.ts",
         "clean-tests": "rmdir C:\\Dev\\test\\test-data /S /Q && mkdir C:\\Dev\\test\\test-data",
         "test": "npm run clean-tests && deno test --unstable --allow-all test/",
         "test-nocheck": "npm run clean-tests && deno test --unstable --allow-all --no-check test/",

@@ -5,7 +5,6 @@ import { Url } from "rs-core/Url.ts";
 import { BaseStateClass } from "rs-core/ServiceContext.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
 import { Source } from "rs-core/Source.ts";
-import { _121665 } from "https://cdn.jsdelivr.net/gh/intob/tweetnacl-deno@1.1.0/src/core.ts";
 
 interface ITemporaryAccessConfig extends IServiceConfig {
 	acquiredRole: string;
