@@ -4,15 +4,20 @@
     "specifiers": {
       "jsr:@libs/typing@2": "jsr:@libs/typing@2.8.1",
       "jsr:@libs/xml@^5.4.13": "jsr:@libs/xml@5.4.13",
+      "jsr:@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@0.11.0",
       "jsr:@std/assert@^0.224.0": "jsr:@std/assert@0.224.0",
       "jsr:@std/bytes@0.224.0": "jsr:@std/bytes@0.224.0",
+      "jsr:@std/bytes@^1.0.2": "jsr:@std/bytes@1.0.2",
+      "jsr:@std/encoding@^1.0.5": "jsr:@std/encoding@1.0.5",
       "jsr:@std/fmt@^0.224.0": "jsr:@std/fmt@0.224.0",
       "jsr:@std/fs@^0.224.0": "jsr:@std/fs@0.224.0",
       "jsr:@std/io@0.224.0": "jsr:@std/io@0.224.0",
       "jsr:@std/io@^0.224.0": "jsr:@std/io@0.224.0",
       "jsr:@std/log@0.224.0": "jsr:@std/log@0.224.0",
+      "jsr:@std/path@^1.0.6": "jsr:@std/path@1.0.8",
       "jsr:@vslinko/csv@^1.0.2": "jsr:@vslinko/csv@1.0.2",
-      "npm:@imagemagick/magick-wasm": "npm:@imagemagick/magick-wasm@0.0.30"
+      "npm:@imagemagick/magick-wasm": "npm:@imagemagick/magick-wasm@0.0.30",
+      "npm:esbuild": "npm:esbuild@0.24.0"
     },
     "jsr": {
       "@libs/typing@2.8.1": {
@@ -24,11 +29,25 @@
           "jsr:@libs/typing@2"
         ]
       },
+      "@luca/esbuild-deno-loader@0.11.0": {
+        "integrity": "c05a989aa7c4ee6992a27be5f15cfc5be12834cab7ff84cabb47313737c51a2c",
+        "dependencies": [
+          "jsr:@std/bytes@^1.0.2",
+          "jsr:@std/encoding@^1.0.5",
+          "jsr:@std/path@^1.0.6"
+        ]
+      },
       "@std/assert@0.224.0": {
         "integrity": "8643233ec7aec38a940a8264a6e3eed9bfa44e7a71cc6b3c8874213ff401967f"
       },
       "@std/bytes@0.224.0": {
         "integrity": "a2250e1d0eb7d1c5a426f21267ab9bdeac2447fa87a3d0d1a467d3f7a6058e49"
+      },
+      "@std/bytes@1.0.2": {
+        "integrity": "fbdee322bbd8c599a6af186a1603b3355e59a5fb1baa139f8f4c3c9a1b3e3d57"
+      },
+      "@std/encoding@1.0.5": {
+        "integrity": "ecf363d4fc25bd85bd915ff6733a7e79b67e0e7806334af15f4645c569fefc04"
       },
       "@std/fmt@0.224.0": {
         "integrity": "e20e9a2312a8b5393272c26191c0a68eda8d2c4b08b046bad1673148f1d69851"
@@ -48,6 +67,9 @@
           "jsr:@std/io@^0.224.0"
         ]
       },
+      "@std/path@1.0.8": {
+        "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
+      },
       "@vslinko/csv@1.0.2": {
         "integrity": "693abb223bf0e287b8c88cc0960372c88c3cde3708a26dada1f02306933c07a6",
         "dependencies": [
@@ -58,9 +80,134 @@
       }
     },
     "npm": {
+      "@esbuild/aix-ppc64@0.24.0": {
+        "integrity": "sha512-WtKdFM7ls47zkKHFVzMz8opM7LkcsIp9amDUBIAWirg70RM71WRSjdILPsY5Uv1D42ZpUfaPILDlfactHgsRkw==",
+        "dependencies": {}
+      },
+      "@esbuild/android-arm64@0.24.0": {
+        "integrity": "sha512-Vsm497xFM7tTIPYK9bNTYJyF/lsP590Qc1WxJdlB6ljCbdZKU9SY8i7+Iin4kyhV/KV5J2rOKsBQbB77Ab7L/w==",
+        "dependencies": {}
+      },
+      "@esbuild/android-arm@0.24.0": {
+        "integrity": "sha512-arAtTPo76fJ/ICkXWetLCc9EwEHKaeya4vMrReVlEIUCAUncH7M4bhMQ+M9Vf+FFOZJdTNMXNBrWwW+OXWpSew==",
+        "dependencies": {}
+      },
+      "@esbuild/android-x64@0.24.0": {
+        "integrity": "sha512-t8GrvnFkiIY7pa7mMgJd7p8p8qqYIz1NYiAoKc75Zyv73L3DZW++oYMSHPRarcotTKuSs6m3hTOa5CKHaS02TQ==",
+        "dependencies": {}
+      },
+      "@esbuild/darwin-arm64@0.24.0": {
+        "integrity": "sha512-CKyDpRbK1hXwv79soeTJNHb5EiG6ct3efd/FTPdzOWdbZZfGhpbcqIpiD0+vwmpu0wTIL97ZRPZu8vUt46nBSw==",
+        "dependencies": {}
+      },
+      "@esbuild/darwin-x64@0.24.0": {
+        "integrity": "sha512-rgtz6flkVkh58od4PwTRqxbKH9cOjaXCMZgWD905JOzjFKW+7EiUObfd/Kav+A6Gyud6WZk9w+xu6QLytdi2OA==",
+        "dependencies": {}
+      },
+      "@esbuild/freebsd-arm64@0.24.0": {
+        "integrity": "sha512-6Mtdq5nHggwfDNLAHkPlyLBpE5L6hwsuXZX8XNmHno9JuL2+bg2BX5tRkwjyfn6sKbxZTq68suOjgWqCicvPXA==",
+        "dependencies": {}
+      },
+      "@esbuild/freebsd-x64@0.24.0": {
+        "integrity": "sha512-D3H+xh3/zphoX8ck4S2RxKR6gHlHDXXzOf6f/9dbFt/NRBDIE33+cVa49Kil4WUjxMGW0ZIYBYtaGCa2+OsQwQ==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-arm64@0.24.0": {
+        "integrity": "sha512-TDijPXTOeE3eaMkRYpcy3LarIg13dS9wWHRdwYRnzlwlA370rNdZqbcp0WTyyV/k2zSxfko52+C7jU5F9Tfj1g==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-arm@0.24.0": {
+        "integrity": "sha512-gJKIi2IjRo5G6Glxb8d3DzYXlxdEj2NlkixPsqePSZMhLudqPhtZ4BUrpIuTjJYXxvF9njql+vRjB2oaC9XpBw==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-ia32@0.24.0": {
+        "integrity": "sha512-K40ip1LAcA0byL05TbCQ4yJ4swvnbzHscRmUilrmP9Am7//0UjPreh4lpYzvThT2Quw66MhjG//20mrufm40mA==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-loong64@0.24.0": {
+        "integrity": "sha512-0mswrYP/9ai+CU0BzBfPMZ8RVm3RGAN/lmOMgW4aFUSOQBjA31UP8Mr6DDhWSuMwj7jaWOT0p0WoZ6jeHhrD7g==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-mips64el@0.24.0": {
+        "integrity": "sha512-hIKvXm0/3w/5+RDtCJeXqMZGkI2s4oMUGj3/jM0QzhgIASWrGO5/RlzAzm5nNh/awHE0A19h/CvHQe6FaBNrRA==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-ppc64@0.24.0": {
+        "integrity": "sha512-HcZh5BNq0aC52UoocJxaKORfFODWXZxtBaaZNuN3PUX3MoDsChsZqopzi5UupRhPHSEHotoiptqikjN/B77mYQ==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-riscv64@0.24.0": {
+        "integrity": "sha512-bEh7dMn/h3QxeR2KTy1DUszQjUrIHPZKyO6aN1X4BCnhfYhuQqedHaa5MxSQA/06j3GpiIlFGSsy1c7Gf9padw==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-s390x@0.24.0": {
+        "integrity": "sha512-ZcQ6+qRkw1UcZGPyrCiHHkmBaj9SiCD8Oqd556HldP+QlpUIe2Wgn3ehQGVoPOvZvtHm8HPx+bH20c9pvbkX3g==",
+        "dependencies": {}
+      },
+      "@esbuild/linux-x64@0.24.0": {
+        "integrity": "sha512-vbutsFqQ+foy3wSSbmjBXXIJ6PL3scghJoM8zCL142cGaZKAdCZHyf+Bpu/MmX9zT9Q0zFBVKb36Ma5Fzfa8xA==",
+        "dependencies": {}
+      },
+      "@esbuild/netbsd-x64@0.24.0": {
+        "integrity": "sha512-hjQ0R/ulkO8fCYFsG0FZoH+pWgTTDreqpqY7UnQntnaKv95uP5iW3+dChxnx7C3trQQU40S+OgWhUVwCjVFLvg==",
+        "dependencies": {}
+      },
+      "@esbuild/openbsd-arm64@0.24.0": {
+        "integrity": "sha512-MD9uzzkPQbYehwcN583yx3Tu5M8EIoTD+tUgKF982WYL9Pf5rKy9ltgD0eUgs8pvKnmizxjXZyLt0z6DC3rRXg==",
+        "dependencies": {}
+      },
+      "@esbuild/openbsd-x64@0.24.0": {
+        "integrity": "sha512-4ir0aY1NGUhIC1hdoCzr1+5b43mw99uNwVzhIq1OY3QcEwPDO3B7WNXBzaKY5Nsf1+N11i1eOfFcq+D/gOS15Q==",
+        "dependencies": {}
+      },
+      "@esbuild/sunos-x64@0.24.0": {
+        "integrity": "sha512-jVzdzsbM5xrotH+W5f1s+JtUy1UWgjU0Cf4wMvffTB8m6wP5/kx0KiaLHlbJO+dMgtxKV8RQ/JvtlFcdZ1zCPA==",
+        "dependencies": {}
+      },
+      "@esbuild/win32-arm64@0.24.0": {
+        "integrity": "sha512-iKc8GAslzRpBytO2/aN3d2yb2z8XTVfNV0PjGlCxKo5SgWmNXx82I/Q3aG1tFfS+A2igVCY97TJ8tnYwpUWLCA==",
+        "dependencies": {}
+      },
+      "@esbuild/win32-ia32@0.24.0": {
+        "integrity": "sha512-vQW36KZolfIudCcTnaTpmLQ24Ha1RjygBo39/aLkM2kmjkWmZGEJ5Gn9l5/7tzXA42QGIoWbICfg6KLLkIw6yw==",
+        "dependencies": {}
+      },
+      "@esbuild/win32-x64@0.24.0": {
+        "integrity": "sha512-7IAFPrjSQIJrGsK6flwg7NFmwBoSTyF3rl7If0hNUFQU4ilTsEPL6GuMuU9BfIWVVGuRnuIidkSMC+c0Otu8IA==",
+        "dependencies": {}
+      },
       "@imagemagick/magick-wasm@0.0.30": {
         "integrity": "sha512-l5pTepsyrM9O3zMdmDHGbncP2Uf4858nylU5tw6GE7QA/Qh99aEFr4eNkEan3q1PT6mV/1Ev0gOgthuK7/kNFQ==",
         "dependencies": {}
+      },
+      "esbuild@0.24.0": {
+        "integrity": "sha512-FuLPevChGDshgSicjisSooU0cemp/sGXR841D5LHMB7mTVOmsEHcAxaH3irL53+8YDIeVNQEySh4DaYU/iuPqQ==",
+        "dependencies": {
+          "@esbuild/aix-ppc64": "@esbuild/aix-ppc64@0.24.0",
+          "@esbuild/android-arm": "@esbuild/android-arm@0.24.0",
+          "@esbuild/android-arm64": "@esbuild/android-arm64@0.24.0",
+          "@esbuild/android-x64": "@esbuild/android-x64@0.24.0",
+          "@esbuild/darwin-arm64": "@esbuild/darwin-arm64@0.24.0",
+          "@esbuild/darwin-x64": "@esbuild/darwin-x64@0.24.0",
+          "@esbuild/freebsd-arm64": "@esbuild/freebsd-arm64@0.24.0",
+          "@esbuild/freebsd-x64": "@esbuild/freebsd-x64@0.24.0",
+          "@esbuild/linux-arm": "@esbuild/linux-arm@0.24.0",
+          "@esbuild/linux-arm64": "@esbuild/linux-arm64@0.24.0",
+          "@esbuild/linux-ia32": "@esbuild/linux-ia32@0.24.0",
+          "@esbuild/linux-loong64": "@esbuild/linux-loong64@0.24.0",
+          "@esbuild/linux-mips64el": "@esbuild/linux-mips64el@0.24.0",
+          "@esbuild/linux-ppc64": "@esbuild/linux-ppc64@0.24.0",
+          "@esbuild/linux-riscv64": "@esbuild/linux-riscv64@0.24.0",
+          "@esbuild/linux-s390x": "@esbuild/linux-s390x@0.24.0",
+          "@esbuild/linux-x64": "@esbuild/linux-x64@0.24.0",
+          "@esbuild/netbsd-x64": "@esbuild/netbsd-x64@0.24.0",
+          "@esbuild/openbsd-arm64": "@esbuild/openbsd-arm64@0.24.0",
+          "@esbuild/openbsd-x64": "@esbuild/openbsd-x64@0.24.0",
+          "@esbuild/sunos-x64": "@esbuild/sunos-x64@0.24.0",
+          "@esbuild/win32-arm64": "@esbuild/win32-arm64@0.24.0",
+          "@esbuild/win32-ia32": "@esbuild/win32-ia32@0.24.0",
+          "@esbuild/win32-x64": "@esbuild/win32-x64@0.24.0"
+        }
       }
     }
   },
@@ -471,6 +618,7 @@
     "https://restspace.local:3131/services/blender.ts?$x-rs-source=internal&$no-cache=4c772eef-14f9-4bea-adcb-2f2cfbd4e9a9": "6eb56bfd75ec97b64334de382587604ec798d3fdba8e0bc39c92b902bea020d1",
     "https://restspace.local:3131/services/blender.ts?$x-rs-source=internal&$no-cache=4e3b1a33-0bb9-4923-b548-209a92e4c973": "1135a61e54f609982125991f9a7596c39e8bb47a3abc08ead39314b0d8ae1f0b",
     "https://restspace.local:3131/services/blender.ts?$x-rs-source=internal&$no-cache=597b3094-1647-47d8-8b93-7c5b8f2cd435": "5525b081127a9386e3b8ddbe5b9343f6d71e1dbd7a4efbb6e8cc2e572d9fe63a",
+    "https://restspace.local:3131/services/blender.ts?$x-rs-source=internal&$no-cache=5a4aa731-e2f6-4a77-a9f1-08a154d565a6": "d8d3baf3ebf20897b9456253de3d9062933bed76ea83556003006cfeb3840502",
     "https://restspace.local:3131/services/blender.ts?$x-rs-source=internal&$no-cache=6623f1d3-7c73-4259-9e83-565e87576358": "7c3fa50a81485f982b2a951d77804a493f1d9ec466dcdc7054261ba006229cda",
     "https://restspace.local:3131/services/blender.ts?$x-rs-source=internal&$no-cache=67ca09a8-0901-4a02-8d72-dc9d56216df3": "7aa15b38a235ea6724a1315bca1dc1fe4bbc9c6c6d8e7da0f626cff1a9539b38",
     "https://restspace.local:3131/services/blender.ts?$x-rs-source=internal&$no-cache=718ed3f7-9de4-4175-8e96-63780a2b32cc": "1135a61e54f609982125991f9a7596c39e8bb47a3abc08ead39314b0d8ae1f0b",
@@ -534,6 +682,7 @@
     "https://restspace.local:3131/services/markdownService.ts?$x-rs-source=internal&$no-cache=2fb9e478-6fcd-4832-a80e-c2392aec91e8": "f820d78e30d3b2374f1a12b4f14c98fbd6f61626d40cb8fadf4677a2a2669602",
     "https://restspace.local:3131/services/markdownService.ts?$x-rs-source=internal&$no-cache=30ae31db-2a8c-430b-9c35-54969713bc09": "f820d78e30d3b2374f1a12b4f14c98fbd6f61626d40cb8fadf4677a2a2669602",
     "https://restspace.local:3131/services/markdownService.ts?$x-rs-source=internal&$no-cache=327ad6b3-09f9-4e95-8c5e-ece8d3df397b": "f820d78e30d3b2374f1a12b4f14c98fbd6f61626d40cb8fadf4677a2a2669602",
+    "https://restspace.local:3131/services/markdownService.ts?$x-rs-source=internal&$no-cache=327f2350-5b16-45cb-a0e3-790901b2dbb2": "f820d78e30d3b2374f1a12b4f14c98fbd6f61626d40cb8fadf4677a2a2669602",
     "https://restspace.local:3131/services/markdownService.ts?$x-rs-source=internal&$no-cache=333bc692-764f-4db3-8e91-6387cb4a05d1": "f820d78e30d3b2374f1a12b4f14c98fbd6f61626d40cb8fadf4677a2a2669602",
     "https://restspace.local:3131/services/markdownService.ts?$x-rs-source=internal&$no-cache=35127754-7a99-4b02-9469-e04838b62a88": "f820d78e30d3b2374f1a12b4f14c98fbd6f61626d40cb8fadf4677a2a2669602",
     "https://restspace.local:3131/services/markdownService.ts?$x-rs-source=internal&$no-cache=3915137d-0b03-4fe8-8810-4c2d3eda2464": "f820d78e30d3b2374f1a12b4f14c98fbd6f61626d40cb8fadf4677a2a2669602",
@@ -629,6 +778,7 @@
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=09293e6b-dec8-4ca5-bd23-844c173a998f": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=0a24631e-b929-491b-8a3f-2b6a8b6f3f11": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=0b3a1b46-595a-4a7a-b2ea-b155cf098dfe": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
+    "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=0b5267da-dbf8-4a50-b2c6-99a9abe68886": "44d7566d00d4bd489ff4e5ccae7422c24d2e9df7ce004e03120b032be88d1d48",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=0cb8f9d0-ba8b-415d-bf51-0f34a84c989e": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=0d32a0d4-4ef4-4763-ba36-263685458bed": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=0dfdc364-cb03-4856-8b87-2a54b3944ab2": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
@@ -817,6 +967,7 @@
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=e2eaad28-9913-4f79-9a61-ede238686f8f": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=e3962dd5-7364-419b-8e07-862a48092995": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=e831a60d-176a-46a4-952a-85cbb0fb6711": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
+    "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=e9cb2b5d-48b8-4914-9cda-252226768566": "44d7566d00d4bd489ff4e5ccae7422c24d2e9df7ce004e03120b032be88d1d48",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=eced20fb-62b8-44b9-a23f-dd8e4f873f60": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=f052992b-0c3e-46a6-b2b6-8fb42a8f25eb": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
     "https://restspace.local:3131/services/promptService.ts?$x-rs-source=internal&$no-cache=f16f3b91-b7bc-4d7f-8fa6-f55dd10577b7": "272b47bbe8442f1e38580a5851e1ad598b9a67b806fbd6c4b9efec3eb913abad",
@@ -863,6 +1014,7 @@
     "https://restspace.local:3131/services/test.ts?$x-rs-source=internal&$no-cache=4e015cd1-dd35-4113-8549-13bda42c4f82": "e0a3f1a2162e33254f6f10493d5647965dab4f1a266f5f3985eb479790e854e8",
     "https://restspace.local:3131/services/test.ts?$x-rs-source=internal&$no-cache=4fdd4d9f-bf3d-48aa-9a43-4b96bb7e8a04": "e0a3f1a2162e33254f6f10493d5647965dab4f1a266f5f3985eb479790e854e8",
     "https://restspace.local:3131/services/test.ts?$x-rs-source=internal&$no-cache=54610b77-f7a1-4103-aec8-3a32c7da817a": "e0a3f1a2162e33254f6f10493d5647965dab4f1a266f5f3985eb479790e854e8",
+    "https://restspace.local:3131/services/test.ts?$x-rs-source=internal&$no-cache=58521fad-4e91-48aa-9c40-0a889f7ee7a9": "e0a3f1a2162e33254f6f10493d5647965dab4f1a266f5f3985eb479790e854e8",
     "https://restspace.local:3131/services/test.ts?$x-rs-source=internal&$no-cache=5a80b948-c611-4aef-b0b1-0214488ba546": "e0a3f1a2162e33254f6f10493d5647965dab4f1a266f5f3985eb479790e854e8",
     "https://restspace.local:3131/services/test.ts?$x-rs-source=internal&$no-cache=5ae5df6e-2f7c-4849-96b9-fe2a6f516f86": "e0a3f1a2162e33254f6f10493d5647965dab4f1a266f5f3985eb479790e854e8",
     "https://restspace.local:3131/services/test.ts?$x-rs-source=internal&$no-cache=5b1f25db-ca68-4115-a24e-25fc17244d5e": "e0a3f1a2162e33254f6f10493d5647965dab4f1a266f5f3985eb479790e854e8",
@@ -1118,6 +1270,7 @@
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=c5d25af5-f6bc-4a75-9243-af8c90fecbee": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=c723396c-03bc-4f78-867b-739ea4a3f12a": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=c7434399-b725-45c0-9ce0-28e8eaab2518": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
+    "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=c7d46289-4b4a-4d1f-9f61-46aaeee3129c": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=cba66a62-1c40-4ec4-9eec-e557d08518bf": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=cca1e504-a420-4091-9557-ec03c9881b4f": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=cda24b55-dd8b-43aa-901f-0f0af3973b0f": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
@@ -1155,6 +1308,7 @@
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=f67ed326-5241-415e-b1d2-3d2fada9530a": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=f6ff5f5d-88df-49e2-883c-ad63604c2916": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=fcaa4bf1-1979-4055-ae03-b42d6921c35f": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
+    "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=fd5eac72-1424-4717-90c6-ed7d3ccbc38f": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=fdcdeeed-8b4c-4d51-8e66-90a14d40084d": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=feff4b26-9daa-46b9-8ed9-13d106cf50b6": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2",
     "https://restspace.local:3131/services/vectorEmbeddingService.ts?$x-rs-source=internal&$no-cache=ff15ed5b-b910-48da-a4a2-744b0b64ec76": "c2eb4f3eaaa1337644138d52f316817ef652f6505e7fae21a52c6c2933a8a6b2"
