@@ -1,6 +1,9 @@
 import { Message } from "rs-core/Message.ts";
 import { AsyncQueue } from "rs-core/utility/asyncQueue.ts";
 import { toLines } from "rs-core/streams/streams.ts";
+import { Buffer } from "jsr:@std/io/buffer";
+import type { Reader } from "jsr:@std/io/types";
+import { writeAll } from "jsr:@std/io/write-all";
 
 export function multipartSplit(msg: Message): AsyncQueue<Message> {
     const queue = new AsyncQueue<Message>();
@@ -25,7 +28,7 @@ export function multipartSplit(msg: Message): AsyncQueue<Message> {
         let boundaryIndex;
         while ((boundaryIndex = chunkBuffer.indexOf(dashBoundaryBytes)) !== -1) {
           const part = chunkBuffer.subarray(0, boundaryIndex);
-          const partReader = new Deno.Buffer(part);
+          const partReader = new Buffer(part);
           await handlePart(partReader, boundary);
           chunkBuffer = chunkBuffer.subarray(boundaryIndex + dashBoundaryBytes.length + 2);
         }
@@ -75,7 +78,7 @@ export function multipartSplit(msg: Message): AsyncQueue<Message> {
     return queue;
 }
 
-async function readLine(reader: Deno.Reader): Promise<string | null> {
+async function readLine(reader: Reader): Promise<string | null> {
   const buffer = new Uint8Array(1024);
   let result = '';
   let bytesRead;
@@ -92,7 +95,7 @@ async function readLine(reader: Deno.Reader): Promise<string | null> {
   return result.length > 0 ? result : null;
 }
 
-async function handlePart(reader: Deno.Reader, boundary: string): Promise<void> {
+async function handlePart(reader: Reader, boundary: string): Promise<void> {
   let headers = '';
   while (true) {
     const line = await readLine(reader);
@@ -124,10 +127,10 @@ async function handlePart(reader: Deno.Reader, boundary: string): Promise<void> 
 
       if (boundaryIndex !== -1) {
         const partData = chunkBuffer.subarray(0, boundaryIndex);
-        await Deno.writeAll(file, partData);
+        await writeAll(file, partData);
         break;
       } else {
-        await Deno.writeAll(file, chunkBuffer);
+        await writeAll(file, chunkBuffer);
         chunkBuffer = new Uint8Array();
       }
     }
@@ -157,7 +160,7 @@ async function handlePart(reader: Deno.Reader, boundary: string): Promise<void> 
         let boundaryIndex;
         while ((boundaryIndex = chunkBuffer.indexOf(dashBoundaryBytes)) !== -1) {
           const part = chunkBuffer.subarray(0, boundaryIndex);
-          const partReader = new Deno.Buffer(part);
+          const partReader = new Buffer(part);
           await handlePart(partReader, boundary);
           chunkBuffer = chunkBuffer.subarray(boundaryIndex + dashBoundaryBytes.length + 2);
         }
