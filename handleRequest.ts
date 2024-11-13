@@ -6,6 +6,7 @@ import { IRawServicesConfig, Tenant } from "./tenant.ts";
 import { Url } from "rs-core/Url.ts";
 import { slashTrim } from "rs-core/utility/utility.ts";
 import { MessageFunction } from "rs-core/Service.ts";
+import { BaseContext, contextLoggerArgs } from "rs-core/ServiceContext.ts";
 
 const tenantLoads = {} as Record<string, Promise<void>>;
 
@@ -121,10 +122,11 @@ export const handleIncomingRequest = async (msg: Message) => {
     }
 };
 
-export const handleOutgoingRequest = async (msg: Message, source = Source.Internal) => {
+export const handleOutgoingRequest = async (msg: Message, source = Source.Internal, context?: BaseContext) => {
     const originalMethod = msg.method;
     let tenantName: string | null = '';
     let serviceName = '?' as string | undefined;
+    const loggerArgs = context ? contextLoggerArgs(context) : msg.loggerArgs(serviceName);
     try {
         if (msg.url.domain === '' || msg.url.domain === undefined) {
             tenantName = msg.tenant;
@@ -148,13 +150,13 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             msg.tenant = tenantName;
             let messageFunction: MessageFunction;
             [messageFunction, serviceName] = await tenant!.getMessageFunctionByUrl(msg.url, source);
-            config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...msg.loggerArgs(serviceName));
+            config.logger.info(`${" ".repeat(msg.depth)}Request ${msg.method} ${msg.url}`, ...loggerArgs);
             msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
-            config.logger.info(`${" ".repeat(msgOut.depth - 1)}Respnse ${msg.method} ${msg.url}`, ...msg.loggerArgs(serviceName));
+            config.logger.info(`${" ".repeat(msgOut.depth - 1)}Respnse ${msg.method} ${msg.url}`, ...loggerArgs);
             msgOut.callUp();
         } else {
-            config.logger.info(`Request external ${msg.method} ${msg.url}`, ...msg.loggerArgs());
+            config.logger.info(`Request external ${msg.method} ${msg.url}`, ...loggerArgs);
             let resp: Response;
 
             let msgOut: Message;
@@ -162,7 +164,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
                 try {
                     msgOut = await config.requestExternal(msg);
                 } catch (err) {
-                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                    config.logger.error(`External request failed: ${err}`, ...loggerArgs);
                     msg.setStatus(500, `External request fail: ${err}`);
                     return msg;
                 }
@@ -170,7 +172,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
                 try {
                     resp = await fetch(msg.toRequest());
                 } catch (err) {
-                    config.logger.error(`External request failed: ${err}`, ...msg.loggerArgs());
+                    config.logger.error(`External request failed: ${err}`, ...loggerArgs);
                     msg.setStatus(500, `External request fail: ${err}`);
                     return msg;
                 }
@@ -180,10 +182,10 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             msgOut.name = msg.name;
             msg.setMetadataOn(msgOut);
             if (msgOut.ok) {
-                config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...msgOut.loggerArgs());
+                config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...loggerArgs);
             } else {
                 const body = msgOut.hasData() ? (await msgOut.data!.asString())?.substring(0, 200) : 'none';
-                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...msgOut.loggerArgs());
+                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...loggerArgs);
             }
             // don't process by mime type on external requests
             if (msgOut.data) msgOut.data.wasMimeHandled = true;
@@ -191,7 +193,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         }
         
         if (!msgOut.ok) {
-            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...msgOut.loggerArgs(serviceName));
+            config.logger.info(` - Status ${msgOut.status} ${await msgOut.data?.asString()} ${msg.method} ${msg.url}`, ...loggerArgs);
         }
         return msgOut;
     } catch (err) {
@@ -199,14 +201,14 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         if (err instanceof Error) {
             errStack = ` at \n${err.stack || ''}`;
         }
-        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs(serviceName));
+        config.logger.warning(`request processing failed: ${err}${errStack}`, ...loggerArgs);
         return originalMethod === 'OPTIONS' && tenantName
             ? config.server.setServerCors(msg).setStatus(204)
             : msg.setStatus(500, 'Server error');
     }
 }
 
-export const handleOutgoingRequestWithPrivateServices = (basePath: string, privateServices: Record<string, IServiceConfig>, tenantName: string, prePost?: PrePost) =>
+export const handleOutgoingRequestWithPrivateServices = (basePath: string, privateServices: Record<string, IServiceConfig>, tenantName: string, context: BaseContext, prePost?: PrePost) =>
     async (msg: Message) => {
         if (msg.url.pathElements[0]?.startsWith('*')) {
             const privateServiceName = msg.url.pathElements[0];
@@ -227,7 +229,7 @@ export const handleOutgoingRequestWithPrivateServices = (basePath: string, priva
             msgOut.callUp();
             return msgOut;
         } else {
-            return handleOutgoingRequest(msg);
+            return handleOutgoingRequest(msg, Source.Internal, context);
         }
     }
 

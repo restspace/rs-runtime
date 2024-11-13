@@ -9,7 +9,7 @@ import { dataToSchemaAdapter } from "./dataToSchemaAdapter.ts";
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { Message } from "rs-core/Message.ts";
-import { parse, xml_node } from "@libs/xml";
+import { parse, xml_node } from "jsr:@libs/xml";
 import { Url } from "rs-core/Url.ts";
 
 export interface S3FileAdapterProps {

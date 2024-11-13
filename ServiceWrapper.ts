@@ -17,10 +17,10 @@ export class ServiceWrapper {
     constructor(public service: Service) {
     }
 
-    private async prePostPipeline(prePost: PrePost, basePath: string, msg: Message, pipelineSpec?: PipelineSpec, privateServiceConfigs?: Record<string, IServiceConfig>) {
+    private async prePostPipeline(prePost: PrePost, basePath: string, msg: Message, context: ServiceContext<IAdapter>, pipelineSpec?: PipelineSpec, privateServiceConfigs?: Record<string, IServiceConfig>) {
         if (pipelineSpec) {
-            let handler = handleOutgoingRequest;
-            if (privateServiceConfigs) handler = handleOutgoingRequestWithPrivateServices(basePath, privateServiceConfigs, msg.tenant, prePost);
+            let handler = (msg: Message, source?: Source) => handleOutgoingRequest(msg, source, context);
+            if (privateServiceConfigs) handler = handleOutgoingRequestWithPrivateServices(basePath, privateServiceConfigs, msg.tenant, context, prePost);
             return await pipeline(msg, pipelineSpec, msg.url, false, handler);
         }
         return msg;
@@ -34,11 +34,11 @@ export class ServiceWrapper {
             const { manifestConfig } = serviceConfig;
             const prePipeline = pipelineConcat(manifestConfig?.prePipeline || serviceConfig?.prePipeline);
             const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
-            newMsg = await this.prePostPipeline("pre", serviceConfig.basePath, newMsg, prePipeline, manifestConfig?.privateServiceConfigs);
+            newMsg = await this.prePostPipeline("pre", serviceConfig.basePath, newMsg, context, prePipeline, manifestConfig?.privateServiceConfigs);
             newMsg.applyServiceRedirect();
             context.metadataOnly = newMsg.url.isDirectory && ("$metadataOnly" in newMsg.url.query);
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
-            if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", serviceConfig.basePath, newMsg, postPipeline, manifestConfig?.privateServiceConfigs);
+            if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", serviceConfig.basePath, newMsg, context, postPipeline, manifestConfig?.privateServiceConfigs);
         } catch (err) {
             if ((err as Error)?.message === 'Not found') {
                 newMsg.setStatus(404, 'Not found');

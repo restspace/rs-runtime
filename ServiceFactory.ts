@@ -170,7 +170,9 @@ export class ServiceFactory {
                 : handleOutgoingRequestWithPrivateServices(
                     serviceConfig.basePath,
                     serviceConfig.manifestConfig?.privateServiceConfigs || {},
-                    this.tenant)(msg);
+                    this.tenant,
+                    serviceContext
+                )(msg);
 		}
         serviceContext = { ...serviceContext, manifest, makeRequest: handlerWithPrivateServices };
 

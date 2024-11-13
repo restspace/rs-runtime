@@ -17,7 +17,7 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 		primaryDomain: config.tenants[tenantName]?.primaryDomain,
 		makeRequest: (msg: Message, source?: Source) => {
 			if (!msg.url.domain) msg.url.domain = config.tenants[tenantName].primaryDomain;
-			return source === Source.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg, source)
+			return source === Source.External ? handleIncomingRequest(msg) : handleOutgoingRequest(msg, source, context)
 		},
 		verifyResponse: async (msg: Message, mimeType?: string) => {
 			if (!msg.data) {
@@ -38,7 +38,7 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 		verifyJsonResponse: async (msg: Message, checkPath?: string) => {
 			const data = await context.verifyResponse(msg, 'application/json');
 			if (!(data instanceof MessageBody)) return data;
-			let json: unknown;
+			let json: any;
 			try {
 				json = await data.asJson();
 			} catch (err) {
@@ -52,7 +52,7 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 					return 502;
 				}
 			}
-			return msg.data;
+			return json;
 		},
 		runPipeline: (msg: Message, pipelineSpec: PipelineSpec, contextUrl?: Url) => {
 			return pipeline(msg, pipelineSpec, contextUrl);
