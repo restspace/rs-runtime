@@ -35,8 +35,6 @@ import BotProxyAdapter from "./adapter/BotProxyAdapter.ts";
 import BotProxyAdapterManifest from "./adapter/BotProxyAdapter.ram.js";
 import BinanceProxyAdapter from "./adapter/BinanceProxyAdapter.ts";
 import BinanceProxyAdapterManifest from "./adapter/BinanceProxyAdapter.ram.js";
-import ImageProcessor from "./services/imageProcessor.ts";
-import ImageProcessorManifest from "./services/imageProcessor.rsm.js";
 
 import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
@@ -252,7 +250,6 @@ export class Modules {
             "./services/references.ts": References as unknown as Service<IAdapter, IServiceConfig>,
             "./services/timer-store.ts": TimerStore as unknown as Service<IAdapter, IServiceConfig>,
             "./services/server-side-events.ts": ServerSideEvents as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/imageProcessor.ts": ImageProcessor as unknown as Service<IAdapter, IServiceConfig>,
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -285,7 +282,6 @@ export class Modules {
             "./services/references.rsm.json": ReferencesManifest as unknown as IServiceManifest,
             "./services/timer-store.rsm.json": TimerStoreManifest as unknown as IServiceManifest,
             "./services/server-side-events.rsm.json": serverSideEventsManifest as unknown as IServiceManifest,
-            "./services/imageProcessor.rsm.json": ImageProcessorManifest as unknown as IServiceManifest,
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 

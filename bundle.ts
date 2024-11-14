@@ -1,10 +1,11 @@
 import * as esbuild from "npm:esbuild";
+import inlineWorkerPlugin from "npm:esbuild-plugin-inline-worker";
 import { denoPlugins } from "jsr:@luca/esbuild-deno-loader";
 
 const result = await esbuild.build({
-  plugins: [...denoPlugins()],
-  entryPoints: ["https://deno.land/std@0.185.0/bytes/mod.ts"],
-  outfile: "./dist/bytes.esm.js",
+  plugins: [inlineWorkerPlugin(), ...denoPlugins()],
+  entryPoints: ["./server.ts"],
+  outfile: "./bundled.js",
   bundle: true,
   format: "esm",
 });
