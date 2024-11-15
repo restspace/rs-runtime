@@ -9,7 +9,7 @@ export function unzip(msg: Message): AsyncQueue<Message> {
 	if (!msg.data) return queue.enqueue(new Error('Unzipping with no data')).close();
 	const readable = msg.data.asReadable();
 	if (!readable) return queue.enqueue(new Error('Unzipping with no readable')).close();
-	if (!['application/zip', 'application/x-zip'].includes(msg.data.mimeType)) {
+	if (!msg.data.mimeType.includes('zip')) {
 		return queue.enqueue(new Error('Unzipping with non-zip data')).close();
 	}
     (async () => {
