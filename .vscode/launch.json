@@ -13,7 +13,6 @@
             "runtimeExecutable": "deno",
             "runtimeArgs": [
                 "run",
-                "--unstable",
                 "--inspect-brk",
                 "--allow-all",
                 "--unsafely-ignore-certificate-errors"
@@ -30,7 +29,6 @@
             "runtimeExecutable": "deno",
             "runtimeArgs": [
                 "test",
-                "--unstable",
                 "--inspect-brk",
                 "--allow-all",
                 "test/"
@@ -45,7 +43,6 @@
             "runtimeExecutable": "deno",
             "runtimeArgs": [
                 "test",
-                "--unstable",
                 "--no-check",
                 "--inspect-brk",
                 "--allow-all",

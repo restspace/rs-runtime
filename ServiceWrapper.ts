@@ -32,8 +32,8 @@ export class ServiceWrapper {
         let newMsg = msg.copy();
         try {
             const { manifestConfig } = serviceConfig;
-            const prePipeline = pipelineConcat(manifestConfig?.prePipeline || serviceConfig?.prePipeline);
-            const postPipeline = pipelineConcat(manifestConfig?.postPipeline || serviceConfig?.postPipeline);
+            const prePipeline = pipelineConcat(serviceConfig?.prePipeline, manifestConfig?.prePipeline);
+            const postPipeline = pipelineConcat(manifestConfig?.postPipeline, serviceConfig?.postPipeline);
             newMsg = await this.prePostPipeline("pre", serviceConfig.basePath, newMsg, context, prePipeline, manifestConfig?.privateServiceConfigs);
             newMsg.applyServiceRedirect();
             context.metadataOnly = newMsg.url.isDirectory && ("$metadataOnly" in newMsg.url.query);

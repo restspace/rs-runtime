@@ -9,7 +9,6 @@
   ],
   "settings": {
     "deno.lint": true,
-    "deno.unstable": true,
     "deno.enable": true,
     "deno.suggest.imports.hosts": {
       "https://deno.land": false
