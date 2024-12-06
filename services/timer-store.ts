@@ -177,7 +177,7 @@ service.initializer(async (context, config) => {
 });
 
 service.post(async (msg, context, config) => {
-    if (msg.url.servicePathElements.length !== 2) return msg;
+    if (msg.url.servicePathElements.length !== 2) return msg.setStatus(0);
     const getSpecMsg = msg.copy();
     getSpecMsg.url.pathElements.pop();
     const specResult = await getSpec(getSpecMsg, context);
@@ -195,7 +195,7 @@ service.post(async (msg, context, config) => {
 });
 
 service.get(async (msg, context, config) => {
-    if (msg.url.servicePathElements.length !== 2) return msg;
+    if (msg.url.servicePathElements.length !== 2) return msg.setStatus(0);
     const getSpecMsg = msg.copy();
     getSpecMsg.url.pathElements.pop();
     const specResult = await getSpec(getSpecMsg, context);
@@ -216,7 +216,7 @@ service.get(async (msg, context, config) => {
 });
 
 service.put(async (msg, context, config) => {
-    if (msg.url.servicePathElements.length !== 1) return msg;
+    if (msg.url.servicePathElements.length !== 1) return msg.setStatus(0);
 
     const newSpec = await msg.data?.asJson() as ITimerConfig;
     const validate = validateSpec(newSpec);
@@ -224,7 +224,7 @@ service.put(async (msg, context, config) => {
     const storeState = await context.state(TimerStoreState, context, config);
     const state = storeState.substate(msg.url.servicePathElements[0], TimerState, newSpec);
     state.config = newSpec;
-    return msg;
+    return msg.setStatus(200); // stops the store handling the message
 });
 
 service.getDirectory(async (msg, context) => {

@@ -7,7 +7,7 @@ const service = new Service();
 
 service.all(async (msg, context) => {
 	const reqForStore = msg.url.isDirectory || (msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST');
-	if (reqForStore) return msg; // request will be handled by store
+	if (reqForStore) return msg.setStatus(0); // request will be handled by store
 
 	const getFromStore = msg.copy().setMethod('GET').setHeader("X-Restspace-Request-Mode", "manage");
 	const msgPipelineSpec = await context.makeRequest(getFromStore);
@@ -27,7 +27,8 @@ service.all(async (msg, context) => {
     const locationUrl = location ? new Url(location).stripPrivateServices() : '';
 	pipelineUrl.setSubpathFromUrl(locationUrl);
 	
-	return pipeline(msg, pipelineSpec, pipelineUrl, false, msg => context.makeRequest(msg));
+	const pipelineResult = await pipeline(msg, pipelineSpec, pipelineUrl, false, msg => context.makeRequest(msg));
+	return pipelineResult.setStatus(200); // stops the pipeline handling the message
 })
 
 export default service;
