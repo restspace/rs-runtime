@@ -319,17 +319,18 @@ function runDistributePipelineOne(pipeline: PipelineSpec, msg: Message, context:
     return msgs;
 }
 
-function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, callerMsg: Message, variables: Record<string, unknown>, contextUrl?: Url, external?: boolean): [ PipelineContext, PipelineSpec ] {
+function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, callerMsg: Message, variables: Record<string, unknown>, contextUrl?: Url, external?: boolean, serviceName = '?'): [ PipelineContext, PipelineSpec ] {
     const context = {
         handler,
         callerUrl: contextUrl || callerMsg.url,
         callerMethod: callerMsg.method,
-        callerLoggerArgs: callerMsg.loggerArgs(),
+        callerLoggerArgs: callerMsg.loggerArgs(serviceName),
         callerTenant: callerMsg.tenant,
         external,
         path: [],
         concurrencyLimiter: limitConcurrency(DefaultConcurrencyLimit),
-        variables: new VariableScope(variables)
+        variables: new VariableScope(variables),
+        serviceName
     } as PipelineContext;
     let stepIdx = 0;
     for (; stepIdx < pipeline.length; stepIdx++) {
@@ -350,8 +351,8 @@ function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, 
     return [ context, pipeline.slice(stepIdx) ];
 }
 
-export async function pipeline(msg: Message, pipeline: PipelineSpec, contextUrl?: Url, external?: boolean, handler: MessageFunction = handleOutgoingRequest) {
-    const [ context, mainPipeline ] = createInitialContext(pipeline, handler, msg, {}, contextUrl, external);
+export async function pipeline(msg: Message, pipeline: PipelineSpec, contextUrl?: Url, external?: boolean, handler: MessageFunction = handleOutgoingRequest, serviceName = '?') {
+    const [ context, mainPipeline ] = createInitialContext(pipeline, handler, msg, {}, contextUrl, external, serviceName);
     const asq = runPipeline(mainPipeline, new AsyncQueue<Message>(1).enqueue(msg), new PipelineMode("parallel"), context);
 
     // const outMsg = !asq.nRemaining || asq.nRemaining <= 1

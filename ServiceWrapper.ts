@@ -21,7 +21,7 @@ export class ServiceWrapper {
         if (pipelineSpec) {
             let handler = (msg: Message, source?: Source) => handleOutgoingRequest(msg, source, context);
             if (privateServiceConfigs) handler = handleOutgoingRequestWithPrivateServices(basePath, privateServiceConfigs, msg.tenant, context, prePost);
-            return await pipeline(msg, pipelineSpec, msg.url, false, handler);
+            return await pipeline(msg, pipelineSpec, msg.url, false, handler, context.serviceName);
         }
         return msg;
     }

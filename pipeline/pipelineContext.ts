@@ -19,6 +19,7 @@ export interface PipelineContext {
     callerLoggerArgs?: string[];
     concurrencyLimiter: Limiter;
     variables: VariableScope;
+    serviceName: string;
 }
 
 export const copyPipelineContext = (context: PipelineContext) => {

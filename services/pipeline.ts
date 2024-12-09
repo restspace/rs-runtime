@@ -64,7 +64,7 @@ service.all((msg, context, config) => {
 			runPipeline = config.pipeline.slice(0, toStep + 1);
 		} 
 	}
-	return pipeline(msg, runPipeline, msg.url, false, msg => context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal));
+	return pipeline(msg, runPipeline, msg.url, false, msg => context.makeRequest(msg, config.reauthenticate ? Source.Outer : Source.Internal), context.serviceName);
 })
 
 export default service;

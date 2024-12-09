@@ -27,7 +27,7 @@ service.all(async (msg, context) => {
     const locationUrl = location ? new Url(location).stripPrivateServices() : '';
 	pipelineUrl.setSubpathFromUrl(locationUrl);
 	
-	const pipelineResult = await pipeline(msg, pipelineSpec, pipelineUrl, false, msg => context.makeRequest(msg));
+	const pipelineResult = await pipeline(msg, pipelineSpec, pipelineUrl, false, msg => context.makeRequest(msg), context.serviceName);
 	return pipelineResult.setStatus(200); // stops the pipeline handling the message
 })
 

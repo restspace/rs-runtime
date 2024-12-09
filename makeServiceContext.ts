@@ -55,7 +55,7 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 			return json;
 		},
 		runPipeline: (msg: Message, pipelineSpec: PipelineSpec, contextUrl?: Url) => {
-			return pipeline(msg, pipelineSpec, contextUrl);
+			return pipeline(msg, pipelineSpec, contextUrl, undefined, undefined, context.serviceName);
 		},
 		prePost,
 		logger: config.logger,
