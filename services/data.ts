@@ -18,7 +18,7 @@ const isWriteSchema = (adapter: IDataAdapter): adapter is IDataAdapter & ISchema
     (adapter as IDataAdapter & ISchemaAdapter).writeSchema !== undefined;
 
 const normaliseKey = (key: string) => {
-    if (key.endsWith('.json')) return key.slice(0, -5);
+    if (key?.endsWith('.json')) return key.slice(0, -5);
     return key;
 }
 
@@ -128,32 +128,37 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
     return msg.setDirectoryJson(dirDesc);
 });
 
-const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger, isPatch: boolean) => {
-    if (msg.url.servicePathElements.length !== 2) {
+const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger, isPatch: boolean, isKeyless = false) => {
+    const servicePathLength = msg.url.servicePathElements.length;
+    if (servicePathLength !== 1 && isKeyless) {
+        return msg.setStatus(400, 'Keyless data write request should have a service path like <dataset>');
+    }
+    if (servicePathLength !== 2 && !isKeyless) {
         return msg.setStatus(400, 'Data write request should have a service path like <dataset>/<key>');
     }
     if (!msg.hasData()) return msg.setStatus(400, "No data to write");
 
-    let [ dataset, key ] = msg.url.servicePathElements;
+    let dataset: string;
+    let key: string | undefined;
+    [ dataset, key ] = msg.url.servicePathElements;
     key = normaliseKey(key);
 
-    if (isWriteSchema(adapter) && key.endsWith('.schema')) {
+    if (isWriteSchema(adapter) && key?.endsWith('.schema')) {
         const schemaDetails = await adapter.checkSchema(dataset);
         const res = await adapter.writeSchema!(dataset, await msg.data!.asJson());
         msg.data!.mimeType = 'application/json-schema';
         if (msg.method === "PUT") msg.data = undefined;
         return msg.setStatus(res === 200 && schemaDetails.status === 'none' ? 201 : res);
     } else {
-        const details = await adapter.checkKey(dataset, key);
+        const details = key === '' ? { status: 'none' } : await adapter.checkKey(dataset, key);
         const isDirectory = (details.status === "directory" || (details.status === "none" && msg.url.isDirectory));
-        if (isDirectory) {
+        if (key && isDirectory) {
             msg.data = undefined;
             return msg.setStatus(403, "Forbidden: can't overwrite directory");
         } 
 
-        let resCode = 0;
+        let resCode: number | string = 0;
 
-        logger.info(`isPatch: ${isPatch || msg.url.fragment}`);
         if (isPatch || msg.url.fragment) {
             // TO DO this operation should be atomic somehow - maybe readKeySync or adapter.writeLockKey
             let val = await adapter.readKey(dataset, key);
@@ -178,12 +183,15 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
             // msg.data.copy() tees the stream
             resCode = await adapter.writeKey(dataset, key, msg.data!.copy());
         }
-        msg.data = undefined;
-        if (resCode !== 200) return msg.setStatus(resCode);
+        if (msg.method === "PUT") msg.data = undefined;
+        if (typeof resCode === 'number' && resCode >= 300) return msg.setStatus(resCode);
+
+        let location = msg.url.toString();
+        if (isKeyless) location += resCode;
     
         return msg
             .setDateModified((details as ItemFile).dateModified)
-            .setHeader('Location', msg.url.toString())
+            .setHeader('Location', location)
             .setStatus(details.status === "none" ? 201 : 200, details.status === "none" ? "Created" : "OK");
     }
 }
@@ -191,16 +199,18 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
 service.post((msg, { adapter, logger }) => write(msg, adapter, logger, false));
 service.put((msg, { adapter, logger }) => write(msg, adapter, logger, false));
 service.patch((msg, { adapter, logger }) => write(msg, adapter, logger, true));
+service.putDirectory((msg, { adapter, logger }) => write(msg, adapter, logger, false, true));
+service.postDirectory((msg, { adapter, logger }) => write(msg, adapter, logger, false, true));
 
 service.delete(async (msg, { adapter }) => {
     if (msg.url.servicePathElements.length !== 2) {
-        return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>');
+        return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>/');
     }
 
     let [ dataset, key ] = msg.url.servicePathElements;
     key = normaliseKey(key);
 
-    let res = 0;
+    let res: number | string = 0;
     if (msg.url.fragment) {
         const val = await adapter.readKey(dataset, key);
         if (typeof val === 'number') {
@@ -227,7 +237,7 @@ service.delete(async (msg, { adapter }) => {
 
 service.deleteDirectory(async (msg, { adapter }) => {
     if (msg.url.servicePathElements.length !== 1) {
-        return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>');
+        return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>/');
     }
     const [ dataset ] = msg.url.servicePathElements;
 

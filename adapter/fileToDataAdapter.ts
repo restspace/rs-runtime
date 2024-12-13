@@ -15,8 +15,8 @@ export function fileToDataAdapter<TFileAdapter extends IFileAdapterConstructor>(
                 return data.ok ? ((await data.asJson()) || {}) : data.statusCode;
             };
 
-        writeKey: (dataset: string, key: string, data: MessageBody) => Promise<number> =
-            (dataset: string, key: string, data: MessageBody) => this.write(pathCombine(dataset, key), data, [ 'json' ]);
+        writeKey: (dataset: string, key: string | undefined, data: MessageBody) => Promise<number> =
+            (dataset: string, key: string | undefined, data: MessageBody) => this.write(pathCombine(dataset, key || 'data'), data, [ 'json' ]);
 
         deleteKey: (dataset: string, key: string) => Promise<number> =
             (dataset: string, key: string) => this.delete(pathCombine(dataset, key), [ 'json' ]);

@@ -170,7 +170,7 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 		}
 	}
 
-	async writeKey(dataset: string, key: string, data: MessageBody): Promise<number> {
+	async writeKey(dataset: string, key: string | undefined, data: MessageBody): Promise<number> {
 		dataset = this.normaliseIndexName(dataset);
 		const msg = new Message(`/${dataset}/_doc/${key}`, this.context.tenant, "PUT", null);
 		let writeData = await data.asJson();

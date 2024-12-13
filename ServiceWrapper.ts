@@ -106,7 +106,7 @@ export class ServiceWrapper {
             );
             data.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE');
             data.setHeader('Access-Control-Allow-Credentials', 'true');
-            data.setHeader('Access-Control-Expose-Headers', 'X-Restspace-Service');
+            data.setHeader('Access-Control-Expose-Headers', 'X-Restspace-Service,Location');
         }
         return data;
     }

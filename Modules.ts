@@ -35,6 +35,8 @@ import BotProxyAdapter from "./adapter/BotProxyAdapter.ts";
 import BotProxyAdapterManifest from "./adapter/BotProxyAdapter.ram.js";
 import BinanceProxyAdapter from "./adapter/BinanceProxyAdapter.ts";
 import BinanceProxyAdapterManifest from "./adapter/BinanceProxyAdapter.ram.js";
+import MongoDbDataAdapter from "./adapter/MongoDbDataAdapter.ts";
+import MongoDbDataAdapterManifest from "./adapter/MongoDbDataAdapter.ram.js";
 
 import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
@@ -89,6 +91,8 @@ import TimerStore from "./services/timer-store.ts";
 import TimerStoreManifest from "./services/timer-store.rsm.js";
 import ServerSideEvents from "./services/server-side-events.ts";
 import serverSideEventsManifest from "./services/server-side-events.rsm.js";
+import StoreFromQuery from "./services/store-from-query.ts";
+import StoreFromQueryManifest from "./services/store-from-query.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -200,6 +204,7 @@ export class Modules {
             "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/BotProxyAdapter.ts": BotProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/BinanceProxyAdapter.ts": BinanceProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
+            "./adapter/MongoDbDataAdapter.ts": MongoDbDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
@@ -216,6 +221,7 @@ export class Modules {
             "./adapter/SnsSmsAdapter.ram.json": SnsSmsAdapterManifest,
             "./adapter/BotProxyAdapter.ram.json": BotProxyAdapterManifest,
             "./adapter/BinanceProxyAdapter.ram.json": BinanceProxyAdapterManifest,
+            "./adapter/MongoDbDataAdapter.ram.json": MongoDbDataAdapterManifest,
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
 
@@ -250,6 +256,7 @@ export class Modules {
             "./services/references.ts": References as unknown as Service<IAdapter, IServiceConfig>,
             "./services/timer-store.ts": TimerStore as unknown as Service<IAdapter, IServiceConfig>,
             "./services/server-side-events.ts": ServerSideEvents as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/store-from-query.ts": StoreFromQuery as unknown as Service<IAdapter, IServiceConfig>,
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -282,6 +289,7 @@ export class Modules {
             "./services/references.rsm.json": ReferencesManifest as unknown as IServiceManifest,
             "./services/timer-store.rsm.json": TimerStoreManifest as unknown as IServiceManifest,
             "./services/server-side-events.rsm.json": serverSideEventsManifest as unknown as IServiceManifest,
+            "./services/store-from-query.rsm.json": StoreFromQueryManifest as unknown as IServiceManifest,
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 
