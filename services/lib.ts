@@ -2,6 +2,7 @@ import { Service } from "rs-core/Service.ts";
 import { encode, decode } from "std/encoding/base64.ts"
 import { Url } from "rs-core/Url.ts";
 import { QuotaQueueConfig, QuotaQueueState } from "rs-core/state/QuotaQueueState.ts";
+import { isJson, isText } from "rs-core/mimeType.ts";
 
 const service = new Service();
 
@@ -11,6 +12,19 @@ service.postPath('/devnull', msg => msg.setData(null, "text/plain"));
 
 service.postPath('/destream', async msg => {
     await msg.data?.ensureDataIsArrayBuffer();
+    return msg;
+});
+
+service.postPath('/to-text', async msg => {
+    if (!msg.data) return msg;
+    if (isJson(msg.data.mimeType)) {
+        const json = await msg.data.asJson();
+        return msg.setData(typeof json === 'string' ? json : JSON.stringify(json), "text/plain");
+    }
+    if (!isText(msg.data.mimeType)) {
+        const arry = new Uint8Array((await msg.data.asArrayBuffer())!);
+        return msg.setData(encode(arry), "text/plain");
+    }
     return msg;
 });
 

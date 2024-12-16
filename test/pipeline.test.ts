@@ -655,6 +655,13 @@ Deno.test('variable in path pattern', async function () {
         length: 3
       });
 });
+Deno.test('lib/to-text', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST').setDataJson("hello"), [
+        "/lib/to-text"
+    ]);
+    const output = await msgOut.data?.asString()
+    assertEquals(output, "hello");
+});
 
 /*
         {
