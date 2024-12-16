@@ -8,7 +8,8 @@ import { getProp } from "rs-core/utility/utility.ts";
 const service = new Service<IQueryAdapter>();
 
 service.post(async (msg: Message, context: ServiceContext<IQueryAdapter>) => {
-	const params = (await msg.data?.asJson()) ?? {};
+	let params = (await msg.data?.asJson()) ?? {};
+	if (typeof params !== 'object') params = {};
 	const reqQuery = msg.copy().setMethod("GET");
 	const msgQuery = await context.makeRequest(reqQuery);
 	if (!msgQuery.ok) return msgQuery;

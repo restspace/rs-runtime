@@ -33,12 +33,12 @@ export class PipelineMode {
                 case "tee":
                     this.mode = "serial";
                     this.tee = true;
-                    return;
+                    break;
                 case "teeWait":
                     this.mode = "serial";
                     this.tee = true;
                     this.teeWait = true;
-                    return;
+                    break;
                 default:
                     this.mode = "serial";
                     break;
