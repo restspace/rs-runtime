@@ -8,6 +8,7 @@ import { IAuthUser } from "rs-core/user/IAuthUser.ts";
 import dayjs from "https://cdn.skypack.dev/dayjs@1.10.4";
 import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
 import { Url } from "rs-core/Url.ts";
+import { upTo, after, upToLast, afterLast } from "rs-core/utility/utility.ts";
 
 interface LoaderRes {
     src: string;
@@ -46,7 +47,7 @@ class NunjucksTemplateAdapter implements ITemplateAdapter {
     constructor(public context: AdapterContext, public props: Record<string, any>) {
         this.env = new nunjucks.Environment(new RestspaceLoader(context));
         this.env.addGlobal('$this', function(this: any) {
-            delete this.ctx['$url'];
+            delete this.ctx['_url'];
             return this.ctx;
         });
         this.env.addFilter("dateFormat", (dateStr: string, format: string) => {
@@ -59,6 +60,13 @@ class NunjucksTemplateAdapter implements ITemplateAdapter {
         this.env.addFilter("pathPattern", function(this: any, pattern: string, decode?: boolean) {
             return resolvePathPatternWithUrl(pattern, this.ctx._url as Url, undefined, undefined, decode);
         });
+        this.env.addFilter("upTo", upTo);
+        this.env.addFilter("after", after);
+        this.env.addFilter("upToLast", upToLast);
+        this.env.addFilter("afterLast", afterLast);
+        this.env.addFilter("split", (s: string, sep: string) => s.split(sep));
+        this.env.addFilter("replaceRegex", (s: string, search: string, replace: string) => s.replace(new RegExp(search), replace));
+        this.env.addFilter("substring", (s: string, start: number, end?: number) => s.substring(start, end));
     }
 
     fillTemplate(data: any, template: string, url: Url): Promise<string> {

@@ -54,3 +54,56 @@ Deno.test("template", async () => {
     msgOut = await handleIncomingRequest(msg);
     assertEquals(msgOut.status, 404);
 });
+Deno.test("$this", async () => {
+    let msg = testMessage("/templates/check-this", "PUT");
+    const template = "<div>{{ $this().val }}</div>";
+    msg.setData(template, "text/html");
+    let msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok);
+
+    msg = testMessage("/templates/check-this", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    let txt = await msgOut.data?.asString();
+    assertEquals(txt, template);
+
+    msg = testMessage("/templates/check-this", "POST");
+    msg.setDataJson({ val: "hello" });
+    msgOut = await handleIncomingRequest(msg);
+    txt = await msgOut.data?.asString();
+    assertEquals(txt, "<div>hello</div>");
+    console.log(txt);
+
+    msg = testMessage("/templates/check-this", "DELETE");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok);
+
+    msg = testMessage("/templates/check-this", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assertEquals(msgOut.status, 404);
+});
+Deno.test("path pattern", async () => {
+    let msg = testMessage("/templates/check-pathpattern", "PUT");
+    const template = "<div>{{ patt | pathPattern }}</div>";
+    msg.setData(template, "text/html");
+    let msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok);
+
+    msg = testMessage("/templates/check-pathpattern", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    let txt = await msgOut.data?.asString();
+    assertEquals(txt, template);
+
+    msg = testMessage("/templates/check-pathpattern", "POST");
+    msg.setDataJson({ patt: "$>0" });
+    msgOut = await handleIncomingRequest(msg);
+    txt = await msgOut.data?.asString();
+    assertEquals(txt, "<div>check-pathpattern</div>");
+
+    msg = testMessage("/templates/check-pathpattern", "DELETE");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok);
+
+    msg = testMessage("/templates/check-pathpattern", "GET");
+    msgOut = await handleIncomingRequest(msg);
+    assertEquals(msgOut.status, 404);
+});

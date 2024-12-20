@@ -176,6 +176,22 @@ Deno.test('expansion 2', async function () {
     const output = await msgOut.data?.asJson();
     assertEquals(output, {});
 });
+Deno.test('name maintained', async function () {
+    const msgOut = await pipeline(testMessage('/', 'POST'), [
+        {
+            "$": [ "'abc'" ]
+        },
+        "jsonSplit",
+        {
+            "$abc": "'abc'"
+        },
+        "GET /test/${$abc}",
+        "GET /test/${$abc}",
+        "jsonObject"
+    ]);
+    const output = await msgOut.data?.asJson();
+    console.log('output:', output);
+});
 Deno.test('variable in url', async function () {
     const msgOut = await pipeline(testMessage('/', 'POST'), [
         {

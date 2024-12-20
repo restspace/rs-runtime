@@ -364,6 +364,7 @@ export async function pipeline(msg: Message, pipeline: PipelineSpec, contextUrl?
     }
     if (lastMsg) {
         lastMsg.url = msg.url;
+        if (msg.name) lastMsg.name = msg.name;
         Object.assign(lastMsg.headers, context.outputHeaders || {});
         if (context.trace) {
             lastMsg.setDataJson(context.traceOutputs);
