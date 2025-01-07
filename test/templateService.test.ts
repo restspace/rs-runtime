@@ -107,3 +107,22 @@ Deno.test("path pattern", async () => {
     msgOut = await handleIncomingRequest(msg);
     assertEquals(msgOut.status, 404);
 });
+Deno.test("include", async () => {
+    let msg = testMessage("/templates/included", "PUT");
+    let template = "<div>INCLUDED {{ x }}</div>";
+    msg.setData(template, "text/html");
+    let msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok);
+
+    msg = testMessage("/templates/includer", "PUT");
+    template = "{% include '/templates/included' %}";
+    msg.setData(template, "text/html");
+    msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok);
+
+    msg = testMessage("/templates/includer", "POST");
+    msg.setDataJson({ x: "abc" });
+    msgOut = await handleIncomingRequest(msg);
+    const txt = await msgOut.data?.asString();
+    assertEquals(txt, "<div>INCLUDED abc</div>");
+});

@@ -181,6 +181,7 @@ const csvToJson: (mode: CSVMode) => ServiceFunction<IAdapter, ICSVConverterConfi
 	}
 }
 
+service.postIsWrite = false;
 service.postPath("ndjson", csvToJson("ndjson"));
 service.postPath("validate", csvToJson("validate"));
 service.postPath("json", csvToJson("json"));
