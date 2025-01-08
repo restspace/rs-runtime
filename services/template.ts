@@ -12,6 +12,7 @@ interface ITemplateConfig extends IServiceConfig {
 
 const service = new Service<ITemplateAdapter, ITemplateConfig>();
 
+service.postIsWrite = false;
 service.post(async (msg: Message, context: ServiceContext<ITemplateAdapter>, config: ITemplateConfig) => {
 	const data: Record<string, unknown> = (await msg.data?.asJson()) ?? {};
 	if (config.metadataProperty) {
