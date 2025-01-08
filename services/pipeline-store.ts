@@ -5,6 +5,10 @@ import { pipeline } from "../pipeline/pipeline.ts";
 
 const service = new Service();
 
+// TODO pipeline store needs custom auth system allowing distinction between writing pipeline specs and issuing POST/PUT/DELETE requests to pipelines
+// ideally the pipeline spec can describe auth requirements. Simply allowing POSTs on read auth is risky as a user could inadvertently
+// expose e.g. a file service to being written to without proper write auth.
+service.postIsWrite = false;
 service.all(async (msg, context) => {
 	const reqForStore = msg.url.isDirectory || (msg.getHeader('X-Restspace-Request-Mode') === 'manage' && msg.method !== 'POST');
 	if (reqForStore) return msg.setStatus(0); // request will be handled by store
