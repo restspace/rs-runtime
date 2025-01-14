@@ -507,10 +507,10 @@ export class Modules {
         if (!resp.ok || !resp.data) {
             context.logger.error(`Error reading services from ${servicesUrl}: ${resp.status} ${resp.data?.asStringSync()}`);
         }
-        const services = await resp.data?.asJson() as Record<string, { apis: string[], basePath: string }>;
+        const services = await resp.data?.asJson() as Record<string, { apis?: string[], basePath: string }>;
         this.serviceManifestsMap[domain] = [];
         this.adapterManifestsMap[domain] = [];
-        const serviceStoreServices = Object.values(services).filter(s => s.apis.includes("service-store"));
+        const serviceStoreServices = Object.values(services).filter(s => s.apis?.includes("service-store"));
         for (const s of serviceStoreServices) {
             await this.loadManifestsFromDirectory(pathCombine(urlBase, s.basePath + '/'), context);
         }

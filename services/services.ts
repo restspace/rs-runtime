@@ -161,7 +161,7 @@ service.getPath('services', async (msg: Message, context: SimpleServiceContext) 
         Object.entries(service)
             .filter(([k]) => exposedProperties.includes(k))
             .forEach(([k, v]) => sanitisedService[k] = v);
-        sanitisedService['apis'] = manifestData[service.source].apis;
+        sanitisedService['apis'] = manifestData[service.source].apis || [];
         services[basePath] = sanitisedService;
     });
 
