@@ -35,10 +35,10 @@ import BotProxyAdapter from "./adapter/BotProxyAdapter.ts";
 import BotProxyAdapterManifest from "./adapter/BotProxyAdapter.ram.js";
 import BinanceProxyAdapter from "./adapter/BinanceProxyAdapter.ts";
 import BinanceProxyAdapterManifest from "./adapter/BinanceProxyAdapter.ram.js";
-// import MongoDbDataAdapter from "./adapter/MongoDbDataAdapter.ts";
-// import MongoDbDataAdapterManifest from "./adapter/MongoDbDataAdapter.ram.js";
-// import MongoDbQueryAdapter from "./adapter/MongoDbQueryAdapter.ts";
-// import MongoDbQueryAdapterManifest from "./adapter/MongoDbQueryAdapter.ram.js";
+import MongoDbDataAdapter from "./adapter/MongoDbDataAdapter.ts";
+import MongoDbDataAdapterManifest from "./adapter/MongoDbDataAdapter.ram.js";
+import MongoDbQueryAdapter from "./adapter/MongoDbQueryAdapter.ts";
+import MongoDbQueryAdapterManifest from "./adapter/MongoDbQueryAdapter.ram.js";
 
 import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
@@ -206,8 +206,8 @@ export class Modules {
             "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/BotProxyAdapter.ts": BotProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/BinanceProxyAdapter.ts": BinanceProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            // "./adapter/MongoDbDataAdapter.ts": MongoDbDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            // "./adapter/MongoDbQueryAdapter.ts": MongoDbQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
+            "./adapter/MongoDbDataAdapter.ts": MongoDbDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
+            "./adapter/MongoDbQueryAdapter.ts": MongoDbQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
@@ -224,8 +224,8 @@ export class Modules {
             "./adapter/SnsSmsAdapter.ram.json": SnsSmsAdapterManifest,
             "./adapter/BotProxyAdapter.ram.json": BotProxyAdapterManifest,
             "./adapter/BinanceProxyAdapter.ram.json": BinanceProxyAdapterManifest,
-            // "./adapter/MongoDbDataAdapter.ram.json": MongoDbDataAdapterManifest,
-            // "./adapter/MongoDbQueryAdapter.ram.json": MongoDbQueryAdapterManifest,
+            "./adapter/MongoDbDataAdapter.ram.json": MongoDbDataAdapterManifest,
+            "./adapter/MongoDbQueryAdapter.ram.json": MongoDbQueryAdapterManifest,
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
 

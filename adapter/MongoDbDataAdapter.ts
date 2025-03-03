@@ -5,6 +5,7 @@ import { ItemMetadata, ItemNone } from "rs-core/ItemMetadata.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { MongoClient, Db, ObjectId, ServerApiVersion } from "mongodb";
+import { resolveMongoDNS } from 'https://deno.land/x/resolve_mongo_dns/mod.ts';
 
 export interface MongoDbDataAdapterProps {
     url: string;
@@ -20,7 +21,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter 
 
     private async ensureConnection() {
         if (!this.client) {
-            this.client = new MongoClient(this.props.url, {
+            const resolvedUrl = await resolveMongoDNS(this.props.url);
+            this.client = new MongoClient(resolvedUrl, {
                 serverApi: {
                   version: ServerApiVersion.v1,
                   strict: true,
