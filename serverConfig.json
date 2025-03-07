@@ -20,5 +20,6 @@
             "urlPattern": "https://7f0t4i3esl.execute-api.eu-west-2.amazonaws.com/dev/pdf-gen"
         }
     },
-    "configStore": "localStore"
+    "configStore": "localStore",
+    "stateStore": "localStore"
 }

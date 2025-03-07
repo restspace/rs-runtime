@@ -5,7 +5,7 @@ import { Environment } from "https://deno.land/x/nunjucks@3.2.3/src/environment.
 import { Message } from "rs-core/Message.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
 import { IAuthUser } from "rs-core/user/IAuthUser.ts";
-import dayjs from "https://cdn.skypack.dev/dayjs@1.10.4";
+import dayjs from "npm:dayjs";
 import { resolvePathPatternWithUrl } from "rs-core/PathPattern.ts";
 import { Url } from "rs-core/Url.ts";
 import { upTo, after, upToLast, afterLast } from "rs-core/utility/utility.ts";

@@ -10,8 +10,9 @@ import { IChord } from "./IChord.ts";
 import { after, deepEqualIfPresent, mergeDeep, upTo } from "rs-core/utility/utility.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
-import { StateClass, nullState, BaseStateClass, BaseContext } from "rs-core/ServiceContext.ts";
+import { StateClass, nullState, BaseStateClass, BaseContext, SimpleServiceContext } from "rs-core/ServiceContext.ts";
 import { applyServiceConfigTemplate } from "./Modules.ts";
+import { getStateDataAdapter } from "./getStateDataAdapter.ts";
 
 export interface IServicesConfig {
     services: Record<string, IServiceConfig>;
@@ -44,12 +45,18 @@ export class Tenant {
     _state: Record<string, BaseStateClass> = {};
     readyBasePaths: string[] = [];
 
-    state = (basePath: string) => async <T extends BaseStateClass>(cons: StateClass<T>, context: BaseContext, config: unknown) => {
+    state = (basePath: string) => async <T extends BaseStateClass>(cons: StateClass<T>, context: SimpleServiceContext, config: unknown) => {
         const stateKey = `${basePath}#${cons.name}`;
         if (this._state[stateKey] === undefined) {
-            const newState = new cons();
-            this._state[stateKey] = newState;
-            await newState.load(context, config);
+            try {
+                const stateAdapter = await getStateDataAdapter(context);
+                const newState = new cons(context, stateAdapter);
+                this._state[stateKey] = newState;
+            } catch (e) {
+                console.error(e);
+                throw e;
+            }
+            await this._state[stateKey].load(context, config);
         }
         if (!(this._state[stateKey] instanceof cons)) throw new Error('Changed type of state attached to service');
         return this._state[stateKey] as T;
@@ -206,8 +213,9 @@ export class Tenant {
         await this.serviceFactory.loadAdapterManifests();
 
         // init state for the services here
-        await Promise.all(Object.values(newServicesConfig.services).map(config => {
-            const context = makeServiceContext(this.name, this.state(config.basePath));
+        await Promise.all(Object.values(newServicesConfig.services).map(async config => {
+            let context = makeServiceContext(this.name, this.state(config.basePath));
+            context = await this.serviceFactory.extendContextWithAdapter(config, context);
             return this.serviceFactory.initService(config, context, oldTenant?._state[config.basePath])
                 .catch(reason => {
                     throw new Error(`Service ${config.name} failed to initialize: ${reason}`);

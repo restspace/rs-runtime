@@ -39,6 +39,7 @@
         "wipe-cache": "rmdir /s /q %LOCALAPPDATA%\\deno"
     },
     "dependencies": {
+        "dayjs": "^1.11.13",
         "esbuild-plugin-inline-worker": "^0.1.1",
         "mongodb": "^6.12.0"
     }

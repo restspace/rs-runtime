@@ -1,10 +1,10 @@
 import { Service } from "rs-core/Service.ts";
 import { ITriggerServiceConfig } from "rs-core/IServiceConfig.ts";
 import { BaseStateClass, MultiStateClass, SimpleServiceContext } from "rs-core/ServiceContext.ts";
-import dayjs from "https://cdn.skypack.dev/dayjs@1.10.4";
-import duration from "https://cdn.skypack.dev/dayjs@1.10.4/plugin/duration";
+import dayjs from "npm:dayjs";
+import duration from "npm:dayjs/plugin/duration.js";
 import { Message } from "rs-core/Message.ts";
-import { DirectorySpec, OperationSpec, ViewSpec } from "rs-core/DirDescriptor.ts";
+import { OperationSpec, ViewSpec } from "rs-core/DirDescriptor.ts";
 import { Url } from "rs-core/Url.ts";
 import { pathCombine } from "rs-core/utility/utility.ts";
 import { DirDescriptor } from "rs-core/DirDescriptor.ts";
@@ -28,8 +28,8 @@ const validateSpec = (spec: ITimerConfig) => {
     const repeatMs = dayjs.duration(spec.repeatDuration).asMilliseconds();
     if (isNaN(repeatMs)) errors.push('Invalid repeatDuration: ' + spec.repeatDuration);
     if (spec.repeatUntil) {
-        const repeatUntil = dayjs(spec.repeatUntil).asMilliseconds();
-        if (isNaN(repeatUntil)) errors.push('Invalid repeatUntil ' + spec.repeatUntil);
+        const repeatUntil = dayjs(spec.repeatUntil);
+        if (!repeatUntil.isValid()) errors.push('Invalid repeatUntil ' + spec.repeatUntil);
     }
     return errors.join('; ');
 }
@@ -40,7 +40,6 @@ class TimerState extends BaseStateClass {
     count = 0;
     timeout?: number;
     _config?: ITimerConfig;
-    context?: SimpleServiceContext;
 
     get config() {
         return this._config;
@@ -69,7 +68,7 @@ class TimerState extends BaseStateClass {
         return nextRun;
     }
 
-    private async runLoop(context: SimpleServiceContext) {
+    private async runLoop() {
         let nextRun = this.getNextRun(dayjs(), this._config!);
         if (!this._config!.autoStart) this.paused = true;
         while (!this.ended) {
@@ -82,9 +81,9 @@ class TimerState extends BaseStateClass {
                     name: this._config!.name,
                     count: this.count++
                 }
-                const msg = new Message(this._config!.triggerUrl, context, "POST").setDataJson(data);
-                const resp = await context.makeRequest(msg);
-                if (!resp.ok) context.logger.error(`Timer ${this._config!.name} trigger failed: ${resp.status} ${await resp.data?.asString()}`)
+                const msg = new Message(this._config!.triggerUrl, this.context, "POST").setDataJson(data);
+                const resp = await this.context.makeRequest(msg);
+                if (!resp.ok) this.context.logger.error(`Timer ${this._config!.name} trigger failed: ${resp.status} ${await resp.data?.asString()}`)
             }
             nextRun = this.getNextRun(nextRun, this._config!);
         }
@@ -102,13 +101,13 @@ class TimerState extends BaseStateClass {
         this.ended = false;
         this.paused = false;
         this.count = 0;
-        this.runLoop(this.context!);
+        this.runLoop();
     }
 
     override load(context: SimpleServiceContext, config: ITimerConfig) {
         this._config = config;
         this.context = context;
-        this.runLoop(context);
+        this.runLoop();
         return Promise.resolve();
     }
 

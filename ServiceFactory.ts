@@ -151,6 +151,29 @@ export class ServiceFactory {
         return infraName;
     }
 
+    async extendContextWithAdapter(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>) {
+        let adapter: IAdapter | undefined = undefined;
+        if (serviceConfig.adapterSource || serviceConfig.infraName) {
+            const adapterConfig = { ...serviceConfig.adapterConfig };
+            let adapterSource = serviceConfig.adapterSource;
+            if (serviceConfig.infraName) {
+                const infra = config.server.infra[serviceConfig.infraName];
+                adapterSource = infra.adapterSource;
+                Object.assign(adapterConfig, infra);
+            }
+
+            const canonicalAdapterSource = config.canonicaliseUrl(adapterSource as string, this.tenant, this.primaryDomain);
+            const validator = config.modules.validateAdapterConfig[canonicalAdapterSource];
+            if (!validator(adapterConfig as any)) {
+                throw new Error(`failed to validate adapter config for service ${serviceConfig.name}: ${getErrors(validator)}`);
+            }
+
+            adapter = await config.modules.getAdapter(adapterSource as string, serviceContext, adapterConfig, this.primaryDomain);
+            return { ...serviceContext, adapter } as ServiceContext<IAdapter>;
+        }
+        return serviceContext;
+    }
+
     async initService(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>, oldState?: BaseStateClass): Promise<void> {
         const service = await config.modules.getService(serviceConfig.source, this.tenant, this.primaryDomain);
         const manifest = this.serviceManifestsBySource[serviceConfig.source];
@@ -183,25 +206,7 @@ export class ServiceFactory {
             throw new Error(`failed to validate config for service ${serviceName}: ${getErrors(configValidator)}`);
         }
 
-        let adapter: IAdapter | undefined = undefined;
-        if (serviceConfig.adapterSource || serviceConfig.infraName) {
-            const adapterConfig = { ...serviceConfig.adapterConfig };
-            let adapterSource = serviceConfig.adapterSource;
-            if (serviceConfig.infraName) {
-                const infra = config.server.infra[serviceConfig.infraName];
-                adapterSource = infra.adapterSource;
-                Object.assign(adapterConfig, infra);
-            }
-
-            const canonicalAdapterSource = config.canonicaliseUrl(adapterSource as string, this.tenant, this.primaryDomain);
-            const validator = config.modules.validateAdapterConfig[canonicalAdapterSource];
-            if (!validator(adapterConfig as any)) {
-                throw new Error(`failed to validate adapter config for service ${serviceConfig.name}: ${getErrors(validator)}`);
-            }
-
-            adapter = await config.modules.getAdapter(adapterSource as string, serviceContext, adapterConfig, this.primaryDomain);
-            serviceContext = { ...serviceContext, adapter } as ServiceContext<IAdapter>;
-        }
+        serviceContext = await this.extendContextWithAdapter(serviceConfig, serviceContext);
         const serviceWrapper = new ServiceWrapper(service);
         const sourceServiceFunc = source === Source.External || source === Source.Outer ? serviceWrapper.external(source) : serviceWrapper.internal;
 

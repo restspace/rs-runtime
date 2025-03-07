@@ -39,6 +39,8 @@ import MongoDbDataAdapter from "./adapter/MongoDbDataAdapter.ts";
 import MongoDbDataAdapterManifest from "./adapter/MongoDbDataAdapter.ram.js";
 import MongoDbQueryAdapter from "./adapter/MongoDbQueryAdapter.ts";
 import MongoDbQueryAdapterManifest from "./adapter/MongoDbQueryAdapter.ram.js";
+import IMAPAdapter from "./adapter/IMAPAdapter.ts";
+import IMAPAdapterManifest from "./adapter/IMAPAdapter.ram.js";
 
 import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
@@ -95,6 +97,8 @@ import ServerSideEvents from "./services/server-side-events.ts";
 import serverSideEventsManifest from "./services/server-side-events.rsm.js";
 import StoreFromQuery from "./services/store-from-query.ts";
 import StoreFromQueryManifest from "./services/store-from-query.rsm.js";
+import EmailTrigger from "./services/emailTrigger.ts";
+import EmailTriggerManifest from "./services/emailTrigger.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -208,6 +212,7 @@ export class Modules {
             "./adapter/BinanceProxyAdapter.ts": BinanceProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/MongoDbDataAdapter.ts": MongoDbDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
             "./adapter/MongoDbQueryAdapter.ts": MongoDbQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
+            "./adapter/IMAPAdapter.ts": IMAPAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
         };
         this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
         this.adapterManifests = {
@@ -226,6 +231,7 @@ export class Modules {
             "./adapter/BinanceProxyAdapter.ram.json": BinanceProxyAdapterManifest,
             "./adapter/MongoDbDataAdapter.ram.json": MongoDbDataAdapterManifest,
             "./adapter/MongoDbQueryAdapter.ram.json": MongoDbQueryAdapterManifest,
+            "./adapter/IMAPAdapter.ram.json": IMAPAdapterManifest,
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
 
@@ -261,6 +267,7 @@ export class Modules {
             "./services/timer-store.ts": TimerStore as unknown as Service<IAdapter, IServiceConfig>,
             "./services/server-side-events.ts": ServerSideEvents as unknown as Service<IAdapter, IServiceConfig>,
             "./services/store-from-query.ts": StoreFromQuery as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/emailTrigger.ts": EmailTrigger as unknown as Service<IAdapter, IServiceConfig>,
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -294,6 +301,7 @@ export class Modules {
             "./services/timer-store.rsm.json": TimerStoreManifest as unknown as IServiceManifest,
             "./services/server-side-events.rsm.json": serverSideEventsManifest as unknown as IServiceManifest,
             "./services/store-from-query.rsm.json": StoreFromQueryManifest as unknown as IServiceManifest,
+            "./services/emailTrigger.rsm.json": EmailTriggerManifest as unknown as IServiceManifest,
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 

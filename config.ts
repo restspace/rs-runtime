@@ -19,6 +19,7 @@ export interface IServerConfig {
     domainMap: { [domain: string]: string };
     infra: { [ name: string ]: Infra };
     configStore: string;
+    stateStore: string;
     incomingAlwaysHttps?: boolean;
     setServerCors(msg: Message): Message;
 }
