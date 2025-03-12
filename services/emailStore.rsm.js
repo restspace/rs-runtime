@@ -1,9 +1,9 @@
 export default {
-    "name": "Email Trigger Service",
-    "description": "Polls email server to find new emails and triggers an action for each one",
-    "moduleUrl": "./services/emailTrigger.ts",
-    "apis": [ ],
-    "adapterInterface": "IEmailFetchAdapter",
+    "name": "Email Store Service",
+    "description": "Polls email server to find new emails and triggers an action for each one, manages folders of the email server",
+    "moduleUrl": "./services/emailStore.ts",
+    "apis": [ "operation" ],
+    "adapterInterface": "IEmailStoreAdapter",
     "configSchema": {
         "type": "object",
         "properties": {

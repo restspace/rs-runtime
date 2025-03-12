@@ -97,8 +97,8 @@ import ServerSideEvents from "./services/server-side-events.ts";
 import serverSideEventsManifest from "./services/server-side-events.rsm.js";
 import StoreFromQuery from "./services/store-from-query.ts";
 import StoreFromQueryManifest from "./services/store-from-query.rsm.js";
-import EmailTrigger from "./services/emailTrigger.ts";
-import EmailTriggerManifest from "./services/emailTrigger.rsm.js";
+import EmailStore from "./services/emailStore.ts";
+import EmailStoreManifest from "./services/emailStore.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -267,7 +267,7 @@ export class Modules {
             "./services/timer-store.ts": TimerStore as unknown as Service<IAdapter, IServiceConfig>,
             "./services/server-side-events.ts": ServerSideEvents as unknown as Service<IAdapter, IServiceConfig>,
             "./services/store-from-query.ts": StoreFromQuery as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/emailTrigger.ts": EmailTrigger as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/emailStore.ts": EmailStore as unknown as Service<IAdapter, IServiceConfig>,
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -301,7 +301,7 @@ export class Modules {
             "./services/timer-store.rsm.json": TimerStoreManifest as unknown as IServiceManifest,
             "./services/server-side-events.rsm.json": serverSideEventsManifest as unknown as IServiceManifest,
             "./services/store-from-query.rsm.json": StoreFromQueryManifest as unknown as IServiceManifest,
-            "./services/emailTrigger.rsm.json": EmailTriggerManifest as unknown as IServiceManifest,
+            "./services/emailStore.rsm.json": EmailStoreManifest as unknown as IServiceManifest,
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 

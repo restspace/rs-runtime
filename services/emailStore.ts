@@ -1,26 +1,26 @@
 import { Service } from "rs-core/Service.ts";
 import { ITriggerServiceConfig } from "rs-core/IServiceConfig.ts";
-import { IEmailFetchAdapter } from "rs-core/adapter/IEmailFetchAdapter.ts";
+import { Email, emailSchema, IEmailStoreAdapter } from "../../rs-core/adapter/IEmailStoreAdapter.ts";
 import { ServiceContext, TimedActionState } from "rs-core/ServiceContext.ts";
 import { ITimerConfig } from "rs-core/ServiceContext.ts";
 import dayjs from "npm:dayjs";
 import { Message } from "rs-core/Message.ts";
 
-interface EmailTriggerConfig extends ITriggerServiceConfig, ITimerConfig {
+interface EmailStoreConfig extends ITriggerServiceConfig, ITimerConfig {
     pollIntervalSeconds: number;
 }
 
-interface EmailTriggerStateData {
+interface EmailStoreStateData {
     fetchFromDate: string;
     excludeIds?: number[];
 }
 
-class EmailTriggerState extends TimedActionState<ServiceContext<IEmailFetchAdapter>> {
-    override async action(context: ServiceContext<IEmailFetchAdapter>, config: EmailTriggerConfig) {
-        const stateData = await this.getStore('state-data') as unknown as EmailTriggerStateData;
+class EmailStoreState extends TimedActionState<ServiceContext<IEmailStoreAdapter>> {
+    override async action(context: ServiceContext<IEmailStoreAdapter>, config: EmailStoreConfig) {
+        const stateData = await this.getStore('state-data') as unknown as EmailStoreStateData;
         const fetchFromDate = typeof stateData !== 'number'
             ? new Date(stateData.fetchFromDate)
-            : dayjs().subtract(2, 'day').startOf('day').toDate();
+            : dayjs().subtract(7, 'day').startOf('day').toDate();
         const excludeIds = stateData.excludeIds || [];
 
         let mostRecentDate = fetchFromDate;
@@ -28,7 +28,7 @@ class EmailTriggerState extends TimedActionState<ServiceContext<IEmailFetchAdapt
         let mostRecentIds = excludeIds;
 
         try {
-            const emailIterator = (context.adapter as IEmailFetchAdapter).fetchEmails(fetchFromDate, undefined, excludeIds);
+            const emailIterator = (context.adapter as IEmailStoreAdapter).fetchEmails(fetchFromDate, undefined, excludeIds);
             
             while (true) {
                 const { value: email, done } = await emailIterator.next();
@@ -63,10 +63,35 @@ class EmailTriggerState extends TimedActionState<ServiceContext<IEmailFetchAdapt
     }
 }
 
-const service = new Service<IEmailFetchAdapter, EmailTriggerConfig>();
+const service = new Service<IEmailStoreAdapter, EmailStoreConfig>();
 
 service.initializer(async (context, config) => {
-	await context.state(EmailTriggerState, context, config);
+	await context.state(EmailStoreState, context, config);
 });
+
+service.post(async (msg, context) => {
+    if (msg.url.servicePathElements.length !== 1) {
+        return msg.setStatus(400, "PUT must be in form /<folder>/");
+    }
+    const folder = msg.url.servicePathElements[0];
+
+    const email = await msg.data?.asJson() as Email;
+    if (!email) {
+        return msg.setStatus(400, "Missing email body");
+    }
+    if (!email.charset) {
+        email.charset = 'utf-8';
+    }
+    if (typeof email.date === 'string') {
+        email.date = new Date(email.date);
+    }
+
+    const result = await context.adapter.writeEmailToFolder(email, folder);
+    if (result !== 0) {
+        return msg.setStatus(result, "Failed to write email to folder");
+    }   
+
+    return msg;
+}, emailSchema);
 
 export default service;
