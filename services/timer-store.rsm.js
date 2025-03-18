@@ -21,7 +21,8 @@ export default {
         "required": [ "store" ]
     },
     "postPipeline": [
-        "if (method !== 'POST' && mime !== 'inode/directory+json' && status !== 200) $METHOD *store/$*"
+        "if (method !== 'POST' && mime !== 'inode/directory+json' && status !== 200) $METHOD *store/$*",
+        "/lib/delocalise-store-location"
     ],
     "privateServices": {
         "store": {

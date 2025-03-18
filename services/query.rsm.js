@@ -24,7 +24,7 @@ export default {
         },
         "required": [ "outputMime", "store" ]
     },
-    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*" ],
+    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*", "/lib/delocalise-store-location" ],
     "privateServices": {
         "store": {
             "name": "'Query Store'",

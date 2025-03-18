@@ -23,7 +23,7 @@ export default {
         },
         "required": [ "store" ]
     },
-    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*" ],
+    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*", "/lib/delocalise-store-location" ],
     "privateServices": {
         "store": {
             "name": "'Scraper Spec Store'",

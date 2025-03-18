@@ -22,7 +22,8 @@ service.postPath('/to-text', async msg => {
         return msg.setData(typeof json === 'string' ? json : JSON.stringify(json), "text/plain");
     }
     if (!isText(msg.data.mimeType)) {
-        const arry = new Uint8Array((await msg.data.asArrayBuffer())!);
+        const arry = await msg.data.asArrayBuffer();
+        if (!arry) return msg;
         return msg.setData(encode(arry), "text/plain");
     }
     return msg;
@@ -30,13 +31,16 @@ service.postPath('/to-text', async msg => {
 
 service.postPath('/to-b64', async msg => {
     if (!msg.data) return msg;
-    const arry = new Uint8Array((await msg.data.asArrayBuffer())!);
+    const arry = await msg.data.asArrayBuffer();
+    if (!arry) return msg;
     return msg.setData(encode(arry), "text/plain");
 });
 service.postPath('/from-b64', async msg => {
     if (!msg.data) return msg;
     const str = new TextDecoder().decode((await msg.data.asArrayBuffer())!);
-    return msg.setData(decode(str).buffer, msg.data.mimeType);
+    const buffer = decode(str);
+    const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer as ArrayBuffer;
+    return msg.setData(arrayBuffer, msg.data.mimeType);
 });
 service.postPath('/selector-schema', async msg => {
     if (!msg.data) return msg;
@@ -73,9 +77,16 @@ service.postPath('/reload-referer', msg => {
     msg.exitConditionalMode();
     return msg.setHeader('location', location).setStatus(303);
 });
+service.postPath('/delocalise-store-location', msg => {
+    const location = msg.getHeader('location');
+    if (!location) return Promise.resolve(msg);
+    const url = new Url(location);
+    url.servicePathElements = url.servicePathElements.filter(e => !e.startsWith('*'))
+    return msg.setHeader('location', url.toString());
+});
 service.postPath('/log/body', async (msg, context) => {
-    const json = await msg.data?.asJson();
-    context.logger.info('BODY ' + JSON.stringify(json || {}));
+    const str = await msg.data?.asString();
+    context.logger.info('BODY ' + str?.substring(0, 1000));
     return msg;
 });
 service.postPath('/log/headers', (msg, context) => {

@@ -9,7 +9,8 @@ export default {
             "port": { "type": "number", "description": "IMAP server port" },
             "secure": { "type": "boolean", "description": "Whether to use secure (TLS) connection" },
             "user": { "type": "string", "description": "IMAP server user" },
-            "password": { "type": "string", "description": "IMAP server password" }
+            "password": { "type": "string", "description": "IMAP server password" },
+            "preemptiveFetch": { "type": "boolean", "description": "Fetch new emails faster where SEARCHes are cached" }
         }
     },
     "adapterInterfaces": [ "IEmailFetchAdapter" ]

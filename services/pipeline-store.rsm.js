@@ -20,7 +20,7 @@ export default {
         },
         "required": [ "store" ]
     },
-    "postPipeline": [ "if ((isDirectory || (isManage && method !== 'POST')) && status !== 200) $METHOD *store/$*" ],
+    "postPipeline": [ "if ((isDirectory || (isManage && method !== 'POST')) && status !== 200) $METHOD *store/$*", "/lib/delocalise-store-location" ],
     "privateServices": {
         "store": {
             "name": "'Pipeline Store'",

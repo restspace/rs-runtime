@@ -192,7 +192,7 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
         return msg
             .setDateModified((details as ItemFile).dateModified)
             .setHeader('Location', location)
-            .setStatus(details.status === "none" ? 201 : 200, details.status === "none" ? "Created" : "OK");
+            .setStatus(details.status === "none" ? 201 : 200, msg.method === "PUT");
     }
 }
 

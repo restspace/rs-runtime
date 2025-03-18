@@ -28,7 +28,7 @@ export default {
     "defaults": {
         "metadataProperty": "$message"
     },
-    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*" ],
+    "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*", "/lib/delocalise-store-location" ],
     "privateServices": {
         "store": {
             "name": "'Template Store'",

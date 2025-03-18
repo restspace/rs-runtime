@@ -161,17 +161,17 @@ const write = async (
         const isDirectory = (details.status === "directory" || (details.status === "none" && msg.url.isDirectory));
         if (isDirectory) {
             msg.data = undefined;
-            return msg.setStatus(403, "Forbidden: can't over.writeKey directory");
+            return msg.setStatus(403, "Forbidden: can't overwrite directory");
         } 
         // msg.data.copy() tees the stream
         const resCode = await adapter.writeKey('', key, msg.data.copy());
-        msg.data = undefined;
+        if (msg.method === "PUT") msg.data = undefined;
         if (resCode !== 200) return msg.setStatus(resCode);
     
         return msg
             .setDateModified((details as ItemFile).dateModified)
             .setHeader('Location', msg.url.toString())
-            .setStatus(details.status === "none" ? 201 : 200, details.status === "none" ? "Created" : "OK");
+            .setStatus(details.status === "none" ? 201 : 200, msg.method === "PUT");
     }
 }
 
