@@ -48,7 +48,7 @@ export class AuthUser implements IAuthUser {
             // for instance this will let a user access their own record
             const pathMatches = reqRoles
                 .filter(r => r.startsWith('{') && r.endsWith('}'))
-                .map(r => (this as Record<string, any>)[r.slice(1, -1)].toString())
+                .map(r => (this as Record<string, any>)[r.slice(1, -1)]?.toString())
                 .filter(m => !!m);
             userRoles = userRoles.filter(r => !r.startsWith('{'));
             const pathEls = slashTrim(path).split('/');
