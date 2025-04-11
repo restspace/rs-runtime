@@ -5,7 +5,7 @@ import { PathInfo } from "rs-core/DirDescriptor.ts";
 import { ItemMetadata, ItemNone } from "rs-core/ItemMetadata.ts";
 import { Message } from "rs-core/Message.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
-import { AdapterContext } from "rs-core/ServiceContext.ts";
+import { AdapterContext, contextLoggerArgs } from "rs-core/ServiceContext.ts";
 
 // designed for compatibility with Elasticsearch 8.4
 
@@ -249,9 +249,11 @@ export default class ElasticDataAdapter implements IDataAdapter, ISchemaAdapter 
 	async writeSchema(dataset: string, schema: Record<string, unknown>): Promise<number> {
 		dataset = this.normaliseIndexName(dataset);
 		const params: Record<string, unknown> = { mappings: schemaToMapping(schema) };
+		delete (params.mappings as any)['type']; // not allowed from ES 7.x
 		if (schema['es_settings']) {
 			params.es_settings = schema['es_settings'];
 		}
+		this.context.logger.info(`Writing mapping for ${dataset}: ${JSON.stringify(params.mappings)}`, ...contextLoggerArgs(this.context));
 		const msg = new Message(`/${dataset}`, this.context.tenant, "GET", null);
 		const msgCheck = await this.requestElastic(msg);
 		const setMappingMsg = new Message(`/${dataset}/_mapping`, this.context.tenant, "PUT", null);

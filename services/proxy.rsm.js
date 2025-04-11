@@ -2,6 +2,6 @@ export default {
     "name": "Proxy Service",
     "description": "Forwards requests with server defined authentication or urls",
     "moduleUrl": "./services/proxy.ts",
-    "apis": [ "proxy" ],
+    "apis": [ "proxy", "transform" ],
     "adapterInterface": "IProxyAdapter"
 }
