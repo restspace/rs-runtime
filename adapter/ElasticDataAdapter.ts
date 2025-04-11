@@ -50,11 +50,15 @@ export const schemaToMapping = (schema: any): any => {
 			break;
 		case "object":
 			submapping = {
+				type: "object",
 				properties: Object.fromEntries(
-					Object.entries(schema.properties)
+					Object.entries(schema.properties || {})
 						.map(([k, subschema]) => [ k, schemaToMapping(subschema) ])
 				)
 			};
+			if (!schema.properties) {
+				delete submapping.properties;
+			}
 			break;
 		case "array":
 			if (schema.items.type !== "object") {

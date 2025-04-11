@@ -107,6 +107,7 @@ export class ServiceWrapper {
             data.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE');
             data.setHeader('Access-Control-Allow-Credentials', 'true');
             data.setHeader('Access-Control-Expose-Headers', 'X-Restspace-Service,Location,ETag');
+            data.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         }
         return data;
     }
@@ -152,7 +153,8 @@ export class ServiceWrapper {
         const cacheControl: string[] = [];
         cacheControl.push(isPublic ? 'public' : 'private');
         if (!caching.cache) {
-            cacheControl.push('no-cache');
+            cacheControl.push(caching.sendETag ? 'max-age=0' : 'no-cache');
+            if (caching.sendETag) cacheControl.push('must-revalidate');
             msg.setHeader("Pragma", "no-cache");
         } else {
             msg.removeHeader("Pragma");
