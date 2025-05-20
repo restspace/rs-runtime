@@ -35,41 +35,46 @@ class FileLogReaderAdapter implements ILogReaderAdapter {
             toRead = blockSize;
             blocks--;
         }
-        file.seek((blocks - 1) * blockSize, Deno.SeekMode.Start);
         let overflow = '';
         while (count > 0 && blocks > 0) {
-            // read at least toRead bytes
-            let nRead = await file.read(buf) as number;
+            /* ---------- read the current block ---------- */
+            let nRead = await file.read(buf);
+            if (nRead === null || nRead === 0) break;
+
+            /* fill the rest of the buffer if we started with a partial block */
             while (nRead < toRead) {
                 const nThisRead = await file.read(buf.subarray(nRead));
-                if (nThisRead == 0) yield "file.read === 0";
-                if (!nThisRead) break;
+                if (nThisRead === null || nThisRead === 0) break;
                 nRead += nThisRead;
             }
 
+            /* ---------- parse the block ---------- */
             const str = decoder.decode(buf.subarray(0, nRead));
             let idx = str.length - 1;
             while (idx > 0 && count > 0) {
                 let newIdx = str.lastIndexOf("\n", idx);
-                // part of preceding log line if it doesn't start with a log level
                 while (newIdx >= 0 && !"CEWDI".includes(str[newIdx + 1])) {
                     newIdx = str.lastIndexOf("\n", newIdx - 1);
                 }
+
                 if (newIdx >= 0) {
                     const line = new LogLine(str.substring(newIdx + 1, idx + 1) + overflow);
-                    // filter logs to current tenant
                     if (line.tenant === this.context.tenant && (!filter || filter(line.line))) {
                         yield line.line;
                         count--;
                     }
-                    overflow = '';
+                    overflow = "";
                 } else {
                     overflow = str.substring(0, idx + 1);
-                    blocks--;
-                    if (blocks > 0) file.seek((blocks - 1) * blockSize, Deno.SeekMode.Start);
-                    toRead = blockSize;
                 }
                 idx = newIdx - 1;
+            }
+
+            /* ---------- move to the previous block ---------- */
+            blocks--;
+            if (blocks > 0) {
+                file.seek((blocks - 1) * blockSize, Deno.SeekMode.Start);
+                toRead = blockSize;           // from now on we always read full blocks
             }
         }
 
