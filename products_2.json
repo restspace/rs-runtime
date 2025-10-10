@@ -1,0 +1,184 @@
+{
+  "type": "object",
+  "properties": {
+    "attachOrientation": {
+      "type": "string",
+      "enum": ["up", "down", "horizontal"]
+    },
+    "autocomplete": {
+      "type": "string",
+      "es_type": "completion",
+      "editor": "textarea"
+    },
+    "brand": {
+      "type": "string",
+      "search": "textual"
+    },
+    "categoryPath": {
+      "type": "string"
+    },
+    "categorySpecific": {
+      "type": "object",
+      "es_type": "flattened"
+    },
+    "collection": {
+      "type": "string",
+      "search": "textual"
+    },
+    "constrainDirection": {
+        "type": "string",
+        "enum": ["up", "down"]
+    },
+    "currency": {
+        "type": "string",
+        "enum": ["GBP", "USD", "EUR"]
+    },
+    "depthmm": {
+      "type": "number"
+    },
+    "description": {
+      "type": "string",
+      "search": "textual"
+    },
+    "diametermm": {
+      "type": "number"
+    },
+    "displayName": {
+      "type": "string",
+      "search": "textual"
+    },
+    "finish": {
+      "type": "string",
+      "search": "textual"
+    },
+    "heightmm": {
+      "type": "number"
+    },
+    "id": {
+      "type": "string"
+    },
+    "imageVector": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "es_type": "dense_vector",
+      "es_dims": 1408,
+      "es_index": true,
+      "es_similarity": "l2_norm",
+      "editor": "none"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "editor": "none"
+    },
+    "itemCost": {
+      "type": "number"
+    },
+    "itemCostMin": {
+      "type": "number",
+      "editor": "none"
+    },
+    "itemUnits": {
+      "type": "number"
+    },
+    "link": {
+      "type": "string"
+    },
+    "mainImage": {
+      "type": "string"
+    },
+    "material": {
+      "type": "string",
+      "search": "textual"
+    },
+    "modelUrl": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "search": "textual"
+    },
+    "sku": {
+      "type": "string"
+    },
+    "style": {
+      "type": "string",
+      "search": "textual"
+    },
+    "supplier": {
+      "type": "string",
+      "search": "textual"
+    },
+    "supplierCode": {
+      "type": "string"
+    },
+    "technicalDrawings": {
+      "title": "Technical\nDrawings",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "technicalDrawing": {
+            "type": "string",
+            "editor": "upload"
+          },
+          "drawingName": {
+            "type": "string"
+          },
+          "drawingDescription1": {
+            "type": "string"
+          },
+          "drawingDescription2": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "textureXRepeatMm": {
+        "type": "number",
+        "es_type": "long"
+    },
+    "textVector": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "es_type": "dense_vector",
+      "es_dims": 1408,
+      "es_index": true,
+      "es_similarity": "cosine",
+      "editor": "none"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "unitCost": {
+        "type": "number",
+        "es_type": "float",
+        "editor": "none"
+    },
+    "unitPrice": {
+        "type": "number",
+        "es_type": "long",
+        "editor": "none"
+    },
+    "usage": {
+      "type": "string"
+    },
+    "volumel": {
+      "type": "number"
+    },
+    "weightkg": {
+      "type": "number"
+    },
+    "widthmm": {
+      "type": "number"
+    }
+  },
+  "required": ["id", "name", "displayName", "supplier", "categoryPath"],
+  "pathPattern": "${id}"
+}
