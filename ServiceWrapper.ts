@@ -100,10 +100,21 @@ export class ServiceWrapper {
     private setCors(data: Message, origin: string) {
         if (origin) {
             data.setHeader('Access-Control-Allow-Origin', origin);
-            data.setHeader(
-                'Access-Control-Allow-Headers',
-                'Origin,X-Requested-With,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Restspace-Request-Mode'
-            );
+            const defaultAllowHeaders = 'Origin,X-Requested-With,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Restspace-Request-Mode,X-X';
+            const existingAllowHeaders = data.getHeader('Access-Control-Allow-Headers') || '';
+            config.logger.info(`existingAllowHeaders: ${existingAllowHeaders}`);
+            const defaultHeaders = defaultAllowHeaders.split(',').map(h => h.trim()).filter(h => h.length > 0);
+            const existingHeaders = existingAllowHeaders.split(',').map(h => h.trim()).filter(h => h.length > 0);
+            const seen = new Set<string>();
+            const merged: string[] = [];
+            for (const headerName of [ ...defaultHeaders, ...existingHeaders ]) {
+                const key = headerName.toLowerCase();
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    merged.push(headerName);
+                }
+            }
+            data.setHeader('Access-Control-Allow-Headers', merged.join(','));
             data.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE');
             data.setHeader('Access-Control-Allow-Credentials', 'true');
             data.setHeader('Access-Control-Expose-Headers', 'X-Restspace-Service,Location,ETag');
