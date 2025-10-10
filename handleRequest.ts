@@ -215,12 +215,22 @@ export const handleOutgoingRequestWithPrivateServices = (basePath: string, priva
             const serviceConfig = privateServices[privateServiceName.substring(1)];
             if (!serviceConfig) return msg.setStatus(404, 'Not found');
             
-            // url received by private service on msg is made absolute, with basePath set correctly
-            // this enables the private service to know from where it was called
-            const newUrl = new Url(basePath).follow(msg.url);
+            // url received by private service on msg is made absolute, with basePath and *service segment set correctly
+            // Build a new URL: [ basePathElements..., *service, ...subPath ]
+            const baseParts = slashTrim(basePath).split('/').filter(s => s);
+            const subPathEls = msg.url.pathElements.slice(1); // drop the *service segment
+            const isDir = subPathEls[subPathEls.length - 1] === '';
+            const newUrl = new Url();
             newUrl.scheme = msg.url.scheme;
             newUrl.domain = msg.url.domain;
-            newUrl.basePathElements = slashTrim(basePath).split('/').concat([ privateServiceName ]);
+            newUrl.pathElements = baseParts.concat([ privateServiceName, ...subPathEls.filter(el => el !== '') ]);
+            newUrl.basePathElements = baseParts.concat([ privateServiceName ]);
+            if (isDir) {
+                // Represent directory by ensuring a trailing slash element
+                if (newUrl.pathElements[newUrl.pathElements.length - 1] !== '') {
+                    newUrl.pathElements.push('');
+                }
+            }
             msg.url = newUrl;
             const tenant = config.tenants[tenantName || 'main'];
             const messageFunction = await tenant.getMessageFunctionForService(serviceConfig, Source.Internal, prePost);

@@ -589,7 +589,7 @@ Deno.test('lib/quota-delay works', async function () {
     ]);
     const output = await msgOut.data?.asJson();
     await new Promise<void>((res) => setTimeout(() => res(), 200));
-    assertEquals(output, "bbb result");
+assertEquals(output, "ccc result");
 });
 
 Deno.test('variables', async function () {

@@ -9,7 +9,6 @@ export default {
     "type": "object",
     "properties": {
       "concurrency": { "type": "number", "description": "Max number of concurrent deliveries" },
-      "perTargetTimeoutMs": { "type": "number", "description": "Per-target timeout in ms" },
       "retryCount": { "type": "number", "description": "Retries per target on failure/timeouts" },
       "store": {
         "type": "object",
@@ -22,7 +21,7 @@ export default {
         }
       }
     },
-    "required": [ "perTargetTimeoutMs", "store" ]
+    "required": [ "store" ]
   },
   "postPipeline": [ "if (method !== 'POST') $METHOD *store/$*", "/lib/delocalise-store-location" ],
   "privateServices": {

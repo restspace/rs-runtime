@@ -49,8 +49,7 @@ export const schemaToMapping = (schema: any): any => {
 			submapping = { type: "boolean" };
 			break;
 		case "object":
-			submapping = {
-				type: "object",
+	submapping = {
 				properties: Object.fromEntries(
 					Object.entries(schema.properties || {})
 						.map(([k, subschema]) => [ k, schemaToMapping(subschema) ])

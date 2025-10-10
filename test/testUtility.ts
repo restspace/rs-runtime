@@ -4,6 +4,7 @@ import { handleIncomingRequest } from "../handleRequest.ts";
 import { assert } from "std/testing/asserts.ts";
 import { config as sysConfig } from "../config.ts";
 import { AdapterContext, nullState } from "rs-core/ServiceContext.ts";
+import { MessageBody } from "rs-core/MessageBody.ts";
 import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 
 export const utilsForHost = (host: string) => ({
@@ -47,6 +48,43 @@ export const makeAdapterContext = (tenant: string, getAdapter?: <T extends IAdap
 		makeRequest: msg => msg.requestExternal(),
 		runPipeline: (msg) => Promise.resolve(msg),
 		logger: sysConfig.logger,
+		baseLogger: sysConfig.logger,
+		verifyResponse: async (msg: Message, mimeType?: string) => {
+			if (!msg.data) {
+				sysConfig.logger.error('No data in response');
+				return 502;
+			}
+			if (!msg.ok) {
+				const statusText = await msg.data.asString();
+				sysConfig.logger.error(`Response status ${msg.status} ${statusText}`);
+				return 502;
+			}
+			if (mimeType && !msg.data.mimeType.startsWith(mimeType)) {
+				sysConfig.logger.error(`Response has wrong mime type ${msg.data.mimeType}`);
+				return 502;
+			}
+			return msg.data;
+		},
+		verifyJsonResponse: async (msg: Message, checkPath?: string) => {
+			const data = await (async () => await (async () => {
+				if (!msg.data) return 502;
+				if (!msg.ok) return 502;
+				return msg.data;
+			})())();
+			if (!(data instanceof MessageBody)) return 502;
+			let json: any;
+			try {
+				json = await data.asJson();
+			} catch (err) {
+				sysConfig.logger.error(`Response is not valid JSON: ${err}`);
+				return 502;
+			}
+			if (checkPath) {
+				const value = (json as any)?.[checkPath as keyof typeof json];
+				if (value === undefined) return 502;
+			}
+			return json;
+		},
 		getAdapter: getAdapter || (<T extends IAdapter>(_url: string, _config: unknown) => Promise.resolve({} as T)),
 		state: nullState
 	} as AdapterContext;

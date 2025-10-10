@@ -9,6 +9,11 @@ config.server = testServerConfig;
 
 testServicesConfig['template'] = JSON.parse(`{
     "services": {
+        "/lib": {
+            "name": "Lib",
+            "source": "./services/lib.rsm.json",
+            "access": { "readRoles": "all", "writeRoles": "all" }
+        },
         "/templates": {
             "name": "Templates",
             "source": "./services/template.rsm.json",

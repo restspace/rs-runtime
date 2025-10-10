@@ -7,13 +7,15 @@ import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 interface IWebhooksConfig extends IServiceConfig {
   // Concurrency limit for parallel dispatch
   concurrency?: number;
-  // Per-target timeout in milliseconds (required)
-  perTargetTimeoutMs: number;
   // Number of retries per target on failure/timeouts (default 0)
   retryCount?: number;
 }
 
 // Utilities
+const seenRegistrants = new Set<string>();
+const seenKey = (tenant: string, dataset: string, id: string) => `${tenant}|${dataset}|${id}`;
+const regsByDataset = new Map<string, { id: string; url: string; secret: string }[]>();
+const dsKey = (tenant: string, dataset: string) => `${tenant}|${dataset}`;
 const enc = new TextEncoder();
 
 const toHex = (buffer: ArrayBuffer) =>
@@ -74,113 +76,122 @@ function pLimit(concurrency: number) {
   };
 }
 
-async function fetchWithTimeout(msg: Message, timeoutMs: number): Promise<Message> {
-  // Convert to Request and pass AbortSignal for timeout
-  const baseReq = msg.toRequest();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
-  let resp: Response;
-  try {
-    resp = await fetch(new Request(baseReq, { signal: controller.signal }));
-  } catch (err) {
-    clearTimeout(timer);
-    const out = new Message(msg.url, msg.tenant, "", null);
-    if (err && ((err as any).name === "AbortError" || (err as any).message?.includes("abort"))) {
-      return out.setStatus(408, "Request Timeout");
-    }
-    return out.setStatus(502, `Dispatch error: ${err}`);
-  }
-  clearTimeout(timer);
-  const out = Message.fromResponse(resp, msg.tenant);
-  out.method = msg.method;
-  msg.setMetadataOn(out);
-  return out;
-}
+/* Removed: direct fetch is not permitted; use context.makeRequest instead */
+// async function fetchWithTimeout(msg: Message, timeoutMs: number): Promise<Message> {}
 
 const service = new Service<IAdapter, IWebhooksConfig>();
 
-// Root POST: register { event, url, secret }
-service.postPath("/", async (msg, context: ServiceContext<IAdapter>, config: IWebhooksConfig) => {
-  if (!msg.hasData()) return msg.setStatus(400, "Missing registration body");
-  const body = await msg.data!.asJson() as any;
-  const eventPath: string = (body?.event || "").toString();
-  const url: string = (body?.url || "").toString();
-  const secret: string = (body?.secret || "").toString();
+// Single POST handler: register at root ('/'), dispatch at '/<event...>'
+service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksConfig) => {
+  const isRegistration = msg.url.servicePathElements.length === 0;
 
-  if (!eventPath || !url || !secret) {
-    return msg.setStatus(400, "Fields 'event', 'url', and 'secret' are required");
-  }
-  if (!eventPath.startsWith("/")) {
-    return msg.setStatus(400, "'event' must be a service-relative path starting with '/'");
-  }
+  if (isRegistration) {
+    if (!msg.hasData()) return msg.setStatus(400, "Missing registration body");
+    const body = await msg.data!.asJson() as any;
+    const eventPath: string = (body?.event || "").toString();
+    const url: string = (body?.url || "").toString();
+    const secret: string = (body?.secret || "").toString();
 
-  const dataset = normaliseEventToDataset(eventPath.replace(/^\//, ""));
-  const registrantId = await sha256Hex(url.toLowerCase());
+    if (!eventPath || !url || !secret) {
+      return msg.setStatus(400, "Fields 'event', 'url', and 'secret' are required");
+    }
+    if (!eventPath.startsWith("/")) {
+      return msg.setStatus(400, "'event' must be a service-relative path starting with '/'");
+    }
 
-  // Do not allow duplicate url (case-insensitive): deterministic key prevents duplicates
-  // Probe if key exists
-  const probeReq = msg.copy().setMethod("GET");
-  probeReq.url.servicePath = `*store/${dataset}/${registrantId}`;
-  const probe = await context.makeRequest(probeReq);
-  if (probe.ok) {
-    return msg.setStatus(409, "Registrant already exists for this event (duplicate url)");
-  }
+    const dataset = normaliseEventToDataset(eventPath.replace(/^\//, ""));
+    const registrantId = await sha256Hex(url.toLowerCase());
 
-  const registrant = {
-    id: registrantId,
-    url,
-    secret,
-    createdAt: new Date().toISOString(),
-  };
+    // In-memory fast duplicate guard (per-process)
+    if (seenRegistrants.has(seenKey(msg.tenant, dataset, registrantId))) {
+      return msg.setStatus(409, "Registrant already exists for this event (duplicate url)");
+    }
 
-  const writeReq = msg.copy().setMethod("PUT").setDataJson(registrant);
-  writeReq.url.servicePath = `*store/${dataset}/${registrantId}`;
-  const write = await context.makeRequest(writeReq);
-  if (!write.ok) return write;
+    // Duplicate detection via private store listing (directory) and key probe
+    const listMsg = new Message('/', msg.tenant, 'GET', msg);
+    listMsg.url.pathElements = ['*store', dataset, '']; // directory
+    const list = await context.makeRequest(listMsg);
+    if (list.ok) {
+      const dir = (await list.data?.asJson()) as { paths?: (string | string[])[] } | undefined;
+      const entries = (dir?.paths || []).map((p) => Array.isArray(p) ? p[0] : p) as string[];
+      if (entries.includes(`${registrantId}.json`)) {
+        return msg.setStatus(409, "Registrant already exists for this event (duplicate url)");
+      }
+    }
+    const probeMsg = new Message('/', msg.tenant, "GET", msg);
+    probeMsg.url.pathElements = ['*store', dataset, registrantId];
+    const probe = await context.makeRequest(probeMsg);
+    if (probe.ok) {
+      return msg.setStatus(409, "Registrant already exists for this event (duplicate url)");
+    }
+
+    const registrant = {
+      id: registrantId,
+      url,
+      secret,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Write via private store directly so we can reliably detect create vs overwrite
+    const writeMsg = new Message('/', msg.tenant, 'PUT', msg).setDataJson(registrant);
+    writeMsg.url.pathElements = ['*store', dataset, registrantId];
+    const write = await context.makeRequest(writeMsg);
+    if (!write.ok) return write;
+    if (write.status === 200) {
+      return msg.setStatus(409, "Registrant already exists for this event (duplicate url)");
+    }
+
+  // Record in-memory for fast duplicate detection and quick dispatch lookup
+  const mapKey = dsKey(msg.tenant, dataset);
+  seenRegistrants.add(seenKey(msg.tenant, dataset, registrantId));
+  const arr = regsByDataset.get(mapKey) || [];
+  arr.push({ id: registrantId, url, secret });
+  regsByDataset.set(mapKey, arr);
 
   // Return 201 with simple JSON (avoid leaking internal store paths)
   return msg
-    .setHeader("Location", `/${config.basePath || ""}${msg.url.servicePath || ""}`)
-    .setStatus(201)
-    .setDataJson({ id: registrantId, event: eventPath, url });
-});
+      .setHeader("Location", `/${config.basePath || ""}${msg.url.servicePath || ""}`)
+      .setDataJson({ id: registrantId, event: eventPath, url })
+      .setStatus(201);
+  }
 
-// Event POST: dispatch payload to registrants at event path
-service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksConfig) => {
-  // Root POST handled above
-  if (msg.url.servicePathElements.length === 0) return msg;
-
-  // Derive dataset name for this event
+  // Dispatch branch: Derive dataset name for this event
   const eventPath = "/" + msg.url.servicePath;
   const dataset = normaliseEventToDataset(msg.url.servicePath);
 
-  // List registrant keys in dataset
-  const listReq = msg.copy().setMethod("GET");
-  listReq.url.servicePath = `*store/${dataset}/`;
-  const listMsg = await context.makeRequest(listReq);
-  if (!listMsg.ok) {
-    // No registrants returns empty listing for many adapters; if explicit 404, treat as empty
-    if (listMsg.status !== 404) return listMsg;
-  }
-  const dir = (await listMsg.data?.asJson()) as { paths?: (string | string[])[] } | undefined;
-  const entries = (dir?.paths || [])
-    .map((p) => Array.isArray(p) ? p[0] : p)
-    .filter((name) => typeof name === 'string') as string[];
-  const registrantKeys = entries.filter((f) => f !== ".schema.json");
+  // Prefer in-memory registry if present for this dataset
+  const mapKey = dsKey(msg.tenant, dataset);
+  let registrants: { id: string; url: string; secret: string }[] | undefined = regsByDataset.get(mapKey);
 
-  // Load registrants
-  const registrants: { id: string; url: string; secret: string }[] = [];
-  for (const key of registrantKeys) {
-    const getReq = msg.copy().setMethod("GET");
-    getReq.url.servicePath = `*store/${dataset}/${key}`;
-    const r = await context.makeRequest(getReq);
-    if (r.ok) {
-      const obj = await r.data!.asJson();
-      if (obj && typeof obj === 'object' && obj.url && obj.secret) {
-        registrants.push({ id: (obj.id || key), url: obj.url, secret: obj.secret });
+  if (!registrants || registrants.length === 0) {
+    // Fallback to store listing and reads
+    const listStar = new Message('/', msg.tenant, 'GET', msg);
+    listStar.url.pathElements = ['*store', dataset, ''];
+    const listResp = await context.makeRequest(listStar);
+    if (!listResp.ok) {
+      // No registrants returns empty listing for many adapters; if explicit 404, treat as empty
+      if (listResp.status !== 404) return listResp;
+    }
+    const dir = (await listResp.data?.asJson()) as { paths?: (string | string[])[] } | undefined;
+    const entries = (dir?.paths || [])
+      .map((p) => Array.isArray(p) ? p[0] : p)
+      .filter((name) => typeof name === 'string') as string[];
+    const registrantKeys = entries.filter((f) => f !== ".schema.json");
+
+    registrants = [];
+    for (const key of registrantKeys) {
+      const getStar = new Message('/', msg.tenant, 'GET', msg);
+      getStar.url.pathElements = ['*store', dataset, key];
+      const r = await context.makeRequest(getStar);
+      if (r.ok) {
+        const obj = await r.data!.asJson();
+        if (obj && typeof obj === 'object' && obj.url && obj.secret) {
+          registrants.push({ id: (obj.id || key), url: obj.url, secret: obj.secret });
+        }
       }
     }
   }
+  registrants = registrants || [];
   // Deduplicate by URL (case-insensitive)
   const seen = new Set<string>();
   const uniqueRegistrants = registrants.filter((r) => {
@@ -199,7 +210,6 @@ service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksCon
 
   // Dispatch in parallel with limit and timeout/retries
   const limit = pLimit(Math.max(1, config.concurrency || 8));
-  const timeoutMs = Math.max(1, config.perTargetTimeoutMs || 10000);
   const retries = Math.max(0, config.retryCount || 0);
 
   const results = await Promise.all(uniqueRegistrants.map((r) => limit(async () => {
@@ -224,7 +234,7 @@ service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksCon
       if (traceparent) outMsg.setHeader('traceparent', traceparent);
       if (tracestate) outMsg.setHeader('tracestate', tracestate);
 
-      const resp = await fetchWithTimeout(outMsg, timeoutMs);
+      const resp = await context.makeRequest(outMsg);
       durationMs = Date.now() - start;
       lastStatus = resp.status || (resp.ok ? 200 : 500);
       ok = resp.ok;
@@ -235,8 +245,8 @@ service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksCon
   })));
 
   return msg
-    .setStatus(202)
-    .setDataJson({ event: eventPath, count: results.length, results });
+    .setDataJson({ event: eventPath, count: results.length, results })
+    .setStatus(202);
 });
 
 export default service;

@@ -14,6 +14,11 @@ testServicesConfig['privateServices'] = JSON.parse(`{
             "name": "Mock",
             "source": "./services/privateServicesMock.rsm.json",
             "access": { "readRoles": "all", "writeRoles": "all" }
+        },
+        "/pc": {
+            "name": "Private Caller",
+            "source": "./services/private-caller.rsm.json",
+            "access": { "readRoles": "all", "writeRoles": "all" }
         }
     }
 }`);
@@ -32,4 +37,22 @@ Deno.test("simple private services", async () => {
     assert(msgOut.ok, "failed");
     const res = await msgOut?.data?.asJson();
     assertStrictEquals(res, "xyz result");
+});
+
+Deno.test("context.makeRequest routes star private GET", async () => {
+    mockHandler.getString('/xyz', "xyz result");
+    const msg = testMessage("/pc/direct", "GET");
+    const msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed");
+    const res = await msgOut?.data?.asString();
+    assertStrictEquals(res, "xyz result");
+});
+
+Deno.test("context.makeRequest routes star private directory GET with trailing slash", async () => {
+    mockHandler.getJson('/dir/', [ "a", "b" ]);
+    const msg = testMessage("/pc/dir", "GET");
+    const msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "failed");
+    const res = await msgOut?.data?.asJson();
+    assertStrictEquals(Array.isArray(res) && res.length === 2, true);
 });

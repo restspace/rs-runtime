@@ -27,7 +27,7 @@ export default service;
 - Handler signature (ServiceFunction):
   - `(msg: Message, context: ServiceContext<TAdapter>, config: TConfig) => Message | Promise<Message>`
 
-- Register handlers by method and optional subpath:
+- Register handlers by method and optional subpath (handler fires if request path BEGINS with subpath, preferring longest match from registered paths for the method):
   - All requests: `all(func)`, `allPath(path, func)`
   - GET: `get(func)`, `getPath(path, func)`
   - GET directory (url ends with '/'): `getDirectory(func)`, `getDirectoryPath(path, func)`
@@ -67,6 +67,8 @@ Common fields/methods available to handlers:
 - `runPipeline(msg, pipelineSpec, contextUrl?)`: run a pipeline
 - `makeProxyRequest(msg)`: available when `proxyAdapterSource` is set in manifest (proxies auth/headers)
 - `state(StateClass, context, config)`: access or create a tenant-scoped state object (see State below)
+
+Services should never call `fetch()` directly but instead use `context.makeRequest()`.
 
 ## Message and MessageBody (working with requests/responses)
 

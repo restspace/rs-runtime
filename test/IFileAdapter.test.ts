@@ -11,7 +11,7 @@ import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 const testFileSpace = (adapter: IFileAdapter) => {
     const encoder = new TextEncoder();
     Deno.test('saves file', async () => {
-        await adapter.write('abc-déf_ghi/jkl mno.html', new MessageBody(encoder.encode('<span>This is a file</span>').buffer, 'text/html'));
+        await adapter.write('abc-déf_ghi/jkl mno.html', new MessageBody(encoder.encode('<span>This is a file</span>').buffer as ArrayBuffer, 'text/html'));
     });
     Deno.test('reads file', async () => {
         const res = await adapter.read('abc-déf_ghi/jkl mno.html');
@@ -39,11 +39,11 @@ const testFileSpace = (adapter: IFileAdapter) => {
         assertEquals(res.statusCode, 404);
     });
     Deno.test('writes two to directory', async () => {
-        await adapter.write('dir/item1.txt', new MessageBody(encoder.encode('An item').buffer, 'text/plain'));
-        await adapter.write('dir/item2.json', new MessageBody(encoder.encode('{ "abc": 2 }').buffer, 'application/json'));
+        await adapter.write('dir/item1.txt', new MessageBody(encoder.encode('An item').buffer as ArrayBuffer, 'text/plain'));
+        await adapter.write('dir/item2.json', new MessageBody(encoder.encode('{ \"abc\": 2 }').buffer as ArrayBuffer, 'application/json'));
     });
     Deno.test('writes subdirectory item', async () => {
-        await adapter.write('dir/subdir/item3.txt', new MessageBody(encoder.encode('Another item').buffer, 'text/plain'));
+        await adapter.write('dir/subdir/item3.txt', new MessageBody(encoder.encode('Another item').buffer as ArrayBuffer, 'text/plain'));
     });
     Deno.test('reads directory', async () => {
         const res = await adapter.readDirectory('dir/');
@@ -82,10 +82,18 @@ testFileSpace(new LocalFileAdapter(makeAdapterContext("test"), {
 }));
 
 const getAWS4ProxyAdapter = <T extends IAdapter>(_url: string, config: unknown) => Promise.resolve(getAdapterFromConfig("test", config, AWS4ProxyAdapter) as unknown as T);
-testFileSpace(new S3FileAdapter(makeAdapterContext("test", getAWS4ProxyAdapter), {
-    rootPath: "",
-    bucketName: "rs-test-142",
-    region: "eu-west-2",
-    accessKeyId: '', // set to AWS access key id
-    secretAccessKey: '', // set to AWS secret access key
-}));
+
+const HAS_AWS_CREDS = !!(Deno.env.get('AWS_ACCESS_KEY_ID') && Deno.env.get('AWS_SECRET_ACCESS_KEY'));
+if (HAS_AWS_CREDS) {
+    testFileSpace(new S3FileAdapter(makeAdapterContext("test", getAWS4ProxyAdapter), {
+        rootPath: "",
+        bucketName: Deno.env.get('AWS_S3_BUCKET') || "rs-test-142",
+        region: Deno.env.get('AWS_REGION') || "eu-west-2",
+        accessKeyId: Deno.env.get('AWS_ACCESS_KEY_ID')!,
+        secretAccessKey: Deno.env.get('AWS_SECRET_ACCESS_KEY')!,
+    }));
+} else {
+    Deno.test('s3 adapter tests skipped (no AWS credentials)', () => {
+        // intentionally skipped
+    });
+}
