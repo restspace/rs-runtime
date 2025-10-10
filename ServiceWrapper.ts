@@ -37,6 +37,25 @@ export class ServiceWrapper {
             newMsg = await this.prePostPipeline("pre", serviceConfig.basePath, newMsg, context, prePipeline, manifestConfig?.privateServiceConfigs);
             newMsg.applyServiceRedirect();
             context.metadataOnly = newMsg.url.isDirectory && ("$metadataOnly" in newMsg.url.query);
+
+            // Make context.makeRequest star-aware for private services during this invocation
+            const originalMakeRequest = context.makeRequest;
+            context.makeRequest = (innerMsg, source) => {
+                const first = innerMsg.url.pathElements[0] || '';
+                const hasPrivate = !!manifestConfig?.privateServiceConfigs;
+                if (hasPrivate && first.startsWith('*')) {
+                    const handler = handleOutgoingRequestWithPrivateServices(
+                        serviceConfig.basePath,
+                        manifestConfig!.privateServiceConfigs!,
+                        innerMsg.tenant || msg.tenant,
+                        context,
+                        context.prePost
+                    );
+                    return handler(innerMsg);
+                }
+                return originalMakeRequest(innerMsg, source);
+            };
+
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.service.func(newMsg, context, serviceConfig);
             if (newMsg.ok && !newMsg.isRedirect) newMsg = await this.prePostPipeline("post", serviceConfig.basePath, newMsg, context, postPipeline, manifestConfig?.privateServiceConfigs);
         } catch (err) {
