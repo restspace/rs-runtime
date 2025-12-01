@@ -1,0 +1,40 @@
+{
+  "name": "Webhooks Trigger Store",
+  "description": "Store of webhook subscriptions that auto-register with a webhooks service and execute a pipeline on validated callbacks.",
+  "moduleUrl": "./services/webhooks-trigger.ts",
+  "apis": [ "store-transform" ],
+  "isFilter": true,
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "store": {
+        "type": "object",
+        "description": "Configuration for the subscription spec store (IDataAdapter)",
+        "properties": {
+          "adapterSource": { "type": "string" },
+          "infraName": { "type": "string" },
+          "adapterConfig": { "type": "object", "properties": {} },
+          "parentIfMissing": { "type": "boolean" }
+        }
+      }
+    },
+    "required": [ "store" ]
+  },
+  "postPipeline": [
+    "if (method !== 'POST') $METHOD *store/$*",
+    "POST /lib/delocalise-store-location"
+  ],
+  "privateServices": {
+    "store": {
+      "name": "'Webhook Trigger Spec Store'",
+      "storePattern": "'store-transform'",
+      "source": "./services/data.rsm.json",
+      "access": { "readRoles": "access.readRoles", "writeRoles": "access.writeRoles" },
+      "adapterInterface": "IDataAdapter",
+      "adapterSource": "store.adapterSource",
+      "infraName": "store.infraName",
+      "adapterConfig": "store.adapterConfig",
+      "parentIfMissing": "store.parentIfMissing === false ? false : true"
+    }
+  }
+}

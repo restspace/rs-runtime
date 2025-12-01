@@ -1,6 +1,6 @@
 import { Service } from "rs-core/Service.ts";
 import { IDataAdapter } from "rs-core/adapter/IDataAdapter.ts";
-import { BaseStateClass, ITimerConfig, SimpleServiceContext, TimedActionState } from "rs-core/ServiceContext.ts";
+import { ITimerConfig, SimpleServiceContext, TimedActionState } from "rs-core/ServiceContext.ts";
 import dayjs from "npm:dayjs";
 import duration from "npm:dayjs/plugin/duration.js";
 import { Message } from "rs-core/Message.ts";
