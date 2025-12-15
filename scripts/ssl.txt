@@ -6,3 +6,7 @@ ssh -i C:\\dev\\keys\\stagingpac.pem ubuntu@ec2-3-10-91-198.eu-west-2.compute.am
 
 scp -i C:\dev\keys\stagingpac.pem -r restspace-io.key STAR_restspace_io/STAR_restspace_io.ca-bundle STAR_restspace_io/STAR_restspace_io.crt ubuntu@ec2-18-132-142-210.eu-west-2.compute.amazonaws.com:~
 ssh -i C:\\dev\\keys\\stagingpac.pem ubuntu@ec2-18-132-142-210.eu-west-2.compute.amazonaws.com "sudo cp STAR_restspace_io.* /etc/ssl; sudo cp restspace-io.key /etc/ssl/private; sudo systemctl restart apache2"
+
+#This doesn't yet work
+scp -i C:\dev\keys\stagingpac.pem -r restspace-io.key STAR_restspace_io/STAR_restspace_io.ca-bundle STAR_restspace_io/STAR_restspace_io.crt Administrator@ec2-52-17-180-218.eu-west-1.compute.amazonaws.com:~
+ssh -i C:\\dev\\keys\\stagingpac.pem ubuntu@ec2-18-132-142-210.eu-west-2.compute.amazonaws.com "sudo cp STAR_restspace_io.* /etc/ssl; sudo cp restspace-io.key /etc/ssl/private; sudo systemctl restart apache2"

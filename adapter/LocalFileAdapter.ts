@@ -14,15 +14,158 @@ import { AdapterContext } from "rs-core/ServiceContext.ts";
 export interface LocalFileAdapterProps {
     rootPath: string;
     basePath: string;
+    /**
+     * Default maximum time (ms) to wait in the lock queue before failing with 423 Locked.
+     * If not set or 0, waits indefinitely.
+     */
+    lockTimeoutMs?: number;
+    /** Optional override for read operations. */
+    readLockTimeoutMs?: number;
+    /** Optional override for write/delete/move operations. */
+    writeLockTimeoutMs?: number;
 }
+
+// Simple in-process per-path lock manager to serialise file access
+type LockType = "read" | "write";
+type ReleaseLock = () => void;
+
+class LockTimeoutError extends Error {
+    constructor(public filePath: string, public lockType: LockType) {
+        super(`Lock timeout for ${lockType} lock on ${filePath}`);
+        this.name = 'LockTimeoutError';
+    }
+}
+
+interface LockRequest {
+    type: LockType;
+    resolve: (release: ReleaseLock) => void;
+    reject: (err: Error) => void;
+    timerId?: number;
+}
+
+interface LockState {
+    readers: number;
+    writer: boolean;
+    queue: LockRequest[];
+}
+
+const fileLocks = new Map<string, LockState>();
+
+const getLockState = (filePath: string): LockState => {
+    let state = fileLocks.get(filePath);
+    if (!state) {
+        state = { readers: 0, writer: false, queue: [] };
+        fileLocks.set(filePath, state);
+    }
+    return state;
+};
+
+const clearRequestTimer = (req: LockRequest) => {
+    if (req.timerId !== undefined) {
+        clearTimeout(req.timerId);
+        req.timerId = undefined;
+    }
+};
+
+const serviceQueue = (filePath: string, state: LockState) => {
+    while (state.queue.length > 0) {
+        const next = state.queue[0];
+        if (next.type === "read") {
+            if (state.writer) break;
+            state.queue.shift();
+            clearRequestTimer(next);
+            state.readers++;
+            const release = makeRelease(filePath, state, "read");
+            next.resolve(release);
+            continue;
+        } else {
+            if (state.writer || state.readers > 0) break;
+            state.queue.shift();
+            clearRequestTimer(next);
+            state.writer = true;
+            const release = makeRelease(filePath, state, "write");
+            next.resolve(release);
+            break;
+        }
+    }
+};
+
+const makeRelease = (filePath: string, state: LockState, type: LockType): ReleaseLock => {
+    let released = false;
+    return () => {
+        if (released) return;
+        released = true;
+        if (type === "read") {
+            state.readers--;
+        } else {
+            state.writer = false;
+        }
+        if (state.readers < 0) state.readers = 0;
+        if (!state.writer && state.readers === 0 && state.queue.length === 0) {
+            fileLocks.delete(filePath);
+        } else {
+            serviceQueue(filePath, state);
+        }
+    };
+};
+
+const acquireReadLock = (filePath: string, timeoutMs?: number): Promise<ReleaseLock> => {
+    const state = getLockState(filePath);
+    if (!state.writer && state.queue.length === 0) {
+        state.readers++;
+        return Promise.resolve(makeRelease(filePath, state, "read"));
+    }
+    return new Promise<ReleaseLock>((resolve, reject) => {
+        const request: LockRequest = { type: "read", resolve, reject };
+        if (timeoutMs && timeoutMs > 0) {
+            request.timerId = setTimeout(() => {
+                const idx = state.queue.indexOf(request);
+                if (idx >= 0) {
+                    state.queue.splice(idx, 1);
+                }
+                reject(new LockTimeoutError(filePath, "read"));
+                serviceQueue(filePath, state);
+            }, timeoutMs);
+        }
+        state.queue.push(request);
+        serviceQueue(filePath, state);
+    });
+};
+
+const acquireWriteLock = (filePath: string, timeoutMs?: number): Promise<ReleaseLock> => {
+    const state = getLockState(filePath);
+    if (!state.writer && state.readers === 0 && state.queue.length === 0) {
+        state.writer = true;
+        return Promise.resolve(makeRelease(filePath, state, "write"));
+    }
+    return new Promise<ReleaseLock>((resolve, reject) => {
+        const request: LockRequest = { type: "write", resolve, reject };
+        if (timeoutMs && timeoutMs > 0) {
+            request.timerId = setTimeout(() => {
+                const idx = state.queue.indexOf(request);
+                if (idx >= 0) {
+                    state.queue.splice(idx, 1);
+                }
+                reject(new LockTimeoutError(filePath, "write"));
+                serviceQueue(filePath, state);
+            }, timeoutMs);
+        }
+        state.queue.push(request);
+        serviceQueue(filePath, state);
+    });
+};
 
 class LocalFileAdapterBase implements IFileAdapter {
     rootPath: string;
     basePath: string;
+    readLockTimeoutMs?: number;
+    writeLockTimeoutMs?: number;
 
     constructor(public context: AdapterContext, public props: LocalFileAdapterProps) {
         this.rootPath = props.rootPath.replace('${tenant}', context.tenant);
         this.basePath = props.basePath;
+        this.readLockTimeoutMs = props.readLockTimeoutMs ?? props.lockTimeoutMs;
+        this.writeLockTimeoutMs = props.writeLockTimeoutMs ?? props.lockTimeoutMs;
     }
 
     canonicalisePath(path: string): string {
@@ -66,40 +209,112 @@ class LocalFileAdapterBase implements IFileAdapter {
 
     async read(readPath: string, extensions?: string[], startByte?: number, endByte?: number): Promise<MessageBody> {
         const filePath = this.getPath(readPath, extensions);
-        let stream: ReadableStream;
+        let releaseLock: ReleaseLock | null = null;
+        let baseStream: ReadableStream;
+
         try {
-            stream = await readFileStream(filePath, startByte, endByte);
-            return new MessageBody(stream, getType(filePath) || 'text/plain');
+            releaseLock = await acquireReadLock(filePath, this.readLockTimeoutMs);
         } catch (err) {
+            if (err instanceof LockTimeoutError) {
+                return MessageBody.fromError(423, 'Locked');
+            }
+            throw err;
+        }
+
+        try {
+            baseStream = await readFileStream(filePath, startByte, endByte);
+        } catch (err) {
+            if (releaseLock) {
+                releaseLock();
+                releaseLock = null;
+            }
             if (err instanceof Deno.errors.NotFound) return MessageBody.fromError(404);
             throw new Error(`LocalFileAdapter reading file: ${readPath}, ${err}`);
         }
+
+        const reader = baseStream.getReader();
+        const wrappedStream = new ReadableStream({
+            async pull(controller) {
+                try {
+                    const { value, done } = await reader.read();
+                    if (done) {
+                        if (releaseLock) {
+                            releaseLock();
+                            releaseLock = null;
+                        }
+                        controller.close();
+                    } else if (value !== undefined) {
+                        controller.enqueue(value);
+                    }
+                } catch (err) {
+                    if (releaseLock) {
+                        releaseLock();
+                        releaseLock = null;
+                    }
+                    controller.error(err);
+                }
+            },
+            async cancel(reason) {
+                try {
+                    await reader.cancel(reason);
+                } finally {
+                    if (releaseLock) {
+                        releaseLock();
+                        releaseLock = null;
+                    }
+                }
+            }
+        });
+
+        return new MessageBody(wrappedStream, getType(filePath) || 'text/plain');
     }
 
     async write(path: string, data: MessageBody, extensions?: string[]) {
-        // TODO Add a write queue to avoid interleaved writes from different requests
+        const filePath = this.getPath(path, extensions, false, true);
         let writeStream: WritableStream | null = null;
+        let releaseLock: ReleaseLock | null = null;
         try {
-            writeStream = await writeFileStream(this.getPath(path, extensions, false, true));
+            try {
+                releaseLock = await acquireWriteLock(filePath, this.writeLockTimeoutMs);
+            } catch (err) {
+                if (err instanceof LockTimeoutError) {
+                    return 423;
+                }
+                throw err;
+            }
+            writeStream = await writeFileStream(filePath);
             const readableStream = data.asReadable();
             if (readableStream === null) throw new Error('no data');
             await readableStream.pipeTo(writeStream);
             return 200;
         } catch (err) {
             return (err instanceof Deno.errors.NotFound) ? 404 : 500;
-        } //finally {
-        //     if (writeStream) {
-        //         const writer = writeStream.getWriter();
-        //         if (!writer.closed) await writer.close();
-        //     }
-        // }
+        } finally {
+            if (releaseLock) {
+                releaseLock();
+            }
+        }
     }
 
     async delete(path: string, extensions?: string[]) {
+        const filePath = this.getPath(path, extensions);
+        let releaseLock: ReleaseLock | null = null;
         try {
-            await Deno.remove(this.getPath(path, extensions));
+            try {
+                releaseLock = await acquireWriteLock(filePath, this.writeLockTimeoutMs);
+            } catch (err) {
+                if (err instanceof LockTimeoutError) {
+                    return 423;
+                }
+                throw err;
+            }
+            await Deno.remove(filePath);
         } catch (err) {
             return (err instanceof Deno.errors.NotFound ? 404 : 500);
+        } finally {
+            if (releaseLock) {
+                releaseLock();
+            }
         }
         return 200;
     }
@@ -158,11 +373,21 @@ class LocalFileAdapterBase implements IFileAdapter {
 
     async check(path: string, extensions?: string[]): Promise<ItemMetadata> {
         const filePath = this.getPath(path, extensions);
+        let releaseLock: ReleaseLock | null = null;
         let stat: Deno.FileInfo;
         try {
+            // For metadata checks we always wait indefinitely rather than fail-fast.
+            releaseLock = await acquireReadLock(filePath);
             stat = await Deno.stat(filePath);
         } catch {
+            if (releaseLock) {
+                releaseLock();
+            }
             return { status: 'none' };
+        } finally {
+            if (releaseLock) {
+                releaseLock();
+            }
         }
         
         const status = stat.isDirectory ? "directory" : "file";
@@ -178,10 +403,34 @@ class LocalFileAdapterBase implements IFileAdapter {
     async move(fromPath: string, toPath: string, extensions?: string[]) {
         const fromFullPath = this.getPath(fromPath);
         const toFullPath = this.getPath(toPath, extensions, false, true);
+
+        const firstPath = fromFullPath < toFullPath ? fromFullPath : toFullPath;
+        const secondPath = fromFullPath < toFullPath ? toFullPath : fromFullPath;
+
+        let firstRelease: ReleaseLock | null = null;
+        let secondRelease: ReleaseLock | null = null;
         try {
+            try {
+                firstRelease = await acquireWriteLock(firstPath, this.writeLockTimeoutMs);
+                if (secondPath !== firstPath) {
+                    secondRelease = await acquireWriteLock(secondPath, this.writeLockTimeoutMs);
+                }
+            } catch (err) {
+                if (err instanceof LockTimeoutError) {
+                    return 423;
+                }
+                throw err;
+            }
             await Deno.rename(fromFullPath, toFullPath);
         } catch (err) {
             return (err instanceof Deno.errors.NotFound) ? 404: 500;
+        } finally {
+            if (secondRelease) {
+                secondRelease();
+            }
+            if (firstRelease) {
+                firstRelease();
+            }
         }
         return 200;
     }
