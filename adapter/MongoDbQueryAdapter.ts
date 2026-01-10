@@ -1,125 +1,118 @@
-import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
-import { Message } from "rs-core/Message.ts";
 import { AdapterContext, contextLoggerArgs } from "rs-core/ServiceContext.ts";
 import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
-import { upTo } from "rs-core/utility/utility.ts";
-import { Db, FindOptions, MongoClient, MongoClientOptions, ServerApiVersion } from "mongodb";
+import { Db, MongoClient } from "mongodb";
+import {
+  applyAggregatePaging,
+  MongoDbConnectionProps,
+  mongoErrorToHttpStatus,
+  isMongoTransientError,
+  normalizeCollectionName,
+  parseAggregateQuery,
+  QueryFormatError,
+  resolveMongoUrl,
+  withFastRetry,
+} from "./mongoDbCommon.ts";
 
-export interface MongoDbQueryAdapterProps {
-	url: string;
-}
+export interface MongoDbQueryAdapterProps extends MongoDbConnectionProps {}
 
 export default class MongoDbQueryAdapter implements IQueryAdapter {
-	private client: MongoClient | null = null;
-    private db: Db | null = null;
-	
-	constructor(public context: AdapterContext, public props: MongoDbQueryAdapterProps) {
+  private client: MongoClient | null = null;
+  private db: Db | null = null;
+
+  constructor(public context: AdapterContext, public props: MongoDbQueryAdapterProps) {}
+
+  private async ensureConnection() {
+    if (this.client) return;
+
+    const resolvedUrl = await resolveMongoUrl(this.props.url);
+
+    const options: any = {};
+    if (this.props.tlsCAFile) options.tlsCAFile = this.props.tlsCAFile;
+
+    this.client = new MongoClient(resolvedUrl, options);
+    await this.client.connect();
+    this.db = this.client.db(this.props.dbName);
+  }
+
+  async runQuery(
+    query: string,
+    _variables: Record<string, unknown>,
+    take = 1000,
+    skip = 0,
+  ): Promise<number | Record<string, unknown>[]> {
+    await this.ensureConnection();
+
+    let queryObj: unknown;
+    try {
+      queryObj = JSON.parse(query);
+    } catch (e) {
+      this.context.logger.error(
+        `Invalid JSON (${e}) in MongoDB aggregate query: ${query}`,
+        ...contextLoggerArgs(this.context),
+      );
+      return 400;
     }
 
-    private async ensureConnection() {
-        if (!this.client) {
-            this.client = new MongoClient(this.props.url, {
-                serverApi: {
-                  version: ServerApiVersion.v1,
-                  strict: true,
-                  deprecationErrors: true,
-                }
-              } as MongoClientOptions);
-            await this.client.connect();
-            this.db = this.client.db("Atelyr0");
-        }
+    let parsed;
+    try {
+      parsed = parseAggregateQuery(queryObj);
+    } catch (e) {
+      const msg = e instanceof QueryFormatError ? e.message : String(e);
+      this.context.logger.error(
+        `Invalid query format (${msg}) in MongoDB aggregate query: ${query}`,
+        ...contextLoggerArgs(this.context),
+      );
+      return 400;
     }
 
-	async runQuery(query: string, _: Record<string, unknown>, take = 1000, skip = 0): Promise<number | Record<string,unknown>[]> {
-		await this.ensureConnection();
-		
-		let collection = 'default';
-		let operation = 'find';
-		
-		let queryObj = {} as any;
-		try {
-			queryObj = JSON.parse(query);
-		} catch (e) {
-			this.context.logger.error(`Invalid JSON (${e}) in MongoDB query: ${query}`, ...contextLoggerArgs(this.context));
-			return 400;
-		}
+    const collection = normalizeCollectionName(parsed.collection);
+    const pipeline = applyAggregatePaging(
+      parsed.pipeline,
+      take,
+      skip,
+      parsed.page?.mode || "appendStages",
+    );
 
-		skip = queryObj.skip || skip;
-		take = queryObj.take || take;
+    try {
+      const coll = this.db?.collection(collection);
+      if (!coll) throw new Error("Database not connected");
 
-		// Extract collection name (previously 'index' in ES)
-		if (queryObj.collection) {
-			collection = queryObj.collection;
-			delete queryObj.collection;
-		}
+      return await withFastRetry(
+        async () => {
+          const cursor = coll.aggregate(pipeline as any, (parsed.options || {}) as any);
+          const rows = await cursor.toArray();
+          return rows as unknown as Record<string, unknown>[];
+        },
+        isMongoTransientError,
+      );
+    } catch (error) {
+      this.context.logger.error(
+        `MongoDB aggregate error: ${error}`,
+        ...contextLoggerArgs(this.context),
+      );
+      return mongoErrorToHttpStatus(error);
+    }
+  }
 
-		// Handle different operations
-		if (queryObj.operation) {
-			operation = queryObj.operation;
-			delete queryObj.operation;
-			
-			if (!['find', 'findOne', 'updateMany', 'deleteMany', 'count'].includes(operation)) {
-				this.context.logger.error(`Unknown operation in MongoDB query: ${operation}`, ...contextLoggerArgs(this.context));
-				return 400;
-			}
-		}
+  quote(x: any): string | Error {
+    if (typeof x === "string") {
+      return "\"" + x.replace(/\"/g, "\\\"") + "\"";
+    } else if (typeof x !== "object") {
+      return JSON.stringify(x);
+    } else if (Array.isArray(x)) {
+      return JSON.stringify(x
+        .filter((item) => typeof item !== "object")
+      );
+    } else {
+      return new Error("query variable must be a primitive, or an array of primitives");
+    }
+  }
 
-		try {
-			const coll = this.db?.collection(collection);
-			if (!coll) throw new Error('Database not connected');
-
-			switch (operation) {
-				case 'find': {
-					const cursor = coll.find(queryObj.filter || {});
-					if (skip) cursor.skip(skip);
-					if (take) cursor.limit(take);
-					return await cursor.toArray();
-				}
-				
-				case 'findOne': {
-					const result = await coll.findOne(queryObj.filter || {});
-					return result ? [result] : [];
-				}
-				
-				case 'updateMany': {
-					const updateResult = await coll.updateMany(
-						queryObj.filter || {},
-						queryObj.update || {}
-					);
-					return updateResult.modifiedCount;
-				}
-				
-				case 'deleteMany': {
-					const deleteResult = await coll.deleteMany(queryObj.filter || {});
-					return deleteResult.deletedCount;
-				}
-				
-				case 'count': {
-					const count = await coll.countDocuments(queryObj.filter || {});
-					return count;
-				}
-				
-				default: {
-					throw new Error(`Unsupported operation: ${operation}`);
-				}
-			}
-		} catch (error) {
-			this.context.logger.error(`MongoDB operation error: ${error}`, ...contextLoggerArgs(this.context));
-			throw error;
-		}
-	}
-	
-	quote(x: any): string | Error {
-		if (typeof x === "string") {
-			return "\"" + x.replace(/\"/g, "\\\"") + "\"";
-		} else if (typeof x !== "object") {
-			return JSON.stringify(x);
-		} else if (Array.isArray(x)) {
-			return JSON.stringify(x
-				.filter(item => typeof item !== "object")
-			);
-		} else {
-			return new Error('query variable must be a primitive, or an array of primitives');
-		}
-	}
+  async close(): Promise<void> {
+    if (this.client) {
+      await this.client.close();
+      this.client = null;
+      this.db = null;
+    }
+  }
 }
