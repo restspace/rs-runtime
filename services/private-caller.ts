@@ -7,15 +7,13 @@ const service = new Service<IAdapter>();
 
 // Calls a private service directly via star path
 service.getPath('/direct', async (msg, context: ServiceContext<IAdapter>) => {
-  const m = new Message('/', msg.tenant, 'GET', msg);
-  m.url.pathElements = ['*serv1', 'xyz'];
+  const m = new Message('/*serv1/xyz', msg.tenant, 'GET', msg);
   return context.makeRequest(m);
 });
 
 // Calls a private service directory (ensure trailing slash semantics are preserved)
 service.getPath('/dir', async (msg, context: ServiceContext<IAdapter>) => {
-  const m = new Message('/', msg.tenant, 'GET', msg);
-  m.url.pathElements = ['*serv1', 'dir', ''];
+  const m = new Message('/*serv1/dir/', msg.tenant, 'GET', msg);
   return context.makeRequest(m);
 });
 

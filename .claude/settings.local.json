@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(deno test:*)"
+      "Bash(deno test:*)",
+      "Bash(npm run bundle:*)",
+      "Bash(timeout 5 deno run:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Skill(restspace-api)",
+      "Bash(curl:*)",
+      "Bash(BASE_URL=\"$RESTSPACE_URL\":*)",
+      "Bash(AUTH_PATH=\"/auth\":*)",
+      "Bash(jq:*)",
+      "Bash(npm run test:*)"
     ]
   }
 }

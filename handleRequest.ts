@@ -219,7 +219,7 @@ export const handleOutgoingRequestWithPrivateServices = (basePath: string, priva
             // Build a new URL: [ basePathElements..., *service, ...subPath ]
             const baseParts = slashTrim(basePath).split('/').filter(s => s);
             const subPathEls = msg.url.pathElements.slice(1); // drop the *service segment
-            const isDir = subPathEls[subPathEls.length - 1] === '';
+            const isDir = msg.url.isDirectory;
             const newUrl = new Url();
             newUrl.scheme = msg.url.scheme;
             newUrl.domain = msg.url.domain;
