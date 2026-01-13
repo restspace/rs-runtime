@@ -3,6 +3,7 @@ import { MessageBody } from "rs-core/MessageBody.ts";
 import { PathInfo } from "rs-core/DirDescriptor.ts";
 import MongoDbDataAdapter from "../adapter/MongoDbDataAdapter.ts";
 import MongoDbQueryAdapter from "../adapter/MongoDbQueryAdapter.ts";
+import { cleanIgnoreMarkers } from "../adapter/mongoDbCommon.ts";
 import { makeAdapterContext } from "./testUtility.ts";
 
 const MONGO_URL = "mongodb://localhost:27017";
@@ -289,7 +290,7 @@ Deno.test("MongoDbQueryAdapter: returns 400 for invalid query format", async () 
   }
 });
 
-Deno.test("MongoDbQueryAdapter: applies paging with skip/limit", async () => {
+Deno.test("MongoDbQueryAdapter: applies paging with from/size", async () => {
   // Set up test data
   const dataAdapter = new MongoDbDataAdapter(makeAdapterContext("test"), dataAdapterProps);
   try {
@@ -305,11 +306,16 @@ Deno.test("MongoDbQueryAdapter: applies paging with skip/limit", async () => {
     const query = JSON.stringify({
       collection: "pagecoll",
       pipeline: [{ $sort: { index: 1 } }],
+      from: 2,
+      size: 3,
     });
 
-    const result = await queryAdapter.runQuery(query, {}, 3, 2);
-    assert(Array.isArray(result), "Expected array result");
-    assertEquals((result as Record<string, unknown>[]).length, 3);
+    const result = await queryAdapter.runQuery(query, {});
+    assert(result && typeof result === "object" && !Array.isArray(result), "Expected object result");
+    const { items, total } = result as { items: Record<string, unknown>[]; total: number };
+    assert(Array.isArray(items), "Expected items array");
+    assertEquals(items.length, 3);
+    assertEquals(total, 10);
   } finally {
     await queryAdapter.close();
     // Clean up
@@ -319,7 +325,7 @@ Deno.test("MongoDbQueryAdapter: applies paging with skip/limit", async () => {
   }
 });
 
-Deno.test("MongoDbQueryAdapter: respects page.mode=none", async () => {
+Deno.test("MongoDbQueryAdapter: does not page without from/size", async () => {
   // Set up test data
   const dataAdapter = new MongoDbDataAdapter(makeAdapterContext("test"), dataAdapterProps);
   try {
@@ -335,10 +341,9 @@ Deno.test("MongoDbQueryAdapter: respects page.mode=none", async () => {
     const query = JSON.stringify({
       collection: "nopage",
       pipeline: [{ $match: {} }],
-      page: { mode: "none" },
     });
 
-    // Even with take=2, skip=0, page.mode=none should return all
+    // Even with take=2, skip=0, no from/size should return all
     const result = await queryAdapter.runQuery(query, {}, 2, 0);
     assert(Array.isArray(result), "Expected array result");
     assertEquals((result as Record<string, unknown>[]).length, 5);
@@ -362,6 +367,124 @@ Deno.test("MongoDbQueryAdapter: quote returns valid JSON strings", () => {
 
   const objResult = queryAdapter.quote({ nested: true });
   assert(objResult instanceof Error, "Expected Error for object input");
+});
+
+// --- $ignore marker tests ---
+
+Deno.test("MongoDbQueryAdapter: quote returns $ignore for empty string when enabled", () => {
+  const adapter = new MongoDbQueryAdapter(makeAdapterContext("test"), {
+    ...queryAdapterProps,
+    ignoreEmptyVariables: true,
+  });
+  assertEquals(adapter.quote(""), '{ "$ignore": true }');
+  assertEquals(adapter.quote("hello"), '"hello"');
+});
+
+Deno.test("MongoDbQueryAdapter: quote returns quoted empty string when disabled", () => {
+  const adapter = new MongoDbQueryAdapter(makeAdapterContext("test"), queryAdapterProps);
+  assertEquals(adapter.quote(""), '""');
+});
+
+Deno.test("MongoDbQueryAdapter: quote filters empty strings from arrays when enabled", () => {
+  const adapter = new MongoDbQueryAdapter(makeAdapterContext("test"), {
+    ...queryAdapterProps,
+    ignoreEmptyVariables: true,
+  });
+  assertEquals(adapter.quote(["a", "", "b"]), '["a","b"]');
+  assertEquals(adapter.quote(["a", "b"]), '["a","b"]');
+});
+
+Deno.test("MongoDbQueryAdapter: quote returns $ignore for array of only empty strings", () => {
+  const adapter = new MongoDbQueryAdapter(makeAdapterContext("test"), {
+    ...queryAdapterProps,
+    ignoreEmptyVariables: true,
+  });
+  assertEquals(adapter.quote([""]), '{ "$ignore": true }');
+  assertEquals(adapter.quote(["", ""]), '{ "$ignore": true }');
+});
+
+Deno.test("MongoDbQueryAdapter: quote keeps empty strings in arrays when disabled", () => {
+  const adapter = new MongoDbQueryAdapter(makeAdapterContext("test"), queryAdapterProps);
+  assertEquals(adapter.quote(["a", "", "b"]), '["a","","b"]');
+});
+
+Deno.test("cleanIgnoreMarkers: removes field with $ignore marker", () => {
+  const pipeline = [{ $match: { status: "active", category: { $ignore: true } } }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: { status: "active" } }]);
+});
+
+Deno.test("cleanIgnoreMarkers: removes empty $or array", () => {
+  const pipeline = [{ $match: { $or: [{ a: { $ignore: true } }, { b: { $ignore: true } }] } }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: {} }]);
+});
+
+Deno.test("cleanIgnoreMarkers: removes empty $and from parent", () => {
+  const pipeline = [{
+    $match: {
+      $and: [
+        { $or: [{ x: { $ignore: true } }] },
+        { y: "kept" },
+      ],
+    },
+  }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: { $and: [{ y: "kept" }] } }]);
+});
+
+Deno.test("cleanIgnoreMarkers: handles nested $lookup pipeline", () => {
+  const pipeline = [{
+    $lookup: {
+      from: "other",
+      pipeline: [{ $match: { status: { $ignore: true } } }],
+      as: "joined",
+    },
+  }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{
+    $lookup: {
+      from: "other",
+      pipeline: [{ $match: {} }],
+      as: "joined",
+    },
+  }]);
+});
+
+Deno.test("cleanIgnoreMarkers: leaves non-ignore objects unchanged", () => {
+  const pipeline = [{ $match: { a: 1, b: { $gt: 5 } } }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: { a: 1, b: { $gt: 5 } } }]);
+});
+
+Deno.test("cleanIgnoreMarkers: filters $ignore from $in array", () => {
+  const pipeline = [{ $match: { tags: { $in: ["a", { $ignore: true }, "b"] } } }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: { tags: { $in: ["a", "b"] } } }]);
+});
+
+Deno.test("cleanIgnoreMarkers: removes empty $in array and parent field", () => {
+  const pipeline = [{ $match: { tags: { $in: [{ $ignore: true }] } } }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: {} }]);
+});
+
+Deno.test("cleanIgnoreMarkers: removes empty $all array and parent field", () => {
+  const pipeline = [{ $match: { tags: { $all: [{ $ignore: true }] } } }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: {} }]);
+});
+
+Deno.test("cleanIgnoreMarkers: removes $in with $ignore value", () => {
+  const pipeline = [{ $match: { tags: { $in: { $ignore: true } } } }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: {} }]);
+});
+
+Deno.test("cleanIgnoreMarkers: removes orphaned $options when $regex is ignored", () => {
+  const pipeline = [{ $match: { code: { $regex: { $ignore: true }, $options: "i" } } }];
+  const result = cleanIgnoreMarkers(pipeline);
+  assertEquals(result, [{ $match: {} }]);
 });
 
 // --- Cleanup test database ---

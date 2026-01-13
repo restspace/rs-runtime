@@ -40,8 +40,14 @@ const getQueryResult = (queryProp: string) => async (msg: Message, context: Serv
 	}
 	const result = await context.adapter.runQuery(query, params);
 	if (typeof result === 'number') return msg.setStatus(result);
-	if (result.length === 0) return msg.setStatus(404, 'No result');
-	msg.setDataJson(result[0]);
+	const items = Array.isArray(result)
+		? result
+		: (result && typeof result === 'object' && Array.isArray((result as any).items))
+			? (result as any).items as Record<string, unknown>[]
+			: null;
+	if (!items) return msg.setStatus(500, 'Invalid query result');
+	if (items.length === 0) return msg.setStatus(404, 'No result');
+	msg.setDataJson(items[0]);
 	return msg;
 }
 

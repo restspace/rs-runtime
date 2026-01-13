@@ -30,16 +30,23 @@ export function normalizeCollectionName(dataset: string): string {
   return dataset.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120);
 }
 
-export type AggregatePageMode = "appendStages" | "none";
-
 export interface MongoAggregateQuery {
   collection: string;
   pipeline: Record<string, unknown>[];
   options?: Record<string, unknown>;
-  page?: { mode?: AggregatePageMode };
+  from?: number;
+  size?: number;
 }
 
 export class QueryFormatError extends Error {}
+
+function parsePagingNumber(value: unknown, name: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
+    throw new QueryFormatError(`If provided, "${name}" must be a non-negative integer`);
+  }
+  return value;
+}
 
 export function parseAggregateQuery(obj: unknown): MongoAggregateQuery {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
@@ -65,31 +72,16 @@ export function parseAggregateQuery(obj: unknown): MongoAggregateQuery {
     throw new QueryFormatError('If provided, "options" must be an object');
   }
 
-  const page = rec.page;
-  if (page !== undefined && (!page || typeof page !== "object" || Array.isArray(page))) {
-    throw new QueryFormatError('If provided, "page" must be an object');
-  }
+  const from = parsePagingNumber(rec.from, "from");
+  const size = parsePagingNumber(rec.size, "size");
 
   return {
     collection,
     pipeline: pipeline as Record<string, unknown>[],
     options: options as Record<string, unknown> | undefined,
-    page: page as { mode?: AggregatePageMode } | undefined,
+    from,
+    size,
   };
-}
-
-export function applyAggregatePaging(
-  pipeline: Record<string, unknown>[],
-  take: number,
-  skip: number,
-  mode: AggregatePageMode = "appendStages",
-): Record<string, unknown>[] {
-  if (mode === "none") return pipeline;
-
-  const out = pipeline.slice();
-  if (skip > 0) out.push({ $skip: skip });
-  if (take > 0) out.push({ $limit: take });
-  return out;
 }
 
 function delay(ms: number) {
@@ -170,4 +162,89 @@ export function mongoErrorToHttpStatus(err: unknown): number {
   if (isMongoDuplicateKeyError(err)) return 409;
   if (isMongoTransientError(err)) return 503;
   return 500;
+}
+
+/**
+ * Checks if an object is the $ignore marker { "$ignore": true }
+ */
+export function isIgnoreMarker(obj: unknown): boolean {
+  return (
+    obj !== null &&
+    typeof obj === "object" &&
+    !Array.isArray(obj) &&
+    Object.keys(obj).length === 1 &&
+    (obj as Record<string, unknown>)["$ignore"] === true
+  );
+}
+
+function processIgnoreValue(value: unknown): unknown {
+  if (isIgnoreMarker(value)) {
+    return undefined; // Signal removal
+  }
+
+  if (Array.isArray(value)) {
+    const result: unknown[] = [];
+    for (const item of value) {
+      const processed = processIgnoreValue(item);
+      if (processed !== undefined) {
+        // Skip empty objects in arrays (from cleaned $and/$or children)
+        if (typeof processed === "object" && processed !== null &&
+            !Array.isArray(processed) && Object.keys(processed).length === 0) {
+          continue;
+        }
+        result.push(processed);
+      }
+    }
+    return result;
+  }
+
+  if (value !== null && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+
+    for (const [key, val] of Object.entries(obj)) {
+      const processed = processIgnoreValue(val);
+
+      if (processed === undefined) continue; // Remove this field
+
+      // Remove empty $and/$or/$in/$all/$nin arrays
+      if ((key === "$and" || key === "$or" || key === "$in" || key === "$all" || key === "$nin") &&
+          Array.isArray(processed) && processed.length === 0) {
+        continue;
+      }
+
+      // Remove non-operator fields with empty object values (e.g. { "tags": {} } after $in was removed)
+      // Keep operator keys like $match, $lookup etc. with empty values
+      if (!key.startsWith("$") &&
+          typeof processed === "object" && processed !== null &&
+          !Array.isArray(processed) && Object.keys(processed).length === 0) {
+        continue;
+      }
+
+      // Remove orphaned $options (only meaningful with $regex)
+      if (typeof processed === "object" && processed !== null && !Array.isArray(processed)) {
+        const keys = Object.keys(processed);
+        if (keys.length === 1 && keys[0] === "$options") {
+          continue;
+        }
+      }
+
+      result[key] = processed;
+    }
+    return result;
+  }
+
+  return value; // Primitives unchanged
+}
+
+/**
+ * Recursively removes $ignore markers from pipeline.
+ * - Fields with $ignore value are removed
+ * - Empty $and/$or arrays are removed
+ * - Empty $match stages are kept
+ */
+export function cleanIgnoreMarkers(
+  pipeline: Record<string, unknown>[]
+): Record<string, unknown>[] {
+  return processIgnoreValue(pipeline) as Record<string, unknown>[];
 }

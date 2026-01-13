@@ -11,7 +11,8 @@
       "Bash(BASE_URL=\"$RESTSPACE_URL\":*)",
       "Bash(AUTH_PATH=\"/auth\":*)",
       "Bash(jq:*)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "Bash(deno eval:*)"
     ]
   }
 }

@@ -1,7 +1,6 @@
 import { assertEquals, assertThrows } from "std/testing/asserts.ts";
 import { ObjectId } from "mongodb";
 import {
-  applyAggregatePaging,
   isMongoDuplicateKeyError,
   isMongoTransientError,
   mongoErrorToHttpStatus,
@@ -47,16 +46,15 @@ Deno.test("parseAggregateQuery rejects non-object", () => {
   );
 });
 
-Deno.test("applyAggregatePaging appends $skip/$limit by default", () => {
-  const pipeline = [{ $match: { a: 1 } }];
-  const out = applyAggregatePaging(pipeline, 10, 5);
-  assertEquals(out, [{ $match: { a: 1 } }, { $skip: 5 }, { $limit: 10 }]);
-});
-
-Deno.test("applyAggregatePaging can be disabled", () => {
-  const pipeline = [{ $match: { a: 1 } }];
-  const out = applyAggregatePaging(pipeline, 10, 5, "none");
-  assertEquals(out, pipeline);
+Deno.test("parseAggregateQuery accepts from/size", () => {
+  const q = parseAggregateQuery({
+    collection: "orders",
+    pipeline: [{ $match: { status: "paid" } }],
+    from: 5,
+    size: 10,
+  });
+  assertEquals(q.from, 5);
+  assertEquals(q.size, 10);
 });
 
 Deno.test("isMongoDuplicateKeyError detects code 11000", () => {

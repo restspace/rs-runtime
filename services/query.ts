@@ -65,7 +65,20 @@ service.post(async (msg: Message, context: ServiceContext<IQueryAdapter>) => {
 	}
 	const result = await context.adapter.runQuery(query, params);
 	if (typeof result === 'number') return msg.setStatus(result);
-	msg.setDataJson(result);
+	let items: Record<string, unknown>[] | null = null;
+	let total: number | null = null;
+	if (Array.isArray(result)) {
+		items = result;
+	} else if (result && typeof result === 'object') {
+		const rec = result as Record<string, unknown>;
+		if (Array.isArray(rec.items) && typeof rec.total === 'number') {
+			items = rec.items as Record<string, unknown>[];
+			total = rec.total;
+		}
+	}
+	if (!items) return msg.setStatus(500, 'Invalid query result');
+	if (total !== null) msg.setHeader('X-Total-Count', total.toString());
+	msg.setDataJson(items);
 	return msg;
 });
 

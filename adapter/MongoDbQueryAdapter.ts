@@ -2,7 +2,7 @@ import { AdapterContext, contextLoggerArgs } from "rs-core/ServiceContext.ts";
 import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
 import { Db, MongoClient } from "mongodb";
 import {
-  applyAggregatePaging,
+  cleanIgnoreMarkers,
   MongoDbConnectionProps,
   mongoErrorToHttpStatus,
   isMongoTransientError,
@@ -13,13 +13,18 @@ import {
   withFastRetry,
 } from "./mongoDbCommon.ts";
 
-export interface MongoDbQueryAdapterProps extends MongoDbConnectionProps {}
+export interface MongoDbQueryAdapterProps extends MongoDbConnectionProps {
+  /** When true, empty string variables produce $ignore markers that remove the containing field */
+  ignoreEmptyVariables?: boolean;
+}
 
 export default class MongoDbQueryAdapter implements IQueryAdapter {
   private client: MongoClient | null = null;
   private db: Db | null = null;
 
-  constructor(public context: AdapterContext, public props: MongoDbQueryAdapterProps) {}
+  constructor(public context: AdapterContext, public props: MongoDbQueryAdapterProps) {
+    this.quote = this.quote.bind(this);
+  }
 
   private async ensureConnection() {
     if (this.client) return;
@@ -39,7 +44,7 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
     _variables: Record<string, unknown>,
     take = 1000,
     skip = 0,
-  ): Promise<number | Record<string, unknown>[]> {
+  ): Promise<number | Record<string, unknown>[] | { items: Record<string, unknown>[]; total: number }> {
     await this.ensureConnection();
 
     let queryObj: unknown;
@@ -65,13 +70,38 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
       return 400;
     }
 
+    let pipelineStages = parsed.pipeline;
+    if (this.props.ignoreEmptyVariables) {
+      pipelineStages = cleanIgnoreMarkers(pipelineStages);
+    }
+
     const collection = normalizeCollectionName(parsed.collection);
-    const pipeline = applyAggregatePaging(
-      parsed.pipeline,
-      take,
-      skip,
-      parsed.page?.mode || "appendStages",
-    );
+    const hasPagingParams = parsed.from !== undefined || parsed.size !== undefined;
+    let pipeline = pipelineStages;
+
+    if (hasPagingParams) {
+      const from = parsed.from ?? skip;
+      const size = parsed.size ?? take;
+      pipeline = pipelineStages.concat([
+        {
+          $facet: {
+            items: [
+              { $skip: from },
+              { $limit: size },
+            ],
+            total: [
+              { $count: "count" },
+            ],
+          },
+        },
+        {
+          $project: {
+            items: 1,
+            total: { $ifNull: [{ $arrayElemAt: ["$total.count", 0] }, 0] },
+          },
+        },
+      ]);
+    }
 
     try {
       const coll = this.db?.collection(collection);
@@ -81,7 +111,13 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
         async () => {
           const cursor = coll.aggregate(pipeline as any, (parsed.options || {}) as any);
           const rows = await cursor.toArray();
-          return rows as unknown as Record<string, unknown>[];
+          if (!hasPagingParams) {
+            return rows as unknown as Record<string, unknown>[];
+          }
+          const first = rows[0] as Record<string, unknown> | undefined;
+          const items = Array.isArray(first?.items) ? (first?.items as Record<string, unknown>[]) : [];
+          const total = typeof first?.total === "number" ? first.total as number : 0;
+          return { items, total };
         },
         isMongoTransientError,
       );
@@ -96,13 +132,21 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
 
   quote(x: any): string | Error {
     if (typeof x === "string") {
+      if (this.props?.ignoreEmptyVariables && x === "") {
+        return '{ "$ignore": true }';
+      }
       return "\"" + x.replace(/\"/g, "\\\"") + "\"";
     } else if (typeof x !== "object") {
       return JSON.stringify(x);
     } else if (Array.isArray(x)) {
-      return JSON.stringify(x
-        .filter((item) => typeof item !== "object")
-      );
+      let filtered = x.filter((item) => typeof item !== "object");
+      if (this.props?.ignoreEmptyVariables) {
+        filtered = filtered.filter((item) => item !== "");
+        if (filtered.length === 0) {
+          return '{ "$ignore": true }';
+        }
+      }
+      return JSON.stringify(filtered);
     } else {
       return new Error("query variable must be a primitive, or an array of primitives");
     }

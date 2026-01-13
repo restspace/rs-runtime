@@ -32,7 +32,12 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		return await this.context.makeRequest(sendMsg);
 	}
 
-	async runQuery(query: string, _: Record<string, unknown>, take = 1000, skip = 0): Promise<number | Record<string,unknown>[]> {
+	async runQuery(
+		query: string,
+		_: Record<string, unknown>,
+		take = 1000,
+		skip = 0
+	): Promise<number | Record<string, unknown>[] | { items: Record<string, unknown>[]; total: number }> {
 		await this.ensureProxyAdapter();
 		let index = '';
 		let operation = '_search';
@@ -49,6 +54,7 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			index = '/' + queryObj.index;
 			delete queryObj.index;
 		}
+		const hasPagingParams = queryObj.size !== undefined || queryObj.from !== undefined;
 		if (queryObj.operation) {
 			operation = queryObj.operation;
 			delete queryObj.operation;
@@ -64,6 +70,9 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 			if (queryObj.size === undefined) queryObj.size = take;
 			if (queryObj.from === undefined) queryObj.from = skip;
 		}
+		if (paged && hasPagingParams && operation === "_search" && queryObj.track_total_hits === undefined) {
+			queryObj.track_total_hits = true;
+		}
 
 		const msg = new Message(`${index}/${operation}`, this.context.tenant, "POST", null);
 		msg.startSpan(this.context.traceparent, this.context.tracestate);
@@ -75,7 +84,19 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		}
 		const data = await res.data?.asJson();
 		switch (operation) {
-			case "_search": return data.hits.hits;
+			case "_search": {
+				const items = (data?.hits?.hits ?? []) as Record<string, unknown>[];
+				if (hasPagingParams) {
+					const totalRaw = data?.hits?.total;
+					const total = typeof totalRaw === "number"
+						? totalRaw
+						: (totalRaw && typeof totalRaw === "object" && typeof totalRaw.value === "number")
+							? totalRaw.value
+							: 0;
+					return { items, total };
+				}
+				return items;
+			}
 			default: return data;
 		}
 	}

@@ -136,7 +136,7 @@ export class ServiceWrapper {
             data.setHeader('Access-Control-Allow-Headers', merged.join(','));
             data.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE');
             data.setHeader('Access-Control-Allow-Credentials', 'true');
-            data.setHeader('Access-Control-Expose-Headers', 'X-Restspace-Service,Location,ETag');
+            data.setHeader('Access-Control-Expose-Headers', 'X-Restspace-Service,Location,ETag,X-Total-Count');
             data.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         }
         return data;
