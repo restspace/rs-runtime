@@ -225,6 +225,7 @@ export const handleOutgoingRequestWithPrivateServices = (basePath: string, priva
             newUrl.domain = msg.url.domain;
             newUrl.pathElements = baseParts.concat([ privateServiceName, ...subPathEls.filter(el => el !== '') ]);
             newUrl.basePathElements = baseParts.concat([ privateServiceName ]);
+            newUrl.query = msg.url.query;
             if (isDir) {
                 // Represent directory by ensuring a trailing slash element
                 if (newUrl.pathElements[newUrl.pathElements.length - 1] !== '') {

@@ -56,3 +56,20 @@ Deno.test("context.makeRequest routes star private directory GET with trailing s
     const res = await msgOut?.data?.asJson();
     assertStrictEquals(Array.isArray(res) && res.length === 2, true);
 });
+
+Deno.test("context.makeRequest preserves query string when routing to private service", async () => {
+    // Set up a custom handler that verifies the query string is present
+    let receivedQuery: Record<string, string[]> = {};
+    mockHandler.subhandlers['/xyz'] = (msg: Message) => {
+        receivedQuery = msg.url.query;
+        return Promise.resolve(msg.setDataJson({ received: "ok" }));
+    };
+
+    const msg = testMessage("/pc/direct?foo=bar&baz=qux", "GET");
+    const msgOut = await handleIncomingRequest(msg);
+    assert(msgOut.ok, "request failed");
+
+    // Verify the query string was preserved
+    assertStrictEquals(receivedQuery['foo']?.[0], 'bar', 'foo parameter not preserved');
+    assertStrictEquals(receivedQuery['baz']?.[0], 'qux', 'baz parameter not preserved');
+});

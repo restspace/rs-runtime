@@ -86,8 +86,10 @@ See [AUTH.md](AUTH.md) for authentication patterns.
 ### Step 5: Perform Operations
 
 Use the discovered service path for all operations. See:
+- [AUTH.md](AUTH.md) - Authentication (login, logout, sessions)
 - [DATA.md](DATA.md) - Data CRUD operations
 - [FILES.md](FILES.md) - File operations
+- [PIPELINES.md](PIPELINES.md) - Pipelines and transforms (compose services)
 
 ## Service Type Patterns
 

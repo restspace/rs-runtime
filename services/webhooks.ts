@@ -108,7 +108,8 @@ service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksCon
     }
 
     // Duplicate detection via private store listing (directory) and key probe
-    const listMsg = new Message(`/*store/${dataset}/`, msg.tenant, 'GET', msg);
+    const queryStr = msg.url.queryString ? `?${msg.url.queryString}` : '';
+    const listMsg = new Message(`/*store/${dataset}/${queryStr}`, msg.tenant, 'GET', msg);
     const list = await context.makeRequest(listMsg);
     if (list.ok) {
       const dir = (await list.data?.asJson()) as { paths?: (string | string[])[] } | undefined;
@@ -117,7 +118,7 @@ service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksCon
         return msg.setStatus(409, "Registrant already exists for this event (duplicate url)");
       }
     }
-    const probeMsg = new Message(`/*store/${dataset}/${registrantId}`, msg.tenant, "GET", msg);
+    const probeMsg = new Message(`/*store/${dataset}/${registrantId}${queryStr}`, msg.tenant, "GET", msg);
     const probe = await context.makeRequest(probeMsg);
     if (probe.ok) {
       return msg.setStatus(409, "Registrant already exists for this event (duplicate url)");
@@ -131,7 +132,7 @@ service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksCon
     };
 
     // Write via private store directly so we can reliably detect create vs overwrite
-    const writeMsg = new Message(`/*store/${dataset}/${registrantId}`, msg.tenant, 'PUT', msg).setDataJson(registrant);
+    const writeMsg = new Message(`/*store/${dataset}/${registrantId}${queryStr}`, msg.tenant, 'PUT', msg).setDataJson(registrant);
     const write = await context.makeRequest(writeMsg);
     if (!write.ok) return write;
     if (write.status === 200) {
@@ -162,7 +163,8 @@ service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksCon
 
   if (!registrants || registrants.length === 0) {
     // Fallback to store listing and reads
-    const listStar = new Message(`/*store/${dataset}/`, msg.tenant, 'GET', msg);
+    const queryStr = msg.url.queryString ? `?${msg.url.queryString}` : '';
+    const listStar = new Message(`/*store/${dataset}/${queryStr}`, msg.tenant, 'GET', msg);
     const listResp = await context.makeRequest(listStar);
     if (!listResp.ok) {
       // No registrants returns empty listing for many adapters; if explicit 404, treat as empty
@@ -176,7 +178,7 @@ service.post(async (msg, context: ServiceContext<IAdapter>, config: IWebhooksCon
 
     registrants = [];
     for (const key of registrantKeys) {
-      const getStar = new Message(`/*store/${dataset}/${key}`, msg.tenant, 'GET', msg);
+      const getStar = new Message(`/*store/${dataset}/${key}${queryStr}`, msg.tenant, 'GET', msg);
       const r = await context.makeRequest(getStar);
       if (r.ok) {
         const obj = await r.data!.asJson();
