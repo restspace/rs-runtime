@@ -2,6 +2,7 @@ import { IJwtPayload } from "./Authoriser.ts";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.2.4/mod.ts";
 import { slashTrim } from "rs-core/utility/utility.ts";
 import { IAuthUser, userIsAnon } from "rs-core/user/IAuthUser.ts";
+import { DataFieldFilter } from "rs-core/adapter/IDataAdapter.ts";
 import { config } from "../config.ts";
 
 export class AuthUser implements IAuthUser {
@@ -12,6 +13,8 @@ export class AuthUser implements IAuthUser {
     roles = '';
     password = '';
     exp?: number;
+    /** Index signature to allow custom fields for data-field authorization */
+    [key: string]: unknown;
 
     get rolesArray() {
         return this.roles.split(' ').filter(r => !!r).map(r => r.trim());
@@ -82,6 +85,87 @@ export class AuthUser implements IAuthUser {
             }
         }
         return this.authorizedForInner(rootReqRoles, servicePath);
+    }
+
+    /**
+     * Parse data-field authorization rules from role spec.
+     * Rules have the format ${datafieldname=userfieldname}
+     */
+    parseDataFieldRules(roleSpec: string): Array<{ dataField: string; userField: string }> {
+        return roleSpec.trim().split(' ')
+            .filter(r => r.startsWith('${') && r.endsWith('}') && r.includes('='))
+            .map(r => {
+                const inner = r.slice(2, -1); // Remove ${ and }
+                const eqIdx = inner.indexOf('=');
+                return {
+                    dataField: inner.slice(0, eqIdx),
+                    userField: inner.slice(eqIdx + 1)
+                };
+            });
+    }
+
+    /**
+     * Check if a role spec contains data-field rules
+     */
+    hasDataFieldRules(roleSpec: string): boolean {
+        return this.parseDataFieldRules(roleSpec).length > 0;
+    }
+
+    /**
+     * Get data-field filters for adapter-level filtering
+     */
+    getDataFieldFilters(roleSpec: string): DataFieldFilter[] | null {
+        const rules = this.parseDataFieldRules(roleSpec);
+        if (rules.length === 0) return [];
+
+        const filters: DataFieldFilter[] = [];
+        for (const rule of rules) {
+            const userVal = (this as Record<string, unknown>)[rule.userField];
+            if (!this.isSafeDataFieldValue(userVal)) {
+                return null;
+            }
+            filters.push({ dataFieldName: rule.dataField, userFieldValue: userVal });
+        }
+        return filters;
+    }
+
+    private isSafeDataFieldValue(value: unknown): value is string | number | boolean {
+        if (value === null || value === undefined) return false;
+        const valueType = typeof value;
+        return valueType === 'string' || valueType === 'number' || valueType === 'boolean';
+    }
+
+    /**
+     * Check if user is authorized for a specific data record.
+     * This checks both standard role authorization and data-field rules.
+     * @param data The data record to check
+     * @param roleSpec The role specification (e.g., "U A ${organisationId=organisationId}")
+     * @param servicePath Optional service path for existing path-based checks
+     * @returns true if authorized, false otherwise
+     */
+    authorizedForDataRecord(
+        data: Record<string, unknown>,
+        roleSpec: string,
+        servicePath?: string
+    ): boolean {
+        // First check standard role authorization
+        if (!this.authorizedFor(roleSpec, servicePath)) return false;
+
+        // Admin bypass: if user has 'A' role and 'A' is in allowed roles, skip data-field checks
+        const reqRoles = roleSpec.trim().split(' ').filter(r => !!r);
+        if (this.hasRole('A') && reqRoles.includes('A')) return true;
+
+        // Then check data-field rules (all must pass)
+        const rules = this.parseDataFieldRules(roleSpec);
+        if (rules.length === 0) return true;
+
+        return rules.every(rule => {
+            const userVal = (this as Record<string, unknown>)[rule.userField];
+            const dataVal = data[rule.dataField];
+            // Fail closed: missing fields deny access
+            if (!this.isSafeDataFieldValue(userVal) || !this.isSafeDataFieldValue(dataVal)) return false;
+            return String(userVal) === String(dataVal);
+        });
     }
 
     isAnon() {

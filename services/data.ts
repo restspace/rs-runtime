@@ -1,12 +1,14 @@
 import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
-import { IDataAdapter } from "rs-core/adapter/IDataAdapter.ts";
+import { IDataAdapter, IDataFieldFilterableAdapter } from "rs-core/adapter/IDataAdapter.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { DirDescriptor, StoreSpec } from "rs-core/DirDescriptor.ts";
 import { IReadOnlySchemaAdapter, ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { ItemFile } from "rs-core/ItemMetadata.ts";
+import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { ServiceContext, WrappedLogger } from "rs-core/ServiceContext.ts";
 import { deleteProp, patch, setProp } from "rs-core/utility/utility.ts";
+import { AuthUser } from "../auth/AuthUser.ts";
 import * as log from "std/log/mod.ts";
 
 const service = new Service<IDataAdapter>();
@@ -17,12 +19,17 @@ const isSchema = (adapter: IDataAdapter): adapter is IDataAdapter & IReadOnlySch
 const isWriteSchema = (adapter: IDataAdapter): adapter is IDataAdapter & ISchemaAdapter =>
     (adapter as IDataAdapter & ISchemaAdapter).writeSchema !== undefined;
 
+/** Check if adapter supports data-field filtering for listings */
+const isDataFieldFilterable = (adapter: IDataAdapter): adapter is IDataFieldFilterableAdapter =>
+    'supportsDataFieldFiltering' in adapter &&
+    (adapter as IDataFieldFilterableAdapter).supportsDataFieldFiltering === true;
+
 const normaliseKey = (key: string) => {
     if (key?.endsWith('.json')) return key.slice(0, -5);
     return key;
 }
 
-service.get(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>) => {
+service.get(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>, config?: IServiceConfig) => {
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data GET request should have a service path like <dataset>/<key>');
     }
@@ -48,10 +55,38 @@ service.get(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>) => {
         return msg.setStatus(404, 'Not found');
     }
 
+    const readRoles = config?.access?.readRoles;
     if (msg.method !== 'HEAD') {
         const val = await adapter.readKey(dataset, key);
+        if (typeof val === 'number') {
+            return msg.setStatus(val);
+        }
+
+        // Data-field authorization check
+        if (msg.user && readRoles) {
+            const authUser = new AuthUser(msg.user);
+            if (authUser.hasDataFieldRules(readRoles)) {
+                if (!authUser.authorizedForDataRecord(val, readRoles, msg.url.servicePath)) {
+                    // Return 404 to avoid leaking information about record existence
+                    return msg.setStatus(404, 'Not found');
+                }
+            }
+        }
+
         msg.data = MessageBody.fromObject(val);
         msg.data.dateModified = details.dateModified;
+    } else if (msg.user && readRoles) {
+        const authUser = new AuthUser(msg.user);
+        if (authUser.hasDataFieldRules(readRoles)) {
+            const val = await adapter.readKey(dataset, key);
+            if (typeof val === 'number') {
+                return msg.setStatus(val);
+            }
+            if (!authUser.authorizedForDataRecord(val, readRoles, msg.url.servicePath)) {
+                // Return 404 to avoid leaking information about record existence
+                return msg.setStatus(404, 'Not found');
+            }
+        }
     }
 
     // if we are using a schema, set a pointer in the mime type
@@ -62,7 +97,7 @@ service.get(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>) => {
     return msg;
 });
 
-service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>) => {
+service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>, config?: IServiceConfig) => {
     if (msg.url.servicePathElements.length > 1) {
         return msg.setStatus(400, 'Data GET directory request should be like <dataset>/ or just /');
     }
@@ -70,7 +105,25 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
     const dataset = pathEls.length ? pathEls[0] : '';
     const take = msg.url.query['$take'] ? parseInt(msg.url.query['$take'][0]) : undefined;
     const skip = msg.url.query['$skip'] ? parseInt(msg.url.query['$skip'][0]) : undefined;
-    const paths =  await adapter.listDataset(dataset, take, skip);
+
+    // Check for data-field authorization rules
+    const authUser = msg.user ? new AuthUser(msg.user) : null;
+    const hasDataFieldRules = authUser?.hasDataFieldRules(config?.access?.readRoles || '') ?? false;
+
+    let paths;
+    if (hasDataFieldRules && dataset) {
+        // Data-field rules require adapter support for filtered listing
+        if (!isDataFieldFilterable(adapter)) {
+            return msg.setStatus(501, 'Data-field authorization requires adapter support for filtered listing');
+        }
+        const filters = authUser!.getDataFieldFilters(config!.access.readRoles);
+        if (!filters) {
+            return msg.setStatus(404, 'Not found');
+        }
+        paths = await adapter.listDatasetWithFilter(dataset, filters, take, skip);
+    } else {
+        paths = await adapter.listDataset(dataset, take, skip);
+    }
     if (typeof paths === 'number') return msg.setStatus(paths);
 
     enum DirState {
@@ -128,7 +181,7 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
     return msg.setDirectoryJson(dirDesc);
 });
 
-const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger, isPatch: boolean, isKeyless = false) => {
+const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger, isPatch: boolean, isKeyless = false, config?: IServiceConfig) => {
     const servicePathLength = msg.url.servicePathElements.length;
     if (servicePathLength !== 1 && isKeyless) {
         return msg.setStatus(400, 'Keyless data write request should have a service path like <dataset>');
@@ -155,7 +208,23 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
         if (key && isDirectory) {
             msg.data = undefined;
             return msg.setStatus(403, "Forbidden: can't overwrite directory");
-        } 
+        }
+
+        // Data-field authorization for writes
+        const authUser = msg.user ? new AuthUser(msg.user) : null;
+        const writeRoles = config?.access?.writeRoles || '';
+        const hasDataFieldRules = authUser?.hasDataFieldRules(writeRoles) ?? false;
+
+        // For updates, check if user can modify the existing record
+        if (hasDataFieldRules && details.status !== "none" && key) {
+            const existing = await adapter.readKey(dataset, key);
+            if (typeof existing !== 'number') {
+                if (!authUser!.authorizedForDataRecord(existing, writeRoles, msg.url.servicePath)) {
+                    // Return 404 to avoid leaking information about record existence
+                    return msg.setStatus(404, 'Not found');
+                }
+            }
+        }
 
         let resCode: number | string = 0;
 
@@ -178,8 +247,25 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
             } else {
                 setProp(val, msg.url.fragment, d);
             }
+
+            // Check new data matches authorization rules
+            if (hasDataFieldRules) {
+                if (!authUser!.authorizedForDataRecord(val as Record<string, unknown>, writeRoles, msg.url.servicePath)) {
+                    // 403 is appropriate here - rejecting the data being written, not hiding existence
+                    return msg.setStatus(403, 'Forbidden: data-field mismatch in new data');
+                }
+            }
+
             resCode = await adapter.writeKey(dataset, key, MessageBody.fromObject(val));
         } else {
+            // Check new data matches authorization rules for non-patch writes
+            if (hasDataFieldRules) {
+                const newData = await msg.data!.asJson();
+                if (!authUser!.authorizedForDataRecord(newData as Record<string, unknown>, writeRoles, msg.url.servicePath)) {
+                    // 403 is appropriate here - rejecting the data being written, not hiding existence
+                    return msg.setStatus(403, 'Forbidden: data-field mismatch in new data');
+                }
+            }
             // msg.data.copy() tees the stream
             resCode = await adapter.writeKey(dataset, key, msg.data!.copy());
         }
@@ -188,7 +274,7 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
 
         let location = msg.url.toString();
         if (isKeyless) location += resCode;
-    
+
         return msg
             .setDateModified((details as ItemFile).dateModified)
             .setHeader('Location', location)
@@ -196,19 +282,34 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
     }
 }
 
-service.post((msg, { adapter, logger }) => write(msg, adapter, logger, false));
-service.put((msg, { adapter, logger }) => write(msg, adapter, logger, false));
-service.patch((msg, { adapter, logger }) => write(msg, adapter, logger, true));
-service.putDirectory((msg, { adapter, logger }) => write(msg, adapter, logger, false, true));
-service.postDirectory((msg, { adapter, logger }) => write(msg, adapter, logger, false, true));
+service.post((msg, { adapter, logger }, config) => write(msg, adapter, logger, false, false, config));
+service.put((msg, { adapter, logger }, config) => write(msg, adapter, logger, false, false, config));
+service.patch((msg, { adapter, logger }, config) => write(msg, adapter, logger, true, false, config));
+service.putDirectory((msg, { adapter, logger }, config) => write(msg, adapter, logger, false, true, config));
+service.postDirectory((msg, { adapter, logger }, config) => write(msg, adapter, logger, false, true, config));
 
-service.delete(async (msg, { adapter }) => {
+service.delete(async (msg, { adapter }, config?: IServiceConfig) => {
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>/');
     }
 
     let [ dataset, key ] = msg.url.servicePathElements;
     key = normaliseKey(key);
+
+    // Data-field authorization check for delete
+    const authUser = msg.user ? new AuthUser(msg.user) : null;
+    const writeRoles = config?.access?.writeRoles || '';
+    const hasDataFieldRules = authUser?.hasDataFieldRules(writeRoles) ?? false;
+
+    if (hasDataFieldRules) {
+        const existing = await adapter.readKey(dataset, key);
+        if (typeof existing !== 'number') {
+            if (!authUser!.authorizedForDataRecord(existing, writeRoles, msg.url.servicePath)) {
+                // Return 404 to avoid leaking information about record existence
+                return msg.setStatus(404, 'Not found');
+            }
+        }
+    }
 
     let res: number | string = 0;
     if (msg.url.fragment) {

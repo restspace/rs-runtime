@@ -12,7 +12,8 @@
       "Bash(AUTH_PATH=\"/auth\":*)",
       "Bash(jq:*)",
       "Bash(npm run test:*)",
-      "Bash(deno eval:*)"
+      "Bash(deno eval:*)",
+      "Bash(npm run check:*)"
     ]
   }
 }
