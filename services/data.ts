@@ -8,10 +8,30 @@ import { ItemFile } from "rs-core/ItemMetadata.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { ServiceContext, WrappedLogger } from "rs-core/ServiceContext.ts";
 import { deleteProp, patch, setProp } from "rs-core/utility/utility.ts";
+import { getErrors } from "rs-core/utility/errors.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
 import * as log from "std/log/mod.ts";
+import { Validate } from "https://cdn.skypack.dev/@exodus/schemasafe?dts";
+import { config as runtimeConfig } from "../config.ts";
 
-const service = new Service<IDataAdapter>();
+interface IDataServiceConfig extends IServiceConfig {
+    enforceSchema?: boolean;
+}
+
+type SchemaValidatorCacheEntry = {
+    schemaText: string;
+    validate: Validate;
+};
+
+const schemaValidatorCache = new Map<string, SchemaValidatorCacheEntry>();
+
+const schemaCacheKey = (tenant: string, dataset: string) => `${tenant}|${dataset}`;
+
+const compileValidator = (schema: Record<string, unknown>): Validate => {
+    return runtimeConfig.defaultValidator(schema);
+};
+
+const service = new Service<IDataAdapter, IDataServiceConfig>();
 
 /** Capabilities of the adapter. This determines whether schemas are required for data. */
 const isSchema = (adapter: IDataAdapter): adapter is IDataAdapter & IReadOnlySchemaAdapter =>
@@ -29,7 +49,40 @@ const normaliseKey = (key: string) => {
     return key;
 }
 
-service.get(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>, config?: IServiceConfig) => {
+async function getDatasetValidator(
+    adapter: IDataAdapter,
+    context: ServiceContext<IDataAdapter>,
+    dataset: string,
+): Promise<SchemaValidatorCacheEntry | number | null> {
+    if (!isSchema(adapter)) {
+        return null;
+    }
+
+    const schemaOut = await adapter.readSchema(dataset);
+    if (typeof schemaOut === "number") {
+        if (schemaOut === 404) return null;
+        return schemaOut;
+    }
+
+    const schemaText = JSON.stringify(schemaOut);
+    const key = schemaCacheKey(context.tenant, dataset);
+    const cached = schemaValidatorCache.get(key);
+    if (cached && cached.schemaText === schemaText) {
+        return cached;
+    }
+
+    try {
+        const validate = compileValidator(schemaOut as Record<string, unknown>);
+        const entry: SchemaValidatorCacheEntry = { schemaText, validate };
+        schemaValidatorCache.set(key, entry);
+        return entry;
+    } catch (err) {
+        context.logger.error(`Failed to compile schema validator for dataset ${dataset}: ${err}`);
+        return 500;
+    }
+}
+
+service.get(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>, config: IDataServiceConfig) => {
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data GET request should have a service path like <dataset>/<key>');
     }
@@ -97,7 +150,7 @@ service.get(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>, conf
     return msg;
 });
 
-service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>, config?: IServiceConfig) => {
+service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapter>, config: IDataServiceConfig) => {
     if (msg.url.servicePathElements.length > 1) {
         return msg.setStatus(400, 'Data GET directory request should be like <dataset>/ or just /');
     }
@@ -181,7 +234,14 @@ service.getDirectory(async (msg: Message, { adapter }: ServiceContext<IDataAdapt
     return msg.setDirectoryJson(dirDesc);
 });
 
-const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger, isPatch: boolean, isKeyless = false, config?: IServiceConfig) => {
+const write = async (
+    msg: Message,
+    context: ServiceContext<IDataAdapter>,
+    isPatch: boolean,
+    isKeyless = false,
+    config: IDataServiceConfig,
+) => {
+    const { adapter } = context;
     const servicePathLength = msg.url.servicePathElements.length;
     if (servicePathLength !== 1 && isKeyless) {
         return msg.setStatus(400, 'Keyless data write request should have a service path like <dataset>');
@@ -197,8 +257,21 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
     key = normaliseKey(key);
 
     if (isWriteSchema(adapter) && key?.endsWith('.schema')) {
+        const schemaToWrite = await msg.data!.asJson();
+        if (config?.enforceSchema) {
+            try {
+                const validate = compileValidator(schemaToWrite as Record<string, unknown>);
+                const entry: SchemaValidatorCacheEntry = {
+                    schemaText: JSON.stringify(schemaToWrite),
+                    validate,
+                };
+                schemaValidatorCache.set(schemaCacheKey(context.tenant, dataset), entry);
+            } catch (err) {
+                return msg.setStatus(400, `Invalid JSON Schema: ${err}`);
+            }
+        }
         const schemaDetails = await adapter.checkSchema(dataset);
-        const res = await adapter.writeSchema!(dataset, await msg.data!.asJson());
+        const res = await adapter.writeSchema!(dataset, schemaToWrite as Record<string, unknown>);
         msg.data!.mimeType = 'application/json-schema';
         if (msg.method === "PUT") msg.data = undefined;
         return msg.setStatus(res === 200 && schemaDetails.status === 'none' ? 201 : res);
@@ -256,14 +329,44 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
                 }
             }
 
+            if (config?.enforceSchema) {
+                const validatorEntry = await getDatasetValidator(adapter, context, dataset);
+                if (typeof validatorEntry === "number") {
+                    return msg.setStatus(validatorEntry);
+                }
+                if (!validatorEntry) {
+                    return msg.setStatus(400, "Schema required for this dataset");
+                }
+                if (!validatorEntry.validate(val as unknown as Parameters<typeof validatorEntry.validate>[0])) {
+                    return msg.setStatus(400, getErrors(validatorEntry.validate));
+                }
+            }
+
             resCode = await adapter.writeKey(dataset, key, MessageBody.fromObject(val));
         } else {
             // Check new data matches authorization rules for non-patch writes
+            let newData: any | undefined = undefined;
             if (hasDataFieldRules) {
-                const newData = await msg.data!.asJson();
+                newData = await msg.data!.asJson();
                 if (!authUser!.authorizedForDataRecord(newData as Record<string, unknown>, writeRoles, msg.url.servicePath)) {
                     // 403 is appropriate here - rejecting the data being written, not hiding existence
                     return msg.setStatus(403, 'Forbidden: data-field mismatch in new data');
+                }
+            }
+
+            if (config?.enforceSchema) {
+                if (newData === undefined) {
+                    newData = await msg.data!.asJson();
+                }
+                const validatorEntry = await getDatasetValidator(adapter, context, dataset);
+                if (typeof validatorEntry === "number") {
+                    return msg.setStatus(validatorEntry);
+                }
+                if (!validatorEntry) {
+                    return msg.setStatus(400, "Schema required for this dataset");
+                }
+                if (!validatorEntry.validate(newData)) {
+                    return msg.setStatus(400, getErrors(validatorEntry.validate));
                 }
             }
             // msg.data.copy() tees the stream
@@ -282,13 +385,13 @@ const write = async (msg: Message, adapter: IDataAdapter, logger: WrappedLogger,
     }
 }
 
-service.post((msg, { adapter, logger }, config) => write(msg, adapter, logger, false, false, config));
-service.put((msg, { adapter, logger }, config) => write(msg, adapter, logger, false, false, config));
-service.patch((msg, { adapter, logger }, config) => write(msg, adapter, logger, true, false, config));
-service.putDirectory((msg, { adapter, logger }, config) => write(msg, adapter, logger, false, true, config));
-service.postDirectory((msg, { adapter, logger }, config) => write(msg, adapter, logger, false, true, config));
+service.post((msg, context, config) => write(msg, context, false, false, config));
+service.put((msg, context, config) => write(msg, context, false, false, config));
+service.patch((msg, context, config) => write(msg, context, true, false, config));
+service.putDirectory((msg, context, config) => write(msg, context, false, true, config));
+service.postDirectory((msg, context, config) => write(msg, context, false, true, config));
 
-service.delete(async (msg, { adapter }, config?: IServiceConfig) => {
+service.delete(async (msg, { adapter }, config: IDataServiceConfig) => {
     if (msg.url.servicePathElements.length !== 2) {
         return msg.setStatus(400, 'Data DELETE request should have a service path like <dataset>/<key> or <dataset>/');
     }
