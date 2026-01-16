@@ -85,6 +85,34 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
 		const data = await res.data?.asJson();
 		switch (operation) {
 			case "_search": {
+				// Check for suggest results first
+				if (data?.suggest && typeof data.suggest === "object") {
+					const suggestItems: Record<string, unknown>[] = [];
+					const suggestObj = data.suggest as Record<string, unknown>;
+					
+					// Iterate through each suggest key (e.g., "ac")
+					for (const suggestKey in suggestObj) {
+						const suggestEntry = suggestObj[suggestKey];
+						if (Array.isArray(suggestEntry)) {
+							// Each suggest entry is an array of suggestion objects
+							for (const suggestion of suggestEntry) {
+								if (suggestion && typeof suggestion === "object") {
+									const suggestionObj = suggestion as Record<string, unknown>;
+									if (Array.isArray(suggestionObj.options)) {
+										// Extract options from each suggestion
+										suggestItems.push(...(suggestionObj.options as Record<string, unknown>[]));
+									}
+								}
+							}
+						}
+					}
+					
+					if (hasPagingParams) {
+						return { items: suggestItems, total: suggestItems.length };
+					}
+					return suggestItems;
+				}
+				
 				const items = (data?.hits?.hits ?? []) as Record<string, unknown>[];
 				if (hasPagingParams) {
 					const totalRaw = data?.hits?.total;
