@@ -20,7 +20,8 @@ export default {
         },
         "required": [ "store" ]
     },
-    "postPipeline": [ "if ((isDirectory || (isManage && method !== 'POST')) && status !== 200) $METHOD *store/$*", "/lib/delocalise-store-location" ],
+    // Only delegate to the backing store when the service explicitly returns status 0
+    "postPipeline": [ "if ((isDirectory || (isManage && method !== 'POST')) && status === 0) $METHOD *store/$*", "/lib/delocalise-store-location" ],
     "privateServices": {
         "store": {
             "name": "'Pipeline Store'",

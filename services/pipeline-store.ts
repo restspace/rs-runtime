@@ -32,7 +32,8 @@ service.all(async (msg, context) => {
 	pipelineUrl.setSubpathFromUrl(locationUrl);
 	
 	const pipelineResult = await pipeline(msg, pipelineSpec, pipelineUrl, false, msg => context.makeRequest(msg), context.serviceName);
-	return pipelineResult.setStatus(200); // stops the pipeline handling the message
+	// Preserve pipeline status codes (e.g. 400), but translate "0" (internal OK) to a real HTTP 200.
+	return pipelineResult.status === 0 ? pipelineResult.setStatus(200) : pipelineResult;
 })
 
 export default service;
