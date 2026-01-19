@@ -16,7 +16,7 @@ import { PipelineTransform } from "./pipelineTransform.ts";
 import { Url } from "rs-core/Url.ts";
 import { copyPipelineContext, PipelineContext } from "./pipelineContext.ts";
 import { handleOutgoingRequest } from "../handleRequest.ts";
-import { PipelineSpec } from "rs-core/PipelineSpec.ts";
+import { PipelineSpec, pipelineDefaultVariables } from "rs-core/PipelineSpec.ts";
 import { jsonSplit } from "./jsonSplitSplitter.ts";
 import { limitConcurrency } from "rs-core/utility/limitConcurrency.ts";
 import { VariableScope } from "rs-core/VariableScope.ts";
@@ -329,7 +329,7 @@ function createInitialContext(pipeline: PipelineSpec, handler: MessageFunction, 
         external,
         path: [],
         concurrencyLimiter: limitConcurrency(DefaultConcurrencyLimit),
-        variables: new VariableScope(variables),
+        variables: new VariableScope({ ...pipelineDefaultVariables(callerMsg), ...variables }),
         serviceName
     } as PipelineContext;
     let stepIdx = 0;

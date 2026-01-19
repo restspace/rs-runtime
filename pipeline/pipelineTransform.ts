@@ -10,7 +10,17 @@ export class PipelineTransform {
         const jsonIn = msg.data ? await msg.data.asJson() : {};
         let transJson: any = null;
         try {
-            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url, msg.name, context.variables.getScope(msg.name));
+            // Expose message details as transform variables, while preserving the shared pipeline VariableScope.
+            // Do not overwrite existing values (e.g. when a pipeline explicitly sets $_user via :$_user).
+            const scope = context.variables.getScope(msg.name);
+            if (scope.get('$_headers') === undefined) {
+                context.variables.setForScope(msg.name, '$_headers', msg.headers);
+            }
+            if (scope.get('$_user') === undefined) {
+                context.variables.setForScope(msg.name, '$_user', msg.user);
+            }
+            const variableScope = context.variables.getScope(msg.name);
+            transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url, msg.name, variableScope);
         } catch (err) {
             if (err instanceof SyntaxError) {
                 const errx = err as SyntaxError & { filename: string };

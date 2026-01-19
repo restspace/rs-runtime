@@ -35,6 +35,7 @@ export class PipelineCondition {
             method: context.callerMethod?.toUpperCase(),
             subpath: callerUrl && (callerUrl.subPathElementCount === null ? callerUrl.servicePathElements : callerUrl.subPathElements),
             isDirectory: callerUrl && callerUrl.isDirectory,
+            user: msg.user,
             header: (hdr: string) => msg.getHeader(hdr),
             body: () => {
                 if (!msg.data) {

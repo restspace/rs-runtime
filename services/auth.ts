@@ -98,6 +98,11 @@ service.getPath('user', async (msg, context, config) => {
         if (msg.user.exp) {
             sessionInfo.msRemaining = msg.user.exp - new Date().getTime();
         }
+        // Ensure password is masked before returning user data
+        const authUser = new AuthUser(user);
+        if (user.password && !authUser.passwordIsMaskOrEmpty()) {
+            user.password = authUser.passwordMask();
+        }
         return msg.setDataJson({ ...user, ...sessionInfo });   
     } else {
         return msg.setStatus(404, "No such user");

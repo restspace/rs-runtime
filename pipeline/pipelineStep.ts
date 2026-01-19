@@ -68,6 +68,10 @@ export class PipelineStep {
         const innerExecute = async () => {
             try {
                 let outMsg = msg;
+                // Save original body if we're going to assign to a variable
+                const preserveBody = this.rename && this.rename.startsWith('$') && this.rename !== '$this';
+                const originalBody = preserveBody && msg.data ? msg.data.copy() : undefined;
+                
                 if (this.spec) {
                     const newMsg_s = await msg.divertToSpec(this.spec, "POST", context.callerUrl, context.callerMethod, msg.headers, context.variables.getVariablesForScope(msg.name));
                     if (Array.isArray(newMsg_s)) {
@@ -93,8 +97,27 @@ export class PipelineStep {
                     }
                 }
                 if (this.rename) {
-                    if (this.rename.startsWith('$') && this.rename !== '$this' && outMsg.data) {
-                        context.variables.setForScope(msg.name, this.rename, await outMsg.data.asJson());
+                    if (this.rename.startsWith('$') && this.rename !== '$this') {
+                        let value: unknown = null;
+                        if (!outMsg.ok) {
+                            value = {
+                                _errorStatus: outMsg.status,
+                                _errorMessage: outMsg.data ? await outMsg.data.asString() : undefined,
+                            };
+                        } else if (!outMsg.data) {
+                            value = null;
+                        } else {
+                            value = await outMsg.data.asAny();
+                        }
+                        context.variables.setForScope(msg.name, this.rename, value);
+                        // Restore original body if we preserved it
+                        if (preserveBody && originalBody) {
+                            outMsg.data = originalBody;
+                        }
+                        // If we assigned an error to a variable, mark message as OK so pipeline continues
+                        if (!outMsg.ok) {
+                            outMsg.setStatus(200);
+                        }
                     } else {
                         let prename = ''
                         if (this.rename.startsWith('.')) {

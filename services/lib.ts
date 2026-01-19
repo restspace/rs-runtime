@@ -3,6 +3,9 @@ import { encode, decode } from "std/encoding/base64.ts"
 import { Url } from "rs-core/Url.ts";
 import { QuotaQueueConfig, QuotaQueueState } from "rs-core/state/QuotaQueueState.ts";
 import { isJson, isText } from "rs-core/mimeType.ts";
+import { getUserFromEmail } from "rs-core/user/userManagement.ts";
+import { config } from "../config.ts";
+import { userIsAnon } from "rs-core/user/IAuthUser.ts";
 
 const service = new Service();
 
@@ -144,6 +147,48 @@ service.postPath('/quota-delay', async (msg, context, config) => {
     await delayer.wait(uid);
     
     return msg;
+});
+
+service.postPath('/check-user-field', async (msg, context) => {
+    if (!msg.user || userIsAnon(msg.user)) {
+        return msg.setStatus(400, 'No authenticated user');
+    }
+    
+    if (!msg.url.servicePathElements[0]) {
+        return msg.setStatus(400, 'missing path element 1, user record property');
+    }
+    const userProperty = msg.url.servicePathElements[0];
+    
+    if (!msg.url.servicePathElements[1]) {
+        return msg.setStatus(400, 'missing path element 2, check value');
+    }
+    const checkValue = msg.url.servicePathElements[1];
+    
+    const tenant = config.tenants[context.tenant];
+    if (!tenant || !tenant.authServiceConfig) {
+        return msg.setStatus(400, 'Auth service not configured');
+    }
+    
+    const authServiceConfig = tenant.authServiceConfig as { userUrlPattern?: string };
+    if (!authServiceConfig.userUrlPattern) {
+        return msg.setStatus(400, 'userUrlPattern not configured');
+    }
+    
+    const userRecord = await getUserFromEmail(context, authServiceConfig.userUrlPattern, msg, msg.user.email);
+    if (!userRecord) {
+        return msg.setStatus(400, 'User record not found');
+    }
+    
+    const userValue = (userRecord as Record<string, unknown>)[userProperty];
+    if (userValue === undefined) {
+        return msg.setStatus(400, `User record property '${userProperty}' not found`);
+    }
+    
+    if (String(userValue) !== checkValue) {
+        return msg.setStatus(400, `User record property '${userProperty}' does not match check value`);
+    }
+    
+    return msg.setStatus(0);
 });
 
 export default service;

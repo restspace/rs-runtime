@@ -11,11 +11,18 @@ import { assertEquals } from "https://deno.land/std@0.144.0/testing/asserts.ts";
 config.server = testServerConfig;
 
 testServicesConfig['pipeline'] = JSON.parse(`{
+    "authServicePath": "/auth",
     "services": {
         "/": {
             "name": "Mock",
             "source": "./services/mock.rsm.json",
             "access": { "readRoles": "all", "writeRoles": "all" }
+        },
+        "/auth": {
+            "name": "Auth",
+            "source": "./services/auth.rsm.json",
+            "access": { "readRoles": "all", "writeRoles": "all" },
+            "userUrlPattern": "/test/user/${'${'}email}"
         },
         "/lib": {
             "name": "Lib",
@@ -53,6 +60,7 @@ mockHandler.getJson("/test/list-repeats", [ "abc", "abd", "abc" ]);
 mockHandler.getJson("/test/timing-list", [ 100, 80, 50 ]);
 mockHandler.getJson("/test/post-list", [ "post-1", "post-2"])
 mockHandler.getJson("/test/object", { val1: "aaa", val2: "bbb" });
+mockHandler.getJson("/test/user/joe@example.com", { email: "joe@example.com", orgId: 999, password: "secret" });
 mockHandler.getStringDelay("/test/aaa-100ms", 100, "aaa result");
 mockHandler.getStringDelay("/test/bbb-75ms", 75, "bbb result");
 mockHandler.getStringDelay("/test/ccc-50ms", 50, "ccc result");
@@ -311,6 +319,17 @@ Deno.test('conditional body subpipelines', async function () {
     const output = await msgOut.data?.asString();
     assertStrictEquals(output, 'xyz result');
 });
+
+Deno.test('pipeline condition can access user from Message', async function () {
+    const msg = testMessage('/', 'GET');
+    msg.user = { email: 'joe@example.com', roles: 'U', orgId: 123 } as any;
+
+    const msgOut = await pipeline(msg, [
+        "if (user && user.orgId === 123) GET /test/abc"
+    ]);
+    const output = await msgOut.data?.asString();
+    assertStrictEquals(output, 'abc result');
+});
 // Deno.test('target host', async function () {
 //     let domainCount = 0;
 //     domainRequestHandlers["test1.com"] = async (msg: Message) => {
@@ -332,6 +351,80 @@ Deno.test('transform', async function () {
     ]);
     const output = await msgOut.data?.asJson();
     assertStrictEquals(output.out, 'aaa');
+});
+
+Deno.test('transform can access $_user and $_headers', async function () {
+    const msg = testMessage('/', 'GET');
+    msg.user = { email: 'joe@example.com', roles: 'U', orgId: 123 } as any;
+    msg.setHeader('x-test', '123');
+
+    const msgOut = await pipeline(msg, [
+        {
+            email: "$_user.email",
+            orgId: "$_user.orgId",
+            hdr: "$_headers['x-test']"
+        }
+    ]);
+    const output = await msgOut.data?.asJson() as any;
+    assertStrictEquals(output.email, 'joe@example.com');
+    assertStrictEquals(output.orgId, 123);
+    assertStrictEquals(output.hdr, '123');
+});
+
+Deno.test('auth/user can populate pipeline $_user', async function () {
+    const msg = testMessage('/', 'GET');
+    msg.user = { email: 'joe@example.com', roles: 'U' } as any;
+
+    const msgOut = await pipeline(msg, [
+        "GET /auth/user :$_user",
+        {
+            orgId: "$_user.orgId",
+            password: "$_user.password"
+        }
+    ]);
+    const output = await msgOut.data?.asJson() as any;
+    assertStrictEquals(output.orgId, 999);
+    // Password should be masked, not undefined
+    assertStrictEquals(output.password, '<hidden>');
+});
+
+Deno.test('variable assignment preserves original message body', async function () {
+    const msg = testMessage('/', 'GET');
+    msg.user = { email: 'joe@example.com', roles: 'U' } as any;
+    msg.setDataJson({ original: 'data', value: 42 });
+
+    const msgOut = await pipeline(msg, [
+        "GET /auth/user :$_user",
+        {
+            // Transform should still see the original body, not the auth/user response
+            original: "$.original",
+            value: "$.value",
+            userOrgId: "$_user.orgId"
+        }
+    ]);
+    const output = await msgOut.data?.asJson() as any;
+    // Original body should be preserved
+    assertStrictEquals(output.original, 'data');
+    assertStrictEquals(output.value, 42);
+    // Variable should still be assigned
+    assertStrictEquals(output.userOrgId, 999);
+});
+
+Deno.test('variables can be used in URL path patterns with nested properties', async function () {
+    mockHandler.getJson("/test/user/123/org/999", { success: true });
+
+    const msg = testMessage('/', 'GET');
+    msg.user = { email: 'joe@example.com', roles: 'U', orgId: 123 } as any;
+    // Set a header without hyphens for easier dot notation access
+    msg.setHeader('xorgid', '999');
+
+    const msgOut = await pipeline(msg, [
+        "GET /test/user/${$_user.orgId}/org/${$_headers.xorgid}"
+    ]);
+    
+    const output = await msgOut.data?.asJson() as any;
+    assertStrictEquals(output.success, true);
+    assertStrictEquals(msgOut.ok, true);
 });
 Deno.test('transform with url query string', async function () {
     const msgOut = await pipeline(testMessage('/?vvv=111&projectId=aa%20a', 'GET'), [
@@ -746,3 +839,53 @@ Deno.test('lib/to-text', async function () {
 //     assert.deepEqual(outputs, [ 80, 100, 50 ]);
 // });
 
+Deno.test('error assignment to variable', async function () {
+    const msgOut = await pipeline(testMessage('/', 'GET'), [
+        "GET /test/missingFile :$error",
+        {
+            errorStatus: "$error._errorStatus",
+            errorMessage: "$error._errorMessage"
+        }
+    ]);
+    const output = await msgOut.data?.asJson() as any;
+    assertStrictEquals(output.errorStatus, 404);
+    assertStrictEquals(output.errorMessage, 'Not found');
+});
+
+Deno.test('error assignment to variable with try mode', async function () {
+    const msgOut = await pipeline(testMessage('/', 'GET'), [
+        "try GET /test/missingFile :$error",
+        {
+            errorStatus: "$error._errorStatus",
+            errorMessage: "$error._errorMessage",
+            hasError: "$error._errorStatus !== undefined"
+        }
+    ]);
+    const output = await msgOut.data?.asJson() as any;
+    assertStrictEquals(output.errorStatus, 404);
+    assertStrictEquals(output.errorMessage, 'Not found');
+    assertStrictEquals(output.hasError, true);
+});
+
+Deno.test('error assignment to variable with conditional logic', async function () {
+    const msgOut = await pipeline(testMessage('/', 'GET'), [
+        "try GET /test/missingFile :$error",
+        "if ($error._errorStatus === 404) GET /test/abc",
+        "if ($error._errorStatus === 500) GET /test/xyz"
+    ]);
+    const output = await msgOut.data?.asString();
+    assertStrictEquals(output, 'abc result');
+});
+
+Deno.test('successful request assignment to variable', async function () {
+    const msgOut = await pipeline(testMessage('/', 'GET'), [
+        "GET /test/object :$result",
+        {
+            val1: "$result.val1",
+            val2: "$result.val2"
+        }
+    ]);
+    const output = await msgOut.data?.asJson() as any;
+    assertStrictEquals(output.val1, 'aaa');
+    assertStrictEquals(output.val2, 'bbb');
+});
