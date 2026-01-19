@@ -63,7 +63,7 @@ service.get(async (msg, { adapter }, config) => {
     let schema: Record<string, unknown> | undefined = undefined;
 
     if (isSchema(adapter) && !config.schema && key.endsWith('.schema')) {
-        const schemaOut = await adapter.readSchema(datasetName);
+        const schemaOut = await adapter.readSchema('');
         if (typeof schemaOut === 'number') {
             return msg.setStatus(schemaOut);
         } else {
@@ -79,7 +79,7 @@ service.get(async (msg, { adapter }, config) => {
         return msgOut;
     }
 
-    const details = await adapter.checkKey(datasetName, key);
+    const details = await adapter.checkKey('', key);
     if (details.status === "none") {
         msg.data = undefined;
         return msg.setStatus(404, 'Not found');
@@ -87,7 +87,7 @@ service.get(async (msg, { adapter }, config) => {
 
     const readRoles = config?.access?.readRoles;
     if (msg.method !== 'HEAD') {
-        const val = await adapter.readKey(datasetName, key);
+        const val = await adapter.readKey('', key);
         if (typeof val === 'number') {
             return msg.setStatus(val);
         }
@@ -108,7 +108,7 @@ service.get(async (msg, { adapter }, config) => {
     } else if (msg.user && readRoles) {
         const authUser = new AuthUser(msg.user);
         if (authUser.hasDataFieldRules(readRoles)) {
-            const val = await adapter.readKey(datasetName, key);
+            const val = await adapter.readKey('', key);
             if (typeof val === 'number') {
                 return msg.setStatus(val);
             }
@@ -157,9 +157,9 @@ service.getDirectory(async (msg, { adapter }, config: IDatasetConfig) => {
         if (!filters) {
             return msg.setStatus(404, 'Not found');
         }
-        paths = await adapter.listDatasetWithFilter(datasetName, filters, take, skip);
+        paths = await adapter.listDatasetWithFilter('', filters, take, skip);
     } else {
-        paths = await adapter.listDataset(datasetName, take, skip);
+        paths = await adapter.listDataset('', take, skip);
     }
     if (typeof paths === 'number') return msg.setStatus(paths);
 
@@ -218,13 +218,13 @@ const write = async (
     if (isWriteSchema(adapter) && key.endsWith('.schema')) {
         if (config.schema) return msg.setStatus(400, "Can't write fixed schema");
 
-        const schemaDetails = await adapter.checkSchema(datasetName);
-        const res = await adapter.writeSchema(datasetName, await msg.data.asJson());
+        const schemaDetails = await adapter.checkSchema('');
+        const res = await adapter.writeSchema('', await msg.data.asJson());
         msg.data.mimeType = 'application/json-schema';
         if (msg.method === "PUT") msg.data = undefined;
         return msg.setStatus(res === 200 && schemaDetails.status === 'none' ? 201 : res);
     } else {
-        const details = await adapter.checkKey(datasetName, key);
+        const details = await adapter.checkKey('', key);
         const isDirectory = (details.status === "directory" || (details.status === "none" && msg.url.isDirectory));
         if (isDirectory) {
             msg.data = undefined;
@@ -238,7 +238,7 @@ const write = async (
 
         // For updates, check if user can modify the existing record
         if (hasDataFieldRules && details.status !== "none") {
-            const existing = await adapter.readKey(datasetName, key);
+            const existing = await adapter.readKey('', key);
             if (typeof existing !== 'number') {
                 if (!authUser!.authorizedForDataRecord(existing, writeRoles, msg.url.servicePath)) {
                     // Return 404 to avoid leaking information about record existence
@@ -257,7 +257,7 @@ const write = async (
         }
 
         // msg.data.copy() tees the stream
-        const resCode = await adapter.writeKey(datasetName, key, msg.data.copy());
+        const resCode = await adapter.writeKey('', key, msg.data.copy());
         if (msg.method === "PUT") msg.data = undefined;
         if (resCode !== 200) return msg.setStatus(resCode);
     
@@ -286,7 +286,7 @@ service.delete(async (msg, { adapter }, config) => {
     const hasDataFieldRules = authUser?.hasDataFieldRules(writeRoles) ?? false;
 
     if (hasDataFieldRules) {
-        const existing = await adapter.readKey(datasetName, key);
+        const existing = await adapter.readKey('', key);
         if (typeof existing !== 'number') {
             if (!authUser!.authorizedForDataRecord(existing, writeRoles, msg.url.servicePath)) {
                 // Return 404 to avoid leaking information about record existence
@@ -295,7 +295,7 @@ service.delete(async (msg, { adapter }, config) => {
         }
     }
 
-    const res = await adapter.deleteKey(datasetName, key);
+    const res = await adapter.deleteKey('', key);
     if (res === 404) {
         return msg.setStatus(404, 'Not found');
     } else if (res === 500) {

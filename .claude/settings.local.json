@@ -13,7 +13,8 @@
       "Bash(jq:*)",
       "Bash(npm run test:*)",
       "Bash(deno eval:*)",
-      "Bash(npm run check:*)"
+      "Bash(npm run check:*)",
+      "Bash(ls:*)"
     ]
   }
 }
