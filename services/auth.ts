@@ -16,13 +16,56 @@ interface AuthServiceConfig extends IServiceConfig {
     loginPage?: string;
     impersonateRoles?: string;
     sessionTimeoutMins?: number;
+    jwtUserProps?: string[];
 }
 
 const service = new AuthService<IAdapter, AuthServiceConfig>();
 
-async function setJwt(msg: Message, user: AuthUser, expiryMins: number) {
-    const jwt = await config.authoriser.getJwt(user, expiryMins * 60);
+const blockedJwtUserProps = new Set([
+    "password",
+    "token",
+    "tokenExpiry",
+    "exp"
+]);
+
+const reservedJwtClaims = new Set([
+    "email",
+    "roles",
+    "originalEmail",
+    "exp"
+]);
+
+function isSafeJwtClaimValue(value: unknown): value is string | number | boolean {
+    if (value === null || value === undefined) return false;
+    const t = typeof value;
+    return t === "string" || t === "number" || t === "boolean";
+}
+
+function buildJwtPayload(baseUser: AuthUser, source: Record<string, unknown>, jwtUserProps?: string[]) {
+    const payload: Record<string, unknown> = {
+        email: baseUser.email,
+        roles: baseUser.roles
+    };
+    if (baseUser.originalEmail) {
+        payload.originalEmail = baseUser.originalEmail;
+    }
+
+    if (Array.isArray(jwtUserProps)) {
+        for (const prop of jwtUserProps) {
+            if (!prop || typeof prop !== "string") continue;
+            if (blockedJwtUserProps.has(prop) || reservedJwtClaims.has(prop)) continue;
+            const value = source[prop];
+            if (!isSafeJwtClaimValue(value)) continue;
+            payload[prop] = value;
+        }
+    }
+
+    return payload;
+}
+
+async function setJwt(msg: Message, payload: Record<string, unknown>, expiryMins: number) {
     const timeToExpirySecs = expiryMins * 60;
+    const jwt = await config.authoriser.getJwtForPayload(payload, timeToExpirySecs);
     const cookieOptions = new CookieOptions({ httpOnly: true, maxAge: timeToExpirySecs });
     if (msg.url.scheme === 'https://') {
         cookieOptions.sameSite = SameSiteValue.none;
@@ -44,7 +87,8 @@ async function login(msg: Message, userUrlPattern: string, context: SimpleServic
         return msg.setStatus(400, 'bad password');
     }
     try {
-        const timeToExpirySecs = await setJwt(msg, user, config.sessionTimeoutMins || 30);
+        const payload = buildJwtPayload(user, fullUser as unknown as Record<string, unknown>, config.jwtUserProps);
+        const timeToExpirySecs = await setJwt(msg, payload, config.sessionTimeoutMins || 30);
         fullUser.password = user.passwordMask();
         fullUser.exp = (new Date().getTime()) + timeToExpirySecs * 1000;
         return msg.setDataJson(fullUser);
@@ -112,7 +156,8 @@ service.getPath('user', async (msg, context, config) => {
 service.getPath('timeout', (msg, _context, config) =>
     msg.setData((config.sessionTimeoutMins || 30).toString(), "text/plain"));
 
-service.setUser(async (msg, _context, { sessionTimeoutMins }) => {
+service.setUser(async (msg, _context, serviceConfig) => {
+    const sessionTimeoutMins = serviceConfig.sessionTimeoutMins;
     const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
     if (!authCookie) return msg;
 
@@ -135,7 +180,9 @@ service.setUser(async (msg, _context, { sessionTimeoutMins }) => {
         const refreshTime = (msg.user.exp || 0) - (sessionTimeoutMins || 30) * 60 * 1000 / 2;
         const nowTime = new Date().getTime();
         if (nowTime > refreshTime) {
-            const timeToExpirySecs = await setJwt(msg, msg.user as AuthUser, sessionTimeoutMins || 30);
+            const refreshUser = msg.user as AuthUser;
+            const payload = buildJwtPayload(refreshUser, refreshUser as unknown as Record<string, unknown>, serviceConfig.jwtUserProps);
+            const timeToExpirySecs = await setJwt(msg, payload, sessionTimeoutMins || 30);
             const newExpiryTime = nowTime + timeToExpirySecs * 1000;
             msg.user.exp = newExpiryTime;
             config.logger.info(`refreshed to ${new Date(newExpiryTime)}`);

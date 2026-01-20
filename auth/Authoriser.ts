@@ -15,6 +15,7 @@ export interface IJwtPayload {
     exp?: number;
     roles: string;
     originalEmail?: string;
+    [key: string]: unknown;
 }
 
 export class Authoriser {
@@ -65,8 +66,16 @@ export class Authoriser {
     }
 
     async getJwt(user: AuthUser, expirySecs?: number) {
+        return await this.getJwtForPayload(user.getJwtPayload() as unknown as Record<string, unknown>, expirySecs);
+    }
+
+    async getJwtForPayload(payload: Record<string, unknown>, expirySecs?: number) {
         await this.ensureKey();
-        return await jwt.create({ alg: "HS512", typ: "JWT" }, { ...user.getJwtPayload(), exp: jwt.getNumericDate(expirySecs || (config.jwtExpiryMins * 60)) }, this.key);
+        return await jwt.create(
+            { alg: "HS512", typ: "JWT" },
+            { ...payload, exp: jwt.getNumericDate(expirySecs || (config.jwtExpiryMins * 60)) },
+            this.key
+        );
     }
 
     async getImpersonationJwt(user: AuthUser, newEmail: string, newRoles?: string) {
