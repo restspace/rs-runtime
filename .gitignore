@@ -8,3 +8,4 @@ main.log.*
 cookies.dat
 bundled.js
 tmpclaude*
+.mongo-data
