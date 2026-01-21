@@ -9,7 +9,8 @@ import { IChord } from "../IChord.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
 import { ApiPattern } from "rs-core/DirDescriptor.ts";
-import { storeApi } from "../openApi.ts";
+import { buildAgentDiscovery } from "../agentDiscovery.ts";
+import { operationApi, storeApi, transformApi, viewApi } from "../openApi.ts";
 import { Url } from "../../rs-core/Url.ts";
 
 type InfraDetails = Record<string, unknown> & Infra;
@@ -92,6 +93,7 @@ service.constantDirectory('/', {
     paths: [
         [ 'catalogue', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
         [ 'services', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
+        [ 'agent-discovery', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
         [ 'raw', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}],
         [ 'raw.json', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}]
     ],
@@ -166,6 +168,12 @@ service.getPath('services', async (msg: Message, context: SimpleServiceContext) 
     });
 
     return msg.setDataJson(services);
+});
+
+service.getPath('agent-discovery', async (msg: Message, context: SimpleServiceContext) => {
+    const tenant = config.tenants[context.tenant];
+    const discovery = await buildAgentDiscovery(tenant);
+    return msg.setDataJson(discovery);
 });
 
 const getRaw = (msg: Message, context: SimpleServiceContext) => {
@@ -285,13 +293,29 @@ const openApi = async (msg: Message, context: SimpleServiceContext) => {
             if (typeof manifest === 'string') return msg.setStatus(500, 'Server error');
             let apiPattern: ApiPattern = "store";
             if (manifest.apis?.includes('store-transform')) apiPattern = "store-transform"
+            else if (manifest.apis?.includes('store-view')) apiPattern = "store-view"
+            else if (manifest.apis?.includes('store-operation')) apiPattern = "store-operation"
+            else if (manifest.apis?.includes('store-directory')) apiPattern = "store-directory"
             else if (manifest.apis?.includes('transform')) apiPattern = "transform"
             else if (manifest.apis?.includes('view')) apiPattern = "view"
             else if (manifest.apis?.includes('operation')) apiPattern = "operation";
 
             switch (apiPattern) {
                 case "store":
+                case "store-transform":
+                case "store-view":
+                case "store-operation":
+                case "store-directory":
                     spec.paths[serv.basePath + '/{servicePath}'] = storeApi(manifest);
+                    break;
+                case "transform":
+                    spec.paths[serv.basePath] = transformApi(manifest);
+                    break;
+                case "view":
+                    spec.paths[serv.basePath] = viewApi(manifest);
+                    break;
+                case "operation":
+                    spec.paths[serv.basePath] = operationApi(manifest);
                     break;
             }
         }
