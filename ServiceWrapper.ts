@@ -31,6 +31,11 @@ export class ServiceWrapper {
         msg.url.basePathElements = serviceConfig.basePath.split('/').filter((s: string) => s !== '');
         let newMsg = msg.copy();
         try {
+            // Expose request-scoped auth/access info to adapters (without services knowing adapter details).
+            context.userObj = msg.user;
+            context.user = msg.user?.email || context.user;
+            context.access = serviceConfig.access;
+
             const { manifestConfig } = serviceConfig;
             const prePipeline = pipelineConcat(serviceConfig?.prePipeline, manifestConfig?.prePipeline);
             const postPipeline = pipelineConcat(manifestConfig?.postPipeline, serviceConfig?.postPipeline);

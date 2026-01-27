@@ -44,7 +44,8 @@
         "login": "curl -X POST https://lib.restspace.io/auth/login -H \"Content-Type: application/json\" -d \"{\\\"email\\\":\\\"jamesej@outlook.com\\\", \\\"password\\\": \\\"%PW%\\\"}\" --cookie-jar ./cookies.dat",
         "deploy-core": "curl --cookie cookies.dat -T build.zip -H \"X-Restspacce-Request-Mode: manage\" -H \"Content-Type: application/zip\"  https://lib.restspace.io/",
         "repl": "deno repl --allow-all --unsafely-ignore-certificate-errors=restspace.local --reload",
-        "wipe-cache": "rmdir /s /q %LOCALAPPDATA%\\deno"
+        "wipe-cache": "rmdir /s /q %LOCALAPPDATA%\\deno",
+        "remote-debug-adem": "ssh -N -L 9229:127.0.0.1:9229 -i C:\\dev\\keys\\ost-server-keys.pem ubuntu@ec2-18-132-142-210.eu-west-2.compute.amazonaws.com"
     },
     "dependencies": {
         "dayjs": "^1.11.13",

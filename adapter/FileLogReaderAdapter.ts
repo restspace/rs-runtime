@@ -69,6 +69,12 @@ class FileLogReaderAdapter implements ILogReaderAdapter {
                 while (idx > 0 && count > 0) {
                     let newIdx = str.lastIndexOf("\n", idx);
                     while (newIdx >= 0 && !"CEWDI".includes(str[newIdx + 1])) {
+                        // Important: String.lastIndexOf treats negative fromIndex as 0,
+                        // which can cause an infinite loop when newIdx === 0 and str[0] === "\n".
+                        if (newIdx === 0) {
+                            newIdx = -1;
+                            break;
+                        }
                         newIdx = str.lastIndexOf("\n", newIdx - 1);
                     }
 

@@ -18,6 +18,51 @@ export interface MongoDbQueryAdapterProps extends MongoDbConnectionProps {
   ignoreEmptyVariables?: boolean;
 }
 
+const mongoFirstStageOperators = new Set(["$geoNear", "$search", "$searchMeta", "$vectorSearch"]);
+
+function isSafeMongoFieldPath(fieldPath: string): boolean {
+  if (!fieldPath) return false;
+  if (!/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/.test(fieldPath)) return false;
+  return true;
+}
+
+function isSafeDataFieldValue(value: unknown): value is string | number | boolean {
+  if (value === null || value === undefined) return false;
+  const valueType = typeof value;
+  return valueType === "string" || valueType === "number" || valueType === "boolean";
+}
+
+function parseDataFieldRules(roleSpec: string): Array<{ dataField: string; userField: string }> {
+  return roleSpec.trim().split(" ")
+    .filter((r) => r.startsWith("${") && r.endsWith("}") && r.includes("="))
+    .map((r) => {
+      const inner = r.slice(2, -1);
+      const eqIdx = inner.indexOf("=");
+      return {
+        dataField: inner.slice(0, eqIdx),
+        userField: inner.slice(eqIdx + 1),
+      };
+    });
+}
+
+function getDataFieldFiltersFromUser(
+  roleSpec: string,
+  userObj: unknown,
+): Array<{ dataFieldName: string; userFieldValue: string | number | boolean }> | null {
+  const rules = parseDataFieldRules(roleSpec);
+  if (rules.length === 0) return [];
+  if (!userObj || typeof userObj !== "object" || Array.isArray(userObj)) return null;
+
+  const userRec = userObj as Record<string, unknown>;
+  const filters: Array<{ dataFieldName: string; userFieldValue: string | number | boolean }> = [];
+  for (const rule of rules) {
+    const userVal = userRec[rule.userField];
+    if (!isSafeDataFieldValue(userVal)) return null;
+    filters.push({ dataFieldName: rule.dataField, userFieldValue: userVal });
+  }
+  return filters;
+}
+
 export default class MongoDbQueryAdapter implements IQueryAdapter {
   private client: MongoClient | null = null;
   private db: Db | null = null;
@@ -47,6 +92,11 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
   ): Promise<number | Record<string, unknown>[] | { items: Record<string, unknown>[]; total: number }> {
     await this.ensureConnection();
 
+    // Data-field authorization: enforce ${dataField=userField} rules from context.access.readRoles
+    // by injecting a $match stage into the aggregate pipeline (Mongo only).
+    const roleSpec = this.context.access?.readRoles || "";
+    const hasDataFieldRules = parseDataFieldRules(roleSpec).length > 0;
+
     let queryObj: unknown;
     try {
       queryObj = JSON.parse(query);
@@ -73,6 +123,35 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
     let pipelineStages = parsed.pipeline;
     if (this.props.ignoreEmptyVariables) {
       pipelineStages = cleanIgnoreMarkers(pipelineStages);
+    }
+
+    if (hasDataFieldRules) {
+      const filters = getDataFieldFiltersFromUser(roleSpec, this.context.userObj);
+      if (!filters) {
+        // Fail closed, and avoid leaking whether the query would have returned results.
+        return 404;
+      }
+
+      for (const f of filters) {
+        if (!isSafeMongoFieldPath(f.dataFieldName)) {
+          this.context.logger.error(
+            `Unsafe data-field rule for MongoDB query: ${f.dataFieldName}`,
+            ...contextLoggerArgs(this.context),
+          );
+          return 500;
+        }
+      }
+
+      const matchExpr: Record<string, unknown> = filters.length === 1
+        ? { [filters[0].dataFieldName]: filters[0].userFieldValue }
+        : { $and: filters.map((f) => ({ [f.dataFieldName]: f.userFieldValue })) };
+
+      const pipeline = pipelineStages.slice();
+      const firstStage = pipeline[0];
+      const firstKey = firstStage && typeof firstStage === "object" ? Object.keys(firstStage)[0] : undefined;
+      const insertAt = firstKey && mongoFirstStageOperators.has(firstKey) ? 1 : 0;
+      pipeline.splice(insertAt, 0, { $match: matchExpr });
+      pipelineStages = pipeline;
     }
 
     const collection = normalizeCollectionName(parsed.collection);
