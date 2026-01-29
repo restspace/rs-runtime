@@ -8,6 +8,10 @@ export interface MongoDbConnectionProps {
   dbName: string;
   /** Optional path to a CA bundle (commonly needed for Amazon DocumentDB TLS). */
   tlsCAFile?: string;
+  /** Optional server selection timeout in ms (defaults to 2000). */
+  serverSelectionTimeoutMS?: number;
+  /** Optional connect timeout in ms (defaults to 2000). */
+  connectTimeoutMS?: number;
 }
 
 export async function resolveMongoUrl(url: string): Promise<string> {

@@ -167,6 +167,7 @@ function convertDatesForRead(value: unknown, schema: unknown): unknown {
 export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter, IDataFieldFilterableAdapter {
   private client: MongoClient | null = null;
   private db: Db | null = null;
+  private connectPromise: Promise<void> | null = null;
 
   /** Indicates this adapter supports data-field filtering for listings */
   supportsDataFieldFiltering = true;
@@ -178,17 +179,54 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   private async ensureConnection() {
-    if (this.client) return;
+    if (this.db) return;
+    if (this.connectPromise) {
+      await this.connectPromise;
+      return;
+    }
 
-    const resolvedUrl = await resolveMongoUrl(this.props.url);
+    const connectPromise = (async () => {
+      const resolvedUrl = await resolveMongoUrl(this.props.url);
 
-    // Use an `any` options bag to keep the adapter compatible across mongodb driver versions.
-    const options: any = {};
-    if (this.props.tlsCAFile) options.tlsCAFile = this.props.tlsCAFile;
+      // Use an `any` options bag to keep the adapter compatible across mongodb driver versions.
+      const options: any = {
+        serverSelectionTimeoutMS: this.props.serverSelectionTimeoutMS ?? 2000,
+        connectTimeoutMS: this.props.connectTimeoutMS ?? 2000,
+      };
+      if (this.props.tlsCAFile) options.tlsCAFile = this.props.tlsCAFile;
 
-    this.client = new MongoClient(resolvedUrl, options);
-    await this.client.connect();
-    this.db = this.client.db(this.props.dbName);
+      this.client = new MongoClient(resolvedUrl, options);
+      await this.client.connect();
+      this.db = this.client.db(this.props.dbName);
+    })();
+
+    this.connectPromise = connectPromise;
+    try {
+      await connectPromise;
+    } catch (err) {
+      try {
+        await this.client?.close();
+      } catch {
+        // ignore close errors during failed connect
+      }
+      this.client = null;
+      this.db = null;
+      throw err;
+    } finally {
+      if (this.connectPromise === connectPromise) {
+        this.connectPromise = null;
+      }
+    }
+  }
+
+  private async ensureConnectionOrStatus(): Promise<number | null> {
+    try {
+      await this.ensureConnection();
+      return null;
+    } catch (err) {
+      this.context.logger.error(`MongoDB connect error: ${err}`);
+      return mongoErrorToHttpStatus(err);
+    }
   }
 
   private async ensureSchemasCollection() {
@@ -346,7 +384,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async readKey(dataset: string, key: string): Promise<number | Record<string, unknown>> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return connectStatus;
     const collection = normalizeCollectionName(dataset);
 
     try {
@@ -362,7 +401,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async writeKey(dataset: string, key: string | undefined, data: MessageBody): Promise<number> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return connectStatus;
     const collection = normalizeCollectionName(dataset);
 
     let writeData: any = await data.asJson();
@@ -411,7 +451,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async deleteKey(dataset: string, key: string): Promise<number> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return connectStatus;
     const collection = normalizeCollectionName(dataset);
 
     try {
@@ -429,7 +470,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async listDataset(dataset: string, take = 1000, skip = 0): Promise<number | PathInfo[]> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return connectStatus;
 
     // Top-level listing: collections.
     if (!dataset) {
@@ -493,7 +535,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     take = 1000,
     skip = 0
   ): Promise<PathInfo[] | number> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return connectStatus;
 
     if (filters.length === 0) {
       return [];
@@ -546,7 +589,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async deleteDataset(dataset: string): Promise<number> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return connectStatus;
     const collection = normalizeCollectionName(dataset);
 
     try {
@@ -572,7 +616,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async checkKey(dataset: string, key: string): Promise<ItemMetadata> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return { status: "none" } as ItemNone;
     const collection = normalizeCollectionName(dataset);
 
     try {
@@ -595,7 +640,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async writeSchema(dataset: string, schema: Record<string, unknown>): Promise<number> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return connectStatus;
     await this.ensureSchemasCollection();
 
     const collection = normalizeCollectionName(dataset);
@@ -652,7 +698,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async readSchema(dataset: string): Promise<number | Record<string, unknown>> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return connectStatus;
     await this.ensureSchemasCollection();
 
     const collection = normalizeCollectionName(dataset);
@@ -669,7 +716,8 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   async checkSchema(dataset: string): Promise<ItemMetadata> {
-    await this.ensureConnection();
+    const connectStatus = await this.ensureConnectionOrStatus();
+    if (connectStatus !== null) return { status: "none" } as ItemNone;
     await this.ensureSchemasCollection();
 
     const collection = normalizeCollectionName(dataset);

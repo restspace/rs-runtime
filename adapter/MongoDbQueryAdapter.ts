@@ -66,22 +66,50 @@ function getDataFieldFiltersFromUser(
 export default class MongoDbQueryAdapter implements IQueryAdapter {
   private client: MongoClient | null = null;
   private db: Db | null = null;
+  private connectPromise: Promise<void> | null = null;
 
   constructor(public context: AdapterContext, public props: MongoDbQueryAdapterProps) {
     this.quote = this.quote.bind(this);
   }
 
   private async ensureConnection() {
-    if (this.client) return;
+    if (this.db) return;
+    if (this.connectPromise) {
+      await this.connectPromise;
+      return;
+    }
 
-    const resolvedUrl = await resolveMongoUrl(this.props.url);
+    const connectPromise = (async () => {
+      const resolvedUrl = await resolveMongoUrl(this.props.url);
 
-    const options: any = {};
-    if (this.props.tlsCAFile) options.tlsCAFile = this.props.tlsCAFile;
+      const options: any = {
+        serverSelectionTimeoutMS: this.props.serverSelectionTimeoutMS ?? 2000,
+        connectTimeoutMS: this.props.connectTimeoutMS ?? 2000,
+      };
+      if (this.props.tlsCAFile) options.tlsCAFile = this.props.tlsCAFile;
 
-    this.client = new MongoClient(resolvedUrl, options);
-    await this.client.connect();
-    this.db = this.client.db(this.props.dbName);
+      this.client = new MongoClient(resolvedUrl, options);
+      await this.client.connect();
+      this.db = this.client.db(this.props.dbName);
+    })();
+
+    this.connectPromise = connectPromise;
+    try {
+      await connectPromise;
+    } catch (err) {
+      try {
+        await this.client?.close();
+      } catch {
+        // ignore close errors during failed connect
+      }
+      this.client = null;
+      this.db = null;
+      throw err;
+    } finally {
+      if (this.connectPromise === connectPromise) {
+        this.connectPromise = null;
+      }
+    }
   }
 
   async runQuery(
@@ -90,7 +118,15 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
     take = 1000,
     skip = 0,
   ): Promise<number | Record<string, unknown>[] | { items: Record<string, unknown>[]; total: number }> {
-    await this.ensureConnection();
+    try {
+      await this.ensureConnection();
+    } catch (error) {
+      this.context.logger.error(
+        `MongoDB connect error: ${error}`,
+        ...contextLoggerArgs(this.context),
+      );
+      return mongoErrorToHttpStatus(error);
+    }
 
     // Data-field authorization: enforce ${dataField=userField} rules from context.access.readRoles
     // by injecting a $match stage into the aggregate pipeline (Mongo only).
