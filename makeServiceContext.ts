@@ -1,4 +1,4 @@
-import { IAdapter } from "rs-core/adapter/IAdapter.ts";
+import { IAdapter, IDisposableAdapter } from "rs-core/adapter/IAdapter.ts";
 import { PrePost } from "rs-core/IServiceConfig.ts";
 import { Message } from "rs-core/Message.ts";
 import { PipelineSpec } from "rs-core/PipelineSpec.ts";
@@ -11,7 +11,19 @@ import { pipeline } from "./pipeline/pipeline.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { getProp } from "rs-core/utility/utility.ts";
 
+type RequestScopedContext = ServiceContext<IAdapter> & {
+	__disposables: IDisposableAdapter[];
+};
+
+function isDisposableAdapter(adapter: unknown): adapter is IDisposableAdapter {
+	return !!adapter
+		&& typeof adapter === "object"
+		&& typeof (adapter as IDisposableAdapter).close === "function";
+}
+
 export function makeServiceContext(tenantName: string, state: StateFunction, prePost?: PrePost): ServiceContext<IAdapter> {
+	const disposables: IDisposableAdapter[] = [];
+
 	const context = {
 		tenant: tenantName,
 		primaryDomain: config.tenants[tenantName]?.primaryDomain,
@@ -60,14 +72,19 @@ export function makeServiceContext(tenantName: string, state: StateFunction, pre
 		prePost,
 		logger: config.logger,
 		baseLogger: config.logger,
-		getAdapter: <T extends IAdapter>(url: string, adapterConfig: unknown) => {
+		getAdapter: async <T extends IAdapter>(url: string, adapterConfig: unknown) => {
 			const primaryDomain = config.tenants[tenantName].primaryDomain;
-			return config.modules.getAdapter<T>(url, context, adapterConfig, primaryDomain);
+			const adapter = await config.modules.getAdapter<T>(url, context, adapterConfig, primaryDomain);
+			if (isDisposableAdapter(adapter)) {
+				disposables.push(adapter);
+			}
+			return adapter;
 		},
 		state,
 		registerAbortAction: (msg: Message, action: () => void) => {
 			config.requestAbortActions.add(msg.traceId, action);
-		}
-	} as unknown as ServiceContext<IAdapter>;
+		},
+		__disposables: disposables,
+	} as unknown as RequestScopedContext;
 	return context;
 }

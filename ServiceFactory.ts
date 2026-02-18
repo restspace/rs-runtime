@@ -6,7 +6,7 @@ import { config } from "./config.ts";
 import { IServiceConfigTemplate, IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { ServiceWrapper } from "./ServiceWrapper.ts";
 import { applyServiceConfigTemplate } from "./Modules.ts";
-import { IAdapter } from "rs-core/adapter/IAdapter.ts";
+import { IAdapter, IDisposableAdapter } from "rs-core/adapter/IAdapter.ts";
 import { getErrors } from "rs-core/utility/errors.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
 import { BaseStateClass, ServiceContext, StateFunction } from "rs-core/ServiceContext.ts";
@@ -29,6 +29,25 @@ export class ServiceFactory {
     serviceConfigs = null as Record<string, IServiceConfig> | null;
 
     constructor(public tenant: string, public primaryDomain: string) {
+    }
+
+    private async closeDisposableAdapters(serviceContext: ServiceContext<IAdapter>) {
+        const requestContext = serviceContext as ServiceContext<IAdapter> & { __disposables?: IDisposableAdapter[] };
+        const disposables = requestContext.__disposables;
+        if (!disposables || disposables.length === 0) return;
+
+        const closed = new Set<IDisposableAdapter>();
+        for (let i = disposables.length - 1; i >= 0; i--) {
+            const adapter = disposables[i];
+            if (closed.has(adapter)) continue;
+            closed.add(adapter);
+            try {
+                await adapter.close();
+            } catch (err) {
+                serviceContext.logger.error(`Failed to close adapter: ${err}`);
+            }
+        }
+        disposables.length = 0;
     }
 
     /** loads all manifests required by serviceConfigs and resolves private services */
@@ -168,7 +187,7 @@ export class ServiceFactory {
                 throw new Error(`failed to validate adapter config for service ${serviceConfig.name}: ${getErrors(validator)}`);
             }
 
-            adapter = await config.modules.getAdapter(adapterSource as string, serviceContext, adapterConfig, this.primaryDomain);
+            adapter = await serviceContext.getAdapter(adapterSource as string, adapterConfig);
             return { ...serviceContext, adapter } as ServiceContext<IAdapter>;
         }
         return serviceContext;
@@ -214,7 +233,13 @@ export class ServiceFactory {
         serviceContext.manifest = structuredClone(serviceContext.manifest);
         const copyServiceConfig = structuredClone(serviceConfig);
 
-        return (msg: Message) => Promise.resolve(sourceServiceFunc(msg, serviceContext, copyServiceConfig));
+        return async (msg: Message) => {
+            try {
+                return await sourceServiceFunc(msg, serviceContext, copyServiceConfig);
+            } finally {
+                await this.closeDisposableAdapters(serviceContext);
+            }
+        };
     }
 
     attachFilter(url: Url, func: MessageFunction, context: ServiceContext<IAdapter>): MessageFunction {
