@@ -46,8 +46,9 @@ const getDirectory = async (msg: Message, { adapter }: ServiceContext<IFileAdapt
     const spec = storeDescriptor(config.storePattern || "store", true, true, storeMimeTypes, config.transformMimeTypes);
 
     // TODO manage as a stream as adapter can list directory files as a stream
+    const getUpdateTime = (msg.url.query['$list'] || []).join(',').includes('details');
     const readDirPath = async (path: string) => {
-        const dirData = await adapter.readDirectory(path);
+        const dirData = await adapter.readDirectory(path, getUpdateTime);
 
         // convention is a non-existent directory is not a 404 but an empty list, because in some systems,
         // a directory exists only by virtue of files existing on the path of the directory

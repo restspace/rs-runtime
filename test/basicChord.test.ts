@@ -194,6 +194,7 @@ Deno.test('writes and reads file', async () => {
     assert(msgOut.ok, "failed to list dir $list=details");
     const listDetails = msgOut.data ? await msgOut.data.asJson() as DirDescriptor : null;
     assertStrictEquals(listDetails?.paths[0][0], "abc.json");
+    assert(typeof listDetails?.paths[0][1] === "number", "dateModified should be included with $list=details");
 
     msg = testMessage("/files/", "GET");
     msgOut = await handleIncomingRequest(msg);
@@ -229,33 +230,27 @@ Deno.test('file dirs', async () => {
     assert(msgOut.ok, "failed to list dir $list=details");
     const listDetails = msgOut.data ? await msgOut.data.asJson() as DirDescriptor : null;
     assertStrictEquals(listDetails?.paths[0][0], "xxx.json");
+    assert(typeof listDetails?.paths[0][1] === "number", "dateModified should be included with $list=details");
 
     msg = testMessage("/files/?$list=details,recursive", "GET");
     msgOut = await handleIncomingRequest(msg);
     assert(msgOut.ok, "failed to list dir");
-    const list = msgOut.data ? await msgOut.data.asJson() : null;
-    assertEquals(list, [
-        {
-          path: "/",
-          paths: [ [ "dira/" ], [ "dirc/" ] ],
-          spec: { pattern: "store", storeMimeTypes: [], createDirectory: true, createFiles: true }
-        },
-        {
-          path: "dira/",
-          paths: [ [ "dirb/" ] ],
-          spec: { pattern: "store", storeMimeTypes: [], createDirectory: true, createFiles: true }
-        },
-        {
-          path: "dira/dirb/",
-          paths: [ [ "xxx.json" ] ],
-          spec: { pattern: "store", storeMimeTypes: [], createDirectory: true, createFiles: true }
-        },
-        {
-          path: "dirc/",
-          paths: [ [ "yyy.json" ] ],
-          spec: { pattern: "store", storeMimeTypes: [], createDirectory: true, createFiles: true }
+    const list = msgOut.data ? await msgOut.data.asJson() as DirDescriptor[] : null;
+    const expectedRecursive = [
+        { path: "/", pathNames: [ "dira/", "dirc/" ] },
+        { path: "dira/", pathNames: [ "dirb/" ] },
+        { path: "dira/dirb/", pathNames: [ "xxx.json" ] },
+        { path: "dirc/", pathNames: [ "yyy.json" ] }
+    ];
+    assert(list && list.length === 4, "recursive list should have 4 dir descriptors");
+    for (let i = 0; i < 4; i++) {
+        assertEquals((list[i] as DirDescriptor).path, expectedRecursive[i].path);
+        assertEquals((list[i] as DirDescriptor).paths.length, expectedRecursive[i].pathNames.length);
+        for (let j = 0; j < expectedRecursive[i].pathNames.length; j++) {
+            assertStrictEquals((list[i] as DirDescriptor).paths[j][0], expectedRecursive[i].pathNames[j]);
+            assert(typeof (list[i] as DirDescriptor).paths[j][1] === "number", `dateModified should be included for ${expectedRecursive[i].pathNames[j]}`);
         }
-      ]);
+    }
 
     msg = testMessage("/files/dira/?$list=recursive", "GET");
     msgOut = await handleIncomingRequest(msg);

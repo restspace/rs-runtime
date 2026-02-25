@@ -112,7 +112,7 @@ export const mimeHandlers: { [ mimeType: string ]: MimeHandler } = {
                 dirQueue.close();
             } else if (pathsOnly) {
                 const relPath = (resDir.path === '/' ? '' : resDir.path).substring(basePath.length);
-                results = results.concat(resDir.paths.map(([p, ...rest]) => [relPath + p, ...rest]));
+                results = results.concat(resDir.paths.map(([p, ...rest]) => details ? [relPath + p, ...rest] : [relPath + p]));
             } else {
                 results.push(result);
             }

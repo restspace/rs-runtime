@@ -221,12 +221,12 @@ class S3FileAdapterBase implements IFileAdapter {
         }
     }
 
-    protected async* jsonStreamPrefixed(filePath: string, maxKeys?: number) {
+    protected async* jsonStreamPrefixed(filePath: string, maxKeys?: number, getUpdateTime = false) {
 		yield '[';
         let first = true;
         for await (const item of this.listPrefixed(filePath, maxKeys)) {
             let modifiedStr = '';
-            if (item.name.endsWith('/') && item.lastModified) {
+            if (getUpdateTime && item.lastModified) {
                 modifiedStr = "," + item.lastModified.getTime().toString();
             }
             const nameEscaped = item.name.replace(/\"/g, '\\"').replace(/\n/g, '');
@@ -236,10 +236,10 @@ class S3FileAdapterBase implements IFileAdapter {
 		yield ']';
     }
 
-    readDirectory(readPath: string, _getUpdateTime = false) {
+    readDirectory(readPath: string, getUpdateTime = false) {
         let filePath = this.getPath(readPath, undefined, true, true) + '/';
 
-        const blockIter = toBlockChunks(this.jsonStreamPrefixed(filePath));
+        const blockIter = toBlockChunks(this.jsonStreamPrefixed(filePath, undefined, getUpdateTime));
 
         return Promise.resolve(new MessageBody(readableStreamFromIterable(blockIter), 'text/plain').setIsDirectory());
     }
