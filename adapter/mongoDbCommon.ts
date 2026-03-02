@@ -44,6 +44,12 @@ export interface MongoAggregateQuery {
 
 export class QueryFormatError extends Error {}
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 function parsePagingNumber(value: unknown, name: string): number | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
@@ -173,9 +179,7 @@ export function mongoErrorToHttpStatus(err: unknown): number {
  */
 export function isIgnoreMarker(obj: unknown): boolean {
   return (
-    obj !== null &&
-    typeof obj === "object" &&
-    !Array.isArray(obj) &&
+    isPlainObject(obj) &&
     Object.keys(obj).length === 1 &&
     (obj as Record<string, unknown>)["$ignore"] === true
   );
@@ -203,6 +207,8 @@ function processIgnoreValue(value: unknown): unknown {
   }
 
   if (value !== null && typeof value === "object") {
+    // Preserve non-plain objects (Date, BSON wrappers, etc.).
+    if (!isPlainObject(value)) return value;
     const obj = value as Record<string, unknown>;
     const result: Record<string, unknown> = {};
 

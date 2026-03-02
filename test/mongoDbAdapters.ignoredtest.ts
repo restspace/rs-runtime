@@ -528,9 +528,45 @@ Deno.test("MongoDbQueryAdapter: quote returns valid JSON strings", () => {
   assertEquals(queryAdapter.quote(123), "123");
   assertEquals(queryAdapter.quote(true), "true");
   assertEquals(queryAdapter.quote(["a", "b"]), '["a","b"]');
+  assertEquals(queryAdapter.quote(new Date("2026-01-20T12:34:56.000Z")), '{"$date":"2026-01-20T12:34:56.000Z"}');
+
+  assertEquals(queryAdapter.quoteDate("2026-01-20T12:34:56Z"), '{"$date":"2026-01-20T12:34:56.000Z"}');
+  assert(queryAdapter.quoteDate("not-a-date") instanceof Error, "Expected Error for invalid date input");
 
   const objResult = queryAdapter.quote({ nested: true });
   assert(objResult instanceof Error, "Expected Error for object input");
+});
+
+Deno.test("MongoDbQueryAdapter: supports EJSON $date in aggregate pipeline", async () => {
+  const client = new MongoClient(MONGO_URL);
+  const queryAdapter = new MongoDbQueryAdapter(makeAdapterContext("test"), queryAdapterProps);
+  try {
+    await client.connect();
+    const coll = client.db(TEST_DB).collection("querydatecoll");
+    await coll.deleteMany({});
+    await coll.insertMany([
+      { createdAt: new Date("2026-01-01T00:00:00.000Z"), status: "old" },
+      { createdAt: new Date("2026-02-01T00:00:00.000Z"), status: "new" },
+    ]);
+
+    const query = `{
+      "collection": "querydatecoll",
+      "pipeline": [
+        { "$match": { "createdAt": { "$gte": { "$date": "2026-01-15T00:00:00.000Z" } } } },
+        { "$project": { "_id": 1, "status": 1 } }
+      ]
+    }`;
+    const result = await queryAdapter.runQuery(query, {}, 1000, 0);
+    assert(Array.isArray(result), "Expected array result");
+    assertEquals(result.length, 1);
+    assertEquals((result[0] as Record<string, unknown>).status, "new");
+  } finally {
+    await queryAdapter.close();
+    await client.close();
+    const dataAdapter = new MongoDbDataAdapter(makeAdapterContext("test"), dataAdapterProps);
+    await dataAdapter.deleteDataset("querydatecoll");
+    await dataAdapter.close();
+  }
 });
 
 // --- $ignore marker tests ---

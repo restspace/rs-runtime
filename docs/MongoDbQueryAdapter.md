@@ -73,10 +73,35 @@ Use the `quote()` method to safely escape values for interpolation:
 adapter.quote("hello")      // "\"hello\""
 adapter.quote(123)          // "123"
 adapter.quote([1, 2, 3])    // "[1,2,3]"
+adapter.quote(new Date())   // "{\"$date\":\"2026-01-20T12:34:56.000Z\"}"
 adapter.quote({})           // Error - objects not allowed
 ```
 
-Only primitives and arrays of primitives are supported.
+Only primitives and arrays of primitives are supported. `Date` values are also supported and are emitted as MongoDB Extended JSON (`$date`).
+
+For explicit date interpolation, `quoteDate()` is available:
+
+```typescript
+adapter.quoteDate("2026-01-20T12:34:56Z") // "{\"$date\":\"2026-01-20T12:34:56.000Z\"}"
+adapter.quoteDate(Date.now())             // "{\"$date\":\"...\"}"
+adapter.quoteDate(new Date())             // "{\"$date\":\"...\"}"
+```
+
+## BSON Date Support
+
+The adapter parses query payloads using MongoDB Extended JSON (EJSON), so BSON date literals are supported directly in query files and templates.
+
+Relaxed date format:
+
+```json
+{ "$match": { "createdAt": { "$gte": { "$date": "2026-01-15T00:00:00.000Z" } } } }
+```
+
+Canonical format is also accepted:
+
+```json
+{ "$match": { "createdAt": { "$gte": { "$date": { "$numberLong": "1768435200000" } } } } }
+```
 
 ## Ignoring Empty Variables
 
@@ -136,7 +161,7 @@ Works with `$and`, `$or`, `$in`, `$all`, and `$nin` arrays. Orphaned `$options` 
 {
   "collection": "orders",
   "pipeline": [
-    { "$match": { "createdAt": { "$gte": "2024-01-01" } } },
+    { "$match": { "createdAt": { "$gte": { "$date": "2024-01-01T00:00:00.000Z" } } } },
     { "$lookup": {
         "from": "customers",
         "localField": "customerId",

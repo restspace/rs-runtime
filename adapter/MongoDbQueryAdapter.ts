@@ -1,6 +1,6 @@
 import { AdapterContext, contextLoggerArgs } from "rs-core/ServiceContext.ts";
 import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
-import { Db, MongoClient } from "mongodb";
+import { BSON, Db, MongoClient } from "mongodb";
 import {
   cleanIgnoreMarkers,
   MongoDbConnectionProps,
@@ -70,6 +70,20 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
 
   constructor(public context: AdapterContext, public props: MongoDbQueryAdapterProps) {
     this.quote = this.quote.bind(this);
+    this.quoteDate = this.quoteDate.bind(this);
+  }
+
+  private static toIsoDate(value: string | number | Date): string | null {
+    if (value instanceof Date) {
+      if (Number.isNaN(value.getTime())) return null;
+      return value.toISOString();
+    }
+    if (typeof value === "string" || typeof value === "number") {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return null;
+      return d.toISOString();
+    }
+    return null;
   }
 
   private async ensureConnection() {
@@ -135,10 +149,10 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
 
     let queryObj: unknown;
     try {
-      queryObj = JSON.parse(query);
+      queryObj = BSON.EJSON.parse(query, { relaxed: false });
     } catch (e) {
       this.context.logger.error(
-        `Invalid JSON (${e}) in MongoDB aggregate query: ${query}`,
+        `Invalid JSON/EJSON (${e}) in MongoDB aggregate query: ${query}`,
         ...contextLoggerArgs(this.context),
       );
       return 400;
@@ -251,6 +265,10 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
         return '{ "$ignore": true }';
       }
       return "\"" + x.replace(/\"/g, "\\\"") + "\"";
+    } else if (x instanceof Date) {
+      const iso = MongoDbQueryAdapter.toIsoDate(x);
+      if (!iso) return new Error("invalid Date value");
+      return BSON.EJSON.stringify({ $date: iso }, { relaxed: false });
     } else if (typeof x !== "object") {
       return JSON.stringify(x);
     } else if (Array.isArray(x)) {
@@ -265,6 +283,12 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
     } else {
       return new Error("query variable must be a primitive, or an array of primitives");
     }
+  }
+
+  quoteDate(value: string | number | Date): string | Error {
+    const iso = MongoDbQueryAdapter.toIsoDate(value);
+    if (!iso) return new Error("date variable must be a valid date string, timestamp, or Date");
+    return BSON.EJSON.stringify({ $date: iso }, { relaxed: false });
   }
 
   async close(): Promise<void> {
