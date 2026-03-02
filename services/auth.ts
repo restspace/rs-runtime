@@ -14,6 +14,7 @@ import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
 interface AuthServiceConfig extends IServiceConfig {
     userUrlPattern: string;
     loginPage?: string;
+    allowedLoginDomains?: string[];
     impersonateRoles?: string;
     sessionTimeoutMins?: number;
     jwtUserProps?: string[];
@@ -76,28 +77,132 @@ function isHttpsRequest(msg: Message): boolean {
     return msg.url.scheme === "https://";
 }
 
-async function setJwt(msg: Message, payload: Record<string, unknown>, expiryMins: number) {
-    const timeToExpirySecs = expiryMins * 60;
-    const jwt = await runtimeConfig.authoriser.getJwtForPayload(payload, timeToExpirySecs);
-    const cookieOptions = new CookieOptions({ httpOnly: true, maxAge: timeToExpirySecs });
-    if (isHttpsRequest(msg)) {
-        cookieOptions.sameSite = SameSiteValue.none;
-        cookieOptions.secure = true;
+function getHostnameFromUrlHeader(headerValue: string): string {
+    if (!headerValue) return "";
+    try {
+        return new URL(headerValue).hostname.toLowerCase();
+    } catch {
+        return "";
     }
-    msg.setCookie('rs-auth', jwt, cookieOptions);
-    return timeToExpirySecs;
 }
 
-async function setMfaJwt(msg: Message, payload: Record<string, unknown>, expiryMins: number, cookieName: string) {
+function getHostnameFromHostHeader(hostValue: string): string {
+    if (!hostValue) return "";
+    const firstHost = hostValue.split(",")[0].trim();
+    if (!firstHost) return "";
+    try {
+        return new URL(`http://${firstHost}`).hostname.toLowerCase();
+    } catch {
+        return firstHost.split(":")[0].toLowerCase();
+    }
+}
+
+function getRequestOriginHost(msg: Message): string {
+    return (
+        getHostnameFromUrlHeader(msg.getHeader("origin") || "") ||
+        getHostnameFromUrlHeader(msg.getHeader("referer") || "")
+    );
+}
+
+function normalizeAllowedDomainEntry(entry: string): string {
+    const trimmed = (entry || "").trim().toLowerCase();
+    if (!trimmed) return "";
+    if (!trimmed.includes("://")) {
+        return getHostnameFromHostHeader(trimmed);
+    }
+
+    const directHost = getHostnameFromUrlHeader(trimmed);
+    if (directHost) return directHost;
+
+    const afterScheme = trimmed.split("://")[1] || "";
+    const hostAndPort = afterScheme.split("/")[0] || "";
+    const wildcardOrHost = hostAndPort.split("@").pop() || "";
+    return getHostnameFromHostHeader(wildcardOrHost);
+}
+
+function hostMatchesAllowedDomain(host: string, allowedDomain: string): boolean {
+    if (!host || !allowedDomain) return false;
+    if (allowedDomain.startsWith("*.")) {
+        const suffix = allowedDomain.slice(2);
+        return host === suffix || host.endsWith(`.${suffix}`);
+    }
+    return host === allowedDomain;
+}
+
+function isAllowedLoginDomain(msg: Message, config: AuthServiceConfig): boolean {
+    if (isSameDomainBrowserRequest(msg)) return true;
+
+    const rawAllowedDomains = (config.allowedLoginDomains || []).filter((entry) => !!(entry || "").trim());
+    if (rawAllowedDomains.length === 0) return true;
+
+    const allowedDomains = rawAllowedDomains
+        .map(normalizeAllowedDomainEntry)
+        .filter((entry) => !!entry);
+    if (allowedDomains.length === 0) return false;
+
+    const requestOriginHost = getRequestOriginHost(msg);
+    if (!requestOriginHost) return false;
+
+    return allowedDomains.some((allowedDomain) => hostMatchesAllowedDomain(requestOriginHost, allowedDomain));
+}
+
+function isSameDomainBrowserRequest(msg: Message): boolean {
+    const requestOriginHost = getRequestOriginHost(msg);
+
+    const runtimeHost =
+        getHostnameFromHostHeader(msg.getHeader("x-forwarded-host") || "") ||
+        getHostnameFromHostHeader(msg.getHeader("host") || "") ||
+        getHostnameFromHostHeader(msg.url.domain || "");
+
+    if (!requestOriginHost || !runtimeHost) return false;
+    return requestOriginHost === runtimeHost;
+}
+
+async function setJwt(
+    msg: Message,
+    payload: Record<string, unknown>,
+    expiryMins: number,
+    options?: { setCookie?: boolean; strictCookie?: boolean; }
+) {
     const timeToExpirySecs = expiryMins * 60;
     const jwt = await runtimeConfig.authoriser.getJwtForPayload(payload, timeToExpirySecs);
-    const cookieOptions = new CookieOptions({ httpOnly: true, maxAge: timeToExpirySecs });
-    if (isHttpsRequest(msg)) {
-        cookieOptions.sameSite = SameSiteValue.none;
-        cookieOptions.secure = true;
+    const setCookie = options?.setCookie !== false;
+    if (setCookie) {
+        const cookieOptions = new CookieOptions({ httpOnly: true, maxAge: timeToExpirySecs });
+        if (options?.strictCookie) {
+            cookieOptions.sameSite = SameSiteValue.strict;
+            if (isHttpsRequest(msg)) cookieOptions.secure = true;
+        } else if (isHttpsRequest(msg)) {
+            cookieOptions.sameSite = SameSiteValue.none;
+            cookieOptions.secure = true;
+        }
+        msg.setCookie("rs-auth", jwt, cookieOptions);
     }
-    msg.setCookie(cookieName, jwt, cookieOptions);
-    return timeToExpirySecs;
+    return { timeToExpirySecs, jwt, cookieSet: setCookie };
+}
+
+async function setMfaJwt(
+    msg: Message,
+    payload: Record<string, unknown>,
+    expiryMins: number,
+    cookieName: string,
+    options?: { setCookie?: boolean; strictCookie?: boolean; }
+) {
+    const timeToExpirySecs = expiryMins * 60;
+    const jwt = await runtimeConfig.authoriser.getJwtForPayload(payload, timeToExpirySecs);
+    const setCookie = options?.setCookie !== false;
+    if (setCookie) {
+        const cookieOptions = new CookieOptions({ httpOnly: true, maxAge: timeToExpirySecs });
+        if (options?.strictCookie) {
+            cookieOptions.sameSite = SameSiteValue.strict;
+            if (isHttpsRequest(msg)) cookieOptions.secure = true;
+        } else if (isHttpsRequest(msg)) {
+            cookieOptions.sameSite = SameSiteValue.none;
+            cookieOptions.secure = true;
+        }
+        msg.setCookie(cookieName, jwt, cookieOptions);
+    }
+    return { timeToExpirySecs, jwt, cookieSet: setCookie };
 }
 
 function deleteCookieWithSecurity(msg: Message, name: string) {
@@ -161,6 +266,9 @@ async function totpVerifyInternal(msg: Message, context: SimpleServiceContext, s
 }
 
 async function login(msg: Message, userUrlPattern: string, context: SimpleServiceContext, config: AuthServiceConfig): Promise<Message> {
+    if (!isAllowedLoginDomain(msg, config)) {
+        return msg.setStatus(403, "Login origin not allowed");
+    }
     const userSpec = await msg.data!.asJson();
     const fullUser = await getUserFromEmail(context, userUrlPattern, msg, userSpec.email, true);
     if (!fullUser) {
@@ -177,15 +285,31 @@ async function login(msg: Message, userUrlPattern: string, context: SimpleServic
         if (mfaMode === "challenge" && userRequiresTotp(fullUser)) {
             const cookieName = getMfaCookieName(config);
             const timeoutMins = config.mfa?.mfaTimeoutMins || 5;
-            await setMfaJwt(msg, { email: user.email, mfaPending: true }, timeoutMins, cookieName);
-            return msg.setDataJson({ mfaRequired: true, type: "totp" }).setStatus(202);
+            const sameDomainLogin = isSameDomainBrowserRequest(msg);
+            const mfaJwtResult = await setMfaJwt(msg, { email: user.email, mfaPending: true }, timeoutMins, cookieName, {
+                setCookie: sameDomainLogin,
+                strictCookie: sameDomainLogin
+            });
+            const out: Record<string, unknown> = { mfaRequired: true, type: "totp" };
+            if (!mfaJwtResult.cookieSet) {
+                out._jwt = mfaJwtResult.jwt;
+            }
+            return msg.setDataJson(out).setStatus(202);
         }
 
         const payload = buildJwtPayload(user, fullUser as unknown as Record<string, unknown>, config.jwtUserProps);
-        const timeToExpirySecs = await setJwt(msg, payload, config.sessionTimeoutMins || 30);
+        const sameDomainLogin = isSameDomainBrowserRequest(msg);
+        const jwtResult = await setJwt(msg, payload, config.sessionTimeoutMins || 30, {
+            setCookie: sameDomainLogin,
+            strictCookie: sameDomainLogin
+        });
         fullUser.password = user.passwordMask();
-        fullUser.exp = (new Date().getTime()) + timeToExpirySecs * 1000;
-        return msg.setDataJson(redactUserForClient(fullUser));
+        fullUser.exp = (new Date().getTime()) + jwtResult.timeToExpirySecs * 1000;
+        const clientUser = redactUserForClient(fullUser) as Record<string, unknown>;
+        if (!jwtResult.cookieSet) {
+            clientUser._jwt = jwtResult.jwt;
+        }
+        return msg.setDataJson(clientUser);
     } catch (err) {
         context.logger.error('get jwt error: ' + err);
         return msg.setStatus(500, 'internal error');
@@ -225,12 +349,16 @@ service.postPath('login', async (msg, context, config) => {
 
 // Option B completion: exchange rs-mfa + totp code for rs-auth
 service.postPath("mfa/totp", async (msg, context, config) => {
+    if (!isAllowedLoginDomain(msg, config)) {
+        return msg.setStatus(403, "Login origin not allowed");
+    }
     const cookieName = getMfaCookieName(config);
     const mfaCookie = msg.getCookie(cookieName) || "";
-    if (!mfaCookie) {
+    const authHeader = msg.getHeader("authorization") || "";
+    if (!mfaCookie && !authHeader) {
         return msg.setStatus(401, "Missing mfa cookie");
     }
-    const authResult = await runtimeConfig.authoriser.verifyJwtHeader("", mfaCookie, msg.url.path);
+    const authResult = await runtimeConfig.authoriser.verifyJwtHeader(authHeader, mfaCookie, msg.url.path);
     if (typeof authResult === "string" || !authResult.email || (authResult as any).mfaPending !== true) {
         return msg.setStatus(401, "Invalid mfa token");
     }
@@ -250,11 +378,19 @@ service.postPath("mfa/totp", async (msg, context, config) => {
     if (!fullUser) return msg.setStatus(404, "no user record");
     const user = new AuthUser(fullUser);
     const payload = buildJwtPayload(user, fullUser as unknown as Record<string, unknown>, config.jwtUserProps);
-    const timeToExpirySecs = await setJwt(msg, payload, config.sessionTimeoutMins || 30);
+    const sameDomainLogin = isSameDomainBrowserRequest(msg);
+    const jwtResult = await setJwt(msg, payload, config.sessionTimeoutMins || 30, {
+        setCookie: sameDomainLogin,
+        strictCookie: sameDomainLogin
+    });
     deleteCookieWithSecurity(msg, cookieName);
     fullUser.password = user.passwordMask();
-    fullUser.exp = (new Date().getTime()) + timeToExpirySecs * 1000;
-    return msg.setDataJson(redactUserForClient(fullUser));
+    fullUser.exp = (new Date().getTime()) + jwtResult.timeToExpirySecs * 1000;
+    const clientUser = redactUserForClient(fullUser) as Record<string, unknown>;
+    if (!jwtResult.cookieSet) {
+        clientUser._jwt = jwtResult.jwt;
+    }
+    return msg.setDataJson(clientUser);
 });
 
 service.postPath('logout', (msg) => logout(msg));
@@ -286,7 +422,8 @@ service.getPath('timeout', (msg, _context, config) =>
 
 service.setUser(async (msg, _context, serviceConfig) => {
     const sessionTimeoutMins = serviceConfig.sessionTimeoutMins;
-    const authCookie = msg.getCookie('rs-auth') || msg.getHeader('authorization');
+    const existingAuthCookie = msg.getCookie("rs-auth");
+    const authCookie = existingAuthCookie || msg.getHeader('authorization');
     if (!authCookie) return msg;
 
     // OPTIONS requests should never be authenticated so all errors don't become CORS errors
@@ -310,8 +447,12 @@ service.setUser(async (msg, _context, serviceConfig) => {
         if (nowTime > refreshTime) {
             const refreshUser = msg.user as AuthUser;
             const payload = buildJwtPayload(refreshUser, refreshUser as unknown as Record<string, unknown>, serviceConfig.jwtUserProps);
-            const timeToExpirySecs = await setJwt(msg, payload, sessionTimeoutMins || 30);
-            const newExpiryTime = nowTime + timeToExpirySecs * 1000;
+            const shouldRefreshCookie = !!existingAuthCookie;
+            const jwtResult = await setJwt(msg, payload, sessionTimeoutMins || 30, {
+                setCookie: shouldRefreshCookie,
+                strictCookie: shouldRefreshCookie
+            });
+            const newExpiryTime = nowTime + jwtResult.timeToExpirySecs * 1000;
             msg.user.exp = newExpiryTime;
             runtimeConfig.logger.info(`refreshed to ${new Date(newExpiryTime)}`);
         }

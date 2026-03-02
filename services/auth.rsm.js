@@ -8,6 +8,11 @@ export default {
         "properties": {
             "userUrlPattern": { "type": "string", "description": "Url pattern to fetch user data" },
             "loginPage": { "type": "string", "description": "Login page url for redirect management" },
+            "allowedLoginDomains": {
+                "type": "array",
+                "description": "Optional allowlist of browser domains allowed to call login and mfa/totp (hostnames, URLs, or wildcard subdomains like *.example.com)",
+                "items": { "type": "string" }
+            },
             "sessionTimeoutMins": { "type": "number", "description": "How long before a new login is required in minutes" },
             "jwtUserProps": {
                 "type": "array",
