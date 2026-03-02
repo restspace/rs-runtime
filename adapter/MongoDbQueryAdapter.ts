@@ -149,10 +149,12 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
 
     let queryObj: unknown;
     try {
-      queryObj = BSON.EJSON.parse(query, { relaxed: false });
+      // Parse as plain JSON first so ignore-marker placeholders can be cleaned
+      // before any EJSON conversion (for example regex objects with $ignore).
+      queryObj = JSON.parse(query);
     } catch (e) {
       this.context.logger.error(
-        `Invalid JSON/EJSON (${e}) in MongoDB aggregate query: ${query}`,
+        `Invalid JSON (${e}) in MongoDB aggregate query: ${query}`,
         ...contextLoggerArgs(this.context),
       );
       return 400;
@@ -204,14 +206,30 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
       pipelineStages = pipeline;
     }
 
+    let mongoPipeline: Record<string, unknown>[];
+    let mongoOptions: Record<string, unknown> | undefined;
+    try {
+      // Convert Extended JSON literals (for example $date) after cleanup.
+      mongoPipeline = BSON.EJSON.deserialize(pipelineStages, { relaxed: true }) as Record<string, unknown>[];
+      mongoOptions = parsed.options
+        ? BSON.EJSON.deserialize(parsed.options, { relaxed: true }) as Record<string, unknown>
+        : undefined;
+    } catch (e) {
+      this.context.logger.error(
+        `Invalid EJSON (${e}) in MongoDB aggregate query: ${query}`,
+        ...contextLoggerArgs(this.context),
+      );
+      return 400;
+    }
+
     const collection = normalizeCollectionName(parsed.collection);
     const hasPagingParams = parsed.from !== undefined || parsed.size !== undefined;
-    let pipeline = pipelineStages;
+    let pipeline = mongoPipeline;
 
     if (hasPagingParams) {
       const from = parsed.from ?? skip;
       const size = parsed.size ?? take;
-      pipeline = pipelineStages.concat([
+      pipeline = mongoPipeline.concat([
         {
           $facet: {
             items: [
@@ -238,7 +256,7 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
 
       return await withFastRetry(
         async () => {
-          const cursor = coll.aggregate(pipeline as any, (parsed.options || {}) as any);
+          const cursor = coll.aggregate(pipeline as any, (mongoOptions || {}) as any);
           const rows = await cursor.toArray();
           if (!hasPagingParams) {
             return rows as unknown as Record<string, unknown>[];

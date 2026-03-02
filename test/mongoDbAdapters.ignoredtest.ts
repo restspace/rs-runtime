@@ -1,11 +1,11 @@
-import { assertEquals, assert } from "std/testing/asserts.ts";
+import { assertEquals, assert, assertThrows } from "std/testing/asserts.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
 import { PathInfo } from "rs-core/DirDescriptor.ts";
 import MongoDbDataAdapter from "../adapter/MongoDbDataAdapter.ts";
 import MongoDbQueryAdapter from "../adapter/MongoDbQueryAdapter.ts";
 import { cleanIgnoreMarkers } from "../adapter/mongoDbCommon.ts";
 import { makeAdapterContext } from "./testUtility.ts";
-import { MongoClient } from "mongodb";
+import { BSON, MongoClient } from "mongodb";
 
 const MONGO_URL = "mongodb://localhost:27017";
 const TEST_DB = "rs_adapter_test";
@@ -685,6 +685,23 @@ Deno.test("cleanIgnoreMarkers: removes orphaned $options when $regex is ignored"
   const pipeline = [{ $match: { code: { $regex: { $ignore: true }, $options: "i" } } }];
   const result = cleanIgnoreMarkers(pipeline);
   assertEquals(result, [{ $match: {} }]);
+});
+
+Deno.test("MongoDbQueryAdapter regression: cleanIgnoreMarkers runs before EJSON deserialize", () => {
+  const rawPipeline = [{ $match: { name: { $regex: { $ignore: true }, $options: "i" } } }];
+
+  assertThrows(
+    () => BSON.EJSON.deserialize(rawPipeline, { relaxed: true }),
+    Error,
+    "Unexpected BSONRegExp EJSON object form",
+  );
+
+  const cleaned = cleanIgnoreMarkers(rawPipeline);
+  assertEquals(cleaned, [{ $match: {} }]);
+
+  const deserialized = BSON.EJSON.deserialize(cleaned, { relaxed: true });
+  assert(Array.isArray(deserialized), "Expected deserialized pipeline array");
+  assertEquals((deserialized as Record<string, unknown>[]).length, 1);
 });
 
 // --- Cleanup test database ---
