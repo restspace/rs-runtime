@@ -15,6 +15,7 @@ interface AuthServiceConfig extends IServiceConfig {
     userUrlPattern: string;
     loginPage?: string;
     allowedLoginDomains?: string[];
+    trustedDomains?: string[];
     impersonateRoles?: string;
     sessionTimeoutMins?: number;
     jwtUserProps?: string[];
@@ -129,21 +130,30 @@ function hostMatchesAllowedDomain(host: string, allowedDomain: string): boolean 
     return host === allowedDomain;
 }
 
-function isAllowedLoginDomain(msg: Message, config: AuthServiceConfig): boolean {
-    if (isSameDomainBrowserRequest(msg)) return true;
-
-    const rawAllowedDomains = (config.allowedLoginDomains || []).filter((entry) => !!(entry || "").trim());
-    if (rawAllowedDomains.length === 0) return true;
-
-    const allowedDomains = rawAllowedDomains
+function requestOriginMatchesConfiguredDomains(msg: Message, domainEntries?: string[]): boolean {
+    const configuredDomains = (domainEntries || [])
+        .filter((entry) => !!(entry || "").trim())
         .map(normalizeAllowedDomainEntry)
         .filter((entry) => !!entry);
-    if (allowedDomains.length === 0) return false;
+    if (configuredDomains.length === 0) return false;
 
     const requestOriginHost = getRequestOriginHost(msg);
     if (!requestOriginHost) return false;
 
-    return allowedDomains.some((allowedDomain) => hostMatchesAllowedDomain(requestOriginHost, allowedDomain));
+    return configuredDomains.some((allowedDomain) => hostMatchesAllowedDomain(requestOriginHost, allowedDomain));
+}
+
+function isAllowedLoginDomain(msg: Message, config: AuthServiceConfig): boolean {
+    if (isSameDomainBrowserRequest(msg)) return true;
+
+    const hasAllowedDomainEntries = (config.allowedLoginDomains || []).some((entry) => !!(entry || "").trim());
+    if (!hasAllowedDomainEntries) return true;
+
+    return requestOriginMatchesConfiguredDomains(msg, config.allowedLoginDomains);
+}
+
+function isTrustedLoginDomain(msg: Message, config: AuthServiceConfig): boolean {
+    return requestOriginMatchesConfiguredDomains(msg, config.trustedDomains);
 }
 
 function isSameDomainBrowserRequest(msg: Message): boolean {
@@ -156,6 +166,15 @@ function isSameDomainBrowserRequest(msg: Message): boolean {
 
     if (!requestOriginHost || !runtimeHost) return false;
     return requestOriginHost === runtimeHost;
+}
+
+function getLoginCookiePolicy(msg: Message, config: AuthServiceConfig) {
+    const sameDomainLogin = isSameDomainBrowserRequest(msg);
+    const trustedDomainLogin = isTrustedLoginDomain(msg, config);
+    return {
+        setCookie: sameDomainLogin || trustedDomainLogin,
+        strictCookie: sameDomainLogin && !trustedDomainLogin
+    };
 }
 
 async function setJwt(
@@ -279,16 +298,16 @@ async function login(msg: Message, userUrlPattern: string, context: SimpleServic
     if (!match) {
         return msg.setStatus(400, 'bad password');
     }
+    const loginCookiePolicy = getLoginCookiePolicy(msg, config);
     try {
         // Option B: challenge flow when user requires MFA
         const mfaMode = config.mfa?.mode || "singleStep";
         if (mfaMode === "challenge" && userRequiresTotp(fullUser)) {
             const cookieName = getMfaCookieName(config);
             const timeoutMins = config.mfa?.mfaTimeoutMins || 5;
-            const sameDomainLogin = isSameDomainBrowserRequest(msg);
             const mfaJwtResult = await setMfaJwt(msg, { email: user.email, mfaPending: true }, timeoutMins, cookieName, {
-                setCookie: sameDomainLogin,
-                strictCookie: sameDomainLogin
+                setCookie: loginCookiePolicy.setCookie,
+                strictCookie: loginCookiePolicy.strictCookie
             });
             const out: Record<string, unknown> = { mfaRequired: true, type: "totp" };
             if (!mfaJwtResult.cookieSet) {
@@ -298,10 +317,9 @@ async function login(msg: Message, userUrlPattern: string, context: SimpleServic
         }
 
         const payload = buildJwtPayload(user, fullUser as unknown as Record<string, unknown>, config.jwtUserProps);
-        const sameDomainLogin = isSameDomainBrowserRequest(msg);
         const jwtResult = await setJwt(msg, payload, config.sessionTimeoutMins || 30, {
-            setCookie: sameDomainLogin,
-            strictCookie: sameDomainLogin
+            setCookie: loginCookiePolicy.setCookie,
+            strictCookie: loginCookiePolicy.strictCookie
         });
         fullUser.password = user.passwordMask();
         fullUser.exp = (new Date().getTime()) + jwtResult.timeToExpirySecs * 1000;
@@ -378,10 +396,10 @@ service.postPath("mfa/totp", async (msg, context, config) => {
     if (!fullUser) return msg.setStatus(404, "no user record");
     const user = new AuthUser(fullUser);
     const payload = buildJwtPayload(user, fullUser as unknown as Record<string, unknown>, config.jwtUserProps);
-    const sameDomainLogin = isSameDomainBrowserRequest(msg);
+    const loginCookiePolicy = getLoginCookiePolicy(msg, config);
     const jwtResult = await setJwt(msg, payload, config.sessionTimeoutMins || 30, {
-        setCookie: sameDomainLogin,
-        strictCookie: sameDomainLogin
+        setCookie: loginCookiePolicy.setCookie,
+        strictCookie: loginCookiePolicy.strictCookie
     });
     deleteCookieWithSecurity(msg, cookieName);
     fullUser.password = user.passwordMask();
@@ -448,9 +466,10 @@ service.setUser(async (msg, _context, serviceConfig) => {
             const refreshUser = msg.user as AuthUser;
             const payload = buildJwtPayload(refreshUser, refreshUser as unknown as Record<string, unknown>, serviceConfig.jwtUserProps);
             const shouldRefreshCookie = !!existingAuthCookie;
+            const strictRefreshCookie = !isTrustedLoginDomain(msg, serviceConfig);
             const jwtResult = await setJwt(msg, payload, sessionTimeoutMins || 30, {
                 setCookie: shouldRefreshCookie,
-                strictCookie: shouldRefreshCookie
+                strictCookie: strictRefreshCookie
             });
             const newExpiryTime = nowTime + jwtResult.timeToExpirySecs * 1000;
             msg.user.exp = newExpiryTime;

@@ -704,6 +704,54 @@ Deno.test("MongoDbQueryAdapter regression: cleanIgnoreMarkers runs before EJSON 
   assertEquals((deserialized as Record<string, unknown>[]).length, 1);
 });
 
+Deno.test("MongoDbQueryAdapter regression: removes $and date criterion when ${d} is empty", () => {
+  const rawPipeline = [{
+    $match: {
+      $and: [
+        { accountId: "acct-1" },
+        { dval: { $gte: { $date: { $ignore: true } } } },
+      ],
+    },
+  }];
+
+  const cleaned = cleanIgnoreMarkers(rawPipeline);
+  assertEquals(cleaned, [{
+    $match: {
+      $and: [
+        { accountId: "acct-1" },
+      ],
+    },
+  }]);
+
+  const deserialized = BSON.EJSON.deserialize(cleaned, { relaxed: true }) as Record<string, unknown>[];
+  assert(Array.isArray(deserialized), "Expected deserialized pipeline array");
+  assertEquals(deserialized.length, 1);
+  assertEquals(
+    JSON.stringify((deserialized[0].$match as Record<string, unknown>).$and),
+    JSON.stringify([{ accountId: "acct-1" }]),
+  );
+});
+
+Deno.test("MongoDbQueryAdapter regression: keeps $and date criterion when ${d} is provided", () => {
+  const rawPipeline = [{
+    $match: {
+      $and: [
+        { accountId: "acct-1" },
+        { dval: { $gte: { $date: "2026-01-20T12:54:36Z" } } },
+      ],
+    },
+  }];
+
+  const cleaned = cleanIgnoreMarkers(rawPipeline);
+  const deserialized = BSON.EJSON.deserialize(cleaned, { relaxed: true }) as Record<string, unknown>[];
+  const andClauses = ((deserialized[0].$match as Record<string, unknown>).$and as Record<string, unknown>[]);
+  const dvalClause = andClauses[1].dval as Record<string, unknown>;
+  const gteClause = dvalClause.$gte as unknown;
+
+  assert(gteClause instanceof Date, "Expected $gte value to deserialize to Date");
+  assertEquals((gteClause as Date).toISOString(), "2026-01-20T12:54:36.000Z");
+});
+
 // --- Cleanup test database ---
 
 Deno.test("Cleanup: drop test database collections", async () => {

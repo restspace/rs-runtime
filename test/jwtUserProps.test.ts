@@ -74,6 +74,7 @@ Deno.test("auth login embeds configured jwtUserProps (safe) in JWT", async () =>
     await writeJson(`/user-bypass/${user.email}`, user, "failed to write user");
 
     const loginMsg = testMessage("/auth/login", "POST")
+        .setHeader("origin", "http://jwtProps.restspace.local:3100")
         .setDataJson({ email: user.email, password: "hello" });
     const loginOut = await handleIncomingRequest(loginMsg);
     assert(loginOut.ok, "failed to log in");

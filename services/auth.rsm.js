@@ -13,6 +13,12 @@ export default {
                 "description": "Optional allowlist of browser domains allowed to call login and mfa/totp (hostnames, URLs, or wildcard subdomains like *.example.com)",
                 "items": { "type": "string" }
             },
+            "trustedDomains": {
+                "title": "Trusted domains",
+                "type": "array",
+                "description": "Domains (including wildcard forms like *.example.com) that can receive auth cookies on login. Access from these domains will be vulnerable to CSRF",
+                "items": { "type": "string" }
+            },
             "sessionTimeoutMins": { "type": "number", "description": "How long before a new login is required in minutes" },
             "jwtUserProps": {
                 "type": "array",
