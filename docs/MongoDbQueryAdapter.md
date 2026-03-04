@@ -91,6 +91,45 @@ adapter.quoteDate(new Date())             // "{\"$date\":\"...\"}"
 
 The adapter parses query payloads using MongoDB Extended JSON (EJSON), so BSON date literals are supported directly in query files and templates.
 
+When using `${param}` substitution from `services/query.ts`, wrap the substitution inside a `$date` object if you want MongoDB date semantics (not string comparison).
+
+Template example (exact match):
+
+```json
+{
+  "collection": "events",
+  "pipeline": [
+    { "$match": { "dval": { "$date": ${d} } } }
+  ]
+}
+```
+
+If request JSON contains `{ "d": "2026-01-20T12:54:36Z" }`, the interpolated query becomes:
+
+```json
+{ "$match": { "dval": { "$date": "2026-01-20T12:54:36Z" } } }
+```
+
+and is deserialized to a BSON `Date` for matching.
+
+Range example:
+
+```json
+{
+  "collection": "events",
+  "pipeline": [
+    {
+      "$match": {
+        "dval": {
+          "$gte": { "$date": ${fromDate} },
+          "$lt": { "$date": ${toDate} }
+        }
+      }
+    }
+  ]
+}
+```
+
 Relaxed date format:
 
 ```json

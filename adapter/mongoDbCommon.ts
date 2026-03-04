@@ -44,6 +44,10 @@ export interface MongoAggregateQuery {
 
 export class QueryFormatError extends Error {}
 
+const keepEmptyOperatorObjects = new Set([
+  "$match",
+]);
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const proto = Object.getPrototypeOf(value);
@@ -228,6 +232,15 @@ function processIgnoreValue(value: unknown): unknown {
       if (!key.startsWith("$") &&
           typeof processed === "object" && processed !== null &&
           !Array.isArray(processed) && Object.keys(processed).length === 0) {
+        continue;
+      }
+
+      // Remove empty operator objects in expressions (e.g. { "$gte": {} } after removing "$date").
+      // Keep "$match": {} because an empty $match is valid and matches all documents.
+      if (key.startsWith("$") &&
+          typeof processed === "object" && processed !== null &&
+          !Array.isArray(processed) && Object.keys(processed).length === 0 &&
+          !keepEmptyOperatorObjects.has(key)) {
         continue;
       }
 
