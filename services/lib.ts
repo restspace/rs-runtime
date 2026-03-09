@@ -80,6 +80,22 @@ service.postPath('/reload-referer', msg => {
     msg.exitConditionalMode();
     return msg.setHeader('location', location).setStatus(303);
 });
+service.postPath('/set-status', msg => {
+    const statusEl = msg.url.servicePathElements[0];
+    if (!statusEl) {
+        return msg.setStatus(400, 'missing path element 1, status code');
+    }
+
+    const status = parseInt(statusEl, 10);
+    if (isNaN(status)) {
+        return msg.setStatus(400, 'bad path element 1, status code');
+    }
+
+    const message = msg.url.servicePathElements.slice(1).join('/');
+    return message
+        ? msg.setStatus(status, message)
+        : msg.setStatus(status, true);
+});
 service.postPath('/delocalise-store-location', msg => {
     const location = msg.getHeader('location');
     if (!location) return Promise.resolve(msg);
