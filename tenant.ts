@@ -32,6 +32,12 @@ const baseChord: IChord = {
             "name": "Services Service",
             "source": "./services/services.rsm.json",
             "basePath": "/.well-known/restspace"
+        },
+        {
+            "access": { "readRoles": "all", "writeRoles": "all" },
+            "name": "Lib",
+            "source": "./services/lib.rsm.json",
+            "basePath": "/lib"
         }
     ]
 }
@@ -131,6 +137,7 @@ export class Tenant {
                 const matchService = { ...service } as any;
                 delete matchService.name;
                 delete matchService.localDir;
+                delete matchService.basePath;
                 if (!deepEqualIfPresent(services[service.basePath], matchService)) {
                     throw new Error(`chord ${chord.id} chord key ${chordKey} fails to match existing service on ${service.basePath}`);
                 }

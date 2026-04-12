@@ -8,17 +8,19 @@ import { utilsForHost } from "./testUtility.ts";
 config.server = testServerConfig;
 
 testServicesConfig["lib-service"] = {
-    services: {
-        "/lib": {
-            name: "Lib",
-            source: "./services/lib.rsm.json",
-            basePath: "/lib",
-            access: { readRoles: "all", writeRoles: "all" }
-        }
-    }
+    services: {}
 };
 
 const { testMessage } = utilsForHost("lib-service");
+
+Deno.test("lib service is auto-created by base chord", async () => {
+    const msg = testMessage("/.well-known/restspace/services", "GET");
+    const msgOut = await handleIncomingRequest(msg);
+
+    assertEquals(msgOut.ok, true);
+    const services = await msgOut.data?.asJson() as Record<string, { source?: string }>;
+    assertEquals(services["/lib"]?.source, "./services/lib.rsm.json");
+});
 
 Deno.test("lib/set-status uses provided message body", async () => {
     const msg = testMessage("/lib/set-status/418/short%20and%20stout", "POST");

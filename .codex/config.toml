@@ -1,0 +1,6 @@
+notify = [
+  "powershell.exe",
+  "-NoProfile",
+  "-Command",
+  "$body = $args[0]; Invoke-RestMethod -Method Post -Uri \"$env:TERMINAL_CANVAS_ATTENTION_URL/codex\" -Headers @{ 'x-terminal-canvas-token' = $env:TERMINAL_CANVAS_ATTENTION_TOKEN; 'x-terminal-canvas-session-id' = $env:TERMINAL_CANVAS_SESSION_ID } -ContentType 'application/json' -Body $body | Out-Null",
+]
