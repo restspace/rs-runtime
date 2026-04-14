@@ -116,9 +116,10 @@ export const handleIncomingRequest = async (msg: Message) => {
             errStack = ` at \n${err.stack || ''}`;
         }
         config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs(serviceName));
-        return originalMethod === 'OPTIONS'
-            ? config.server.setServerCors(msg).setStatus(204)
+        const errResponse = originalMethod === 'OPTIONS'
+            ? msg.setStatus(204)
             : msg.setStatus(500, 'Server error');
+        return config.server.setServerCors(errResponse);
     }
 };
 
@@ -202,9 +203,10 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
             errStack = ` at \n${err.stack || ''}`;
         }
         config.logger.warning(`request processing failed: ${err}${errStack}`, ...loggerArgs);
-        return originalMethod === 'OPTIONS' && tenantName
-            ? config.server.setServerCors(msg).setStatus(204)
+        const errResponse = originalMethod === 'OPTIONS' && tenantName
+            ? msg.setStatus(204)
             : msg.setStatus(500, 'Server error');
+        return config.server.setServerCors(errResponse);
     }
 }
 
