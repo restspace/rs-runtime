@@ -105,6 +105,8 @@ import Webhooks from "./services/webhooks.ts";
 import WebhooksManifest from "./services/webhooks.rsm.js";
 import Totp from "./services/totp.ts";
 import TotpManifest from "./services/totp.rsm.js";
+import LogCollector from "./services/logCollector.ts";
+import LogCollectorManifest from "./services/logCollector.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -277,6 +279,7 @@ export class Modules {
             "./services/webhooks.ts": Webhooks as unknown as Service<IAdapter, IServiceConfig>,
             "./services/private-caller.ts": PrivateCaller as unknown as Service<IAdapter, IServiceConfig>,
             "./services/totp.ts": Totp as unknown as Service<IAdapter, IServiceConfig>,
+            "./services/logCollector.ts": LogCollector as unknown as Service<IAdapter, IServiceConfig>,
         };
         this.servicesMap[""] = Object.keys(this.services);
 
@@ -314,6 +317,7 @@ export class Modules {
             "./services/webhooks.rsm.json": WebhooksManifest as unknown as IServiceManifest,
             "./services/private-caller.rsm.json": PrivateCallerManifest as unknown as IServiceManifest,
             "./services/totp.rsm.json": TotpManifest as unknown as IServiceManifest,
+            "./services/logCollector.rsm.json": LogCollectorManifest as unknown as IServiceManifest,
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 
