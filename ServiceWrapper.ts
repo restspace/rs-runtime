@@ -124,7 +124,7 @@ export class ServiceWrapper {
     private setCors(data: Message, origin: string) {
         if (origin) {
             data.setHeader('Access-Control-Allow-Origin', origin);
-            const defaultAllowHeaders = 'Origin,X-Requested-With,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Restspace-Request-Mode,X-X';
+            const defaultAllowHeaders = 'Origin,X-Requested-With,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Restspace-Request-Mode,X-X,traceparent,tracestate';
             const existingAllowHeaders = data.getHeader('Access-Control-Allow-Headers') || '';
             config.logger.info(`existingAllowHeaders: ${existingAllowHeaders}`);
             const defaultHeaders = defaultAllowHeaders.split(',').map(h => h.trim()).filter(h => h.length > 0);
