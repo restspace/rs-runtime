@@ -24,6 +24,8 @@ export interface IServerConfig {
     setServerCors(msg: Message): Message;
 }
 
+const LOG_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
 const formatter = (rec: LogRecord) => {
     let severity = 'DEBUG';
     switch (rec.levelName) {
@@ -43,13 +45,16 @@ const formatter = (rec: LogRecord) => {
             severity = "FATAL";
             break;
     }
-    let [ tenant, service, username, traceId, spanId ] = rec.args;
+    let [ tenant, service, username, traceId, spanId, eventTimestamp ] = rec.args;
     if (!tenant) tenant = 'global';
     if (!service) service = '?'; else service = (service as string).replace(/ /g, '_');
     if (!username) username = '?';
     if (!traceId) traceId = 'x'.repeat(32);
     if (!spanId) spanId = 'x'.repeat(16);
-    return `${severity} ${rec.datetime.toISOString()} ${traceId} ${spanId} ${tenant} ${service} ${username} ${rec.msg}`;
+    const timestamp = typeof eventTimestamp === "string" && LOG_TIMESTAMP_PATTERN.test(eventTimestamp)
+        ? eventTimestamp
+        : rec.datetime.toISOString();
+    return `${severity} ${timestamp} ${traceId} ${spanId} ${tenant} ${service} ${username} ${rec.msg}`;
 }
 
 export type LogLevel = "NOTSET" | "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL";

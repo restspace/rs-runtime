@@ -4,6 +4,7 @@ import { ILogReaderAdapter } from "rs-core/adapter/ILogReaderAdapter.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
 import { FileHandler } from "https://deno.land/std@0.185.0/log/handlers.ts";
 import { ViewSpec } from "rs-core/DirDescriptor.ts";
+import { sortLogLinesByTimestamp } from "./logLineSort.ts";
 
 const service = new Service<ILogReaderAdapter>();
 
@@ -24,7 +25,7 @@ service.getPath("tail", async (msg: Message, { adapter, logger }: ServiceContext
 		filter = undefined;
 	}
 	if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
-	const lines = await adapter.tail(nLines, filter);
+	const lines = sortLogLinesByTimestamp(await adapter.tail(nLines, filter));
 	return msg.setData(lines.join('\n'), 'text/plain');
 });
 
@@ -32,7 +33,7 @@ service.getPath("json", async (msg: Message, { adapter, logger }: ServiceContext
 	(logger.handlers[1] as FileHandler).flush();
 	const nLines = parseInt(msg.url.servicePathElements?.[0]);
 	if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
-	const lines = await adapter.tail(nLines);
+	const lines = sortLogLinesByTimestamp(await adapter.tail(nLines));
 	const json = lines.reduce((prev, line) => {
 		const lineParts = line.split(' ').filter(p => !!p);
 		const lineJson = {
@@ -71,7 +72,7 @@ service.getPath("search", async (msg: Message, { adapter, logger }: ServiceConte
 	const search = msg.url.servicePathElements?.[1];
 	if (isNaN(nLines)) return msg.setStatus(400, 'Last path element must be number of lines to read');
 	if (!search) return msg.setStatus(400, 'Must provide a string to search for');
-	const lines = await adapter.search(nLines, search);
+	const lines = sortLogLinesByTimestamp(await adapter.search(nLines, search));
 	return msg.setData(lines.join('\n'), 'text/plain');
 });
 

@@ -9,103 +9,56 @@ import { IAdapterManifest, IManifest, IServiceManifest } from "rs-core/IManifest
 import { Infra, config } from "./config.ts";
 import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 
-import TestConfigFileAdapter from "./test/TestConfigFileAdapter.ts";
 import TestConfigFileAdapterManifest from "./test/TestConfigFileAdapter.ram.js";
-import LocalFileAdapter from "./adapter/LocalFileAdapter.ts";
 import LocalFileAdapterManifest from "./adapter/LocalFileAdapter.ram.js";
-import S3FileAdapter from "./adapter/S3FileAdapter.ts";
 import S3FileAdapterManifest from "./adapter/S3FileAdapter.ram.js";
-import NunjucksTemplateAdapter from "./adapter/NunjucksTemplateAdapter.ts";
 import NunjucksTemplateAdapterManifest from "./adapter/NunjucksTemplateAdapter.ram.js";
-import SimpleProxyAdapter from "./adapter/SimpleProxyAdapter.ts";
 import SimpleProxyAdapterManifest from "./adapter/SimpleProxyAdapter.ram.js";
-import AWS4ProxyAdapter from "./adapter/AWS4ProxyAdapter.ts";
 import AWS4ProxyAdapterManifest from "./adapter/AWS4ProxyAdapter.ram.js";
-import ElasticProxyAdapter from "./adapter/ElasticProxyAdapter.ts";
 import ElasticProxyAdapterManifest from "./adapter/ElasticProxyAdapter.ram.js";
-import ElasticDataAdapter from "./adapter/ElasticDataAdapter.ts";
 import ElasticDataAdapterManifest from "./adapter/ElasticDataAdapter.ram.js";
-import ElasticQueryAdapter from "./adapter/ElasticQueryAdapter.ts";
 import ElasticQueryAdapterManifest from "./adapter/ElasticQueryAdapter.ram.js";
-import FileLogReaderAdapter from "./adapter/FileLogReaderAdapter.ts";
 import FileLogReaderAdapterManifest from "./adapter/FileLogReaderAdapter.ram.js";
-import SnsSmsAdapter from "./adapter/SnsSmsAdapter.ts";
 import SnsSmsAdapterManifest from "./adapter/SnsSmsAdapter.ram.js";
-import BotProxyAdapter from "./adapter/BotProxyAdapter.ts";
 import BotProxyAdapterManifest from "./adapter/BotProxyAdapter.ram.js";
-import BinanceProxyAdapter from "./adapter/BinanceProxyAdapter.ts";
 import BinanceProxyAdapterManifest from "./adapter/BinanceProxyAdapter.ram.js";
-import MongoDbDataAdapter from "./adapter/MongoDbDataAdapter.ts";
 import MongoDbDataAdapterManifest from "./adapter/MongoDbDataAdapter.ram.js";
-import MongoDbQueryAdapter from "./adapter/MongoDbQueryAdapter.ts";
 import MongoDbQueryAdapterManifest from "./adapter/MongoDbQueryAdapter.ram.js";
-import IMAPAdapter from "./adapter/IMAPAdapter.ts";
 import IMAPAdapterManifest from "./adapter/IMAPAdapter.ram.js";
 
-import Mock from "./services/mock.ts";
 import MockManifest from "./services/mock.rsm.js";
-import Services from "./services/services.ts";
 import ServicesManifest from "./services/services.rsm.js";
-import Auth from "./services/auth.ts";
 import AuthManifest from "./services/auth.rsm.js";
-import Data from "./services/data.ts";
 import DataManifest from "./services/data.rsm.js";
-import Dataset from "./services/dataset.ts";
 import DatasetManifest from "./services/dataset.rsm.js";
-import File from "./services/file.ts";
 import FileManifest from "./services/file.rsm.js";
-import Lib from "./services/lib.ts";
 import LibManifest from "./services/lib.rsm.js";
-import Pipeline from "./services/pipeline.ts";
 import PipelineManifest from "./services/pipeline.rsm.js";
-import PipelineStore from "./services/pipeline-store.ts";
 import PipelineStoreManifest from "./services/pipeline-store.rsm.js";
-import StaticSiteFilter from "./services/static-site-filter.ts";
 import StaticSiteFilterManifest from "./services/static-site-filter.rsm.js";
 import StaticSiteManifest from "./services/static-site.rsm.js";
 import UserDataManifest from "./services/user-data.rsm.js";
 import UserFilterManifest from "./services/user-filter.rsm.js";
-import UserFilter from "./services/user-filter.ts";
-import Template from "./services/template.ts";
 import TemplateManifest from "./services/template.rsm.js";
-import Proxy from "./services/proxy.ts";
 import ProxyManifest from "./services/proxy.rsm.js";
-import Email from "./services/email.ts";
 import EmailManifest from "./services/email.rsm.js";
-import Account from "./services/account.ts";
 import AccountManifest from "./services/account.rsm.js";
-import TemporaryAccess from "./services/temporary-access.ts";
 import TemporaryAccessManifest from "./services/temporary-access.rsm.js";
-import Query from "./services/query.ts";
 import QueryManifest from "./services/query.rsm.js";
-import CSVConverter from "./services/csvConverter.ts";
 import CSVConverterManifest from "./services/csvConverter.rsm.js";
-import LogReader from "./services/logReader.ts";
 import LogReaderManifest from "./services/logReader.rsm.js";
 import ServiceStoreManifest from "./services/service-store.rsm.js"
-import Timer from "./services/timer.ts";
 import TimerManifest from "./services/timer.rsm.js";
-import Sms from "./services/sms.ts";
 import SmsManifest from "./services/sms.rsm.js";
-import WebScraper from "./services/webScraperService.ts";
 import WebScraperManifest from "./services/webScraperService.rsm.js";
-import References from "./services/references.ts";
 import ReferencesManifest from "./services/references.rsm.js";
-import TimerStore from "./services/timer-store.ts";
 import TimerStoreManifest from "./services/timer-store.rsm.js";
-import ServerSideEvents from "./services/server-side-events.ts";
 import serverSideEventsManifest from "./services/server-side-events.rsm.js";
-import StoreFromQuery from "./services/store-from-query.ts";
 import StoreFromQueryManifest from "./services/store-from-query.rsm.js";
-import EmailStore from "./services/emailStore.ts";
 import EmailStoreManifest from "./services/emailStore.rsm.js";
-import PrivateCaller from "./services/private-caller.ts";
 import PrivateCallerManifest from "./services/private-caller.rsm.js";
-import Webhooks from "./services/webhooks.ts";
 import WebhooksManifest from "./services/webhooks.rsm.js";
-import Totp from "./services/totp.ts";
 import TotpManifest from "./services/totp.rsm.js";
-import LogCollector from "./services/logCollector.ts";
 import LogCollectorManifest from "./services/logCollector.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
@@ -176,6 +129,60 @@ export function applyServiceConfigTemplate(serviceConfig: IServiceConfig, config
 }
 
 export type AdapterConstructor = new (context: AdapterContext, config: Record<string, any>) => IAdapter;
+type BuiltInModuleLoader = () => Promise<{ default: unknown }>;
+
+const builtInAdapterLoaders: Record<string, BuiltInModuleLoader> = {
+    "./test/TestConfigFileAdapter.ts": () => import("./test/TestConfigFileAdapter.ts"),
+    "./adapter/LocalFileAdapter.ts": () => import("./adapter/LocalFileAdapter.ts"),
+    "./adapter/S3FileAdapter.ts": () => import("./adapter/S3FileAdapter.ts"),
+    "./adapter/NunjucksTemplateAdapter.ts": () => import("./adapter/NunjucksTemplateAdapter.ts"),
+    "./adapter/SimpleProxyAdapter.ts": () => import("./adapter/SimpleProxyAdapter.ts"),
+    "./adapter/AWS4ProxyAdapter.ts": () => import("./adapter/AWS4ProxyAdapter.ts"),
+    "./adapter/ElasticProxyAdapter.ts": () => import("./adapter/ElasticProxyAdapter.ts"),
+    "./adapter/ElasticDataAdapter.ts": () => import("./adapter/ElasticDataAdapter.ts"),
+    "./adapter/ElasticQueryAdapter.ts": () => import("./adapter/ElasticQueryAdapter.ts"),
+    "./adapter/FileLogReaderAdapter.ts": () => import("./adapter/FileLogReaderAdapter.ts"),
+    "./adapter/SnsSmsAdapter.ts": () => import("./adapter/SnsSmsAdapter.ts"),
+    "./adapter/BotProxyAdapter.ts": () => import("./adapter/BotProxyAdapter.ts"),
+    "./adapter/BinanceProxyAdapter.ts": () => import("./adapter/BinanceProxyAdapter.ts"),
+    "./adapter/MongoDbDataAdapter.ts": () => import("./adapter/MongoDbDataAdapter.ts"),
+    "./adapter/MongoDbQueryAdapter.ts": () => import("./adapter/MongoDbQueryAdapter.ts"),
+    "./adapter/IMAPAdapter.ts": () => import("./adapter/IMAPAdapter.ts"),
+};
+
+const builtInServiceLoaders: Record<string, BuiltInModuleLoader> = {
+    "./services/mock.ts": () => import("./services/mock.ts"),
+    "./services/services.ts": () => import("./services/services.ts"),
+    "./services/auth.ts": () => import("./services/auth.ts"),
+    "./services/data.ts": () => import("./services/data.ts"),
+    "./services/dataset.ts": () => import("./services/dataset.ts"),
+    "./services/file.ts": () => import("./services/file.ts"),
+    "./services/lib.ts": () => import("./services/lib.ts"),
+    "./services/pipeline.ts": () => import("./services/pipeline.ts"),
+    "./services/pipeline-store.ts": () => import("./services/pipeline-store.ts"),
+    "./services/static-site-filter.ts": () => import("./services/static-site-filter.ts"),
+    "./services/user-filter.ts": () => import("./services/user-filter.ts"),
+    "./services/template.ts": () => import("./services/template.ts"),
+    "./services/proxy.ts": () => import("./services/proxy.ts"),
+    "./services/email.ts": () => import("./services/email.ts"),
+    "./services/account.ts": () => import("./services/account.ts"),
+    "./services/temporary-access.ts": () => import("./services/temporary-access.ts"),
+    "./services/query.ts": () => import("./services/query.ts"),
+    "./services/csvConverter.ts": () => import("./services/csvConverter.ts"),
+    "./services/logReader.ts": () => import("./services/logReader.ts"),
+    "./services/timer.ts": () => import("./services/timer.ts"),
+    "./services/sms.ts": () => import("./services/sms.ts"),
+    "./services/webScraperService.ts": () => import("./services/webScraperService.ts"),
+    "./services/references.ts": () => import("./services/references.ts"),
+    "./services/timer-store.ts": () => import("./services/timer-store.ts"),
+    "./services/server-side-events.ts": () => import("./services/server-side-events.ts"),
+    "./services/store-from-query.ts": () => import("./services/store-from-query.ts"),
+    "./services/emailStore.ts": () => import("./services/emailStore.ts"),
+    "./services/webhooks.ts": () => import("./services/webhooks.ts"),
+    "./services/private-caller.ts": () => import("./services/private-caller.ts"),
+    "./services/totp.ts": () => import("./services/totp.ts"),
+    "./services/logCollector.ts": () => import("./services/logCollector.ts"),
+};
 
 /** Modules is a singleton which holds compiled services and adapters for all tenants */
 export class Modules {
@@ -203,26 +210,9 @@ export class Modules {
         this.validateServiceManifest = defaultValidator(schemaIServiceManifest);
         this.validateAdapterManifest = defaultValidator(schemaIAdapterManifest);
 
-        // Statically load core services & adapters
-        this.adapterConstructors = {
-            "./test/TestConfigFileAdapter.ts": TestConfigFileAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/LocalFileAdapter.ts": LocalFileAdapter,
-            "./adapter/S3FileAdapter.ts": S3FileAdapter,
-            "./adapter/NunjucksTemplateAdapter.ts": NunjucksTemplateAdapter,
-            "./adapter/SimpleProxyAdapter.ts": SimpleProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/AWS4ProxyAdapter.ts": AWS4ProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/ElasticProxyAdapter.ts": ElasticProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/ElasticDataAdapter.ts": ElasticDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/ElasticQueryAdapter.ts": ElasticQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/FileLogReaderAdapter.ts": FileLogReaderAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/SnsSmsAdapter.ts": SnsSmsAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/BotProxyAdapter.ts": BotProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/BinanceProxyAdapter.ts": BinanceProxyAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/MongoDbDataAdapter.ts": MongoDbDataAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/MongoDbQueryAdapter.ts": MongoDbQueryAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-            "./adapter/IMAPAdapter.ts": IMAPAdapter as new (context: AdapterContext, props: unknown) => IAdapter,
-        };
-        this.adapterConstructorsMap[""] = Object.keys(this.adapterConstructors);
+        // Built-in implementations are loaded lazily from literal import maps so bundling can still include them.
+        this.adapterConstructors = {};
+        this.adapterConstructorsMap[""] = Object.keys(builtInAdapterLoaders);
         this.adapterManifests = {
             "./test/TestConfigFileAdapter.ram.json": TestConfigFileAdapterManifest,
             "./adapter/LocalFileAdapter.ram.json": LocalFileAdapterManifest,
@@ -248,40 +238,8 @@ export class Modules {
             this.validateAdapterConfig[url] = defaultValidator(this.adapterManifests[url].configSchema || {});
         });
 
-        this.services = {
-            "./services/mock.ts": Mock,
-            "./services/services.ts": Services,
-            "./services/auth.ts": Auth as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/data.ts": Data as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/dataset.ts": Dataset as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/file.ts": File as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/lib.ts": Lib,
-            "./services/pipeline.ts": Pipeline as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/pipeline-store.ts": PipelineStore as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/static-site-filter.ts": StaticSiteFilter as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/user-filter.ts": UserFilter,
-            "./services/template.ts": Template as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/proxy.ts": Proxy as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/email.ts": Email as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/account.ts": Account as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/temporary-access.ts": TemporaryAccess as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/query.ts": Query as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/csvConverter.ts": CSVConverter as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/logReader.ts": LogReader as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/timer.ts": Timer as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/sms.ts": Sms as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/webScraperService.ts": WebScraper as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/references.ts": References as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/timer-store.ts": TimerStore as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/server-side-events.ts": ServerSideEvents as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/store-from-query.ts": StoreFromQuery as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/emailStore.ts": EmailStore as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/webhooks.ts": Webhooks as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/private-caller.ts": PrivateCaller as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/totp.ts": Totp as unknown as Service<IAdapter, IServiceConfig>,
-            "./services/logCollector.ts": LogCollector as unknown as Service<IAdapter, IServiceConfig>,
-        };
-        this.servicesMap[""] = Object.keys(this.services);
+        this.services = {};
+        this.servicesMap[""] = Object.keys(builtInServiceLoaders);
 
         this.serviceManifests = {
             "./services/mock.rsm.json": MockManifest,
@@ -379,12 +337,18 @@ export class Modules {
         }
         if (!this.adapterConstructors[sourceUrl]) {
             try {
-                moduleReqUrl.query['$x-rs-source'] = [ 'internal'];
-                if (moduleReqUrl.domain === primaryDomain) {
-                    moduleReqUrl.query['$no-cache'] = [ crypto.randomUUID() ];
+                const builtInLoader = builtInAdapterLoaders[sourceUrl];
+                if (builtInLoader) {
+                    const module = await builtInLoader();
+                    this.adapterConstructors[sourceUrl] = module.default as AdapterConstructor;
+                } else {
+                    moduleReqUrl.query['$x-rs-source'] = [ 'internal'];
+                    if (moduleReqUrl.domain === primaryDomain) {
+                        moduleReqUrl.query['$no-cache'] = [ crypto.randomUUID() ];
+                    }
+                    const module = await import(moduleReqUrl.toString());
+                    this.adapterConstructors[sourceUrl] = module.default;
                 }
-                const module = await import(moduleReqUrl.toString());
-                this.adapterConstructors[sourceUrl] = module.default;
                 this.addToDomainMap(this.adapterConstructorsMap, sourceUrl, tenant);
             } catch (err) {
                 throw new Error(`failed to load adapter at ${sourceUrl}: ${err}`);
@@ -507,13 +471,19 @@ export class Modules {
         if (!this.services[sourceUrl]) {
             try {
                 config.logger.debug(`Start -- loading service at ${url}`);
-                const moduleReqUrl = new Url(sourceUrl);
-                moduleReqUrl.query['$x-rs-source'] = [ 'internal'];
-                if (moduleReqUrl.domain === primaryDomain) {
-                    moduleReqUrl.query['$no-cache'] = [ crypto.randomUUID() ];
+                const builtInLoader = builtInServiceLoaders[sourceUrl];
+                if (builtInLoader) {
+                    const module = await builtInLoader();
+                    this.services[sourceUrl] = module.default as Service;
+                } else {
+                    const moduleReqUrl = new Url(sourceUrl);
+                    moduleReqUrl.query['$x-rs-source'] = [ 'internal'];
+                    if (moduleReqUrl.domain === primaryDomain) {
+                        moduleReqUrl.query['$no-cache'] = [ crypto.randomUUID() ];
+                    }
+                    const module = await import(moduleReqUrl.toString());
+                    this.services[sourceUrl] = module.default;
                 }
-                const module = await import(moduleReqUrl.toString());
-                this.services[sourceUrl] = module.default;
                 this.addToDomainMap(this.servicesMap, sourceUrl, tenant);
                 config.logger.debug(`End -- loading service at ${url}`);
             } catch (err) {

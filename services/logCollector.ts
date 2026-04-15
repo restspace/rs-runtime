@@ -34,6 +34,7 @@ interface NormalisedEntry {
 }
 
 const VALID_LEVELS = new Set(["debug", "info", "warning", "error", "critical"]);
+const LOG_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 // Module-level forwarding queue and timer
 let queue: NormalisedEntry[] = [];
@@ -48,6 +49,40 @@ function parseTraceparent(traceparent: string | null | undefined): { traceId: st
         }
     }
     return { traceId: 'x'.repeat(32), spanId: 'x'.repeat(16) };
+}
+
+function validLogTimestamp(timestamp: unknown): string | undefined {
+    return typeof timestamp === "string" && LOG_TIMESTAMP_PATTERN.test(timestamp)
+        ? timestamp
+        : undefined;
+}
+
+function compareTimestampStrings(a: string | undefined, b: string | undefined): number {
+    if (a === undefined && b === undefined) return 0;
+    if (a === undefined) return 1;
+    if (b === undefined) return -1;
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function sortBatchByTimestamp(entries: LogEntry[]): LogEntry[] {
+    return entries
+        .map((entry, index) => ({ entry, index, timestamp: validLogTimestamp(entry.timestamp) }))
+        .sort((a, b) => compareTimestampStrings(a.timestamp, b.timestamp) || a.index - b.index)
+        .map(({ entry }) => entry);
+}
+
+function validateEntry(entry: unknown): string | null {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        return "Log entry must be an object";
+    }
+    const logEntry = entry as LogEntry;
+    if (!VALID_LEVELS.has(logEntry.level)) {
+        return `Invalid level '${logEntry.level}'. Must be one of: debug, info, warning, error, critical`;
+    }
+    if (!logEntry.message || typeof logEntry.message !== 'string') {
+        return "Missing or invalid 'message' field";
+    }
+    return null;
 }
 
 function toOtlpSeverityNumber(level: string): number {
@@ -158,9 +193,10 @@ function writeToLog(
         ? ' ' + JSON.stringify(entry.context)
         : '';
     const message = entry.message + contextStr;
+    const timestamp = validLogTimestamp(entry.timestamp);
 
     // Write via baseLogger with the entry's own trace context, not the POST request's
-    const args = [message, tenant, source, username, traceId, spanId] as const;
+    const args = [message, tenant, source, username, traceId, spanId, timestamp] as const;
     switch (entry.level) {
         case "debug":    context.baseLogger.debug(...args);    break;
         case "info":     context.baseLogger.info(...args);     break;
@@ -195,12 +231,8 @@ function processEntry(
     config: ILogCollectorConfig,
     requestTraceparent: string | undefined
 ): string | null {
-    if (!VALID_LEVELS.has(entry.level)) {
-        return `Invalid level '${entry.level}'. Must be one of: debug, info, warning, error, critical`;
-    }
-    if (!entry.message || typeof entry.message !== 'string') {
-        return "Missing or invalid 'message' field";
-    }
+    const error = validateEntry(entry);
+    if (error) return error;
 
     writeToLog(context, entry, requestTraceparent);
 
@@ -237,7 +269,7 @@ service.post(async (msg: Message, context: ServiceContext<never>, config: ILogCo
     const error = processEntry(body, context, config, requestTraceparent);
     if (error) return msg.setStatus(400, error);
 
-    return msg.setStatus(204);
+    return msg.setData(null, '').setStatus(204);
 });
 
 service.postPath('batch', async (msg: Message, context: ServiceContext<never>, config: ILogCollectorConfig) => {
@@ -245,21 +277,24 @@ service.postPath('batch', async (msg: Message, context: ServiceContext<never>, c
 
     const body = await msg.data!.asJson();
     if (!Array.isArray(body)) return msg.setStatus(400, "Body must be an array of log entries");
-    if (body.length === 0) return msg.setStatus(204);
+    if (body.length === 0) return msg.setData(null, '').setStatus(204);
 
     const requestTraceparent = msg.getHeader('traceparent') ?? undefined;
     const errors: string[] = [];
 
-    for (let i = 0; i < body.length; i++) {
-        const entry = body[i] as LogEntry;
-        const error = processEntry(entry, context, config, requestTraceparent);
+    const entries = body as LogEntry[];
+    for (let i = 0; i < entries.length; i++) {
+        const error = validateEntry(entries[i]);
         if (error) errors.push(`[${i}] ${error}`);
     }
 
     if (errors.length > 0) {
         return msg.setStatus(400, errors.join('; '));
     }
-    return msg.setStatus(204);
+    for (const entry of sortBatchByTimestamp(entries)) {
+        processEntry(entry, context, config, requestTraceparent);
+    }
+    return msg.setData(null, '').setStatus(204);
 });
 
 export default service;

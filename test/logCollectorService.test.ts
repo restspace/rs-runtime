@@ -246,6 +246,32 @@ Deno.test("POST /batch writes all entries to logger", async () => {
     }
 });
 
+Deno.test("POST /batch writes entries in event timestamp order", async () => {
+    const { records, restore } = captureLog();
+    try {
+        const msg = testMessage("/logs/batch", "POST");
+        const early = "2026-04-15T10:00:00.000Z";
+        const middle = "2026-04-15T10:00:01.000Z";
+        const late = "2026-04-15T10:00:02.000Z";
+        msg.setDataJson([
+            { level: "info", message: "batch-sort-late", timestamp: late },
+            { level: "info", message: "batch-sort-early", timestamp: early },
+            { level: "info", message: "batch-sort-middle", timestamp: middle }
+        ]);
+        await handleIncomingRequest(msg);
+
+        const sortedRecords = records.filter(r => r.msg.includes("batch-sort-"));
+        assertEquals(sortedRecords.map(r => r.msg), [
+            "batch-sort-early",
+            "batch-sort-middle",
+            "batch-sort-late"
+        ]);
+        assertEquals(sortedRecords.map(r => r.args[5]), [early, middle, late]);
+    } finally {
+        restore();
+    }
+});
+
 Deno.test("POST /batch with non-array body returns 400", async () => {
     const msg = testMessage("/logs/batch", "POST");
     msg.setDataJson({ level: "info", message: "not an array" });
