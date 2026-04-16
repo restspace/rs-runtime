@@ -25,6 +25,7 @@
         "deploy-render0": "scp -i C:\\dev\\keys\\ost-server-keys.pem -r ..\\rs-publish\\* ubuntu@ec2-13-43-82-38.eu-west-2.compute.amazonaws.com:/var/www/rs-runtime",
         "deploy-gpu0": "scp -i C:\\dev\\keys\\ost-server-keys.pem -r ..\\rs-publish\\* Administrator@ec2-18-132-232-134.eu-west-2.compute.amazonaws.com:C:/Restspace",
         "remote-restart": "ssh -i C:\\dev\\keys\\stagingpac.pem ubuntu@ec2-35-176-233-252.eu-west-2.compute.amazonaws.com \"sudo pm2 restart rsrt\"",
+        "remote-restart-old": "ssh -i C:\\dev\\keys\\stagingpac.pem ubuntu@ec2-3-10-91-198.eu-west-2.compute.amazonaws.com \"sudo pm2 restart rsrt\"",
         "remote-restart-adem": "ssh -i C:\\dev\\keys\\ost-server-keys.pem ubuntu@ec2-18-132-142-210.eu-west-2.compute.amazonaws.com \"sudo pm2 restart rsrt\"",
         "remote-restart-render0": "ssh -i C:\\dev\\keys\\ost-server-keys.pem ubuntu@ec2-13-43-82-38.eu-west-2.compute.amazonaws.com \"sudo pm2 restart rsrt\"",
         "publish": "rmdir ..\\rs-publish /S /Q && mkdir ..\\rs-publish && xcopy bundled.js ..\\rs-publish && xcopy importMap.json ..\\rs-publish",

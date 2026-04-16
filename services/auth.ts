@@ -348,9 +348,24 @@ service.postPath('login', async (msg, context, config) => {
         } catch {}
         if (redirUrl.path !== config.loginPage) return newMsg; // referer must be login page
         if (newMsg.ok) {
-            if (redirUrl.query['redirect'].length) {
-                context.logger.info(`authenticationService redirect from ${msg.url} by query arg to ${redirUrl}`);
-                newMsg.redirect(new Url(redirUrl.query['redirect'][0]), true);
+            if (redirUrl.query['redirect']?.length) {
+                const redirectTarget = redirUrl.query['redirect'][0];
+                let isValidRedirect = false;
+                try {
+                    const redirectUrl = new Url(redirectTarget);
+                    // Allow relative paths (no domain) or same origin (same scheme + domain)
+                    isValidRedirect = !redirectUrl.domain || (redirectUrl.scheme === msg.url.scheme && redirectUrl.domain === msg.url.domain);
+                } catch {}
+                if (isValidRedirect) {
+                    context.logger.info(`authenticationService redirect from ${msg.url} by query arg to ${redirectTarget}`);
+                    newMsg.redirect(new Url(redirectTarget), true);
+                } else {
+                    context.logger.warn(`authenticationService blocked redirect to external URL: ${redirectTarget}`);
+                    // Redirect to login page without redirect param instead
+                    const { redirect: _redirect, ...queryWithoutRedirect } = redirUrl.query;
+                    redirUrl.query = { ...queryWithoutRedirect, 'result': [ 'succeed' ] };
+                    newMsg.redirect(redirUrl, true);
+                }
             } else {
                 redirUrl.query = { ...redirUrl.query, 'result': [ 'succeed' ] };
                 context.logger.info(`authenticationService redirect from ${msg.url} to add succeed query to ${redirUrl}`);
