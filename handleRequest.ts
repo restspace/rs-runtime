@@ -115,7 +115,7 @@ export const handleIncomingRequest = async (msg: Message) => {
         if (err instanceof Error) {
             errStack = ` at \n${err.stack || ''}`;
         }
-        config.logger.warning(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs(serviceName));
+        config.logger.warn(`request processing failed: ${err}${errStack}`, ...msg.loggerArgs(serviceName));
         const errResponse = originalMethod === 'OPTIONS'
             ? msg.setStatus(204)
             : msg.setStatus(500, 'Server error');
@@ -186,7 +186,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
                 config.logger.info(`Respnse external ${msg.method} ${msg.url}`, ...loggerArgs);
             } else {
                 const body = msgOut.hasData() ? (await msgOut.data!.asString())?.substring(0, 200) : 'none';
-                config.logger.warning(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...loggerArgs);
+                config.logger.warn(`Respnse external ${msg.method} ${msg.url} error status ${msgOut.status} body ${body}`, ...loggerArgs);
             }
             // don't process by mime type on external requests
             if (msgOut.data) msgOut.data.wasMimeHandled = true;
@@ -202,7 +202,7 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
         if (err instanceof Error) {
             errStack = ` at \n${err.stack || ''}`;
         }
-        config.logger.warning(`request processing failed: ${err}${errStack}`, ...loggerArgs);
+        config.logger.warn(`request processing failed: ${err}${errStack}`, ...loggerArgs);
         const errResponse = originalMethod === 'OPTIONS' && tenantName
             ? msg.setStatus(204)
             : msg.setStatus(500, 'Server error');

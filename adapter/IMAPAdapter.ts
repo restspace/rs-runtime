@@ -68,7 +68,7 @@ export default class IMAPAdapter implements IEmailStoreAdapter {
                     processedCount++;
                     this.context.logger.debug(`Successfully processed message ${id}`);
                 } else {
-                    this.context.logger.warning(`No RFC822 data returned for message ${id}`);
+                    this.context.logger.warn(`No RFC822 data returned for message ${id}`);
                     processedCount++;
                 }
             }
@@ -106,7 +106,7 @@ export default class IMAPAdapter implements IEmailStoreAdapter {
                     this.client.disconnect();
                 }
             } catch (error) {
-                this.context.logger.warning('Error closing IMAP connection:', error);
+                this.context.logger.warn('Error closing IMAP connection:', error);
             }
         }
     }
@@ -131,7 +131,7 @@ export default class IMAPAdapter implements IEmailStoreAdapter {
                     this.client.disconnect();
                 }
             } catch (error) {
-                this.context.logger.warning('Error closing IMAP connection:', error);
+                this.context.logger.warn('Error closing IMAP connection:', error);
             }
         }
     }

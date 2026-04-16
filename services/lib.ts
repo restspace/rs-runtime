@@ -1,5 +1,5 @@
 import { Service } from "rs-core/Service.ts";
-import { encode, decode } from "std/encoding/base64.ts"
+import { encodeBase64, decodeBase64 } from "std/encoding/base64.ts"
 import { Url } from "rs-core/Url.ts";
 import { QuotaQueueConfig, QuotaQueueState } from "rs-core/state/QuotaQueueState.ts";
 import { isJson, isText } from "rs-core/mimeType.ts";
@@ -27,7 +27,7 @@ service.postPath('/to-text', async msg => {
     if (!isText(msg.data.mimeType)) {
         const arry = await msg.data.asArrayBuffer();
         if (!arry) return msg;
-        return msg.setData(encode(arry), "text/plain");
+        return msg.setData(encodeBase64(arry), "text/plain");
     }
     return msg;
 });
@@ -36,12 +36,12 @@ service.postPath('/to-b64', async msg => {
     if (!msg.data) return msg;
     const arry = await msg.data.asArrayBuffer();
     if (!arry) return msg;
-    return msg.setData(encode(arry), "text/plain");
+    return msg.setData(encodeBase64(arry), "text/plain");
 });
 service.postPath('/from-b64', async msg => {
     if (!msg.data) return msg;
     const str = new TextDecoder().decode((await msg.data.asArrayBuffer())!);
-    const buffer = decode(str);
+    const buffer = decodeBase64(str);
     const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer as ArrayBuffer;
     return msg.setData(arrayBuffer, msg.data.mimeType);
 });

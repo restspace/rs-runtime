@@ -3,7 +3,6 @@ import { MessageBody } from "rs-core/MessageBody.ts";
 import { ItemMetadata } from "rs-core/ItemMetadata.ts";
 import { arrayify, last, pathCombine } from "rs-core/utility/utility.ts";
 import { toBlockChunks } from "rs-core/streams/streams.ts";
-import { readableStreamFromIterable } from "std/streams/readable_stream_from_iterable.ts";
 import { fileToDataAdapter } from "./fileToDataAdapter.ts";
 import { dataToSchemaAdapter } from "./dataToSchemaAdapter.ts";
 import { IProxyAdapter } from "rs-core/adapter/IProxyAdapter.ts";
@@ -241,7 +240,7 @@ class S3FileAdapterBase implements IFileAdapter {
 
         const blockIter = toBlockChunks(this.jsonStreamPrefixed(filePath, undefined, getUpdateTime));
 
-        return Promise.resolve(new MessageBody(readableStreamFromIterable(blockIter), 'text/plain').setIsDirectory());
+        return Promise.resolve(new MessageBody(ReadableStream.from(blockIter), 'text/plain').setIsDirectory());
     }
 
     async deleteDirectory(path: string, deleteableFileSuffix = ''): Promise<number> {

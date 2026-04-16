@@ -200,7 +200,7 @@ function writeToLog(
     switch (entry.level) {
         case "debug":    context.baseLogger.debug(...args);    break;
         case "info":     context.baseLogger.info(...args);     break;
-        case "warning":  context.baseLogger.warning(...args);  break;
+        case "warning":  context.baseLogger.warn(...args);  break;
         case "error":    context.baseLogger.error(...args);    break;
         case "critical": context.baseLogger.critical(...args); break;
     }

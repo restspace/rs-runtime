@@ -36,22 +36,26 @@ testServicesConfig[tenant] = {
     "/": {
       name: "Mock",
       source: "./services/mock.rsm.json",
+      basePath: "/",
       access: { readRoles: "all", writeRoles: "all" },
     },
     "/auth": {
       name: "Auth",
       source: "./services/auth.rsm.json",
+      basePath: "/auth",
       access: { readRoles: "all", writeRoles: "all" },
       userUrlPattern: "/user/${email}",
     },
     "/lib": {
       name: "Lib",
       source: "./services/lib.rsm.json",
+      basePath: "/lib",
       access: { readRoles: "all", writeRoles: "all" },
     },
     "/user": {
       name: "User",
       source: "./services/user-data.rsm.json",
+      basePath: "/user",
       access: { readRoles: "all", writeRoles: "all" },
       infraName: "localStore",
       adapterConfig: {
@@ -63,6 +67,7 @@ testServicesConfig[tenant] = {
     "/user-bypass": {
       name: "User bypass",
       source: "./services/dataset.rsm.json",
+      basePath: "/user-bypass",
       access: { readRoles: "all", writeRoles: "all" },
       infraName: "localStore",
       adapterConfig: {
@@ -74,6 +79,7 @@ testServicesConfig[tenant] = {
     "/pipes": {
       name: "Pipeline store",
       source: "./services/pipeline-store.rsm.json",
+      basePath: "/pipes",
       access: { readRoles: "all", writeRoles: "all" },
       store: {
         infraName: "localStore",
@@ -85,6 +91,7 @@ testServicesConfig[tenant] = {
     "/secure-pipes": {
       name: "Secure pipeline store",
       source: "./services/pipeline-store.rsm.json",
+      basePath: "/secure-pipes",
       access: { readRoles: "S", writeRoles: "S" },
       store: {
         infraName: "localStore",

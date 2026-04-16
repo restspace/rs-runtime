@@ -1,6 +1,7 @@
 import { Modules } from "./Modules.ts";
 import { Tenant } from "./tenant.ts";
 import * as log from "std/log/mod.ts";
+import { ConsoleHandler, RotatingFileHandler } from "std/log/mod.ts";
 import { Validate, validator } from "https://cdn.skypack.dev/@exodus/schemasafe?dts";
 import * as path from "std/path/mod.ts";
 import { LogRecord } from "std/log/logger.ts";
@@ -35,7 +36,7 @@ const formatter = (rec: LogRecord) => {
         case "INFO":
             severity = "INFO ";
             break;
-        case "WARNING":
+        case "WARN":
             severity = "WARN ";
             break;
         case "ERROR":
@@ -57,7 +58,7 @@ const formatter = (rec: LogRecord) => {
     return `${severity} ${timestamp} ${traceId} ${spanId} ${tenant} ${service} ${username} ${rec.msg}`;
 }
 
-export type LogLevel = "NOTSET" | "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+export type LogLevel = "NOTSET" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "CRITICAL";
 
 // we allow for extra schema properties like 'editor' to direct UI
 const defaultValidator = (schema: any) => {
@@ -122,8 +123,8 @@ export const config = {
 export const setupLogging = async (level: LogLevel) => {
     await log.setup({
         handlers: {
-            console: new log.handlers.ConsoleHandler(level, { formatter }),
-            file: new log.handlers.RotatingFileHandler(level, {
+            console: new ConsoleHandler(level, { formatter }),
+            file: new RotatingFileHandler(level, {
                 maxBytes: 512 * 1024,
                 maxBackupCount: 5,
                 filename: './main.log',

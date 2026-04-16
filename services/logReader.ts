@@ -2,7 +2,7 @@ import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
 import { ILogReaderAdapter } from "rs-core/adapter/ILogReaderAdapter.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
-import { FileHandler } from "https://deno.land/std@0.185.0/log/handlers.ts";
+import { FileHandler } from "https://deno.land/std@0.224.0/log/file_handler.ts";
 import { ViewSpec } from "rs-core/DirDescriptor.ts";
 import { sortLogLinesByTimestamp } from "./logLineSort.ts";
 

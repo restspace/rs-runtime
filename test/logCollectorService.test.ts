@@ -105,7 +105,7 @@ Deno.test("POST single entry is written to logger with correct level and source"
 
         const rec = records.find(r => r.msg.includes("frontend-warn-abc"));
         assert(rec !== undefined, "log record not found in captured output");
-        assertEquals(rec!.levelName, "WARNING");
+        assertEquals(rec!.levelName, "WARN");
         assertEquals(rec!.args[0], "logcollector"); // tenant
         assertEquals(rec!.args[1], "MyPage");        // source → service slot
         assertEquals(rec!.args[2], "?");             // no authenticated user

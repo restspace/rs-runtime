@@ -91,7 +91,7 @@ async function validateChange(msg: Message, context: SimpleServiceContext): Prom
 
     const updatedUser = mapLegalChanges(msg, currUser, newUser);
     if (typeof updatedUser === 'string') {
-        context.logger.warning(`illegal user change: ${updatedUser} user: ${JSON.stringify(newUser)}`);
+        context.logger.warn(`illegal user change: ${updatedUser} user: ${JSON.stringify(newUser)}`);
         return msg.setStatus(403, 'illegal user action');
     }
 

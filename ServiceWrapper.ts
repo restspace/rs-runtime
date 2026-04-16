@@ -77,7 +77,7 @@ export class ServiceWrapper {
         }
     
         if (newMsg && !newMsg.ok) {
-            config.logger.warning(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`, ...msg.loggerArgs(serviceConfig.name));
+            config.logger.warn(`Request error for ${msg.method}: ${msg.url}: ${newMsg.status} ${newMsg?.data?.asStringSync() || ''}`, ...msg.loggerArgs(serviceConfig.name));
         }
         newMsg.setHeader('X-Restspace-Service', serviceConfig.name);
 
@@ -218,7 +218,7 @@ export class ServiceWrapper {
         const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
         
         if (!isPermitted) {
-            config.logger.warning(`Unauthorized for ${msg.url}`, ...msg.loggerArgs(serviceConfig.name));
+            config.logger.warn(`Unauthorized for ${msg.url}`, ...msg.loggerArgs(serviceConfig.name));
             return this.setCors(msg, origin).setStatus(401, "Unauthorized");
         }
         msg.authenticated = true;

@@ -238,7 +238,7 @@ function getMfaCookieName(serviceConfig: AuthServiceConfig): string {
     const configured = (serviceConfig.mfa?.mfaCookieName || "rs-mfa").toString().trim() || "rs-mfa";
     // Never allow collisions with the real auth cookie.
     if (configured === "rs-auth") {
-        runtimeConfig.logger.warning("auth.mfaCookieName must not be rs-auth; using rs-mfa instead");
+        runtimeConfig.logger.warn("auth.mfaCookieName must not be rs-auth; using rs-mfa instead");
         return "rs-mfa";
     }
     return configured;
