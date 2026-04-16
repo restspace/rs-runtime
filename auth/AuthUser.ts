@@ -1,5 +1,5 @@
 import { IJwtPayload } from "./Authoriser.ts";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.2.4/mod.ts";
+import * as bcrypt from "jsr:@da/bcrypt@1.0.1";
 import { slashTrim } from "rs-core/utility/utility.ts";
 import { IAuthUser, userIsAnon } from "rs-core/user/IAuthUser.ts";
 import { DataFieldFilter } from "rs-core/adapter/IDataAdapter.ts";
@@ -21,7 +21,13 @@ export class AuthUser implements IAuthUser {
     }
 
     constructor(userObj: Partial<IAuthUser>) {
-        userObj && Object.assign(this, userObj);
+        if (userObj) {
+            // SECURITY NOTE: This constructor should only be called with trusted input
+            // (JWT payloads, database records, test data). Do NOT pass unsanitized request
+            // bodies directly. API endpoints must validate and whitelist fields before
+            // constructing AuthUser to prevent privilege escalation via roles.
+            Object.assign(this, userObj);
+        }
     }
 
     getJwtPayload(): IJwtPayload {
@@ -205,5 +211,9 @@ export class AuthUser implements IAuthUser {
 
     static passwordMask = '<hidden>';
     static noPasswordMask = '<no password>';
-    static anon = new AuthUser({});
+    static anon = (() => {
+        const anonUser = new AuthUser({});
+        Object.freeze(anonUser);
+        return anonUser;
+    })();
 }

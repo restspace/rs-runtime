@@ -4,7 +4,7 @@ $filePath = "C:\dev\rs-runtime\bundled.js"
 # Define the mapping of strings to replace
 $replacements = @{
     "URL(""./worker-file.ts"", import.meta.url)" = "URL(""./worker-file.ts"", ""https://deno.land/x/denomailer@1.6.0/client/worker/worker.ts"")"
-    "URL(""worker.ts"", import.meta.url)" = "URL(""worker.ts"", ""https://deno.land/x/bcrypt@v0.2.4/src/main.ts"")"
+    "URL(""worker.ts"", import.meta.url)" = "URL(""worker.ts"", ""https://jsr.io/@da/bcrypt/1.0.1/src/main.ts"")"
 }
 
 # Read the file content

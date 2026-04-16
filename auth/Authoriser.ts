@@ -1,5 +1,5 @@
 import { AuthUser } from './AuthUser.ts';
-import * as jwt from 'https://deno.land/x/djwt@v2.3/mod.ts';
+import { jwtVerify, SignJWT, type JWTPayload } from "jsr:@panva/jose@6.2.2";
 import { config } from "../config.ts";
 import { IAuthUser } from "rs-core/user/IAuthUser.ts";
 
@@ -23,6 +23,15 @@ export class Authoriser {
 
     protected anonPathRoots: string[] = [];
 
+    private timingSafeCompare(a: string, b: string): boolean {
+        // Constant-time string comparison to prevent timing attacks
+        let result = a.length ^ b.length;
+        for (let i = 0; i < Math.min(a.length, b.length); i++) {
+            result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+        }
+        return result === 0;
+    }
+
     private async ensureKey() {
         if (!this.key) {
             this.key = await crypto.subtle.generateKey(
@@ -30,10 +39,11 @@ export class Authoriser {
                     name: "HMAC",
                     hash: "SHA-512"
                 },
-                true,
+                false,
                 [ "sign", "verify" ]
             );
         }
+        return this.key;
     }
 
     registerAnonPathRoots(pathRoots: string[]) {
@@ -47,8 +57,19 @@ export class Authoriser {
         return crypto.randomUUID();
     }
 
+    private getNumericDate(secondsFromNow: number) {
+        return Math.floor(Date.now() / 1000) + secondsFromNow;
+    }
+
+    private async signJwtPayload(payload: Record<string, unknown>) {
+        const key = await this.ensureKey();
+        return await new SignJWT(payload as JWTPayload)
+            .setProtectedHeader({ alg: "HS512", typ: "JWT" })
+            .sign(key);
+    }
+
     verifyToken(token: string, user: IAuthUser): TokenVerification {
-        const tokenMatch = (user.token === token);
+        const tokenMatch = this.timingSafeCompare(user.token || '', token);
         if (!tokenMatch) return TokenVerification.noMatch;
         let notExpired = false;
         if (user.tokenExpiry) {
@@ -70,12 +91,10 @@ export class Authoriser {
     }
 
     async getJwtForPayload(payload: Record<string, unknown>, expirySecs?: number) {
-        await this.ensureKey();
-        return await jwt.create(
-            { alg: "HS512", typ: "JWT" },
-            { ...payload, exp: jwt.getNumericDate(expirySecs || (config.jwtExpiryMins * 60)) },
-            this.key
-        );
+        return await this.signJwtPayload({
+            ...payload,
+            exp: this.getNumericDate(expirySecs || (config.jwtExpiryMins * 60))
+        });
     }
 
     async getImpersonationJwt(user: AuthUser, newEmail: string, newRoles?: string) {
@@ -86,12 +105,13 @@ export class Authoriser {
         if (newEmail !== (user.originalEmail || user.email)) { // only have an original email if its != the email
             impersonationJwtPayload.originalEmail = user.email;
         }
-        impersonationJwtPayload.exp = jwt.getNumericDate(config.jwtExpiryMins * 60);
-        return await jwt.create({ alg: "HS512", typ: "JWT" }, { ...impersonationJwtPayload }, this.key);
+        impersonationJwtPayload.exp = this.getNumericDate(config.jwtExpiryMins * 60);
+        return await this.signJwtPayload({ ...impersonationJwtPayload });
     }
 
     async verifyJwtHeader(authHeader: string, authCookie: string, path: string): Promise<IJwtPayload | string> {
-        const isAnonPath = (this.anonPathRoots.filter((root) => path.startsWith(root)).length > 0);
+        const isAnonPath = this.anonPathRoots.some((root) =>
+            path === root || path.startsWith(root + '/'));
         if (isAnonPath) {
             return 'anon';
         }
@@ -106,10 +126,11 @@ export class Authoriser {
         } else {
             return '';
         }
-        await this.ensureKey();
+        const key = await this.ensureKey();
         let payload: IJwtPayload;
         try {
-            payload = (await jwt.verify(jwToken, this.key)) as unknown as IJwtPayload;
+            const verifiedJwt = await jwtVerify(jwToken, key, { algorithms: [ "HS512" ] });
+            payload = verifiedJwt.payload as IJwtPayload;
         } catch (err) {
             config.logger.error('jwt verify error: ' + err);
             return '';

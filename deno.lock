@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@da/bcrypt@1.0.1": "1.0.1",
     "jsr:@deno/cache-dir@0.13.2": "0.13.2",
     "jsr:@deno/emit@*": "0.46.0",
     "jsr:@deno/graph@~0.73.1": "0.73.1",
@@ -10,6 +11,7 @@
     "jsr:@libs/xml@*": "6.0.1",
     "jsr:@libs/xml@^5.4.13": "5.4.16",
     "jsr:@luca/esbuild-deno-loader@*": "0.11.0",
+    "jsr:@panva/jose@6.2.2": "6.2.2",
     "jsr:@std/assert@0.223": "0.223.0",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/bytes@0.223": "0.223.0",
@@ -34,6 +36,9 @@
     "npm:mongodb@^6.12.0": "6.12.0"
   },
   "jsr": {
+    "@da/bcrypt@1.0.1": {
+      "integrity": "d2172d3acbcff52e0465557a1a48b1ff1c92df08c90712dae5372255a8c45eb3"
+    },
     "@deno/cache-dir@0.13.2": {
       "integrity": "c22419dfe27ab85f345bee487aaaadba498b005cce3644e9d2528db035c5454d",
       "dependencies": [
@@ -82,6 +87,9 @@
         "jsr:@std/encoding",
         "jsr:@std/path@^1.0.6"
       ]
+    },
+    "@panva/jose@6.2.2": {
+      "integrity": "bfe1178a9d2f53effa5ee6c1786b6534a39690b03969472b3ad690600d8898ec"
     },
     "@std/assert@0.223.0": {
       "integrity": "eb8d6d879d76e1cc431205bd346ed4d88dc051c6366365b1af47034b0670be24"

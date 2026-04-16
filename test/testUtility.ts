@@ -13,7 +13,8 @@ export const utilsForHost = (host: string) => ({
 		msgUrl.scheme = "http://";
 		msgUrl.domain = `${host}.restspace.local:3100`;
 		const msg = new Message(msgUrl, host, method, null)
-			.setHeader('host', msgUrl.domain);
+			.setHeader('host', msgUrl.domain)
+			.setHeader('origin', `http://${msgUrl.domain}`);
 		if (token) msg.cookies['rs-auth'] = token;
 		return msg;
 	},

@@ -84,7 +84,8 @@ testServicesConfig['servicesService'] = JSON.parse(`{
 
 function testMessage(url: string, method: string) {
     const msg = new Message(url, 'servicesService', method as MessageMethod, null)
-        .setHeader('host', 'servicesService.restspace.local:3100');
+        .setHeader('host', 'servicesService.restspace.local:3100')
+        .setHeader('origin', 'http://servicesService.restspace.local:3100');
     return msg;
 }
 
