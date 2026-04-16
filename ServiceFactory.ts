@@ -214,7 +214,7 @@ export class ServiceFactory {
                     serviceConfig.manifestConfig?.privateServiceConfigs || {},
                     this.tenant,
                     serviceContext
-                )(msg);
+                )(msg, source);
 		}
         serviceContext = { ...serviceContext, manifest, makeRequest: handlerWithPrivateServices };
 

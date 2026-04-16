@@ -211,7 +211,8 @@ export const handleOutgoingRequest = async (msg: Message, source = Source.Intern
 }
 
 export const handleOutgoingRequestWithPrivateServices = (basePath: string, privateServices: Record<string, IServiceConfig>, tenantName: string, context: BaseContext, prePost?: PrePost) =>
-    async (msg: Message) => {
+    async (msg: Message, source?: Source) => {
+        const effectiveSource = source ?? Source.Internal;
         if (msg.url.pathElements[0]?.startsWith('*')) {
             const privateServiceName = msg.url.pathElements[0];
             const serviceConfig = privateServices[privateServiceName.substring(1)];
@@ -236,13 +237,13 @@ export const handleOutgoingRequestWithPrivateServices = (basePath: string, priva
             }
             msg.url = newUrl;
             const tenant = config.tenants[tenantName || 'main'];
-            const messageFunction = await tenant.getMessageFunctionForService(serviceConfig, Source.Internal, prePost);
+            const messageFunction = await tenant.getMessageFunctionForService(serviceConfig, effectiveSource, prePost);
             const msgOut = await messageFunction(msg.callDown());
             msgOut.depth = msg.depth;
             msgOut.callUp();
             return msgOut;
         } else {
-            return handleOutgoingRequest(msg, Source.Internal, context);
+            return handleOutgoingRequest(msg, effectiveSource, context);
         }
     }
 

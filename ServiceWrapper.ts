@@ -56,7 +56,7 @@ export class ServiceWrapper {
                         context,
                         context.prePost
                     );
-                    return handler(innerMsg);
+                    return handler(innerMsg, source);
                 }
                 return originalMakeRequest(innerMsg, source);
             };
