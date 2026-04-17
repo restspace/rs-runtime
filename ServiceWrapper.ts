@@ -12,6 +12,10 @@ import { AuthUser } from "./auth/AuthUser.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
 import { upTo } from "rs-core/utility/utility.ts";
 import { Source } from "rs-core/Source.ts";
+import { getAuthSource } from "./auth/AuthSource.ts";
+import { BrowserOriginConfig, isCookieAuthOriginTrusted } from "./auth/browserOrigin.ts";
+
+const unsafeBrowserMethods = new Set([ "POST", "PUT", "PATCH", "DELETE" ]);
 
 export class ServiceWrapper {
     constructor(public service: Service) {
@@ -120,10 +124,41 @@ export class ServiceWrapper {
         return [isPublic, authUser.authorizedFor(roleSet, msg.url.servicePath)];
     }
 
+    private addVary(data: Message, value: string) {
+        const existing = (data.getHeader("Vary") || "")
+            .split(",")
+            .map((part) => part.trim())
+            .filter((part) => !!part);
+        if (!existing.some((part) => part.toLowerCase() === value.toLowerCase())) {
+            data.setHeader("Vary", [ ...existing, value ].join(", "));
+        }
+    }
+
+    private getAuthOriginConfig(msg: Message, serviceConfig: IServiceConfig): BrowserOriginConfig {
+        const tenantName = msg.tenant || "main";
+        return (config.tenants?.[tenantName]?.authServiceConfig || serviceConfig) as BrowserOriginConfig;
+    }
+
+    private cookieAuthOriginIsTrusted(msg: Message, serviceConfig: IServiceConfig) {
+        return isCookieAuthOriginTrusted(msg, this.getAuthOriginConfig(msg, serviceConfig));
+    }
+
+    private shouldAllowCookieCredentials(msg: Message, serviceConfig: IServiceConfig) {
+        return this.cookieAuthOriginIsTrusted(msg, serviceConfig);
+    }
+
+    private shouldRejectUnsafeCookieRequest(msg: Message, serviceConfig: IServiceConfig) {
+        return !!msg.getHeader("origin")
+            && getAuthSource(msg) === "cookie"
+            && unsafeBrowserMethods.has(msg.method)
+            && !this.cookieAuthOriginIsTrusted(msg, serviceConfig);
+    }
+
     // mutates data
-    private setCors(data: Message, origin: string) {
+    private setCors(data: Message, origin: string, allowCredentials = false) {
         if (origin) {
             data.setHeader('Access-Control-Allow-Origin', origin);
+            this.addVary(data, "Origin");
             const defaultAllowHeaders = 'Origin,X-Requested-With,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Restspace-Request-Mode,X-X,traceparent,tracestate';
             const existingAllowHeaders = data.getHeader('Access-Control-Allow-Headers') || '';
             config.logger.info(`existingAllowHeaders: ${existingAllowHeaders}`);
@@ -140,7 +175,11 @@ export class ServiceWrapper {
             }
             data.setHeader('Access-Control-Allow-Headers', merged.join(','));
             data.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE');
-            data.setHeader('Access-Control-Allow-Credentials', 'true');
+            if (allowCredentials) {
+                data.setHeader('Access-Control-Allow-Credentials', 'true');
+            } else {
+                data.removeHeader('Access-Control-Allow-Credentials');
+            }
             data.setHeader('Access-Control-Expose-Headers', 'X-Restspace-Service,Location,ETag,X-Total-Count');
             data.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         }
@@ -214,12 +253,18 @@ export class ServiceWrapper {
     external: (source: Source) => ServiceFunction = (source: Source) => async (msg: Message, context: ServiceContext<IAdapter>, serviceConfig: IServiceConfig) => {
         const origin = msg.getHeader('origin') || '';
         msg.url.basePathElements = serviceConfig.basePath.split('/').filter((s: string) => s !== '');
+        const allowCookieCredentials = this.shouldAllowCookieCredentials(msg, serviceConfig);
+
+        if (this.shouldRejectUnsafeCookieRequest(msg, serviceConfig)) {
+            config.logger.warn(`Rejected cookie-authenticated cross-origin request for ${msg.url}`, ...msg.loggerArgs(serviceConfig.name));
+            return this.setCors(msg, origin, false).setStatus(403, "Cookie auth origin not allowed");
+        }
 
         const [isPublic, isPermitted] = await this.isPermitted(msg, serviceConfig);
         
         if (!isPermitted) {
             config.logger.warn(`Unauthorized for ${msg.url}`, ...msg.loggerArgs(serviceConfig.name));
-            return this.setCors(msg, origin).setStatus(401, "Unauthorized");
+            return this.setCors(msg, origin, allowCookieCredentials).setStatus(401, "Unauthorized");
         }
         msg.authenticated = true;
 
@@ -227,7 +272,7 @@ export class ServiceWrapper {
 
         if (source === Source.Outer) return msgOut;
 
-        msgOut = this.setCors(msgOut, origin);
+        msgOut = this.setCors(msgOut, origin, allowCookieCredentials);
 
         // Caching headers
         msgOut = this.checkMatch(msgOut);

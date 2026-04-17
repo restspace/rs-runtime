@@ -18,12 +18,19 @@ export const makeServerCorsSetter = () => (msg: Message) => {
     const origin = msg.getHeader('origin');
     if (origin) {
         msg.setHeader('Access-Control-Allow-Origin', origin);
+        const existingVary = (msg.getHeader("Vary") || "")
+            .split(",")
+            .map((part) => part.trim())
+            .filter((part) => !!part);
+        if (!existingVary.some((part) => part.toLowerCase() === "origin")) {
+            msg.setHeader("Vary", [ ...existingVary, "Origin" ].join(", "));
+        }
         msg.setHeader(
             'Access-Control-Allow-Headers',
             'Origin,X-Requested-With,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Restspace-Request-Mode'
         );
         msg.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE');
-        msg.setHeader('Access-Control-Allow-Credentials', 'true');
+        msg.removeHeader('Access-Control-Allow-Credentials');
         msg.setHeader('Access-Control-Expose-Headers', 'X-Restspace-Service');
     }
     return msg;

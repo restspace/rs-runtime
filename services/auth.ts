@@ -10,6 +10,8 @@ import { IAdapter } from "rs-core/adapter/IAdapter.ts";
 import { userIsAnon } from "rs-core/user/IAuthUser.ts";
 import { config as runtimeConfig } from "../config.ts";
 import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
+import { isAllowedLoginDomain, isSameDomainBrowserRequest, isTrustedLoginDomain } from "../auth/browserOrigin.ts";
+import { AuthSource, setAuthSource } from "../auth/AuthSource.ts";
 
 interface AuthServiceConfig extends IServiceConfig {
     userUrlPattern: string;
@@ -76,96 +78,6 @@ function isHttpsRequest(msg: Message): boolean {
     if (forwardedProto === "https") return true;
     if (runtimeConfig.server?.incomingAlwaysHttps) return true;
     return msg.url.scheme === "https://";
-}
-
-function getHostnameFromUrlHeader(headerValue: string): string {
-    if (!headerValue) return "";
-    try {
-        return new URL(headerValue).hostname.toLowerCase();
-    } catch {
-        return "";
-    }
-}
-
-function getHostnameFromHostHeader(hostValue: string): string {
-    if (!hostValue) return "";
-    const firstHost = hostValue.split(",")[0].trim();
-    if (!firstHost) return "";
-    try {
-        return new URL(`http://${firstHost}`).hostname.toLowerCase();
-    } catch {
-        return firstHost.split(":")[0].toLowerCase();
-    }
-}
-
-function getRequestOriginHost(msg: Message): string {
-    return (
-        getHostnameFromUrlHeader(msg.getHeader("origin") || "") ||
-        getHostnameFromUrlHeader(msg.getHeader("referer") || "")
-    );
-}
-
-function normalizeAllowedDomainEntry(entry: string): string {
-    const trimmed = (entry || "").trim().toLowerCase();
-    if (!trimmed) return "";
-    if (!trimmed.includes("://")) {
-        return getHostnameFromHostHeader(trimmed);
-    }
-
-    const directHost = getHostnameFromUrlHeader(trimmed);
-    if (directHost) return directHost;
-
-    const afterScheme = trimmed.split("://")[1] || "";
-    const hostAndPort = afterScheme.split("/")[0] || "";
-    const wildcardOrHost = hostAndPort.split("@").pop() || "";
-    return getHostnameFromHostHeader(wildcardOrHost);
-}
-
-function hostMatchesAllowedDomain(host: string, allowedDomain: string): boolean {
-    if (!host || !allowedDomain) return false;
-    if (allowedDomain.startsWith("*.")) {
-        const suffix = allowedDomain.slice(2);
-        return host === suffix || host.endsWith(`.${suffix}`);
-    }
-    return host === allowedDomain;
-}
-
-function requestOriginMatchesConfiguredDomains(msg: Message, domainEntries?: string[]): boolean {
-    const configuredDomains = (domainEntries || [])
-        .filter((entry) => !!(entry || "").trim())
-        .map(normalizeAllowedDomainEntry)
-        .filter((entry) => !!entry);
-    if (configuredDomains.length === 0) return false;
-
-    const requestOriginHost = getRequestOriginHost(msg);
-    if (!requestOriginHost) return false;
-
-    return configuredDomains.some((allowedDomain) => hostMatchesAllowedDomain(requestOriginHost, allowedDomain));
-}
-
-function isAllowedLoginDomain(msg: Message, config: AuthServiceConfig): boolean {
-    if (isSameDomainBrowserRequest(msg)) return true;
-
-    const hasAllowedDomainEntries = (config.allowedLoginDomains || []).some((entry) => !!(entry || "").trim());
-    if (!hasAllowedDomainEntries) return true;
-
-    return requestOriginMatchesConfiguredDomains(msg, config.allowedLoginDomains);
-}
-
-function isTrustedLoginDomain(msg: Message, config: AuthServiceConfig): boolean {
-    return requestOriginMatchesConfiguredDomains(msg, config.trustedDomains);
-}
-
-function isSameDomainBrowserRequest(msg: Message): boolean {
-    const requestOriginHost = getRequestOriginHost(msg);
-
-    const runtimeHost =
-        getHostnameFromHostHeader(msg.getHeader("x-forwarded-host") || "") ||
-        getHostnameFromHostHeader(msg.getHeader("host") || "") ||
-        getHostnameFromHostHeader(msg.url.domain || "");
-
-    if (!requestOriginHost || !runtimeHost) return false;
-    return requestOriginHost === runtimeHost;
 }
 
 function getLoginCookiePolicy(msg: Message, config: AuthServiceConfig) {
@@ -456,19 +368,24 @@ service.getPath('timeout', (msg, _context, config) =>
 service.setUser(async (msg, _context, serviceConfig) => {
     const sessionTimeoutMins = serviceConfig.sessionTimeoutMins;
     const existingAuthCookie = msg.getCookie("rs-auth");
-    const authCookie = existingAuthCookie || msg.getHeader('authorization');
+    const authHeader = msg.getHeader('authorization') || "";
+    const authCookie = existingAuthCookie || authHeader;
+    const attemptedAuthSource: AuthSource | undefined = authHeader ? "authorization" : existingAuthCookie ? "cookie" : undefined;
+    setAuthSource(msg);
     if (!authCookie) return msg;
 
     // OPTIONS requests should never be authenticated so all errors don't become CORS errors
     let authResult: IJwtPayload | string = '';
     if (msg.method !== "OPTIONS") {
-        authResult = await runtimeConfig.authoriser.verifyJwtHeader(msg.getHeader('authorization')!, authCookie, msg.url.path);
+        authResult = await runtimeConfig.authoriser.verifyJwtHeader(authHeader, authCookie, msg.url.path);
     }
     authResult = authResult || 'anon';
 
     if (typeof authResult === "string") {
         msg.user = new AuthUser({});
+        setAuthSource(msg);
     } else {
+        setAuthSource(msg, attemptedAuthSource);
         msg.user = new AuthUser({
             ...authResult,
             exp: (authResult.exp || 0) * 1000
