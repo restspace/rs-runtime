@@ -94,6 +94,7 @@ service.constantDirectory('/', {
         [ 'catalogue', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
         [ 'services', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
         [ 'agent-discovery', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
+        [ 'agent-surface/', undefined, { pattern: 'directory' } ],
         [ 'raw', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}],
         [ 'raw.json', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}]
     ],

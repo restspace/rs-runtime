@@ -8,6 +8,7 @@ interface PipelineSpecAccess {
   getRoles?: string;
   postRoles?: string;
   writeRoles?: string;
+  inheritAuth?: boolean;
 }
 
 interface PipelineSpecWithAccess extends PipelineSpecAccess {
@@ -38,10 +39,18 @@ function normalizeStoredPipelineSpec(
   const { getRoles, postRoles, writeRoles, pipeline } = rawSpec as Partial<
     PipelineSpecWithAccess
   >;
+  const { inheritAuth } = rawSpec as Partial<PipelineSpecAccess>;
   if (!Array.isArray(pipeline)) return null;
   if (getRoles !== undefined && typeof getRoles !== "string") return null;
   if (postRoles !== undefined && typeof postRoles !== "string") return null;
   if (writeRoles !== undefined && typeof writeRoles !== "string") return null;
+  if (inheritAuth !== undefined && typeof inheritAuth !== "boolean") return null;
+
+  if (inheritAuth) {
+    return {
+      pipeline,
+    };
+  }
 
   return {
     pipeline,
@@ -49,6 +58,7 @@ function normalizeStoredPipelineSpec(
       getRoles: trimRoleSpec(getRoles),
       postRoles: trimRoleSpec(postRoles),
       writeRoles: trimRoleSpec(writeRoles),
+      inheritAuth,
     },
   };
 }

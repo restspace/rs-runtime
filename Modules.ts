@@ -28,6 +28,7 @@ import IMAPAdapterManifest from "./adapter/IMAPAdapter.ram.js";
 
 import MockManifest from "./services/mock.rsm.js";
 import ServicesManifest from "./services/services.rsm.js";
+import AgentSurfaceManifest from "./services/agent-surface.rsm.js";
 import AuthManifest from "./services/auth.rsm.js";
 import DataManifest from "./services/data.rsm.js";
 import DatasetManifest from "./services/dataset.rsm.js";
@@ -153,6 +154,7 @@ const builtInAdapterLoaders: Record<string, BuiltInModuleLoader> = {
 const builtInServiceLoaders: Record<string, BuiltInModuleLoader> = {
     "./services/mock.ts": () => import("./services/mock.ts"),
     "./services/services.ts": () => import("./services/services.ts"),
+    "./services/agent-surface.ts": () => import("./services/agent-surface.ts"),
     "./services/auth.ts": () => import("./services/auth.ts"),
     "./services/data.ts": () => import("./services/data.ts"),
     "./services/dataset.ts": () => import("./services/dataset.ts"),
@@ -244,6 +246,7 @@ export class Modules {
         this.serviceManifests = {
             "./services/mock.rsm.json": MockManifest,
             "./services/services.rsm.json": ServicesManifest,
+            "./services/agent-surface.rsm.json": AgentSurfaceManifest,
             "./services/auth.rsm.json": AuthManifest,
             "./services/data.rsm.json": DataManifest,
             "./services/dataset.rsm.json": DatasetManifest,

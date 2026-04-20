@@ -34,6 +34,12 @@ const baseChord: IChord = {
             "basePath": "/.well-known/restspace"
         },
         {
+            "access": { "readRoles": "all", "writeRoles": "A" },
+            "name": "Agent Surface",
+            "source": "./services/agent-surface.rsm.json",
+            "basePath": "/.well-known/restspace/agent-surface"
+        },
+        {
             "access": { "readRoles": "all", "writeRoles": "all" },
             "name": "Lib",
             "source": "./services/lib.rsm.json",

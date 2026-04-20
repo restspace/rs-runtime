@@ -9,6 +9,13 @@ interface PipelineConfig extends IServiceConfig {
     pipeline: PipelineSpec;
 	manualMimeTypes?: ManualMimeTypes;
 	reauthenticate?: boolean;
+	inputSchema?: Record<string, unknown>;
+	outputSchema?: Record<string, unknown>;
+	"x-agent"?: Record<string, unknown>;
+	"x-policy"?: Record<string, unknown>;
+	"x-render"?: Record<string, unknown>;
+	"x-context"?: Record<string, unknown>;
+	"x-expose"?: Record<string, unknown>;
 }
 
 const service = new Service<IAdapter, PipelineConfig>();

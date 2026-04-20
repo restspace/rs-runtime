@@ -31,7 +31,14 @@ export default {
 					"responseSchema": { "type": "object" }
 				}
 			},
-			"reauthenticate": { "type": "boolean", "description": "If true, checks authentication before calling any item of the pipeline" }
+			"reauthenticate": { "type": "boolean", "description": "If true, checks authentication before calling any item of the pipeline" },
+			"inputSchema": { "type": "object", "description": "Agent-surface input schema metadata" },
+			"outputSchema": { "type": "object", "description": "Agent-surface output schema metadata" },
+			"x-agent": { "type": "object", "description": "Agent-surface semantic metadata" },
+			"x-policy": { "type": "object", "description": "Agent-surface policy metadata" },
+			"x-render": { "type": "object", "description": "Agent-surface render metadata" },
+			"x-context": { "type": "object", "description": "Agent-surface context metadata" },
+			"x-expose": { "type": "object", "description": "Agent-surface exposure metadata" }
 		}
 	}
 }

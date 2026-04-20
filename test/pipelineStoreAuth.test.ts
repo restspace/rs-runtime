@@ -319,6 +319,38 @@ Deno.test("pipeline-store requires both service access and wrapped method roles"
   assertStrictEquals(await allowed.data?.asString(), "secure roles ok");
 });
 
+Deno.test("pipeline-store inheritAuth uses only the service access rules", async () => {
+  mockHandler.getString("/test/inherit-auth", "inherit auth ok");
+
+  const secureAdminToken = await getLoggedInUserToken("inherit-auth-admin", "S");
+  await managePut("/secure-pipes/inherit-auth", {
+    inheritAuth: true,
+    pipeline: ["GET /test/inherit-auth"],
+  }, secureAdminToken);
+
+  const denied = await sendRequest("/secure-pipes/inherit-auth", "GET");
+  assertStrictEquals(denied.status, 401);
+
+  const allowed = await sendRequest("/secure-pipes/inherit-auth", "GET", {
+    token: secureAdminToken,
+  });
+  assertStrictEquals(allowed.status, 200);
+  assertStrictEquals(await allowed.data?.asString(), "inherit auth ok");
+});
+
+Deno.test("pipeline-store inheritAuth bypasses the wrapped fail-closed auth behavior", async () => {
+  mockHandler.getString("/test/inherit-auth-open", "inherit auth open ok");
+
+  await managePut("/pipes/inherit-auth-open", {
+    inheritAuth: true,
+    pipeline: ["GET /test/inherit-auth-open"],
+  });
+
+  const msgOut = await sendRequest("/pipes/inherit-auth-open", "GET");
+  assertStrictEquals(msgOut.status, 200);
+  assertStrictEquals(await msgOut.data?.asString(), "inherit auth open ok");
+});
+
 Deno.test("manage mode continues to administer wrapped specs without triggering wrapped runtime auth", async () => {
   const spec = {
     pipeline: ["GET /test/manage-mode"],
