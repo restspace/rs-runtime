@@ -1,136 +1,189 @@
 import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
+import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { SimpleServiceContext } from "rs-core/ServiceContext.ts";
 import { AuthUser } from "../auth/AuthUser.ts";
+import {
+  PasswordPolicyConfig,
+  validatePasswordStrength,
+} from "../auth/passwordPolicy.ts";
 
-function mapLegalChanges(msg: Message, oldValues: AuthUser, newUser: AuthUser | null): AuthUser | null | string {
-    const currentUserObj = msg.user || AuthUser.anon;
-    const current = new AuthUser(currentUserObj);
-    const isRegistration = !oldValues || oldValues.isAnon();
-    const isSelfChange = !isRegistration && oldValues.email === current.email;
-
-    // don't save password mask, keep old value
-    if (newUser && newUser.passwordIsMaskOrEmpty()) newUser.password = oldValues.password;
-
-    // admin or internal privileged call can change anything
-    if (msg.internalPrivilege || current.hasRole("A")) {
-        return newUser;
-    }
-
-    // it's a deletion: must be the same user
-    if (newUser === null) {
-        return isSelfChange ? newUser : "can't delete another user";
-    }
-
-    // self change can't change role or email
-    if (isSelfChange) {
-        if (newUser.roles !== oldValues.roles
-            || newUser.email !== oldValues.email) {
-            return "user can't change their role or email";
-        } else {
-            return newUser;
-        }
-    }
-
-    // registration can only set role to 'U'
-    if (isRegistration) {
-        if (newUser.roles !== 'U') {
-            return "registration must set role to U only";
-        } else {
-            return newUser;
-        }
-    }
-    
-    return 'not an allowable change';
+interface UserFilterConfig extends IServiceConfig {
+  passwordPolicy?: PasswordPolicyConfig;
 }
 
-async function validateChange(msg: Message, context: SimpleServiceContext): Promise<Message> {
-    if (!msg.ok || (msg.method !== 'DELETE' && !msg.data) || context.prePost !== "pre" || msg.internalPrivilege || msg.url.isDirectory) {
-        msg.internalPrivilege = false;
-        return msg;
-    }
+function mapLegalChanges(
+  msg: Message,
+  oldValues: AuthUser,
+  newUser: AuthUser | null,
+): AuthUser | null | string {
+  const currentUserObj = msg.user || AuthUser.anon;
+  const current = new AuthUser(currentUserObj);
+  const isRegistration = !oldValues || oldValues.isAnon();
+  const isSelfChange = !isRegistration && oldValues.email === current.email;
 
-    let newUser: AuthUser | null;
-    try {
-        const newUserObj = msg.method === 'DELETE' ? null : await msg.data!.asJson();
-        newUser = msg.method === 'DELETE' ? null : new AuthUser(newUserObj);
-    } catch {
-        return msg.setStatus(400, 'Json misformatted');
-    }
+  // don't save password mask, keep old value
+  if (newUser && newUser.passwordIsMaskOrEmpty()) {
+    newUser.password = oldValues.password;
+  }
 
-    let currUserMsg = msg.copy().setMethod("GET");
-    const url = currUserMsg.url;
-    // remove local service name
-    url.basePathElements = url.basePathElements.filter(el => !el.startsWith('*'));
-    // append user email
-    url.servicePathElements = url.servicePathElements.slice(-1);
+  // admin or internal privileged call can change anything
+  if (msg.internalPrivilege || current.hasRole("A")) {
+    return newUser;
+  }
 
-    currUserMsg.internalPrivilege = true;
-    currUserMsg = await context.makeRequest(currUserMsg);
-    currUserMsg.internalPrivilege = false;
+  // it's a deletion: must be the same user
+  if (newUser === null) {
+    return isSelfChange ? newUser : "can't delete another user";
+  }
 
-    let currUser: AuthUser;
-    if (currUserMsg.status === 404) {
-        currUser = AuthUser.anon;
-    } else if (!currUserMsg.ok) {
-        msg.data = currUserMsg.data;
-        return msg.setStatus(currUserMsg.status);
+  // self change can't change role or email
+  if (isSelfChange) {
+    if (
+      newUser.roles !== oldValues.roles ||
+      newUser.email !== oldValues.email
+    ) {
+      return "user can't change their role or email";
     } else {
-        const currUserObj = await currUserMsg.data!.asJson();
-        currUser = new AuthUser(currUserObj);
+      return newUser;
     }
+  }
 
-    if (newUser && !newUser.passwordIsMaskOrEmpty()) {
-        try {
-            context.logger.info(`user ${newUser.email} setting password to ${newUser.password.substr(0, 3)}...`);
-            await newUser.hashPassword();
-        } catch {
-            return msg.setStatus(500);
-        }
+  // registration can only set role to 'U'
+  if (isRegistration) {
+    if (newUser.roles !== "U") {
+      return "registration must set role to U only";
+    } else {
+      return newUser;
     }
+  }
 
-    const updatedUser = mapLegalChanges(msg, currUser, newUser);
-    if (typeof updatedUser === 'string') {
-        context.logger.warn(`illegal user change: ${updatedUser} user: ${JSON.stringify(newUser)}`);
-        return msg.setStatus(403, 'illegal user action');
-    }
+  return "not an allowable change";
+}
 
-    msg.setDataJson(updatedUser);
+async function validateChange(
+  msg: Message,
+  context: SimpleServiceContext,
+  config: UserFilterConfig,
+): Promise<Message> {
+  if (
+    !msg.ok || (msg.method !== "DELETE" && !msg.data) ||
+    context.prePost !== "pre" || msg.internalPrivilege || msg.url.isDirectory
+  ) {
+    msg.internalPrivilege = false;
     return msg;
+  }
+
+  let newUser: AuthUser | null;
+  try {
+    const newUserObj = msg.method === "DELETE"
+      ? null
+      : await msg.data!.asJson();
+    newUser = msg.method === "DELETE" ? null : new AuthUser(newUserObj);
+  } catch {
+    return msg.setStatus(400, "Json misformatted");
+  }
+
+  let currUserMsg = msg.copy().setMethod("GET");
+  const url = currUserMsg.url;
+  // remove local service name
+  url.basePathElements = url.basePathElements.filter((el) =>
+    !el.startsWith("*")
+  );
+  // append user email
+  url.servicePathElements = url.servicePathElements.slice(-1);
+
+  currUserMsg.internalPrivilege = true;
+  currUserMsg = await context.makeRequest(currUserMsg);
+  currUserMsg.internalPrivilege = false;
+
+  let currUser: AuthUser;
+  if (currUserMsg.status === 404) {
+    currUser = AuthUser.anon;
+  } else if (!currUserMsg.ok) {
+    msg.data = currUserMsg.data;
+    return msg.setStatus(currUserMsg.status);
+  } else {
+    const currUserObj = await currUserMsg.data!.asJson();
+    currUser = new AuthUser(currUserObj);
+  }
+
+  if (newUser && !newUser.passwordIsMaskOrEmpty()) {
+    const passwordCheck = validatePasswordStrength(
+      newUser.password,
+      config.passwordPolicy,
+    );
+    if (!passwordCheck.ok) {
+      return msg.setStatus(
+        400,
+        passwordCheck.message || "Password does not meet policy",
+      );
+    }
+    try {
+      context.logger.info(
+        `user ${newUser.email} setting password to ${
+          newUser.password.substr(0, 3)
+        }...`,
+      );
+      await newUser.hashPassword();
+    } catch {
+      return msg.setStatus(500);
+    }
+  }
+
+  const updatedUser = mapLegalChanges(msg, currUser, newUser);
+  if (typeof updatedUser === "string") {
+    context.logger.warn(
+      `illegal user change: ${updatedUser} user: ${JSON.stringify(newUser)}`,
+    );
+    return msg.setStatus(403, "illegal user action");
+  }
+
+  msg.setDataJson(updatedUser);
+  return msg;
 }
 
 const service = new Service();
 
 service.get(async (msg: Message, context: SimpleServiceContext) => {
-    if (context.prePost !== "post" || !msg.ok || !msg.data || msg.data.mimeType === 'application/schema+json' || msg.url.isDirectory) return msg;
+  if (
+    context.prePost !== "post" || !msg.ok || !msg.data ||
+    msg.data.mimeType === "application/schema+json" || msg.url.isDirectory
+  ) return msg;
 
-    if (msg.url.query['test'] !== undefined) {
-        msg.data = undefined;
-        return msg;
-    }
-
-    const originalMime = msg.data.mimeType;
-
-    let user: AuthUser;
-    try {
-        const userObj = await msg.data.asJson();
-        user = new AuthUser(userObj);
-    } catch {
-        if (!msg.ok) return msg;
-        return msg.setStatus(500, 'User data misformatted');
-    }
-    if (!msg.internalPrivilege) {
-        user.password = user.passwordMask();
-    } else {
-        msg.internalPrivilege = false;
-    }
-    msg.setDataJson(user);
-    msg.data.mimeType = originalMime;
+  if (msg.url.query["test"] !== undefined) {
+    msg.data = undefined;
     return msg;
+  }
+
+  const originalMime = msg.data.mimeType;
+
+  let user: AuthUser;
+  try {
+    const userObj = await msg.data.asJson();
+    user = new AuthUser(userObj);
+  } catch {
+    if (!msg.ok) return msg;
+    return msg.setStatus(500, "User data misformatted");
+  }
+  if (!msg.internalPrivilege) {
+    user.password = user.passwordMask();
+  } else {
+    msg.internalPrivilege = false;
+  }
+  msg.setDataJson(user);
+  msg.data.mimeType = originalMime;
+  return msg;
 });
 
-service.put(validateChange);
-service.post(validateChange);
-service.delete(validateChange);
+service.put((msg, context, config) =>
+  validateChange(msg, context, config as UserFilterConfig)
+);
+service.post((msg, context, config) =>
+  validateChange(msg, context, config as UserFilterConfig)
+);
+service.delete((msg, context, config) =>
+  validateChange(msg, context, config as UserFilterConfig)
+);
 
 export default service;

@@ -1,40 +1,81 @@
 export default {
-    "name": "Authentication Service",
-    "description": "Provides simple JWT authentication",
-    "moduleUrl": "./services/auth.ts",
-    "apis": [ "auth" ],
-    "configSchema": {
+  "name": "Authentication Service",
+  "description": "Provides simple JWT authentication",
+  "moduleUrl": "./services/auth.ts",
+  "apis": ["auth"],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "userUrlPattern": {
+        "type": "string",
+        "description": "Url pattern to fetch user data",
+      },
+      "loginPage": {
+        "type": "string",
+        "description": "Login page url for redirect management",
+      },
+      "allowedLoginDomains": {
+        "type": "array",
+        "description":
+          "Optional allowlist of browser domains allowed to call login and mfa/totp (hostnames, URLs, or wildcard subdomains like *.example.com)",
+        "items": { "type": "string" },
+      },
+      "trustedDomains": {
+        "title": "Trusted domains",
+        "type": "array",
+        "description":
+          "Domains (including wildcard forms like *.example.com) that can receive auth cookies on login. Access from these domains will be vulnerable to CSRF",
+        "items": { "type": "string" },
+      },
+      "sessionTimeoutMins": {
+        "type": "number",
+        "description": "How long before a new login is required in minutes",
+      },
+      "jwtUserProps": {
+        "type": "array",
+        "description":
+          "Extra user record properties to embed in the JWT (safe primitives only; sensitive fields are ignored)",
+        "items": { "type": "string" },
+      },
+      "loginLockout": {
+        "type": "object",
+        "description":
+          "Temporary lockout after repeated failed password logins",
+        "properties": {
+          "maxAttempts": {
+            "type": "number",
+            "description":
+              "Failed password attempts before lockout (default 10)",
+          },
+          "lockMinutes": {
+            "type": "number",
+            "description": "Lockout duration in minutes (default 10)",
+          },
+        },
+      },
+      "mfa": {
         "type": "object",
         "properties": {
-            "userUrlPattern": { "type": "string", "description": "Url pattern to fetch user data" },
-            "loginPage": { "type": "string", "description": "Login page url for redirect management" },
-            "allowedLoginDomains": {
-                "type": "array",
-                "description": "Optional allowlist of browser domains allowed to call login and mfa/totp (hostnames, URLs, or wildcard subdomains like *.example.com)",
-                "items": { "type": "string" }
-            },
-            "trustedDomains": {
-                "title": "Trusted domains",
-                "type": "array",
-                "description": "Domains (including wildcard forms like *.example.com) that can receive auth cookies on login. Access from these domains will be vulnerable to CSRF",
-                "items": { "type": "string" }
-            },
-            "sessionTimeoutMins": { "type": "number", "description": "How long before a new login is required in minutes" },
-            "jwtUserProps": {
-                "type": "array",
-                "description": "Extra user record properties to embed in the JWT (safe primitives only; sensitive fields are ignored)",
-                "items": { "type": "string" }
-            },
-            "mfa": {
-                "type": "object",
-                "properties": {
-                    "mode": { "type": "string", "description": "MFA mode: challenge or singleStep" },
-                    "totpServiceUrl": { "type": "string", "description": "Base url for the TOTP service (e.g. /mfa)" },
-                    "mfaCookieName": { "type": "string", "description": "Cookie name used for MFA challenge (default rs-mfa; must not be rs-auth)" },
-                    "mfaTimeoutMins": { "type": "number", "description": "Minutes before MFA challenge expires (default 5)" }
-                }
-            }
+          "mode": {
+            "type": "string",
+            "description": "MFA mode: challenge or singleStep",
+          },
+          "totpServiceUrl": {
+            "type": "string",
+            "description": "Base url for the TOTP service (e.g. /mfa)",
+          },
+          "mfaCookieName": {
+            "type": "string",
+            "description":
+              "Cookie name used for MFA challenge (default rs-mfa; must not be rs-auth)",
+          },
+          "mfaTimeoutMins": {
+            "type": "number",
+            "description": "Minutes before MFA challenge expires (default 5)",
+          },
         },
-        "required": [ "userUrlPattern" ]
-    }
-}
+      },
+    },
+    "required": ["userUrlPattern"],
+  },
+};
