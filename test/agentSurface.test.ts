@@ -18,7 +18,9 @@ const tenant = "agentSurface";
 const host = `${tenant}.restspace.local:3100`;
 const password = "hello";
 
-function pathPattern(pathInfo: DirDescriptor["paths"][number]): string | undefined {
+function pathPattern(
+  pathInfo: DirDescriptor["paths"][number],
+): string | undefined {
   const spec = pathInfo[2];
   return typeof spec === "object" && spec !== null && "pattern" in spec
     ? spec.pattern
@@ -34,6 +36,8 @@ const exposedDatasetSchema = {
     status: { type: "string" },
   },
   "x-agent": {
+    name: "account",
+    description: "Account records.",
     entityName: "account",
     entityNamePlural: "accounts",
     summaryFields: ["name", "status"],
@@ -56,6 +60,8 @@ const secretDatasetSchema = {
     name: { type: "string" },
   },
   "x-agent": {
+    name: "secret",
+    description: "Restricted records.",
     entityName: "secret",
     entityNamePlural: "secrets",
     summaryFields: ["name"],
@@ -151,8 +157,12 @@ testServicesConfig[tenant] = {
       access: { readRoles: "all", writeRoles: "all" },
       pipeline: [],
       inputSchema: { type: "object" },
-      outputSchema: { type: "object", properties: { items: { type: "array" } } },
+      outputSchema: {
+        type: "object",
+        properties: { items: { type: "array" } },
+      },
       "x-agent": {
+        name: "configuredRead",
         kind: "query",
         title: "Configured read",
         description: "Read through a configured pipeline.",
@@ -203,12 +213,22 @@ async function sendRequest(
 
 async function putJson(url: string, value: unknown, manage = false) {
   const response = await sendRequest(url, "PUT", { body: value, manage });
-  assert(response.ok, `PUT ${url} failed: ${response.status} ${response.data?.asStringSync() || ""}`);
+  assert(
+    response.ok,
+    `PUT ${url} failed: ${response.status} ${
+      response.data?.asStringSync() || ""
+    }`,
+  );
 }
 
 async function getJson(url: string, token?: string) {
   const response = await sendRequest(url, "GET", { token });
-  assert(response.ok, `GET ${url} failed: ${response.status} ${response.data?.asStringSync() || ""}`);
+  assert(
+    response.ok,
+    `GET ${url} failed: ${response.status} ${
+      response.data?.asStringSync() || ""
+    }`,
+  );
   return await response.data!.asJson();
 }
 
@@ -245,6 +265,8 @@ async function seedAgentSurfaceData() {
       company: { type: "string" },
     },
     "x-agent": {
+      name: "contact",
+      description: "People and companies.",
       entityName: "contact",
       entityNamePlural: "contacts",
       summaryFields: ["name", "email"],
@@ -274,6 +296,7 @@ async function seedAgentSurfaceData() {
       name: { type: "string" },
     },
     "x-agent": {
+      name: "bad",
       entityName: "bad",
       summaryFields: ["missing"],
       searchableFields: ["name"],
@@ -292,6 +315,7 @@ async function seedAgentSurfaceData() {
     inputSchema: { type: "object" },
     outputSchema: { type: "object", properties: { items: { type: "array" } } },
     "x-agent": {
+      name: "storedRead",
       kind: "query",
       title: "Stored read",
       description: "Read through a stored pipeline.",
@@ -309,6 +333,7 @@ async function seedAgentSurfaceData() {
   await putJson("/pipes/warning-read", {
     pipeline: [],
     "x-agent": {
+      name: "warningRead",
       kind: "query",
       title: "Warning read",
     },
@@ -323,6 +348,7 @@ async function seedAgentSurfaceData() {
   await putJson("/pipes/mutating", {
     pipeline: [],
     "x-agent": {
+      name: "mutating",
       kind: "action",
       title: "Mutating",
       description: "Should not be exposed as read-only.",
@@ -343,83 +369,256 @@ async function seedAgentSurfaceData() {
 Deno.test("agent-surface discovers valid exposed entities and hides invalid or unexposed entities", async () => {
   await seedAgentSurfaceData();
 
-  const rootDirectory = await getJson("/.well-known/restspace/agent-surface/?$list=details") as DirDescriptor;
-  assert(rootDirectory.paths.some((pathInfo) => pathInfo[0] === "entities/" && pathPattern(pathInfo) === "store-view"));
-  assert(rootDirectory.paths.some((pathInfo) => pathInfo[0] === "pipelines/" && pathPattern(pathInfo) === "store-view"));
-  assert(rootDirectory.paths.some((pathInfo) => pathInfo[0] === "validate" && pathPattern(pathInfo) === "view"));
+  const rootDirectory = await getJson(
+    "/.well-known/restspace/agent-surface/?$list=details",
+  ) as DirDescriptor;
+  assert(
+    rootDirectory.paths.some((pathInfo) =>
+      pathInfo[0] === "entities/" && pathPattern(pathInfo) === "store-view"
+    ),
+  );
+  assert(
+    rootDirectory.paths.some((pathInfo) =>
+      pathInfo[0] === "pipelines/" && pathPattern(pathInfo) === "store-view"
+    ),
+  );
+  assert(
+    rootDirectory.paths.some((pathInfo) =>
+      pathInfo[0] === "validate" && pathPattern(pathInfo) === "view"
+    ),
+  );
+  assert(
+    rootDirectory.paths.some((pathInfo) =>
+      pathInfo[0] === "list" && pathPattern(pathInfo) === "view"
+    ),
+  );
 
-  const directory = await getJson("/.well-known/restspace/agent-surface/entities/?$list=details") as DirDescriptor;
+  const directory = await getJson(
+    "/.well-known/restspace/agent-surface/entities/?$list=details",
+  ) as DirDescriptor;
   assertStrictEquals(directory.spec?.pattern, "store-view");
-  const result = await Promise.all(directory.paths.map(async ([id]) =>
-    await getJson(`/.well-known/restspace/agent-surface/entities/${id}`) as { title?: string; entityName?: string; id: string }
-  ));
+  assert(
+    directory.paths.some(([id]) => id === "contact"),
+    "entity directory should use x-agent.name",
+  );
+  const result = await Promise.all(
+    directory.paths.map(async ([id]) =>
+      await getJson(`/.well-known/restspace/agent-surface/entities/${id}`) as {
+        title?: string;
+        entityName?: string;
+        name: string;
+        id?: string;
+      }
+    ),
+  );
 
   const names = result.map((item) => item.entityName || item.title).sort();
   assertEquals(names, ["account", "contact"]);
 
   const contact = result.find((item) => item.entityName === "contact");
   assert(contact, "expected contact entity in compact discovery");
-  const detail = await getJson(`/.well-known/restspace/agent-surface/entities/${contact.id}`) as {
+  assertStrictEquals(contact.id, undefined);
+  const detail = await getJson(
+    `/.well-known/restspace/agent-surface/entities/${contact.name}`,
+  ) as {
     schema: { title?: string };
+    id?: string;
   };
+  assertStrictEquals(detail.id, undefined);
   assertStrictEquals(detail.schema.title, "Contact");
 });
 
 Deno.test("agent-surface discovers only valid read-only exposed pipelines", async () => {
   await seedAgentSurfaceData();
 
-  const directory = await getJson("/.well-known/restspace/agent-surface/pipelines/?$list=details") as DirDescriptor;
+  const directory = await getJson(
+    "/.well-known/restspace/agent-surface/pipelines/?$list=details",
+  ) as DirDescriptor;
   assertStrictEquals(directory.spec?.pattern, "store-view");
-  const result = await Promise.all(directory.paths.map(async ([id]) =>
-    await getJson(`/.well-known/restspace/agent-surface/pipelines/${id}`) as { title?: string; effect?: string; warnings: number }
-  ));
+  assert(
+    directory.paths.some(([id]) => id === "storedRead"),
+    "pipeline directory should use x-agent.name",
+  );
+  const result = await Promise.all(
+    directory.paths.map(async ([id]) =>
+      await getJson(`/.well-known/restspace/agent-surface/pipelines/${id}`) as {
+        id?: string;
+        name: string;
+        title?: string;
+        effect?: string;
+        warnings: number;
+      }
+    ),
+  );
 
   const titles = result.map((item) => item.title).sort();
   assertEquals(titles, ["Configured read", "Stored read", "Warning read"]);
-  assert(result.every((item) => item.effect === "read"), "all discovered pipelines should be read-only");
-  assert(result.some((item) => item.title === "Warning read" && item.warnings > 0), "warning-only pipeline should remain discoverable");
+  assert(
+    result.every((item) => item.effect === "read"),
+    "all discovered pipelines should be read-only",
+  );
+  assert(
+    result.some((item) => item.title === "Warning read" && item.warnings > 0),
+    "warning-only pipeline should remain discoverable",
+  );
+  assert(result.every((item) => item.id === undefined));
+});
+
+Deno.test("agent-surface list returns compact names and descriptions", async () => {
+  await seedAgentSurfaceData();
+
+  const list = await getJson("/.well-known/restspace/agent-surface/list") as {
+    entities: Array<{ name: string; description?: string }>;
+    queries: Array<{ name: string; description?: string }>;
+    pipelines: Array<{ name: string; description?: string }>;
+  };
+
+  assert(
+    list.entities.some((item) =>
+      item.name === "contact" && item.description === "People and companies."
+    ),
+  );
+  assert(
+    list.queries.some((item) =>
+      item.name === "storedRead" &&
+      item.description === "Read through a stored pipeline."
+    ),
+  );
+  assert(
+    !list.pipelines.some((item) => item.name === "storedRead"),
+    "query items should be split from pipelines",
+  );
 });
 
 Deno.test("agent-surface validate reports excluded invalid metadata and warning-only metadata", async () => {
   await seedAgentSurfaceData();
 
-  const validation = await getJson("/.well-known/restspace/agent-surface/validate") as {
+  const validation = await getJson(
+    "/.well-known/restspace/agent-surface/validate",
+  ) as {
     summary: {
       entities: { errors: number; warnings: number; excluded: number };
       pipelines: { errors: number; warnings: number; excluded: number };
     };
-    entities: { issues: Array<{ code: string; severity: string; sourcePath: string }> };
-    pipelines: { issues: Array<{ code: string; severity: string; sourcePath: string }> };
+    entities: {
+      issues: Array<{ code: string; severity: string; sourcePath: string }>;
+    };
+    pipelines: {
+      issues: Array<{ code: string; severity: string; sourcePath: string }>;
+    };
   };
 
-  assert(validation.summary.entities.errors > 0, "invalid entity should produce validation errors");
-  assert(validation.summary.entities.excluded > 0, "invalid entity should be counted as excluded");
-  assert(validation.entities.issues.some((issue) =>
-    issue.code === "metadata_field_not_found" && issue.sourcePath.includes("/data/bad/.schema.json")
-  ));
-  assert(validation.summary.pipelines.errors > 0, "mutating pipeline should produce validation errors");
-  assert(validation.pipelines.issues.some((issue) =>
-    issue.code === "pipeline_effect_not_read" && issue.sourcePath.includes("/pipes/mutating")
-  ));
-  assert(validation.summary.pipelines.warnings > 0, "warning-only pipeline should produce validation warnings");
-  assert(validation.pipelines.issues.some((issue) =>
-    issue.severity === "warning" && issue.sourcePath.includes("/pipes/warning-read")
-  ));
+  assert(
+    validation.summary.entities.errors > 0,
+    "invalid entity should produce validation errors",
+  );
+  assert(
+    validation.summary.entities.excluded > 0,
+    "invalid entity should be counted as excluded",
+  );
+  assert(
+    validation.entities.issues.some((issue) =>
+      issue.code === "metadata_field_not_found" &&
+      issue.sourcePath.includes("/data/bad/.schema.json")
+    ),
+  );
+  assert(
+    validation.summary.pipelines.errors > 0,
+    "mutating pipeline should produce validation errors",
+  );
+  assert(
+    validation.pipelines.issues.some((issue) =>
+      issue.code === "pipeline_effect_not_read" &&
+      issue.sourcePath.includes("/pipes/mutating")
+    ),
+  );
+  assert(
+    validation.summary.pipelines.warnings > 0,
+    "warning-only pipeline should produce validation warnings",
+  );
+  assert(
+    validation.pipelines.issues.some((issue) =>
+      issue.severity === "warning" &&
+      issue.sourcePath.includes("/pipes/warning-read")
+    ),
+  );
+});
+
+Deno.test("agent-surface validate reports duplicate agent names", async () => {
+  await seedAgentSurfaceData();
+  await putJson("/data/duplicate-contact/.schema.json", {
+    type: "object",
+    title: "Duplicate Contact",
+    properties: {
+      name: { type: "string" },
+    },
+    "x-agent": {
+      name: "contact",
+      entityName: "duplicateContact",
+      summaryFields: ["name"],
+      searchableFields: ["name"],
+      filterableFields: ["name"],
+    },
+    "x-render": {
+      defaultShape: "entity",
+    },
+    "x-expose": {
+      mcp: true,
+    },
+  });
+
+  try {
+    const validation = await getJson(
+      "/.well-known/restspace/agent-surface/validate",
+    ) as {
+      entities: {
+        issues: Array<{ code: string; id?: string; sourcePath: string }>;
+      };
+    };
+
+    assert(
+      validation.entities.issues.some((issue) =>
+        issue.code === "agent_name_not_unique" && issue.id === "contact"
+      ),
+    );
+  } finally {
+    await sendRequest("/data/duplicate-contact/.schema.json", "DELETE");
+  }
 });
 
 Deno.test("agent-surface filters metadata by owning service read access", async () => {
   await seedAgentSurfaceData();
 
-  const anonDirectory = await getJson("/.well-known/restspace/agent-surface/entities/?$list=details") as DirDescriptor;
-  const anonResult = await Promise.all(anonDirectory.paths.map(async ([id]) =>
-    await getJson(`/.well-known/restspace/agent-surface/entities/${id}`) as { entityName?: string }
-  ));
-  assert(!anonResult.some((item) => item.entityName === "secret"), "anonymous users should not see restricted entity metadata");
+  const anonDirectory = await getJson(
+    "/.well-known/restspace/agent-surface/entities/?$list=details",
+  ) as DirDescriptor;
+  const anonResult = await Promise.all(
+    anonDirectory.paths.map(async ([id]) =>
+      await getJson(`/.well-known/restspace/agent-surface/entities/${id}`) as {
+        entityName?: string;
+      }
+    ),
+  );
+  assert(
+    !anonResult.some((item) => item.entityName === "secret"),
+    "anonymous users should not see restricted entity metadata",
+  );
 
   const token = await tokenWithRoles("surface-reader", "S");
-  const authedDirectory = await getJson("/.well-known/restspace/agent-surface/entities/?$list=details", token) as DirDescriptor;
-  const authedResult = await Promise.all(authedDirectory.paths.map(async ([id]) =>
-    await getJson(`/.well-known/restspace/agent-surface/entities/${id}`, token) as { entityName?: string }
-  ));
-  assert(authedResult.some((item) => item.entityName === "secret"), "authorized users should see restricted entity metadata");
+  const authedDirectory = await getJson(
+    "/.well-known/restspace/agent-surface/entities/?$list=details",
+    token,
+  ) as DirDescriptor;
+  const authedResult = await Promise.all(
+    authedDirectory.paths.map(async ([id]) =>
+      await getJson(
+        `/.well-known/restspace/agent-surface/entities/${id}`,
+        token,
+      ) as { entityName?: string }
+    ),
+  );
+  assert(
+    authedResult.some((item) => item.entityName === "secret"),
+    "authorized users should see restricted entity metadata",
+  );
 });
