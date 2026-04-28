@@ -25,6 +25,9 @@ import BinanceProxyAdapterManifest from "./adapter/BinanceProxyAdapter.ram.js";
 import MongoDbDataAdapterManifest from "./adapter/MongoDbDataAdapter.ram.js";
 import MongoDbQueryAdapterManifest from "./adapter/MongoDbQueryAdapter.ram.js";
 import IMAPAdapterManifest from "./adapter/IMAPAdapter.ram.js";
+import TurnstileCaptchaAdapterManifest from "./adapter/TurnstileCaptchaAdapter.ram.js";
+import RecaptchaCaptchaAdapterManifest from "./adapter/RecaptchaCaptchaAdapter.ram.js";
+import HCaptchaAdapterManifest from "./adapter/HCaptchaAdapter.ram.js";
 
 import MockManifest from "./services/mock.rsm.js";
 import ServicesManifest from "./services/services.rsm.js";
@@ -61,6 +64,7 @@ import PrivateCallerManifest from "./services/private-caller.rsm.js";
 import WebhooksManifest from "./services/webhooks.rsm.js";
 import TotpManifest from "./services/totp.rsm.js";
 import LogCollectorManifest from "./services/logCollector.rsm.js";
+import CaptchaManifest from "./services/captcha.rsm.js";
 
 import { AdapterContext, SimpleServiceContext, nullState } from "rs-core/ServiceContext.ts";
 import { makeServiceContext } from "./makeServiceContext.ts";
@@ -149,6 +153,9 @@ const builtInAdapterLoaders: Record<string, BuiltInModuleLoader> = {
     "./adapter/MongoDbDataAdapter.ts": () => import("./adapter/MongoDbDataAdapter.ts"),
     "./adapter/MongoDbQueryAdapter.ts": () => import("./adapter/MongoDbQueryAdapter.ts"),
     "./adapter/IMAPAdapter.ts": () => import("./adapter/IMAPAdapter.ts"),
+    "./adapter/TurnstileCaptchaAdapter.ts": () => import("./adapter/TurnstileCaptchaAdapter.ts"),
+    "./adapter/RecaptchaCaptchaAdapter.ts": () => import("./adapter/RecaptchaCaptchaAdapter.ts"),
+    "./adapter/HCaptchaAdapter.ts": () => import("./adapter/HCaptchaAdapter.ts"),
 };
 
 const builtInServiceLoaders: Record<string, BuiltInModuleLoader> = {
@@ -184,6 +191,7 @@ const builtInServiceLoaders: Record<string, BuiltInModuleLoader> = {
     "./services/private-caller.ts": () => import("./services/private-caller.ts"),
     "./services/totp.ts": () => import("./services/totp.ts"),
     "./services/logCollector.ts": () => import("./services/logCollector.ts"),
+    "./services/captcha.ts": () => import("./services/captcha.ts"),
 };
 
 /** Modules is a singleton which holds compiled services and adapters for all tenants */
@@ -232,6 +240,9 @@ export class Modules {
             "./adapter/MongoDbDataAdapter.ram.json": MongoDbDataAdapterManifest,
             "./adapter/MongoDbQueryAdapter.ram.json": MongoDbQueryAdapterManifest,
             "./adapter/IMAPAdapter.ram.json": IMAPAdapterManifest,
+            "./adapter/TurnstileCaptchaAdapter.ram.json": TurnstileCaptchaAdapterManifest,
+            "./adapter/RecaptchaCaptchaAdapter.ram.json": RecaptchaCaptchaAdapterManifest,
+            "./adapter/HCaptchaAdapter.ram.json": HCaptchaAdapterManifest,
         };
         this.adapterManifestsMap[""] = Object.keys(this.adapterManifests);
 
@@ -279,6 +290,7 @@ export class Modules {
             "./services/private-caller.rsm.json": PrivateCallerManifest as unknown as IServiceManifest,
             "./services/totp.rsm.json": TotpManifest as unknown as IServiceManifest,
             "./services/logCollector.rsm.json": LogCollectorManifest as unknown as IServiceManifest,
+            "./services/captcha.rsm.json": CaptchaManifest as unknown as IServiceManifest,
         };
         this.serviceManifestsMap[""] = Object.keys(this.serviceManifests);
 
