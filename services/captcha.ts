@@ -2,6 +2,7 @@ import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
 import { IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { ServiceContext } from "rs-core/ServiceContext.ts";
+import { OperationSpec, ViewSpec } from "rs-core/DirDescriptor.ts";
 import { ICaptchaAdapter } from "../adapter/ICaptchaAdapter.ts";
 import { CaptchaConfigurationError } from "../adapter/captchaCommon.ts";
 
@@ -48,38 +49,61 @@ function tokenFromBody(
   return "";
 }
 
-service.get((msg, context: ServiceContext<ICaptchaAdapter>) => {
+const renderCaptcha = (
+  msg: Message,
+  context: ServiceContext<ICaptchaAdapter>,
+) => {
   return msg.setData(context.adapter.renderHtml(), "text/html");
+};
+
+const verifyCaptcha = async (
+  msg: Message,
+  context: ServiceContext<ICaptchaAdapter>,
+  config: CaptchaServiceConfig,
+) => {
+  const body = await readBody(msg);
+  if (!body) return msg.setStatus(400, "Bad Captcha");
+
+  const token = tokenFromBody(body, context.adapter);
+  const maxTokenLength = config.maxTokenLength ?? DEFAULT_MAX_TOKEN_LENGTH;
+  if (!token || token.length > maxTokenLength) {
+    return msg.setStatus(400, "Bad Captcha");
+  }
+
+  try {
+    const result = await context.adapter.verify(token, msg);
+    if (!result.ok) return msg.setStatus(400, "Bad Captcha");
+    msg.data = undefined;
+    return msg.setStatus(0);
+  } catch (err) {
+    if (err instanceof CaptchaConfigurationError) {
+      return msg.setStatus(500, err.message);
+    }
+    context.logger.error(`Captcha verification failed: ${err}`);
+    return msg.setStatus(502, "Captcha verification failed");
+  }
+};
+
+service.constantDirectory("/", {
+  path: "/",
+  paths: [
+    ["challenge", 0, {
+      pattern: "view",
+      respMimeType: "text/html",
+    } as ViewSpec],
+    ["verify", 0, {
+      pattern: "operation",
+      reqMimeType: "application/json",
+    } as OperationSpec],
+  ],
+  spec: {
+    pattern: "directory",
+  },
 });
 
-service.post(
-  async (
-    msg,
-    context: ServiceContext<ICaptchaAdapter>,
-    config: CaptchaServiceConfig,
-  ) => {
-    const body = await readBody(msg);
-    if (!body) return msg.setStatus(400, "Bad Captcha");
-
-    const token = tokenFromBody(body, context.adapter);
-    const maxTokenLength = config.maxTokenLength ?? DEFAULT_MAX_TOKEN_LENGTH;
-    if (!token || token.length > maxTokenLength) {
-      return msg.setStatus(400, "Bad Captcha");
-    }
-
-    try {
-      const result = await context.adapter.verify(token, msg);
-      if (!result.ok) return msg.setStatus(400, "Bad Captcha");
-      msg.data = undefined;
-      return msg.setStatus(0);
-    } catch (err) {
-      if (err instanceof CaptchaConfigurationError) {
-        return msg.setStatus(500, err.message);
-      }
-      context.logger.error(`Captcha verification failed: ${err}`);
-      return msg.setStatus(502, "Captcha verification failed");
-    }
-  },
-);
+service.get(renderCaptcha);
+service.getPath("challenge", renderCaptcha);
+service.post(verifyCaptcha);
+service.postPath("verify", verifyCaptcha);
 
 export default service;

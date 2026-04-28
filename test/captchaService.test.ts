@@ -50,6 +50,11 @@ type CaptchaAdapterConstructor = new (
 ) => ICaptchaAdapter;
 
 function testMessage(method: MessageMethod): Message {
+  return new Message("/captcha", "captcha", method, null)
+    .setHeader("host", "captcha.restspace.local:3100");
+}
+
+function testDirectoryMessage(method: MessageMethod): Message {
   return new Message("/", "captcha", method, null)
     .setHeader("host", "captcha.restspace.local:3100");
 }
@@ -90,6 +95,20 @@ Deno.test("captcha service GET renders adapter HTML", async () => {
   assertEquals(msgOut.status, 0);
   assertEquals(msgOut.data?.mimeType, "text/html");
   assertEquals(await msgOut.data?.asString(), adapter.html);
+});
+
+Deno.test("captcha service describes challenge and verify paths", async () => {
+  const adapter = new MockCaptchaAdapter();
+
+  const msgOut = await callService(testDirectoryMessage("GET"), adapter);
+  const dir = await msgOut.data?.asJson();
+
+  assertEquals(msgOut.status, 0);
+  assertEquals(msgOut.data?.mimeType, "inode/directory+json");
+  assertEquals(dir.paths, [
+    ["challenge", 0, { pattern: "view", respMimeType: "text/html" }],
+    ["verify", 0, { pattern: "operation", reqMimeType: "application/json" }],
+  ]);
 });
 
 Deno.test("captcha service POST accepts native and fallback token fields", async () => {
