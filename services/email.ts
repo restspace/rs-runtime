@@ -73,7 +73,11 @@ service.post(async (msg, _context, config) => {
     } catch {
         return msg.setStatus(500, 'There was a problem sending the email via the remote server');
     } finally {
-        client.close();
+        try {
+            await client.close();
+        } catch {
+            // DenoMailer can fail before its internal connection exists.
+        }
     }
 
     return msg.setData(null, "").setStatus(201);

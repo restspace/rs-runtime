@@ -2,7 +2,7 @@ export default {
     "name": "Email Service",
     "description": "Send an email optionally with attachments",
     "moduleUrl": "./services/email.ts",
-    "apis": [ "email" ],
+    "apis": [ "operation", "email" ],
     "configSchema": {
         "type": "object",
         "properties": {
