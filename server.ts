@@ -3,6 +3,11 @@ import { config, LogLevel, setupLogging } from "./config.ts";
 import { getServerConfig } from "./getServerConfig.ts";
 import { handleIncomingRequest } from "./handleRequest.ts";
 
+addEventListener("unhandledrejection", (event) => {
+    console.error("Unhandled promise rejection:", event.reason);
+    event.preventDefault();
+});
+
 config.server = await getServerConfig(Deno.args[0]);
 const port = parseInt(Deno.args[1]) || 3100;
 if (isNaN(port)) {

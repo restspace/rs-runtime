@@ -11,6 +11,7 @@
     "jsr:@libs/xml@*": "6.0.1",
     "jsr:@libs/xml@^5.4.13": "5.4.16",
     "jsr:@luca/esbuild-deno-loader@*": "0.11.0",
+    "jsr:@neabyte/deno-mailer@0.3": "0.3.0",
     "jsr:@panva/jose@6.2.2": "6.2.2",
     "jsr:@std/assert@0.223": "0.223.0",
     "jsr:@std/assert@0.224": "0.224.0",
@@ -87,6 +88,9 @@
         "jsr:@std/encoding",
         "jsr:@std/path@^1.0.6"
       ]
+    },
+    "@neabyte/deno-mailer@0.3.0": {
+      "integrity": "fe90ada4652d94595a511fcb61cd9d2ad31410d3f8c8a1c104814be805646d54"
     },
     "@panva/jose@6.2.2": {
       "integrity": "bfe1178a9d2f53effa5ee6c1786b6534a39690b03969472b3ad690600d8898ec"
@@ -3800,6 +3804,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@libs/xml@^5.4.13",
+      "jsr:@neabyte/deno-mailer@0.3",
       "jsr:@vslinko/csv@^1.0.2"
     ],
     "packageJson": {

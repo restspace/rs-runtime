@@ -1,6 +1,7 @@
 {
   "imports": {
     "@libs/xml": "jsr:@libs/xml@^5.4.13",
+    "@neabyte/deno-mailer": "jsr:@neabyte/deno-mailer@0.3",
     "@vslinko/csv": "jsr:@vslinko/csv@^1.0.2",
     "events": "https://deno.land/x/eventemitter@1.2.1/mod.ts",
     "rs-core/": "../rs-core/",
