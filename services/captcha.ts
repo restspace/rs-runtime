@@ -73,7 +73,6 @@ const verifyCaptcha = async (
   try {
     const result = await context.adapter.verify(token, msg);
     if (!result.ok) return msg.setStatus(400, "Bad Captcha");
-    msg.data = undefined;
     return msg.setStatus(0);
   } catch (err) {
     if (err instanceof CaptchaConfigurationError) {

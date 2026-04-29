@@ -122,7 +122,10 @@ Deno.test("captcha service POST accepts native and fallback token fields", async
     adapter,
   );
   assertEquals(msgOut.status, 0);
-  assertEquals(msgOut.data, undefined);
+  assert(msgOut.data);
+  assertEquals(await msgOut.data.asJson(), {
+    "mock-captcha-response": "native-token",
+  });
   assertEquals(adapter.verifiedTokens[0], "native-token");
 
   msgOut = await callService(
@@ -130,6 +133,7 @@ Deno.test("captcha service POST accepts native and fallback token fields", async
     adapter,
   );
   assertEquals(msgOut.status, 0);
+  assertEquals(await msgOut.data?.asJson(), { token: "generic-token" });
   assertEquals(adapter.verifiedTokens[1], "generic-token");
 });
 
