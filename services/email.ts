@@ -15,7 +15,7 @@ interface EmailServiceConfig extends IServiceConfig {
 
 const service = new Service<IAdapter, EmailServiceConfig>();
 
-service.post(async (msg, _context, config) => {
+service.post(async (msg, context, config) => {
     const to = await msg.getParam("to", 0);
     if (!to) return msg.setStatus(400, 'No email address to send to');
 
@@ -70,7 +70,8 @@ service.post(async (msg, _context, config) => {
 
     try {
         await client.send(sendConfig);
-    } catch {
+    } catch (err) {
+        context.logger.error(`Email send failed via ${config.host}:${config.port} tls=${config.secure}: ${err}`);
         return msg.setStatus(500, 'There was a problem sending the email via the remote server');
     } finally {
         try {
