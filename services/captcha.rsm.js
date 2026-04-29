@@ -2,7 +2,7 @@ export default {
     "name": "Captcha Service",
     "description": "Provider-neutral captcha rendering and verification service",
     "moduleUrl": "./services/captcha.ts",
-    "apis": [ "captcha" ],
+    "apis": [ "view", "captcha" ],
     "configSchema": {
         "type": "object",
         "properties": {
