@@ -23,6 +23,7 @@ service.post(async (msg, _context, config) => {
         connection: {
             hostname: config.host,
             port: config.port,
+            tls: config.secure,
             auth: {
                 username: config.user,
                 password: config.password
