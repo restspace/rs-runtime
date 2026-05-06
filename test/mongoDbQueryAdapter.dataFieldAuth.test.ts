@@ -141,6 +141,63 @@ Deno.test("MongoDbQueryAdapter data-field auth: injected $match occurs before pa
   assertEquals(matchIdx < facetIdx, true);
 });
 
+Deno.test("MongoDbQueryAdapter include markers: prunes objects with falsy _include", async () => {
+  const query = JSON.stringify({
+    collection: "users",
+    pipeline: [
+      { $match: { active: true } },
+      { $match: { disabled: true }, _include: false },
+      {
+        $project: {
+          name: 1,
+          hidden: { _include: 0, value: "$secret" },
+          details: { _include: "", value: "$details" },
+        },
+      },
+      {
+        $match: {
+          $and: [
+            { organisationId: "org1" },
+            { archived: true, _include: null },
+          ],
+        },
+      },
+    ],
+  });
+
+  const { adapter, captured } = makeAdapterWithCapture("U", null, []);
+  await adapter.runQuery(query, {});
+
+  assertEquals(captured.pipeline, [
+    { $match: { active: true } },
+    { $project: { name: 1 } },
+    { $match: { $and: [{ organisationId: "org1" }] } },
+  ]);
+});
+
+Deno.test("MongoDbQueryAdapter include markers: keeps objects with truthy _include without marker", async () => {
+  const query = JSON.stringify({
+    collection: "users",
+    pipeline: [
+      { $match: { active: true }, _include: true },
+      {
+        $project: {
+          name: 1,
+          displayName: { _include: "yes", $ifNull: ["$name", "$email"] },
+        },
+      },
+    ],
+  });
+
+  const { adapter, captured } = makeAdapterWithCapture("U", null, []);
+  await adapter.runQuery(query, {});
+
+  assertEquals(captured.pipeline, [
+    { $match: { active: true } },
+    { $project: { name: 1, displayName: { $ifNull: ["$name", "$email"] } } },
+  ]);
+});
+
 Deno.test("MongoDbQueryAdapter data-field auth: missing user field fails closed with 404 and does not query Mongo", async () => {
   const roleSpec = "U ${organisationId=organisationId}";
   const userObj = { email: "u@test.com", roles: "U" };

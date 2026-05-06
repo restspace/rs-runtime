@@ -20,6 +20,39 @@ export interface MongoDbQueryAdapterProps extends MongoDbConnectionProps {
 
 const mongoFirstStageOperators = new Set(["$geoNear", "$search", "$searchMeta", "$vectorSearch"]);
 
+function pruneIncludeMarkers(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const result: unknown[] = [];
+    for (const item of value) {
+      const processed = pruneIncludeMarkers(item);
+      if (processed !== undefined) {
+        result.push(processed);
+      }
+    }
+    return result;
+  }
+
+  if (value !== null && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if ("_include" in obj && !obj._include) {
+      return undefined;
+    }
+
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (key === "_include") continue;
+
+      const processed = pruneIncludeMarkers(val);
+      if (processed !== undefined) {
+        result[key] = processed;
+      }
+    }
+    return result;
+  }
+
+  return value;
+}
+
 function isSafeMongoFieldPath(fieldPath: string): boolean {
   if (!fieldPath) return false;
   if (!/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/.test(fieldPath)) return false;
@@ -173,6 +206,7 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
     }
 
     let pipelineStages = parsed.pipeline;
+    pipelineStages = pruneIncludeMarkers(pipelineStages) as Record<string, unknown>[];
     if (this.props.ignoreEmptyVariables) {
       pipelineStages = cleanIgnoreMarkers(pipelineStages);
     }
