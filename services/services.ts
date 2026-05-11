@@ -96,7 +96,8 @@ service.constantDirectory('/', {
         [ 'agent-discovery', undefined, { pattern: 'view', respMimeType: 'application/json' } ],
         [ 'agent-surface/', undefined, { pattern: 'directory' } ],
         [ 'raw', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}],
-        [ 'raw.json', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}]
+        [ 'raw.json', undefined, { pattern: 'store', createDirectory: false, createFiles: false, storeMimeTypes: [ 'application/json' ]}],
+        [ 'raw.jsonc', undefined, { pattern: 'view', respMimeType: 'application/jsonc' }]
     ],
     spec: {
         pattern: 'directory'
@@ -185,6 +186,115 @@ const getRaw = (msg: Message, context: SimpleServiceContext) => {
 
 service.getPath('raw', getRaw);
 service.getPath('raw.json', getRaw);
+
+type JsonValue =
+    | null
+    | string
+    | number
+    | boolean
+    | JsonValue[]
+    | { [key: string]: JsonValue };
+
+type ServiceComments = {
+    description?: string;
+    propertyDescriptions: Record<string, string>;
+};
+
+const commentLines = (description: string | undefined, indent: string) => {
+    if (!description) return [];
+    return description
+        .split(/\r?\n/)
+        .map(line => `${indent}// ${line.trimEnd()}`);
+};
+
+const schemaPropertyDescriptions = (manifest: IServiceManifest) => {
+    const properties = (manifest.configSchema as any)?.properties as Record<string, { description?: unknown }> | undefined;
+    if (!properties) return {};
+
+    return Object.fromEntries(Object.entries(properties)
+        .filter(([, schema]) => typeof schema?.description === 'string')
+        .map(([key, schema]) => [ key, schema.description as string ]));
+};
+
+const collectServiceComments = async (
+    rawServicesConfig: IRawServicesConfig,
+    tenant: string
+): Promise<WeakMap<object, ServiceComments> | [number, string]> => {
+    const comments = new WeakMap<object, ServiceComments>();
+    const sourceComments: Record<string, ServiceComments> = {};
+    const services = Object.values(rawServicesConfig.services || {});
+
+    for (const serv of services) {
+        if (!sourceComments[serv.source]) {
+            const manifest = await config.modules.getServiceManifest(serv.source, tenant);
+            if (typeof manifest === 'string') {
+                return [ 500, `Failed to get manifest for service ${serv.source}` ];
+            }
+            sourceComments[serv.source] = {
+                description: manifest.description,
+                propertyDescriptions: schemaPropertyDescriptions(manifest)
+            };
+        }
+        comments.set(serv as unknown as object, sourceComments[serv.source]);
+    }
+
+    return comments;
+};
+
+const toJsonc = (
+    value: unknown,
+    serviceComments: WeakMap<object, ServiceComments>,
+    indent = 0,
+    inServicesObject = false
+): string => {
+    const indentText = ' '.repeat(indent);
+    const childIndentText = ' '.repeat(indent + 2);
+
+    if (value === null || typeof value !== 'object') return JSON.stringify(value);
+
+    if (Array.isArray(value)) {
+        if (value.length === 0) return '[]';
+        return [
+            '[',
+            ...value.map((item, index) => {
+                const comma = index < value.length - 1 ? ',' : '';
+                return `${childIndentText}${toJsonc(item, serviceComments, indent + 2)}${comma}`;
+            }),
+            `${indentText}]`
+        ].join('\n');
+    }
+
+    const obj = value as Record<string, JsonValue>;
+    const entries = Object.entries(obj);
+    if (entries.length === 0) return '{}';
+
+    const objServiceComments = serviceComments.get(obj);
+    const lines = [ '{' ];
+    entries.forEach(([ key, entryValue ], index) => {
+        const comma = index < entries.length - 1 ? ',' : '';
+        const nestedInServicesObject = key === 'services' && entryValue !== null && typeof entryValue === 'object' && !Array.isArray(entryValue);
+        const entryServiceComments = entryValue !== null && typeof entryValue === 'object'
+            ? serviceComments.get(entryValue as object)
+            : undefined;
+        const description = inServicesObject
+            ? entryServiceComments?.description
+            : objServiceComments?.propertyDescriptions[key];
+        lines.push(...commentLines(description, childIndentText));
+        lines.push(`${childIndentText}${JSON.stringify(key)}: ${toJsonc(entryValue, serviceComments, indent + 2, nestedInServicesObject)}${comma}`);
+    });
+    lines.push(`${indentText}}`);
+    return lines.join('\n');
+};
+
+const getRawJsonc = async (msg: Message, context: SimpleServiceContext) => {
+    const tenant = config.tenants[context.tenant];
+    const comments = await collectServiceComments(tenant.rawServicesConfig, context.tenant);
+    if (Array.isArray(comments)) return msg.setStatus(comments[0], comments[1]);
+
+    return msg.setData(toJsonc(tenant.rawServicesConfig, comments), 'application/jsonc');
+};
+
+service.getPath('raw.jsonc', getRawJsonc);
 
 const rebuildConfig = async (rawServicesConfig: IRawServicesConfig, tenant: string): Promise<[ number, string ]> => {
     // Remove cached code from this tenant so that all code stored on the tenant is reloaded to latest version

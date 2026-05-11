@@ -1,4 +1,4 @@
-import { assert } from "std/testing/asserts.ts";
+import { assert, assertEquals, assertStringIncludes } from "std/testing/asserts.ts";
 import { Message, MessageMethod } from "rs-core/Message.ts";
 import { config } from "../config.ts";
 import { testServicesConfig } from "./TestConfigFileAdapter.ts";
@@ -121,6 +121,32 @@ async function getLoggedInUserToken(roles: string) {
     const token = await logIn("jamesej@outlook.com.json");
     return token;
 }
+
+function stripJsoncComments(jsonc: string) {
+    return jsonc
+        .split('\n')
+        .filter(line => !line.trimStart().startsWith('//'))
+        .join('\n');
+}
+
+Deno.test("raw jsonc describes service config", async () => {
+    const token = await getLoggedInUserToken('U E A');
+    const getRawJsonc = testMessage('/.well-known/restspace/raw.jsonc', 'GET');
+    getRawJsonc.cookies['rs-auth'] = token;
+    const msgOut = await handleIncomingRequest(getRawJsonc);
+
+    assert(msgOut.ok && msgOut.data !== undefined, 'failed to get raw jsonc');
+    assertEquals(msgOut.data.mimeType, 'application/jsonc');
+
+    const jsonc = await msgOut.data.asString();
+    assert(jsonc, 'raw jsonc response had no body');
+    assertStringIncludes(jsonc, '// Reads and writes data with configured schema from urls by key');
+    assertStringIncludes(jsonc, '// The name for the dataset which corresponds to its name in the underlying service');
+    assertStringIncludes(jsonc, '"datasetName": "ds"');
+
+    const parsed = JSON.parse(stripJsoncComments(jsonc));
+    assertEquals(parsed, config.tenants['servicesService'].rawServicesConfig);
+});
 
 Deno.test("add chord", async () => {
     const chord = {
