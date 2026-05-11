@@ -309,6 +309,19 @@ Deno.test('conditional subpath subpipelines', async function () {
     const output = await msgOut.data?.asString();
     assertStrictEquals(output, 'abc result');
 });
+Deno.test('conditional subpath subpipelines bare condition', async function () {
+    const msg = testMessage('/abc/def', 'GET');
+    msg.url.basePathElementCount = 1;
+    msg.url.subPathElementCount = 1;
+    const msgOut = await pipeline(msg, [
+        "GET /test/xyz",
+        "try GET /test/list",
+        [ "serial end next", "if (subpath.length === 1)", "GET /test/abc" ],
+        [ "serial end next", "if (subpath.length === 0)", "GET /test/xyz" ]
+    ]);
+    const output = await msgOut.data?.asString();
+    assertStrictEquals(output, 'abc result');
+});
 Deno.test('conditional body subpipelines', async function () {
     const msg = testMessage('/', 'GET');
     const msgOut = await pipeline(msg, [

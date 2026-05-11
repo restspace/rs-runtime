@@ -1,4 +1,5 @@
 import { Message } from "rs-core/Message.ts";
+import { isJson } from "rs-core/mimeType.ts";
 import { transformation } from "rs-core/transformation/transformation.ts";
 import { PipelineContext } from "./pipelineContext.ts";
 
@@ -7,7 +8,9 @@ export class PipelineTransform {
     constructor(public transform: object) {}
 
     async execute(msg: Message, context: PipelineContext): Promise<Message> {
-        const jsonIn = msg.data ? await msg.data.asJson() : {};
+        const dataIsStream = msg.data?.isStream || false;
+        const dataIsJson = msg.data && isJson(msg.data.mimeType);
+        const jsonIn = msg.data && !dataIsStream ? await msg.data.asJson() : {};
         let transJson: any = null;
         try {
             // Expose message details as transform variables, while preserving the shared pipeline VariableScope.
@@ -18,6 +21,17 @@ export class PipelineTransform {
             }
             if (scope.get('$_user') === undefined) {
                 context.variables.setForScope(msg.name, '$_user', msg.user);
+            }
+            const errorStatus = dataIsJson && !dataIsStream && jsonIn && typeof jsonIn === 'object'
+                && Object.prototype.hasOwnProperty.call(jsonIn, '_errorStatus')
+                ? jsonIn._errorStatus
+                : 0;
+            if (scope.get('$_ok') === undefined) {
+                const ok = errorStatus < 400;
+                context.variables.setForScope(msg.name, '$_ok', ok);
+            }
+            if (scope.get('$_status') === undefined) {
+                context.variables.setForScope(msg.name, '$_status', errorStatus);
             }
             const variableScope = context.variables.getScope(msg.name);
             transJson = transformation(this.transform, jsonIn, context.callerUrl || msg.url, msg.name, variableScope);
