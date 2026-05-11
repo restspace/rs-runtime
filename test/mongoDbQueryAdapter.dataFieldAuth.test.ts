@@ -152,6 +152,7 @@ Deno.test("MongoDbQueryAdapter include markers: prunes objects with falsy _inclu
           name: 1,
           hidden: { _include: 0, value: "$secret" },
           details: { _include: "", value: "$details" },
+          substitutedEmpty: { _include: { $ignore: true }, value: "$substitutedEmpty" },
         },
       },
       {
@@ -159,6 +160,7 @@ Deno.test("MongoDbQueryAdapter include markers: prunes objects with falsy _inclu
           $and: [
             { organisationId: "org1" },
             { archived: true, _include: null },
+            { substituted: true, _include: { $ignore: true } },
           ],
         },
       },

@@ -3,6 +3,7 @@ import { IQueryAdapter } from "rs-core/adapter/IQueryAdapter.ts";
 import { BSON, Db, MongoClient } from "mongodb";
 import {
   cleanIgnoreMarkers,
+  isIgnoreMarker,
   MongoDbConnectionProps,
   mongoErrorToHttpStatus,
   isMongoTransientError,
@@ -34,7 +35,7 @@ function pruneIncludeMarkers(value: unknown): unknown {
 
   if (value !== null && typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    if ("_include" in obj && !obj._include) {
+    if ("_include" in obj && (!obj._include || isIgnoreMarker(obj._include))) {
       return undefined;
     }
 
