@@ -32,8 +32,11 @@
     "jsr:@std/path@^1.0.6": "1.0.8",
     "jsr:@vslinko/csv@^1.0.2": "1.0.2",
     "jsr:@workingdevshero/deno-imap@*": "0.2.2",
+    "npm:dayjs@*": "1.11.13",
     "npm:dayjs@^1.11.13": "1.11.13",
+    "npm:esbuild-plugin-inline-worker@*": "0.1.1",
     "npm:esbuild-plugin-inline-worker@~0.1.1": "0.1.1",
+    "npm:esbuild@*": "0.24.0",
     "npm:mongodb@^6.12.0": "6.12.0"
   },
   "jsr": {
@@ -394,15 +397,6 @@
         "@mongodb-js/saslprep",
         "bson",
         "mongodb-connection-string-url"
-      ],
-      "optionalPeers": [
-        "@aws-sdk/credential-providers@^3.188.0",
-        "@mongodb-js/zstd@^1.1.0 || ^2.0.0",
-        "gcp-metadata@^5.2.0",
-        "kerberos@^2.0.1",
-        "mongodb-client-encryption@>=6.0.0 <7",
-        "snappy@^7.2.2",
-        "socks@^2.7.1"
       ]
     },
     "p-limit@2.3.0": {

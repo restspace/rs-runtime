@@ -88,6 +88,41 @@ const ensureAllManifests = async (tenantOrUrl: string, context: SimpleServiceCon
     return domain;
 };
 
+const buildCatalogueForContext = async (context: SimpleServiceContext) => {
+    // load basic manifest set
+    const builtIns = "";
+    const local = context.tenant;
+    const extLibs = [ "https://lib.restspace.io" ]
+        .filter(lib => config.tenants[context.tenant].primaryDomain !== new Url(lib).domain);
+    await ensureAllManifests(builtIns, context);
+    const localDomain = await ensureAllManifests(local, context);
+
+    const allCat = {
+        services: {
+            ...catalogue[builtIns].services,
+            ...catalogue[localDomain].services
+        },
+        adapters: {
+            ...catalogue[builtIns].adapters,
+            ...catalogue[localDomain].adapters
+        },
+        infra: { ...catalogue[builtIns].infra }
+    };
+
+    for (const lib of extLibs) {
+        const domain = await ensureAllManifests(lib, context);
+        allCat.services = { ...allCat.services, ...(catalogue[domain]?.services || {}) };
+        allCat.adapters = { ...allCat.adapters, ...(catalogue[domain]?.adapters || {})};
+    }
+
+    return allCat;
+};
+
+const manifestsAsDescriptionMap = <TManifest extends { name: string, description?: string | null }>(
+    manifests: Record<string, TManifest>
+) => Object.fromEntries(Object.values(manifests)
+    .map(manifest => [ manifest.name, manifest.description ?? "" ]));
+
 service.constantDirectory('/', {
     path: '/',
     paths: [
@@ -105,37 +140,21 @@ service.constantDirectory('/', {
 });
 
 service.getPath('catalogue', async (msg, context) => {
-    // load basic manifest set
-    const builtIns = "";
-    const local = context.tenant;
-    const extLibs = [ "https://lib.restspace.io" ]
-        .filter(lib => config.tenants[context.tenant].primaryDomain !== new Url(lib).domain);
-    await ensureAllManifests(builtIns, context);
-    const localDomain = await ensureAllManifests(local, context);
-
     const baseSchema = schemaIServiceConfig;
-    const allCat = {
-        services: {
-            ...catalogue[builtIns].services,
-            ...catalogue[localDomain].services
-        },
-        adapters: {
-            ...catalogue[builtIns].adapters,
-            ...catalogue[localDomain].adapters
-        },
-        infra: { ...catalogue[builtIns].infra }
-    };
-
-    
-    for (const lib of extLibs) {
-        const domain = await ensureAllManifests(lib, context);
-        allCat.services = { ...allCat.services, ...(catalogue[domain]?.services || {}) };
-        allCat.adapters = { ...allCat.adapters, ...(catalogue[domain]?.adapters || {})};
-    }
+    const allCat = await buildCatalogueForContext(context);
 
     (baseSchema.properties.source as any).enum = Object.values(allCat.services).map(serv => serv.source);
 
     return Promise.resolve(msg.setDataJson({ baseSchema, catalogue: allCat }));
+});
+
+service.getPath('catalogue/agent-discovery', async (msg, context) => {
+    const allCat = await buildCatalogueForContext(context);
+
+    return Promise.resolve(msg.setDataJson({
+        services: manifestsAsDescriptionMap(allCat.services),
+        adaptors: manifestsAsDescriptionMap(allCat.adapters)
+    }));
 });
 
 service.getPath('services', async (msg: Message, context: SimpleServiceContext) => {
@@ -172,11 +191,13 @@ service.getPath('services', async (msg: Message, context: SimpleServiceContext) 
     return msg.setDataJson(services);
 });
 
-service.getPath('agent-discovery', async (msg: Message, context: SimpleServiceContext) => {
+const getAgentDiscovery = async (msg: Message, context: SimpleServiceContext) => {
     const tenant = config.tenants[context.tenant];
     const discovery = await buildAgentDiscovery(tenant);
     return msg.setDataJson(discovery);
-});
+};
+
+service.getPath('agent-discovery', getAgentDiscovery);
 
 const getRaw = (msg: Message, context: SimpleServiceContext) => {
     const tenant = config.tenants[context.tenant];
@@ -295,6 +316,7 @@ const getRawJsonc = async (msg: Message, context: SimpleServiceContext) => {
 };
 
 service.getPath('raw.jsonc', getRawJsonc);
+service.getPath('services/agent-discovery', getAgentDiscovery);
 
 const rebuildConfig = async (rawServicesConfig: IRawServicesConfig, tenant: string): Promise<[ number, string ]> => {
     // Remove cached code from this tenant so that all code stored on the tenant is reloaded to latest version

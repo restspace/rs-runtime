@@ -146,6 +146,43 @@ Deno.test("raw jsonc describes service config", async () => {
 
     const parsed = JSON.parse(stripJsoncComments(jsonc));
     assertEquals(parsed, config.tenants['servicesService'].rawServicesConfig);
+    const agentDiscoveryMsg = testMessage('/.well-known/restspace/agent-discovery', 'GET');
+    agentDiscoveryMsg.cookies['rs-auth'] = token;
+    const agentDiscoveryOut = await handleIncomingRequest(agentDiscoveryMsg);
+    assert(agentDiscoveryOut.ok && agentDiscoveryOut.data !== undefined, 'failed to get agent discovery');
+    const agentDiscovery = await agentDiscoveryOut.data.asJson() as {
+        services: Array<{ basePath: string, description?: string }>
+    };
+    assert(
+        agentDiscovery.services.some(service =>
+            service.basePath === '/data/ds'
+            && service.description === 'Reads and writes data with configured schema from urls by key'
+        ),
+        'agent discovery should include service descriptions'
+    );
+
+    const compatibilityMsg = testMessage('/.well-known/restspace/services/agent-discovery', 'GET');
+    compatibilityMsg.cookies['rs-auth'] = token;
+    const compatibilityOut = await handleIncomingRequest(compatibilityMsg);
+    assert(compatibilityOut.ok && compatibilityOut.data !== undefined, 'failed to get compatibility agent discovery');
+    assertEquals(await compatibilityOut.data.asJson(), agentDiscovery);
+
+    const catalogueAgentDiscoveryMsg = testMessage('/.well-known/restspace/catalogue/agent-discovery', 'GET');
+    catalogueAgentDiscoveryMsg.cookies['rs-auth'] = token;
+    const catalogueAgentDiscoveryOut = await handleIncomingRequest(catalogueAgentDiscoveryMsg);
+    assert(catalogueAgentDiscoveryOut.ok && catalogueAgentDiscoveryOut.data !== undefined, 'failed to get catalogue agent discovery');
+    const catalogueAgentDiscovery = await catalogueAgentDiscoveryOut.data.asJson() as {
+        services: Record<string, string>,
+        adaptors: Record<string, string>
+    };
+    assertEquals(
+        catalogueAgentDiscovery.services['Dataset Service'],
+        'Reads and writes data with configured schema from urls by key'
+    );
+    assertEquals(
+        catalogueAgentDiscovery.adaptors['Local File Adapter'],
+        'Reads and writes files on the file system local to the runtime'
+    );
 });
 
 Deno.test("add chord", async () => {

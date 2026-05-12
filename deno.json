@@ -1,4 +1,5 @@
 {
+  "nodeModulesDir": "auto",
   "imports": {
     "@libs/xml": "jsr:@libs/xml@^5.4.13",
     "@neabyte/deno-mailer": "jsr:@neabyte/deno-mailer@0.3",
