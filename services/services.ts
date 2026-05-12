@@ -14,11 +14,16 @@ import { operationApi, storeApi, transformApi, viewApi } from "../openApi.ts";
 import { Url } from "../../rs-core/Url.ts";
 
 type InfraDetails = Record<string, unknown> & Infra;
+type InfraCatalogueEntry = {
+    adapterSource: string;
+    preconfigured: string[];
+    description?: string;
+};
 
 const catalogue: Record<string, {
     services: Record<string, IServiceManifest & { source: string }>,
     adapters: Record<string, IAdapterManifest & { source: string }>,
-    infra?: Record<string, InfraDetails>
+    infra?: Record<string, InfraCatalogueEntry>
 }> = {};
 
 const deleteManifestProperties = [ 'exposedConfigProperties' ];
@@ -44,8 +49,9 @@ const infraAsCatalogue = (entry: [string, InfraDetails]) => {
     const [name, infra] = entry;
     return [name, {
         adapterSource: infra.adapterSource,
-        preconfigured: Object.keys(infra).filter(k => k !== 'adapterSource')
-    }] as [string, { adapterSource: string, preconfigured: string[] }];
+        preconfigured: Object.keys(infra).filter(k => ![ 'adapterSource', 'description' ].includes(k)),
+        ...(infra.description ? { description: infra.description } : {})
+    }] as [string, InfraCatalogueEntry];
 }
 
 const fetchDomainCatalogue = (domainOrTenant: string) => {
@@ -123,6 +129,16 @@ const manifestsAsDescriptionMap = <TManifest extends { name: string, description
 ) => Object.fromEntries(Object.values(manifests)
     .map(manifest => [ manifest.name, manifest.description ?? "" ]));
 
+const infraAsDescriptionMap = (
+    infra: Record<string, InfraCatalogueEntry>
+) => Object.fromEntries(Object.entries(infra)
+    .map(([ name, infraDetails ]) => [ name, infraDetails.description ?? "" ]));
+
+const findManifestByName = <TManifest extends { name: string }>(
+    manifests: Record<string, TManifest>,
+    name: string
+) => Object.values(manifests).find(manifest => manifest.name === name);
+
 service.constantDirectory('/', {
     path: '/',
     paths: [
@@ -150,10 +166,21 @@ service.getPath('catalogue', async (msg, context) => {
 
 service.getPath('catalogue/agent-discovery', async (msg, context) => {
     const allCat = await buildCatalogueForContext(context);
+    const name = msg.url.servicePathElements.join('/');
+
+    if (name) {
+        const manifest = findManifestByName(allCat.services, name)
+            || findManifestByName(allCat.adapters, name);
+        if (manifest) return msg.setDataJson(manifest);
+
+        const infra = allCat.infra[name];
+        return infra ? msg.setDataJson(infra) : msg.setStatus(404, 'Not found');
+    }
 
     return Promise.resolve(msg.setDataJson({
         services: manifestsAsDescriptionMap(allCat.services),
-        adaptors: manifestsAsDescriptionMap(allCat.adapters)
+        adapters: manifestsAsDescriptionMap(allCat.adapters),
+        infra: infraAsDescriptionMap(allCat.infra)
     }));
 });
 

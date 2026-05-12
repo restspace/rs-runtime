@@ -12,6 +12,7 @@ import { stripUndefined } from "rs-core/utility/schema.ts";
 
 export interface Infra {
     adapterSource: string; // cannot be site relative
+    description?: string;
 }
 
 export interface IServerConfig {

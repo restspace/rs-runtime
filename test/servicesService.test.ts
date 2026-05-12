@@ -173,16 +173,51 @@ Deno.test("raw jsonc describes service config", async () => {
     assert(catalogueAgentDiscoveryOut.ok && catalogueAgentDiscoveryOut.data !== undefined, 'failed to get catalogue agent discovery');
     const catalogueAgentDiscovery = await catalogueAgentDiscoveryOut.data.asJson() as {
         services: Record<string, string>,
-        adaptors: Record<string, string>
+        adapters: Record<string, string>,
+        infra: Record<string, string>
     };
     assertEquals(
         catalogueAgentDiscovery.services['Dataset Service'],
         'Reads and writes data with configured schema from urls by key'
     );
     assertEquals(
-        catalogueAgentDiscovery.adaptors['Local File Adapter'],
+        catalogueAgentDiscovery.adapters['Local File Adapter'],
         'Reads and writes files on the file system local to the runtime'
     );
+    assertEquals(
+        catalogueAgentDiscovery.infra['localStore'],
+        'Local filesystem storage for tenant data'
+    );
+    assertEquals(catalogueAgentDiscovery.infra['localDisk'], "");
+
+    const catalogueServiceMsg = testMessage('/.well-known/restspace/catalogue/agent-discovery/Dataset%20Service', 'GET');
+    catalogueServiceMsg.cookies['rs-auth'] = token;
+    const catalogueServiceOut = await handleIncomingRequest(catalogueServiceMsg);
+    assert(catalogueServiceOut.ok && catalogueServiceOut.data !== undefined, 'failed to get catalogue service by name');
+    const catalogueService = await catalogueServiceOut.data.asJson() as { name: string, description: string };
+    assertEquals(catalogueService.name, 'Dataset Service');
+    assertEquals(catalogueService.description, 'Reads and writes data with configured schema from urls by key');
+
+    const catalogueAdapterMsg = testMessage('/.well-known/restspace/catalogue/agent-discovery/Local%20File%20Adapter', 'GET');
+    catalogueAdapterMsg.cookies['rs-auth'] = token;
+    const catalogueAdapterOut = await handleIncomingRequest(catalogueAdapterMsg);
+    assert(catalogueAdapterOut.ok && catalogueAdapterOut.data !== undefined, 'failed to get catalogue adapter by name');
+    const catalogueAdapter = await catalogueAdapterOut.data.asJson() as { name: string, description: string };
+    assertEquals(catalogueAdapter.name, 'Local File Adapter');
+    assertEquals(catalogueAdapter.description, 'Reads and writes files on the file system local to the runtime');
+
+    const catalogueInfraMsg = testMessage('/.well-known/restspace/catalogue/agent-discovery/localStore', 'GET');
+    catalogueInfraMsg.cookies['rs-auth'] = token;
+    const catalogueInfraOut = await handleIncomingRequest(catalogueInfraMsg);
+    assert(catalogueInfraOut.ok && catalogueInfraOut.data !== undefined, 'failed to get catalogue infra by name');
+    const catalogueInfra = await catalogueInfraOut.data.asJson() as {
+        adapterSource: string,
+        description: string,
+        preconfigured: string[]
+    };
+    assertEquals(catalogueInfra.adapterSource, './adapter/LocalFileAdapter.ram.json');
+    assertEquals(catalogueInfra.description, 'Local filesystem storage for tenant data');
+    assertEquals(catalogueInfra.preconfigured, [ 'rootPath' ]);
 });
 
 Deno.test("add chord", async () => {

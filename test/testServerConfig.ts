@@ -19,6 +19,7 @@ export const testServerConfig = JSON.parse(`{
         },
         "localStore": {
             "adapterSource": "./adapter/LocalFileAdapter.ram.json",
+            "description": "Local filesystem storage for tenant data",
             "rootPath": "` + 'C:\\\\Dev\\\\test\\\\test-data\\\\${tenant}' + `"
         }
     },
