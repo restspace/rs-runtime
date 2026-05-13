@@ -80,6 +80,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function parsePagingNumber(value: unknown, name: string): number | undefined {
   if (value === undefined) return undefined;
+  if (isIgnoreMarker(value)) return undefined;
   if (
     typeof value !== "number" || !Number.isFinite(value) || value < 0 ||
     !Number.isInteger(value)

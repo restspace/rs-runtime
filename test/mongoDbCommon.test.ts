@@ -71,6 +71,17 @@ Deno.test("parseAggregateQuery accepts from/size", () => {
   assertEquals(q.size, 10);
 });
 
+Deno.test("parseAggregateQuery treats $ignore paging values as omitted", () => {
+  const q = parseAggregateQuery({
+    collection: "orders",
+    pipeline: [{ $match: { status: "paid" } }],
+    from: { $ignore: true },
+    size: { $ignore: true },
+  });
+  assertEquals(q.from, undefined);
+  assertEquals(q.size, undefined);
+});
+
 Deno.test("isMongoDuplicateKeyError detects code 11000", () => {
   assertEquals(isMongoDuplicateKeyError({ code: 11000 }), true);
   assertEquals(isMongoDuplicateKeyError({ code: 123 }), false);

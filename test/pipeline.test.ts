@@ -459,6 +459,29 @@ Deno.test('transform with url segments', async function () {
     const output = await msgOut.data?.asJson();
     assertStrictEquals(output.out, 'aa a');
 });
+Deno.test('transform identity', async function () {
+    const msgOut = await pipeline(testMessage('/111/abc', 'POST').setDataJson({ a: 1, b: 2 }), [
+        {
+            "$": "$"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assert(output.a === 1);
+});
+Deno.test('transform identity with stream JSON body', async function () {
+    const req = new Request('http://pipeline.restspace.local:3100/111/abc', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ a: 0 })
+    });
+    const msgOut = await pipeline(Message.fromRequest(req, 'pipeline'), [
+        {
+            "$": "$"
+        }
+    ]);
+    const output = await msgOut.data?.asJson();
+    assertEquals(output, { a: 0 });
+});
 Deno.test('transform list', async function () {
     const msgOut = await pipeline(testMessage('/111/abc', 'GET'), [
         {

@@ -10,7 +10,7 @@ export class PipelineTransform {
     async execute(msg: Message, context: PipelineContext): Promise<Message> {
         const dataIsStream = msg.data?.isStream || false;
         const dataIsJson = msg.data && isJson(msg.data.mimeType);
-        const jsonIn = msg.data && !dataIsStream ? await msg.data.asJson() : {};
+        const jsonIn = msg.data ? await msg.data.asJson() : {};
         let transJson: any = null;
         try {
             // Expose message details as transform variables, while preserving the shared pipeline VariableScope.

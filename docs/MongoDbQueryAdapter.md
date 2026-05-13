@@ -188,6 +188,7 @@ automatically removed from queries, making them act as "optional filters".
 4. Before query execution, the pipeline is scanned for `$ignore` markers
 5. Fields containing `$ignore` markers are removed
 6. Empty `$and`/`$or`/`$in`/`$all`/`$nin` arrays are also removed
+7. Top-level `from`/`size` values containing `$ignore` are treated as omitted
 
 ### Example
 

@@ -41,6 +41,7 @@ function makeAdapterWithCapture(
   roleSpec: string,
   userObj: Record<string, unknown> | null,
   rows: unknown[],
+  props: Record<string, unknown> = {},
 ) {
   const captured: Captured = { aggregateCalls: 0 };
   const context = makeStubAdapterContext(roleSpec, userObj) as any;
@@ -48,6 +49,7 @@ function makeAdapterWithCapture(
   const adapter = new MongoDbQueryAdapter(context, {
     url: "mongodb://example.invalid:27017",
     dbName: "test",
+    ...props,
   });
 
   // Stub out networking: don't connect; provide fake collection.aggregate() capturing the pipeline.
@@ -162,6 +164,23 @@ Deno.test("MongoDbQueryAdapter data-field auth: injected $match occurs before pa
   assertEquals(matchIdx >= 0, true);
   assertEquals(facetIdx >= 0, true);
   assertEquals(matchIdx < facetIdx, true);
+});
+
+Deno.test("MongoDbQueryAdapter ignore markers: treats top-level paging markers as omitted", async () => {
+  const query = JSON.stringify({
+    collection: "users",
+    from: { $ignore: true },
+    size: { $ignore: true },
+    pipeline: [{ $match: { active: true } }],
+  });
+
+  const { adapter, captured } = makeAdapterWithCapture("U", null, [], {
+    ignoreEmptyVariables: true,
+  });
+  const res = await adapter.runQuery(query, {});
+
+  assertEquals(res, []);
+  assertEquals(captured.pipeline, [{ $match: { active: true } }]);
 });
 
 Deno.test("MongoDbQueryAdapter include markers: prunes objects with falsy _include", async () => {
