@@ -15,6 +15,7 @@ export interface ElasticAdapterProps {
   password: string;
   host: string;
   writeDelayMs?: number;
+  tenantIndexes?: boolean;
 }
 
 export const schemaToMapping = (schema: any): any => {
@@ -164,6 +165,9 @@ export default class ElasticDataAdapter
   }
 
   physicalIndexName(dataset: string) {
+    if (this.props.tenantIndexes === false) {
+      return this.normaliseIndexName(dataset);
+    }
     return prefixStorageName(
       this.context.tenant,
       this.normaliseIndexName(dataset),
@@ -175,6 +179,9 @@ export default class ElasticDataAdapter
   }
 
   logicalIndexName(index: string): string | null {
+    if (this.props.tenantIndexes === false) {
+      return this.normaliseIndexName(index);
+    }
     return unprefixStorageName(this.context.tenant, index, { lowerCase: true });
   }
 

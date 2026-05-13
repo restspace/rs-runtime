@@ -1,7 +1,7 @@
 import { Message } from "rs-core/Message.ts";
 import { Service } from "rs-core/Service.ts";
 import { schemaIServiceConfig, schemaIServiceConfigExposedProperties } from "rs-core/IServiceConfig.ts";
-import { config, Infra } from "../config.ts";
+import { config, Infra, infraAvailableForTenant } from "../config.ts";
 import { IAdapterManifest, IServiceManifest } from "rs-core/IManifest.ts";
 import { IRawServicesConfig, Tenant } from "../tenant.ts";
 import { MessageBody } from "rs-core/MessageBody.ts";
@@ -49,10 +49,14 @@ const infraAsCatalogue = (entry: [string, InfraDetails]) => {
     const [name, infra] = entry;
     return [name, {
         adapterSource: infra.adapterSource,
-        preconfigured: Object.keys(infra).filter(k => ![ 'adapterSource', 'description' ].includes(k)),
+        preconfigured: Object.keys(infra).filter(k => ![ 'adapterSource', 'description', 'allowedTenants' ].includes(k)),
         ...(infra.description ? { description: infra.description } : {})
     }] as [string, InfraCatalogueEntry];
 }
+
+const infraAvailableCatalogueEntries = (infra: Record<string, InfraCatalogueEntry>, tenant: string) =>
+    Object.fromEntries(Object.entries(infra)
+        .filter(([ name ]) => infraAvailableForTenant(config.server.infra[name], tenant)));
 
 const fetchDomainCatalogue = (domainOrTenant: string) => {
     const serviceManifests = (config.modules.serviceManifestsMap[domainOrTenant] || [])
@@ -112,7 +116,7 @@ const buildCatalogueForContext = async (context: SimpleServiceContext) => {
             ...catalogue[builtIns].adapters,
             ...catalogue[localDomain].adapters
         },
-        infra: { ...catalogue[builtIns].infra }
+        infra: infraAvailableCatalogueEntries(catalogue[builtIns].infra || {}, context.tenant)
     };
 
     for (const lib of extLibs) {

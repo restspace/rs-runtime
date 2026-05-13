@@ -6,7 +6,7 @@ import { assignProperties } from "rs-core/utility/schema.ts";
 import { IServiceConfig, IServiceConfigTemplate, schemaIServiceConfig } from "rs-core/IServiceConfig.ts";
 import { Url } from "rs-core/Url.ts";
 import { IAdapterManifest, IManifest, IServiceManifest } from "rs-core/IManifest.ts";
-import { Infra, config } from "./config.ts";
+import { adapterConfigFromInfra, assertInfraAvailableForTenant, config } from "./config.ts";
 import { IFileAdapter } from "rs-core/adapter/IFileAdapter.ts";
 
 import TestConfigFileAdapterManifest from "./test/TestConfigFileAdapter.ram.js";
@@ -115,6 +115,10 @@ export const schemaIAdapterManifest = {
             properties: { }
         },
         "adapterInterfaces": {
+            type: "array",
+            items: { type: "string" }
+        },
+        "infraOnlyConfigProperties": {
             type: "array",
             items: { type: "string" }
         }
@@ -330,10 +334,12 @@ export class Modules {
     }
 
     async getConfigAdapter(tenant: string) {
-        const configStoreAdapterSpec = { ...config.server.infra[config.server.configStore] };
-        (configStoreAdapterSpec as Infra & { basePath: '/' }).basePath = "/";
+        const configStoreInfra = config.server.infra[config.server.configStore];
+        assertInfraAvailableForTenant(config.server.configStore, configStoreInfra, tenant);
+        const configStoreAdapterSpec = adapterConfigFromInfra(configStoreInfra) as Record<string, unknown> & { basePath: string };
+        configStoreAdapterSpec.basePath = "/";
         const context = makeServiceContext(tenant, nullState);
-        const configAdapter = await config.modules.getAdapter<IFileAdapter>(configStoreAdapterSpec.adapterSource, context, configStoreAdapterSpec);
+        const configAdapter = await config.modules.getAdapter<IFileAdapter>(configStoreInfra.adapterSource, context, configStoreAdapterSpec);
         return configAdapter;
     }
 

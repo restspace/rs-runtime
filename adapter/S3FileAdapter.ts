@@ -16,7 +16,7 @@ export interface S3FileAdapterProps {
   rootPath: string;
   bucketName: string;
   region: string;
-  /** @deprecated Tenant directories are now always applied by the adapter. */
+  /** Prefix S3 object keys with the safe tenant segment; defaults to true. */
   tenantDirectories?: boolean;
   secretAccessKey?: string;
   accessKeyId?: string;
@@ -100,7 +100,11 @@ class S3FileAdapterBase implements IFileAdapter {
     forQuery?: boolean,
   ): [string, string] {
     reqPath = reqPath.split("?")[0]; // remove any query string
-    let fullPath = pathCombine(this.basePath, decodeURI(reqPath));
+    let fullPath = pathCombine(
+      this.basePath,
+      this.props.tenantDirectories !== false ? this.tenantSegment : "",
+      decodeURI(reqPath),
+    );
     if (fullPath.startsWith("/")) fullPath = fullPath.substr(1);
     if (fullPath.endsWith("/")) {
       forDir = true;
@@ -110,7 +114,6 @@ class S3FileAdapterBase implements IFileAdapter {
       ? this.queryCanonicalisePath(fullPath)
       : this.canonicalisePath(fullPath);
     const pathParts = transPath.split("/");
-    pathParts.unshift(this.tenantSegment);
 
     let ext = "";
     if (!forDir) {

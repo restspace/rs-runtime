@@ -9,6 +9,7 @@ export interface ElasticAdapterProps {
   username: string;
   password: string;
   host: string;
+  tenantIndexes?: boolean;
 }
 
 export default class ElasticQueryAdapter implements IQueryAdapter {
@@ -31,6 +32,9 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
   }
 
   physicalIndexName(index: string) {
+    if (this.props.tenantIndexes === false) {
+      return this.normaliseIndexName(index);
+    }
     return prefixStorageName(
       this.context.tenant,
       this.normaliseIndexName(index),
@@ -42,6 +46,9 @@ export default class ElasticQueryAdapter implements IQueryAdapter {
   }
 
   tenantIndexWildcard() {
+    if (this.props.tenantIndexes === false) {
+      return "*";
+    }
     return `${
       tenantStoragePrefix(this.context.tenant, { lowerCase: true })
     }__*`;

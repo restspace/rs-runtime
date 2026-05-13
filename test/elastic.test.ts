@@ -1,5 +1,7 @@
 import { assertEquals } from "std/testing/asserts.ts";
-import { schemaToMapping } from "../adapter/ElasticDataAdapter.ts";
+import ElasticDataAdapter, { schemaToMapping } from "../adapter/ElasticDataAdapter.ts";
+import ElasticQueryAdapter from "../adapter/ElasticQueryAdapter.ts";
+import { makeAdapterContext } from "./testUtility.ts";
 
 Deno.test('schema to mapping primitives', function () {
     const schema = {
@@ -105,4 +107,61 @@ Deno.test('schema to mapping object array to nested', function () {
             }
         }
     });
+});
+
+Deno.test("ElasticDataAdapter tenantIndexes controls physical and logical index names", () => {
+    const baseProps = {
+        host: "http://elastic",
+        username: "user",
+        password: "pass",
+    };
+
+    const defaultAdapter = new ElasticDataAdapter(
+        makeAdapterContext("Tenant A"),
+        baseProps,
+    );
+    const enabledAdapter = new ElasticDataAdapter(
+        makeAdapterContext("Tenant A"),
+        { ...baseProps, tenantIndexes: true },
+    );
+    const disabledAdapter = new ElasticDataAdapter(
+        makeAdapterContext("Tenant A"),
+        { ...baseProps, tenantIndexes: false },
+    );
+
+    assertEquals(defaultAdapter.physicalIndexName("Orders"), "tenant_a__orders");
+    assertEquals(enabledAdapter.physicalIndexName("Orders"), "tenant_a__orders");
+    assertEquals(disabledAdapter.physicalIndexName("Orders"), "orders");
+    assertEquals(defaultAdapter.schemaIndexName(), "tenant_a__.schemas");
+    assertEquals(disabledAdapter.schemaIndexName(), ".schemas");
+    assertEquals(defaultAdapter.logicalIndexName("tenant_a__orders"), "orders");
+    assertEquals(defaultAdapter.logicalIndexName("shared__orders"), null);
+    assertEquals(disabledAdapter.logicalIndexName("orders"), "orders");
+});
+
+Deno.test("ElasticQueryAdapter tenantIndexes controls explicit and wildcard index names", () => {
+    const baseProps = {
+        host: "http://elastic",
+        username: "user",
+        password: "pass",
+    };
+
+    const defaultAdapter = new ElasticQueryAdapter(
+        makeAdapterContext("Tenant A"),
+        baseProps,
+    );
+    const enabledAdapter = new ElasticQueryAdapter(
+        makeAdapterContext("Tenant A"),
+        { ...baseProps, tenantIndexes: true },
+    );
+    const disabledAdapter = new ElasticQueryAdapter(
+        makeAdapterContext("Tenant A"),
+        { ...baseProps, tenantIndexes: false },
+    );
+
+    assertEquals(defaultAdapter.physicalIndexName("Orders"), "tenant_a__orders");
+    assertEquals(enabledAdapter.physicalIndexName("Orders"), "tenant_a__orders");
+    assertEquals(disabledAdapter.physicalIndexName("Orders"), "orders");
+    assertEquals(defaultAdapter.tenantIndexWildcard(), "tenant_a__*");
+    assertEquals(disabledAdapter.tenantIndexWildcard(), "*");
 });

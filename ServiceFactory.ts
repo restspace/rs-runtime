@@ -2,7 +2,7 @@ import { Message } from "rs-core/Message.ts";
 import { MessageFunction, Service } from "rs-core/Service.ts";
 import { Source } from "rs-core/Source.ts";
 import { Url } from "rs-core/Url.ts";
-import { config } from "./config.ts";
+import { adapterConfigFromInfra, assertInfraAvailableForTenant, config, infraAvailableForTenant, Infra } from "./config.ts";
 import { IServiceConfigTemplate, IServiceConfig } from "rs-core/IServiceConfig.ts";
 import { ServiceWrapper } from "./ServiceWrapper.ts";
 import { applyServiceConfigTemplate } from "./Modules.ts";
@@ -86,6 +86,11 @@ export class ServiceFactory {
         if (missingInfraNames.length) {
             throw new Error(`tenant ${this.tenant} has infra names that don't exist: ${missingInfraNames.join(', ')}`);
         }
+        const unavailableInfraNames = infraNames
+            .filter(i => !infraAvailableForTenant(config.server.infra[i as string], this.tenant));
+        if (unavailableInfraNames.length) {
+            throw new Error(`tenant ${this.tenant} cannot use infra names: ${unavailableInfraNames.join(', ')}`);
+        }
         const adapterInfraManifestSources = infraNames
             .map(i => config.server.infra[i as string].adapterSource) as string[];
 
@@ -156,6 +161,7 @@ export class ServiceFactory {
     async infraForAdapterInterface(adapterInterface: string) {
         let infraName = '';
         for (const [ name, infra ] of Object.entries(config.server.infra)) {
+            if (!infraAvailableForTenant(infra, this.tenant)) continue;
             const adapterManifest = await config.modules.getAdapterManifest(infra.adapterSource, this.tenant);
             if (typeof adapterManifest === 'string') {
                 config.logger.error('Failed to load adapter manifest: ' + adapterManifest);
@@ -170,6 +176,57 @@ export class ServiceFactory {
         return infraName;
     }
 
+    private async getAdapterManifestForSource(adapterSource: string) {
+        const adapterManifest = this.adapterManifestsBySource[adapterSource]
+            || await config.modules.getAdapterManifest(adapterSource, this.tenant, this.primaryDomain);
+        if (typeof adapterManifest === 'string') {
+            throw new Error(`failed to load adapter manifest ${adapterSource}: ${adapterManifest}`);
+        }
+        return adapterManifest;
+    }
+
+    private async rejectInfraOnlyServiceAdapterConfig(
+        serviceConfig: IServiceConfig,
+        adapterSource: string,
+        adapterConfig: Record<string, unknown>,
+    ) {
+        const adapterManifest = await this.getAdapterManifestForSource(adapterSource);
+        const infraOnlyProperties = adapterManifest.infraOnlyConfigProperties || [];
+        const suppliedInfraOnlyProperties = Object.keys(adapterConfig)
+            .filter(prop => infraOnlyProperties.includes(prop));
+        if (suppliedInfraOnlyProperties.length) {
+            throw new Error(
+                `service ${serviceConfig.name} adapterConfig cannot set infra-only adapter config properties: ${suppliedInfraOnlyProperties.join(', ')}`
+            );
+        }
+    }
+
+    private isElasticsearchAdapter(adapterManifest: IAdapterManifest) {
+        const moduleUrl = adapterManifest.moduleUrl;
+        if (!moduleUrl) return false;
+        return [
+            "./adapter/ElasticDataAdapter.ts",
+            "./adapter/ElasticQueryAdapter.ts",
+        ].includes(moduleUrl);
+    }
+
+    private async rejectUnsafeElasticsearchTenantIndexes(infraName: string, infra: Infra) {
+        if (infra.tenantIndexes !== false) return;
+
+        const adapterManifest = await this.getAdapterManifestForSource(infra.adapterSource);
+        if (!this.isElasticsearchAdapter(adapterManifest)) return;
+
+        const allowedTenants = infra.allowedTenants;
+        const hasNonEmptyAllowedTenants = Array.isArray(allowedTenants) &&
+            allowedTenants.length > 0 &&
+            allowedTenants.every(tenant => typeof tenant === "string" && tenant.length > 0);
+        if (!hasNonEmptyAllowedTenants) {
+            throw new Error(
+                `infra ${infraName} sets tenantIndexes false for Elasticsearch and must specify a non-empty allowedTenants string array`
+            );
+        }
+    }
+
     async extendContextWithAdapter(serviceConfig: IServiceConfig, serviceContext: ServiceContext<IAdapter>) {
         let adapter: IAdapter | undefined = undefined;
         if (serviceConfig.adapterSource || serviceConfig.infraName) {
@@ -177,8 +234,13 @@ export class ServiceFactory {
             let adapterSource = serviceConfig.adapterSource;
             if (serviceConfig.infraName) {
                 const infra = config.server.infra[serviceConfig.infraName];
+                assertInfraAvailableForTenant(serviceConfig.infraName, infra, this.tenant);
                 adapterSource = infra.adapterSource;
-                Object.assign(adapterConfig, infra);
+                await this.rejectInfraOnlyServiceAdapterConfig(serviceConfig, adapterSource, adapterConfig);
+                await this.rejectUnsafeElasticsearchTenantIndexes(serviceConfig.infraName, infra);
+                Object.assign(adapterConfig, adapterConfigFromInfra(infra));
+            } else {
+                await this.rejectInfraOnlyServiceAdapterConfig(serviceConfig, adapterSource as string, adapterConfig);
             }
 
             const canonicalAdapterSource = config.canonicaliseUrl(adapterSource as string, this.tenant, this.primaryDomain);

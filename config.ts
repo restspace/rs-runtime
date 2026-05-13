@@ -13,6 +13,25 @@ import { stripUndefined } from "rs-core/utility/schema.ts";
 export interface Infra {
     adapterSource: string; // cannot be site relative
     description?: string;
+    allowedTenants?: string[];
+    [ key: string ]: unknown;
+}
+
+const infraPolicyProperties = [ "adapterSource", "description", "allowedTenants" ];
+
+export const infraAvailableForTenant = (infra: Infra, tenant: string) =>
+    !infra.allowedTenants?.length || infra.allowedTenants.includes(tenant);
+
+export const assertInfraAvailableForTenant = (infraName: string, infra: Infra, tenant: string) => {
+    if (!infraAvailableForTenant(infra, tenant)) {
+        throw new Error(`infra ${infraName} is not available to tenant ${tenant}`);
+    }
+}
+
+export const adapterConfigFromInfra = (infra: Infra): Record<string, unknown> => {
+    const adapterConfig = { ...(infra as unknown as Record<string, unknown>) };
+    infraPolicyProperties.forEach(prop => delete adapterConfig[prop]);
+    return adapterConfig;
 }
 
 export interface IServerConfig {
