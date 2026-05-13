@@ -1,11 +1,12 @@
 import { ObjectId } from "mongodb";
 import { resolveMongoDNS } from "https://deno.land/x/resolve_mongo_dns/mod.ts";
+import { prefixStorageName, tenantStoragePrefix } from "./tenantStorage.ts";
 
 export interface MongoDbConnectionProps {
   /** MongoDB connection URI. Supports mongodb:// and mongodb+srv:// */
   url: string;
-  /** Single database name to use for all operations. */
-  dbName: string;
+  /** Optional logical database name. Physical DB is tenant-prefixed when set, or the tenant name when omitted. */
+  dbName?: string;
   /** Optional path to a CA bundle (commonly needed for Amazon DocumentDB TLS). */
   tlsCAFile?: string;
   /** Optional server selection timeout in ms (defaults to 2000). */
@@ -29,9 +30,30 @@ export function parseId(key: string): ObjectId | string {
 }
 
 export function normalizeCollectionName(dataset: string): string {
-  if (dataset === "." || dataset === "..") throw new Error("Invalid collection name");
+  if (dataset === "." || dataset === "..") {
+    throw new Error("Invalid collection name");
+  }
   // Keep names readable across MongoDB providers. Replace obviously problematic chars.
   return dataset.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120);
+}
+
+export function normalizeDatabaseName(dbName: string): string {
+  const normalized = dbName.replace(/[^a-zA-Z0-9_-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 63);
+  return normalized || "db";
+}
+
+export function mongoDatabaseNameForTenant(
+  tenant: string,
+  dbName?: string,
+): string {
+  const logicalDbName = dbName?.trim();
+  if (!logicalDbName) return tenantStoragePrefix(tenant).slice(0, 63);
+  return prefixStorageName(tenant, normalizeDatabaseName(logicalDbName), {
+    maxLength: 63,
+  });
 }
 
 export interface MongoAggregateQuery {
@@ -49,15 +71,22 @@ const keepEmptyOperatorObjects = new Set([
 ]);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
 
 function parsePagingNumber(value: unknown, name: string): number | undefined {
   if (value === undefined) return undefined;
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
-    throw new QueryFormatError(`If provided, "${name}" must be a non-negative integer`);
+  if (
+    typeof value !== "number" || !Number.isFinite(value) || value < 0 ||
+    !Number.isInteger(value)
+  ) {
+    throw new QueryFormatError(
+      `If provided, "${name}" must be a non-negative integer`,
+    );
   }
   return value;
 }
@@ -72,17 +101,26 @@ export function parseAggregateQuery(obj: unknown): MongoAggregateQuery {
   const pipeline = rec.pipeline;
 
   if (typeof collection !== "string" || !collection) {
-    throw new QueryFormatError('Query must include non-empty string field "collection"');
+    throw new QueryFormatError(
+      'Query must include non-empty string field "collection"',
+    );
   }
   if (!Array.isArray(pipeline)) {
     throw new QueryFormatError('Query must include array field "pipeline"');
   }
-  if (!pipeline.every((stage) => stage && typeof stage === "object" && !Array.isArray(stage))) {
+  if (
+    !pipeline.every((stage) =>
+      stage && typeof stage === "object" && !Array.isArray(stage)
+    )
+  ) {
     throw new QueryFormatError("Each pipeline stage must be an object");
   }
 
   const options = rec.options;
-  if (options !== undefined && (!options || typeof options !== "object" || Array.isArray(options))) {
+  if (
+    options !== undefined &&
+    (!options || typeof options !== "object" || Array.isArray(options))
+  ) {
     throw new QueryFormatError('If provided, "options" must be an object');
   }
 
@@ -200,8 +238,10 @@ function processIgnoreValue(value: unknown): unknown {
       const processed = processIgnoreValue(item);
       if (processed !== undefined) {
         // Skip empty objects in arrays (from cleaned $and/$or children)
-        if (typeof processed === "object" && processed !== null &&
-            !Array.isArray(processed) && Object.keys(processed).length === 0) {
+        if (
+          typeof processed === "object" && processed !== null &&
+          !Array.isArray(processed) && Object.keys(processed).length === 0
+        ) {
           continue;
         }
         result.push(processed);
@@ -222,30 +262,40 @@ function processIgnoreValue(value: unknown): unknown {
       if (processed === undefined) continue; // Remove this field
 
       // Remove empty $and/$or/$in/$all/$nin arrays
-      if ((key === "$and" || key === "$or" || key === "$in" || key === "$all" || key === "$nin") &&
-          Array.isArray(processed) && processed.length === 0) {
+      if (
+        (key === "$and" || key === "$or" || key === "$in" || key === "$all" ||
+          key === "$nin") &&
+        Array.isArray(processed) && processed.length === 0
+      ) {
         continue;
       }
 
       // Remove non-operator fields with empty object values (e.g. { "tags": {} } after $in was removed)
       // Keep operator keys like $match, $lookup etc. with empty values
-      if (!key.startsWith("$") &&
-          typeof processed === "object" && processed !== null &&
-          !Array.isArray(processed) && Object.keys(processed).length === 0) {
+      if (
+        !key.startsWith("$") &&
+        typeof processed === "object" && processed !== null &&
+        !Array.isArray(processed) && Object.keys(processed).length === 0
+      ) {
         continue;
       }
 
       // Remove empty operator objects in expressions (e.g. { "$gte": {} } after removing "$date").
       // Keep "$match": {} because an empty $match is valid and matches all documents.
-      if (key.startsWith("$") &&
-          typeof processed === "object" && processed !== null &&
-          !Array.isArray(processed) && Object.keys(processed).length === 0 &&
-          !keepEmptyOperatorObjects.has(key)) {
+      if (
+        key.startsWith("$") &&
+        typeof processed === "object" && processed !== null &&
+        !Array.isArray(processed) && Object.keys(processed).length === 0 &&
+        !keepEmptyOperatorObjects.has(key)
+      ) {
         continue;
       }
 
       // Remove orphaned $options (only meaningful with $regex)
-      if (typeof processed === "object" && processed !== null && !Array.isArray(processed)) {
+      if (
+        typeof processed === "object" && processed !== null &&
+        !Array.isArray(processed)
+      ) {
         const keys = Object.keys(processed);
         if (keys.length === 1 && keys[0] === "$options") {
           continue;
@@ -267,7 +317,7 @@ function processIgnoreValue(value: unknown): unknown {
  * - Empty $match stages are kept
  */
 export function cleanIgnoreMarkers(
-  pipeline: Record<string, unknown>[]
+  pipeline: Record<string, unknown>[],
 ): Record<string, unknown>[] {
   return processIgnoreValue(pipeline) as Record<string, unknown>[];
 }

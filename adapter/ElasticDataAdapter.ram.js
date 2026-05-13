@@ -1,6 +1,6 @@
 export default {
     "name": "Elasticsearch Data Adapter",
-    "description": "Reads and writes data to Elasticsearch",
+    "description": "Reads and writes tenant-prefixed data to Elasticsearch",
     "moduleUrl": "./adapter/ElasticDataAdapter.ts",
     "configSchema": {
         "type": "object",

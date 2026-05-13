@@ -5,10 +5,10 @@ export default {
     "configSchema": {
         "type": "object",
         "properties": {
-            "rootPath": { "type": "string" },
+            "rootPath": { "type": "string", "description": "Object key prefix below the tenant storage root" },
             "bucketName": { "type": "string" },
             "region": { "type": "string" },
-            "tenantDirectories": { "type": "boolean" },
+            "tenantDirectories": { "type": "boolean", "description": "Deprecated; tenant directories are now always applied" },
             "secretAccessKey": { "type": "string" },
             "ec2IamRole": { "type": "string", "description": "If running on EC2 with an associated IAM role, this can be provided instead of account keys" },
             "accessKeyId": { "type": "string" }

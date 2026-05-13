@@ -14,7 +14,7 @@
     "infra": {
         "localDisk": {
             "adapterSource": "./adapter/LocalFileAdapter.ram.json",
-            "rootPath": "C:\\Dev\\test\\test-data\\${tenant}"
+            "rootPath": "C:\\Dev\\test\\test-data"
         }
     },
     "configStore": "localDisk"

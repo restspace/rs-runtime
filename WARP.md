@@ -114,7 +114,7 @@ High-level architecture
   - External requests fall back to fetch unless overridden by config.requestExternal (used in tests)
 
 - Testing approach (test/)
-  - testServerConfig.ts sets a local disk-backed config store and test root path (C:\Dev\test\test-data\${tenant})
+  - testServerConfig.ts sets a local disk-backed config store and test root path (C:\Dev\test\test-data); storage adapters add tenant prefixes internally
   - testUtility.ts constructs Message objects, calls handleIncomingRequest directly, and can intercept external requests via sysConfig.requestExternal
 
 Important references

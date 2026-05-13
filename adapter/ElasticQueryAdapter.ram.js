@@ -1,6 +1,6 @@
 export default {
     "name": "Elasticsearch Query Adapter",
-    "description": "Stores and runs Elasticsearch queries",
+    "description": "Runs Elasticsearch queries against tenant-prefixed indexes",
     "moduleUrl": "./adapter/ElasticQueryAdapter.ts",
     "configSchema": {
         "type": "object",

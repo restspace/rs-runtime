@@ -1,4 +1,8 @@
-import { IDataAdapter, IDataFieldFilterableAdapter, DataFieldFilter } from "rs-core/adapter/IDataAdapter.ts";
+import {
+  DataFieldFilter,
+  IDataAdapter,
+  IDataFieldFilterableAdapter,
+} from "rs-core/adapter/IDataAdapter.ts";
 import { ISchemaAdapter } from "rs-core/adapter/ISchemaAdapter.ts";
 import { PathInfo } from "rs-core/DirDescriptor.ts";
 import { ItemMetadata, ItemNone } from "rs-core/ItemMetadata.ts";
@@ -6,9 +10,10 @@ import { MessageBody } from "rs-core/MessageBody.ts";
 import { AdapterContext } from "rs-core/ServiceContext.ts";
 import { Db, MongoClient } from "mongodb";
 import {
+  isMongoTransientError,
+  mongoDatabaseNameForTenant,
   MongoDbConnectionProps,
   mongoErrorToHttpStatus,
-  isMongoTransientError,
   normalizeCollectionName,
   parseId,
   resolveMongoUrl,
@@ -34,12 +39,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isDateTimeSchema(schema: unknown): boolean {
   const s = schema as any;
-  return s && typeof s === "object" && s.type === "string" && s.format === "date-time";
+  return s && typeof s === "object" && s.type === "string" &&
+    s.format === "date-time";
 }
 
 function parseRfc3339DateTime(value: string): Date {
   // Strict-ish RFC 3339: YYYY-MM-DDTHH:MM:SS(.sss)?(Z|±HH:MM)
-  const re = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+  const re =
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
   if (!re.test(value)) {
     throw new HttpStatusError(400, "Invalid RFC 3339 date-time string");
   }
@@ -53,16 +60,25 @@ function parseRfc3339DateTime(value: string): Date {
 function parseMongoCollation(value: unknown): Record<string, unknown> {
   if (value === undefined) return {};
   if (typeof value !== "string") {
-    throw new HttpStatusError(400, 'Invalid "collation" value; expected string "<locale> <level>"');
+    throw new HttpStatusError(
+      400,
+      'Invalid "collation" value; expected string "<locale> <level>"',
+    );
   }
   const parts = value.trim().split(/\s+/).filter((p) => p.length > 0);
   if (parts.length !== 2) {
-    throw new HttpStatusError(400, 'Invalid "collation" value; expected "<locale> <level>"');
+    throw new HttpStatusError(
+      400,
+      'Invalid "collation" value; expected "<locale> <level>"',
+    );
   }
   const [locale, levelStr] = parts;
   const strength = Number(levelStr);
   if (!locale || !Number.isInteger(strength) || strength < 1 || strength > 5) {
-    throw new HttpStatusError(400, 'Invalid "collation" value; expected "<locale> <level>" with level 1-5');
+    throw new HttpStatusError(
+      400,
+      'Invalid "collation" value; expected "<locale> <level>" with level 1-5',
+    );
   }
   return { locale, strength };
 }
@@ -70,12 +86,18 @@ function parseMongoCollation(value: unknown): Record<string, unknown> {
 function stableStringify(value: unknown): string {
   if (value === null) return "null";
   const t = typeof value;
-  if (t === "number" || t === "boolean" || t === "string") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map((v) => stableStringify(v)).join(",")}]`;
+  if (t === "number" || t === "boolean" || t === "string") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => stableStringify(v)).join(",")}]`;
+  }
   if (t === "object") {
     const obj = value as Record<string, unknown>;
     const keys = Object.keys(obj).sort();
-    const parts = keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`);
+    const parts = keys.map((k) =>
+      `${JSON.stringify(k)}:${stableStringify(obj[k])}`
+    );
     return `{${parts.join(",")}}`;
   }
   // undefined / bigint / function shouldn't appear in persisted schema or index specs
@@ -94,7 +116,8 @@ function shortDeterministicHash(text: string): string {
 async function sha256Hex(text: string): Promise<string> {
   const bytes = new TextEncoder().encode(text);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function convertDatesForWrite(value: unknown, schema: unknown): unknown {
@@ -109,10 +132,19 @@ function convertDatesForWrite(value: unknown, schema: unknown): unknown {
   const s: any = schema as any;
   if (!s || typeof s !== "object") return value;
 
-  if (s.type === "object" && isPlainObject(value) && isPlainObject(s.properties)) {
-    for (const [prop, propSchema] of Object.entries(s.properties as Record<string, unknown>)) {
+  if (
+    s.type === "object" && isPlainObject(value) && isPlainObject(s.properties)
+  ) {
+    for (
+      const [prop, propSchema] of Object.entries(
+        s.properties as Record<string, unknown>,
+      )
+    ) {
       if (Object.prototype.hasOwnProperty.call(value, prop)) {
-        (value as any)[prop] = convertDatesForWrite((value as any)[prop], propSchema);
+        (value as any)[prop] = convertDatesForWrite(
+          (value as any)[prop],
+          propSchema,
+        );
       }
     }
     return value;
@@ -142,10 +174,19 @@ function convertDatesForRead(value: unknown, schema: unknown): unknown {
   const s: any = schema as any;
   if (!s || typeof s !== "object") return value;
 
-  if (s.type === "object" && isPlainObject(value) && isPlainObject(s.properties)) {
-    for (const [prop, propSchema] of Object.entries(s.properties as Record<string, unknown>)) {
+  if (
+    s.type === "object" && isPlainObject(value) && isPlainObject(s.properties)
+  ) {
+    for (
+      const [prop, propSchema] of Object.entries(
+        s.properties as Record<string, unknown>,
+      )
+    ) {
       if (Object.prototype.hasOwnProperty.call(value, prop)) {
-        (value as any)[prop] = convertDatesForRead((value as any)[prop], propSchema);
+        (value as any)[prop] = convertDatesForRead(
+          (value as any)[prop],
+          propSchema,
+        );
       }
     }
     return value;
@@ -164,7 +205,8 @@ function convertDatesForRead(value: unknown, schema: unknown): unknown {
   return value;
 }
 
-export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter, IDataFieldFilterableAdapter {
+export default class MongoDbDataAdapter
+  implements IDataAdapter, ISchemaAdapter, IDataFieldFilterableAdapter {
   private client: MongoClient | null = null;
   private db: Db | null = null;
   private connectPromise: Promise<void> | null = null;
@@ -172,10 +214,17 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   /** Indicates this adapter supports data-field filtering for listings */
   supportsDataFieldFiltering = true;
 
-  constructor(public context: AdapterContext, public props: MongoDbDataAdapterProps) {}
+  constructor(
+    public context: AdapterContext,
+    public props: MongoDbDataAdapterProps,
+  ) {}
 
   private schemaCollection() {
-    return this.props.schemaCollection || "_schemas";
+    return normalizeCollectionName(this.props.schemaCollection || "_schemas");
+  }
+
+  private collectionName(dataset: string) {
+    return normalizeCollectionName(dataset);
   }
 
   private async ensureConnection() {
@@ -197,7 +246,9 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
 
       this.client = new MongoClient(resolvedUrl, options);
       await this.client.connect();
-      this.db = this.client.db(this.props.dbName);
+      this.db = this.client.db(
+        mongoDatabaseNameForTenant(this.context.tenant, this.props.dbName),
+      );
     })();
 
     this.connectPromise = connectPromise;
@@ -232,28 +283,37 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   private async ensureSchemasCollection() {
     await this.ensureConnection();
     const schemas = this.schemaCollection();
-    const existing = await this.db!.listCollections({ name: schemas }).toArray();
+    const existing = await this.db!.listCollections({ name: schemas })
+      .toArray();
     if (existing.length === 0) {
       await this.db!.createCollection(schemas);
     }
   }
 
-  private async getSchemaRecord(datasetCollection: string): Promise<Record<string, unknown> | null> {
+  private async getSchemaRecord(
+    datasetCollection: string,
+  ): Promise<Record<string, unknown> | null> {
     await this.ensureConnection();
     await this.ensureSchemasCollection();
     const schemas = this.schemaCollection();
-    const doc: any = await this.db!.collection(schemas).findOne({ dataset: datasetCollection });
+    const doc: any = await this.db!.collection(schemas).findOne({
+      dataset: datasetCollection,
+    });
     return doc ? (doc as Record<string, unknown>) : null;
   }
 
-  private async getSchemaRequired(datasetCollection: string): Promise<JsonSchema> {
+  private async getSchemaRequired(
+    datasetCollection: string,
+  ): Promise<JsonSchema> {
     const rec = await this.getSchemaRecord(datasetCollection);
     if (!rec || typeof rec.schema !== "string") {
       throw new HttpStatusError(500, "Missing .schema.json for dataset");
     }
     try {
       const parsed = JSON.parse(rec.schema as string);
-      if (!parsed || typeof parsed !== "object") throw new Error("Schema must be a JSON object");
+      if (!parsed || typeof parsed !== "object") {
+        throw new Error("Schema must be a JSON object");
+      }
       return parsed as JsonSchema;
     } catch (err) {
       this.context.logger.error(`MongoDB schema parse error: ${err}`);
@@ -261,7 +321,10 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     }
   }
 
-  private async compileIndexModels(datasetCollection: string, schema: JsonSchema): Promise<{ hash: string; models: any[] }> {
+  private async compileIndexModels(
+    datasetCollection: string,
+    schema: JsonSchema,
+  ): Promise<{ hash: string; models: any[] }> {
     const schemaAny: any = schema as any;
     if (!schemaAny || typeof schemaAny !== "object") {
       throw new HttpStatusError(400, "Schema must be a JSON object");
@@ -271,20 +334,28 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     const seen = new Set<string>();
     const canonicals: string[] = [];
 
-    const addIndex = (keys: Record<string, number>, options: Record<string, unknown>) => {
+    const addIndex = (
+      keys: Record<string, number>,
+      options: Record<string, unknown>,
+    ) => {
       const normalizedOptions: Record<string, unknown> = { ...options };
       // normalize partial field name
       if ((normalizedOptions as any).partial !== undefined) {
         const partial = (normalizedOptions as any).partial;
         delete (normalizedOptions as any).partial;
         if (!isPlainObject(partial)) {
-          throw new HttpStatusError(400, 'Invalid "partial" value; expected object');
+          throw new HttpStatusError(
+            400,
+            'Invalid "partial" value; expected object',
+          );
         }
         normalizedOptions.partialFilterExpression = partial;
       }
       // normalize collation string
       if ((normalizedOptions as any).collation !== undefined) {
-        const collation = parseMongoCollation((normalizedOptions as any).collation);
+        const collation = parseMongoCollation(
+          (normalizedOptions as any).collation,
+        );
         delete (normalizedOptions as any).collation;
         if (Object.keys(collation).length > 0) {
           normalizedOptions.collation = collation;
@@ -303,14 +374,21 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
         keys,
         options: {
           ...normalizedOptions,
-          name: `rs_${datasetCollection}_${fieldPart}_${nameHash}`.slice(0, 110),
+          name: `rs_${datasetCollection}_${fieldPart}_${nameHash}`.slice(
+            0,
+            110,
+          ),
         },
       });
     };
 
     // Field-level directives (single-column)
     if (schemaAny.type === "object" && isPlainObject(schemaAny.properties)) {
-      for (const [field, fieldSchema] of Object.entries(schemaAny.properties as Record<string, unknown>)) {
+      for (
+        const [field, fieldSchema] of Object.entries(
+          schemaAny.properties as Record<string, unknown>,
+        )
+      ) {
         const fs: any = fieldSchema as any;
         if (!fs || typeof fs !== "object") continue;
 
@@ -321,13 +399,22 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
         const hasTtl = ttlSeconds !== undefined;
 
         if (hasTtl && wantsUnique) {
-          throw new HttpStatusError(400, 'Invalid schema: "x-mongo-expiry-seconds" cannot be combined with "unique"');
+          throw new HttpStatusError(
+            400,
+            'Invalid schema: "x-mongo-expiry-seconds" cannot be combined with "unique"',
+          );
         }
 
         const isDateTime = isDateTimeSchema(fs);
         if (hasTtl && isDateTime) {
-          if (typeof ttlSeconds !== "number" || !Number.isFinite(ttlSeconds) || ttlSeconds < 0) {
-            throw new HttpStatusError(400, 'Invalid "x-mongo-expiry-seconds"; expected a non-negative number');
+          if (
+            typeof ttlSeconds !== "number" || !Number.isFinite(ttlSeconds) ||
+            ttlSeconds < 0
+          ) {
+            throw new HttpStatusError(
+              400,
+              'Invalid "x-mongo-expiry-seconds"; expected a non-negative number',
+            );
           }
         }
         const ttlValid = hasTtl && isDateTime;
@@ -352,7 +439,10 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
       for (const entry of idx) {
         if (Array.isArray(entry)) {
           if (!entry.every((f) => typeof f === "string" && f.length > 0)) {
-            throw new HttpStatusError(400, 'Invalid "indexes" entry; expected array of non-empty strings');
+            throw new HttpStatusError(
+              400,
+              'Invalid "indexes" entry; expected array of non-empty strings',
+            );
           }
           const keys: Record<string, number> = {};
           for (const f of entry as string[]) keys[f] = 1;
@@ -361,20 +451,33 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
         }
         if (isPlainObject(entry)) {
           const fields = (entry as any).fields;
-          if (!Array.isArray(fields) || !fields.every((f) => typeof f === "string" && f.length > 0)) {
-            throw new HttpStatusError(400, 'Invalid "indexes" object; expected "fields": string[]');
+          if (
+            !Array.isArray(fields) ||
+            !fields.every((f) => typeof f === "string" && f.length > 0)
+          ) {
+            throw new HttpStatusError(
+              400,
+              'Invalid "indexes" object; expected "fields": string[]',
+            );
           }
           const keys: Record<string, number> = {};
           for (const f of fields as string[]) keys[f] = 1;
 
           const options: Record<string, unknown> = {};
           if ((entry as any).unique === true) options.unique = true;
-          if ((entry as any).collation !== undefined) options.collation = (entry as any).collation;
-          if ((entry as any).partial !== undefined) options.partial = (entry as any).partial;
+          if ((entry as any).collation !== undefined) {
+            options.collation = (entry as any).collation;
+          }
+          if ((entry as any).partial !== undefined) {
+            options.partial = (entry as any).partial;
+          }
           addIndex(keys, options);
           continue;
         }
-        throw new HttpStatusError(400, 'Invalid "indexes" entry; expected string[] or object');
+        throw new HttpStatusError(
+          400,
+          'Invalid "indexes" entry; expected string[] or object',
+        );
       }
     }
 
@@ -383,14 +486,19 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     return { hash, models };
   }
 
-  async readKey(dataset: string, key: string): Promise<number | Record<string, unknown>> {
+  async readKey(
+    dataset: string,
+    key: string,
+  ): Promise<number | Record<string, unknown>> {
     const connectStatus = await this.ensureConnectionOrStatus();
     if (connectStatus !== null) return connectStatus;
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
 
     try {
       const schema = await this.getSchemaRequired(collection);
-      const doc = await this.db!.collection(collection).findOne({ _id: parseId(key) } as any);
+      const doc = await this.db!.collection(collection).findOne(
+        { _id: parseId(key) } as any,
+      );
       if (!doc) return 404;
       return convertDatesForRead(doc, schema) as Record<string, unknown>;
     } catch (err) {
@@ -400,10 +508,14 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     }
   }
 
-  async writeKey(dataset: string, key: string | undefined, data: MessageBody): Promise<number> {
+  async writeKey(
+    dataset: string,
+    key: string | undefined,
+    data: MessageBody,
+  ): Promise<number> {
     const connectStatus = await this.ensureConnectionOrStatus();
     if (connectStatus !== null) return connectStatus;
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
 
     let writeData: any = await data.asJson();
     if (!(writeData && typeof writeData === "object")) {
@@ -453,12 +565,14 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   async deleteKey(dataset: string, key: string): Promise<number> {
     const connectStatus = await this.ensureConnectionOrStatus();
     if (connectStatus !== null) return connectStatus;
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
 
     try {
       return await withFastRetry(
         async () => {
-          const result = await this.db!.collection(collection).deleteOne({ _id: parseId(key) } as any);
+          const result = await this.db!.collection(collection).deleteOne(
+            { _id: parseId(key) } as any,
+          );
           return result.deletedCount && result.deletedCount > 0 ? 200 : 404;
         },
         isMongoTransientError,
@@ -469,14 +583,19 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     }
   }
 
-  async listDataset(dataset: string, take = 1000, skip = 0): Promise<number | PathInfo[]> {
+  async listDataset(
+    dataset: string,
+    take = 1000,
+    skip = 0,
+  ): Promise<number | PathInfo[]> {
     const connectStatus = await this.ensureConnectionOrStatus();
     if (connectStatus !== null) return connectStatus;
 
     // Top-level listing: collections.
     if (!dataset) {
       try {
-        const collections = (await this.db!.listCollections().toArray()).map((col) => col.name);
+        const collections = (await this.db!.listCollections().toArray())
+          .map((col) => col.name);
 
         // Ensure schema collection exists so we can include schema-only datasets.
         await this.ensureSchemasCollection();
@@ -499,7 +618,7 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
       }
     }
 
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
 
     try {
       const docs = await this.db!.collection(collection)
@@ -509,19 +628,26 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
         .toArray();
 
       const pathInfos: PathInfo[] = docs.map((doc: any) => (
-        doc._timestamp ? [doc._id.toString(), doc._timestamp] as PathInfo : [doc._id.toString()] as PathInfo
+        doc._timestamp
+          ? [doc._id.toString(), doc._timestamp] as PathInfo
+          : [doc._id.toString()] as PathInfo
       ));
 
       await this.ensureSchemasCollection();
       const schemas = this.schemaCollection();
-      const schema = await this.db!.collection(schemas).findOne({ dataset: collection });
+      const schema = await this.db!.collection(schemas).findOne({
+        dataset: collection,
+      });
       if (schema) pathInfos.push([".schema.json"] as PathInfo);
 
       return pathInfos;
     } catch (err) {
       // Missing collection should behave like missing directory.
       const msg = String((err as any)?.message || err);
-      if (msg.toLowerCase().includes("ns not found") || msg.toLowerCase().includes("namespace not found")) {
+      if (
+        msg.toLowerCase().includes("ns not found") ||
+        msg.toLowerCase().includes("namespace not found")
+      ) {
         return [];
       }
       this.context.logger.error(`MongoDB list error: ${err}`);
@@ -533,7 +659,7 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     dataset: string,
     filters: DataFieldFilter[],
     take = 1000,
-    skip = 0
+    skip = 0,
   ): Promise<PathInfo[] | number> {
     const connectStatus = await this.ensureConnectionOrStatus();
     if (connectStatus !== null) return connectStatus;
@@ -547,13 +673,16 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
       return this.listDataset(dataset, take, skip);
     }
 
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
 
     try {
       // Build MongoDB filter from DataFieldFilters
       const mongoFilter: Record<string, unknown> = {};
       for (const filter of filters) {
-        if (!filter.dataFieldName || filter.userFieldValue === undefined || filter.userFieldValue === null) {
+        if (
+          !filter.dataFieldName || filter.userFieldValue === undefined ||
+          filter.userFieldValue === null
+        ) {
           return [];
         }
         mongoFilter[filter.dataFieldName] = { $eq: filter.userFieldValue };
@@ -574,13 +703,18 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
       // Include schema if present
       await this.ensureSchemasCollection();
       const schemas = this.schemaCollection();
-      const schema = await this.db!.collection(schemas).findOne({ dataset: collection });
+      const schema = await this.db!.collection(schemas).findOne({
+        dataset: collection,
+      });
       if (schema) pathInfos.push([".schema.json"] as PathInfo);
 
       return pathInfos;
     } catch (err) {
       const msg = String((err as any)?.message || err);
-      if (msg.toLowerCase().includes("ns not found") || msg.toLowerCase().includes("namespace not found")) {
+      if (
+        msg.toLowerCase().includes("ns not found") ||
+        msg.toLowerCase().includes("namespace not found")
+      ) {
         return [];
       }
       this.context.logger.error(`MongoDB filtered list error: ${err}`);
@@ -591,10 +725,11 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   async deleteDataset(dataset: string): Promise<number> {
     const connectStatus = await this.ensureConnectionOrStatus();
     if (connectStatus !== null) return connectStatus;
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
 
     try {
-      const exists = await this.db!.listCollections({ name: collection }).toArray();
+      const exists = await this.db!.listCollections({ name: collection })
+        .toArray();
       if (exists.length === 0) return 404;
 
       return await withFastRetry(
@@ -618,7 +753,7 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   async checkKey(dataset: string, key: string): Promise<ItemMetadata> {
     const connectStatus = await this.ensureConnectionOrStatus();
     if (connectStatus !== null) return { status: "none" } as ItemNone;
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
 
     try {
       const doc = await this.db!.collection(collection).findOne(
@@ -639,17 +774,25 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     }
   }
 
-  async writeSchema(dataset: string, schema: Record<string, unknown>): Promise<number> {
+  async writeSchema(
+    dataset: string,
+    schema: Record<string, unknown>,
+  ): Promise<number> {
     const connectStatus = await this.ensureConnectionOrStatus();
     if (connectStatus !== null) return connectStatus;
     await this.ensureSchemasCollection();
 
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
     const schemas = this.schemaCollection();
 
     try {
-      const existing = await this.db!.collection(schemas).findOne({ dataset: collection } as any);
-      const compiled = await this.compileIndexModels(collection, schema as JsonSchema);
+      const existing = await this.db!.collection(schemas).findOne(
+        { dataset: collection } as any,
+      );
+      const compiled = await this.compileIndexModels(
+        collection,
+        schema as JsonSchema,
+      );
       const existingHash = (existing as any)?.indexSpecHash;
 
       if (existingHash !== compiled.hash) {
@@ -702,11 +845,13 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     if (connectStatus !== null) return connectStatus;
     await this.ensureSchemasCollection();
 
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
     const schemas = this.schemaCollection();
 
     try {
-      const doc: any = await this.db!.collection(schemas).findOne({ dataset: collection });
+      const doc: any = await this.db!.collection(schemas).findOne({
+        dataset: collection,
+      });
       if (!doc) return 404;
       return JSON.parse(doc.schema as string);
     } catch (err) {
@@ -720,11 +865,13 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
     if (connectStatus !== null) return { status: "none" } as ItemNone;
     await this.ensureSchemasCollection();
 
-    const collection = normalizeCollectionName(dataset);
+    const collection = this.collectionName(dataset);
     const schemas = this.schemaCollection();
 
     try {
-      const doc: any = await this.db!.collection(schemas).findOne({ dataset: collection });
+      const doc: any = await this.db!.collection(schemas).findOne({
+        dataset: collection,
+      });
       if (!doc) return { status: "none" } as ItemNone;
 
       return {
@@ -739,7 +886,9 @@ export default class MongoDbDataAdapter implements IDataAdapter, ISchemaAdapter,
   }
 
   instanceContentType(dataset: string, baseUrl: string): Promise<string> {
-    const url = [baseUrl, dataset, ".schema.json"].filter((s) => s !== "").join("/");
+    const url = [baseUrl, dataset, ".schema.json"].filter((s) => s !== "").join(
+      "/",
+    );
     return Promise.resolve(`application/json; schema=\"${url}\"`);
   }
 

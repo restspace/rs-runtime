@@ -1,6 +1,7 @@
 # MongoDbQueryAdapter
 
-Query adapter for running MongoDB aggregation pipelines.
+Query adapter for running MongoDB aggregation pipelines. Collection names in
+query JSON are logical names inside a tenant-scoped physical MongoDB database.
 
 ## Configuration
 
@@ -13,12 +14,12 @@ Query adapter for running MongoDB aggregation pipelines.
 }
 ```
 
-| Property | Required | Description |
-|----------|----------|-------------|
-| `url` | Yes | MongoDB connection URI (`mongodb://` or `mongodb+srv://`) |
-| `dbName` | Yes | Database name |
-| `tlsCAFile` | No | Path to CA bundle (for DocumentDB TLS) |
-| `ignoreEmptyVariables` | No | When true, empty string variables are ignored in queries |
+| Property               | Required | Description                                                                                                    |
+| ---------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `url`                  | Yes      | MongoDB connection URI (`mongodb://` or `mongodb+srv://`)                                                      |
+| `dbName`               | No       | Optional logical database name; physical database is tenant-prefixed when set, or the tenant name when omitted |
+| `tlsCAFile`            | No       | Path to CA bundle (for DocumentDB TLS)                                                                         |
+| `ignoreEmptyVariables` | No       | When true, empty string variables are ignored in queries                                                       |
 
 The `url` can also reference a secret via the resolver.
 
@@ -41,22 +42,37 @@ Queries are JSON objects with the following structure:
 
 ### Fields
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `collection` | Yes | Target collection name (will be normalized) |
-| `pipeline` | Yes | MongoDB aggregation pipeline array |
-| `from` | No | Zero-based offset for paging |
-| `size` | No | Page size for paging |
-| `options` | No | Additional aggregation options passed to MongoDB |
+| Field        | Required | Description                                               |
+| ------------ | -------- | --------------------------------------------------------- |
+| `collection` | Yes      | Logical target collection name inside the tenant database |
+| `pipeline`   | Yes      | MongoDB aggregation pipeline array                        |
+| `from`       | No       | Zero-based offset for paging                              |
+| `size`       | No       | Page size for paging                                      |
+| `options`    | No       | Additional aggregation options passed to MongoDB          |
 
 ## Paging
 
-When `from` and/or `size` are provided, the adapter appends a `$facet` stage to compute:
+When `from` and/or `size` are provided, the adapter appends a `$facet` stage to
+compute:
 
 - `items`: the paged results (`$skip`/`$limit`)
 - `total`: the total count of matching documents
 
-When paging is provided, the adapter returns `{ "items": [...], "total": n }`. When omitted, the pipeline runs as-is and returns an array.
+When paging is provided, the adapter returns `{ "items": [...], "total": n }`.
+When omitted, the pipeline runs as-is and returns an array.
+
+## Tenant Isolation
+
+The adapter stores and queries collections inside a tenant-scoped physical
+database. If `dbName` is omitted, tenant `mytenant` uses physical database
+`mytenant`. If `dbName` is `app`, tenant `mytenant` uses physical database
+`mytenant__app`.
+
+Collection names remain unprefixed within that database. The adapter rejects
+explicit cross-database aggregation targets in stages such as `$lookup`,
+`$graphLookup`, `$unionWith`, `$out`, and `$merge`. Existing shared MongoDB
+databases are not read as a fallback; migrate tenant collections into their
+tenant-scoped database before upgrading.
 
 ## Return Values
 
@@ -70,28 +86,32 @@ When paging is provided, the adapter returns `{ "items": [...], "total": n }`. W
 Use the `quote()` method to safely escape values for interpolation:
 
 ```typescript
-adapter.quote("hello")      // "\"hello\""
-adapter.quote(123)          // "123"
-adapter.quote([1, 2, 3])    // "[1,2,3]"
-adapter.quote(new Date())   // "{\"$date\":\"2026-01-20T12:34:56.000Z\"}"
-adapter.quote({})           // Error - objects not allowed
+adapter.quote("hello"); // "\"hello\""
+adapter.quote(123); // "123"
+adapter.quote([1, 2, 3]); // "[1,2,3]"
+adapter.quote(new Date()); // "{\"$date\":\"2026-01-20T12:34:56.000Z\"}"
+adapter.quote({}); // Error - objects not allowed
 ```
 
-Only primitives and arrays of primitives are supported. `Date` values are also supported and are emitted as MongoDB Extended JSON (`$date`).
+Only primitives and arrays of primitives are supported. `Date` values are also
+supported and are emitted as MongoDB Extended JSON (`$date`).
 
 For explicit date interpolation, `quoteDate()` is available:
 
 ```typescript
-adapter.quoteDate("2026-01-20T12:34:56Z") // "{\"$date\":\"2026-01-20T12:34:56.000Z\"}"
-adapter.quoteDate(Date.now())             // "{\"$date\":\"...\"}"
-adapter.quoteDate(new Date())             // "{\"$date\":\"...\"}"
+adapter.quoteDate("2026-01-20T12:34:56Z"); // "{\"$date\":\"2026-01-20T12:34:56.000Z\"}"
+adapter.quoteDate(Date.now()); // "{\"$date\":\"...\"}"
+adapter.quoteDate(new Date()); // "{\"$date\":\"...\"}"
 ```
 
 ## BSON Date Support
 
-The adapter parses query payloads using MongoDB Extended JSON (EJSON), so BSON date literals are supported directly in query files and templates.
+The adapter parses query payloads using MongoDB Extended JSON (EJSON), so BSON
+date literals are supported directly in query files and templates.
 
-When using `${param}` substitution from `services/query.ts`, wrap the substitution inside a `$date` object if you want MongoDB date semantics (not string comparison).
+When using `${param}` substitution from `services/query.ts`, wrap the
+substitution inside a `$date` object if you want MongoDB date semantics (not
+string comparison).
 
 Template example (exact match):
 
@@ -104,7 +124,8 @@ Template example (exact match):
 }
 ```
 
-If request JSON contains `{ "d": "2026-01-20T12:54:36Z" }`, the interpolated query becomes:
+If request JSON contains `{ "d": "2026-01-20T12:54:36Z" }`, the interpolated
+query becomes:
 
 ```json
 { "$match": { "dval": { "$date": "2026-01-20T12:54:36Z" } } }
@@ -133,20 +154,31 @@ Range example:
 Relaxed date format:
 
 ```json
-{ "$match": { "createdAt": { "$gte": { "$date": "2026-01-15T00:00:00.000Z" } } } }
+{
+  "$match": { "createdAt": { "$gte": { "$date": "2026-01-15T00:00:00.000Z" } } }
+}
 ```
 
 Canonical format is also accepted:
 
 ```json
-{ "$match": { "createdAt": { "$gte": { "$date": { "$numberLong": "1768435200000" } } } } }
+{
+  "$match": {
+    "createdAt": { "$gte": { "$date": { "$numberLong": "1768435200000" } } }
+  }
+}
 ```
 
 ## Ignoring Empty Variables
 
-The query service (`services/query.ts`) substitutes request body parameters into query templates using `${paramName}` syntax. When a parameter is missing, it defaults to an empty string. Without special handling, this would create a filter like `{ "category": "" }` which matches only documents where the field is literally empty - usually not the intended behavior.
+The query service (`services/query.ts`) substitutes request body parameters into
+query templates using `${paramName}` syntax. When a parameter is missing, it
+defaults to an empty string. Without special handling, this would create a
+filter like `{ "category": "" }` which matches only documents where the field is
+literally empty - usually not the intended behavior.
 
-When `ignoreEmptyVariables: true` is configured, missing or empty parameters are automatically removed from queries, making them act as "optional filters".
+When `ignoreEmptyVariables: true` is configured, missing or empty parameters are
+automatically removed from queries, making them act as "optional filters".
 
 ### How It Works
 
@@ -162,37 +194,45 @@ When `ignoreEmptyVariables: true` is configured, missing or empty parameters are
 Given a query template where `category` is an empty string:
 
 ```javascript
-const category = "";  // empty from user input
+const category = ""; // empty from user input
 const query = `{
   "collection": "products",
-  "pipeline": [{ "$match": { "status": "active", "category": ${adapter.quote(category)} } }]
+  "pipeline": [{ "$match": { "status": "active", "category": ${
+  adapter.quote(category)
+} } }]
 }`;
 ```
 
 With `ignoreEmptyVariables: false` (default):
+
 ```json
 { "$match": { "status": "active", "category": "" } }
 ```
+
 This matches only documents where `category` is literally an empty string.
 
 With `ignoreEmptyVariables: true`:
+
 ```json
 { "$match": { "status": "active" } }
 ```
+
 The `category` filter is removed, matching all documents regardless of category.
 
 ### Cleanup Behavior
 
-| Before | After |
-|--------|-------|
-| `{ "a": "keep", "b": { "$ignore": true } }` | `{ "a": "keep" }` |
-| `{ "$or": [{ "a": { "$ignore": true } }] }` | `{}` (empty $or removed) |
-| `{ "$and": [{ "$or": [...ignored...] }, { "y": "val" }] }` | `{ "$and": [{ "y": "val" }] }` |
-| `{ "tags": { "$in": ["a", { "$ignore": true }] } }` | `{ "tags": { "$in": ["a"] } }` |
-| `{ "tags": { "$in": [{ "$ignore": true }] } }` | `{}` (empty $in and parent field removed) |
-| `{ "code": { "$regex": { "$ignore": true }, "$options": "i" } }` | `{}` (orphaned $options also removed) |
+| Before                                                           | After                                     |
+| ---------------------------------------------------------------- | ----------------------------------------- |
+| `{ "a": "keep", "b": { "$ignore": true } }`                      | `{ "a": "keep" }`                         |
+| `{ "$or": [{ "a": { "$ignore": true } }] }`                      | `{}` (empty $or removed)                  |
+| `{ "$and": [{ "$or": [...ignored...] }, { "y": "val" }] }`       | `{ "$and": [{ "y": "val" }] }`            |
+| `{ "tags": { "$in": ["a", { "$ignore": true }] } }`              | `{ "tags": { "$in": ["a"] } }`            |
+| `{ "tags": { "$in": [{ "$ignore": true }] } }`                   | `{}` (empty $in and parent field removed) |
+| `{ "code": { "$regex": { "$ignore": true }, "$options": "i" } }` | `{}` (orphaned $options also removed)     |
 
-Works with `$and`, `$or`, `$in`, `$all`, and `$nin` arrays. Orphaned `$options` (without `$regex`) are also removed. Empty `$match` stages are kept (they match all documents).
+Works with `$and`, `$or`, `$in`, `$all`, and `$nin` arrays. Orphaned `$options`
+(without `$regex`) are also removed. Empty `$match` stages are kept (they match
+all documents).
 
 ## Example Usage
 
@@ -200,19 +240,27 @@ Works with `$and`, `$or`, `$in`, `$all`, and `$nin` arrays. Orphaned `$options` 
 {
   "collection": "orders",
   "pipeline": [
-    { "$match": { "createdAt": { "$gte": { "$date": "2024-01-01T00:00:00.000Z" } } } },
-    { "$lookup": {
+    {
+      "$match": {
+        "createdAt": { "$gte": { "$date": "2024-01-01T00:00:00.000Z" } }
+      }
+    },
+    {
+      "$lookup": {
         "from": "customers",
         "localField": "customerId",
         "foreignField": "_id",
         "as": "customer"
-    }},
+      }
+    },
     { "$unwind": "$customer" },
-    { "$project": {
+    {
+      "$project": {
         "orderId": 1,
         "total": 1,
         "customerName": "$customer.name"
-    }}
+      }
+    }
   ]
 }
 ```

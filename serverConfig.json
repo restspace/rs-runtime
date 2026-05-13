@@ -8,12 +8,11 @@
     "infra": {
         "localStore": {
             "adapterSource": "./adapter/LocalFileAdapter.ram.json",
-            "rootPath": "C:\\Dev\\test\\data\\${tenant}"
+            "rootPath": "C:\\Dev\\test\\data"
         },
         "s3Store": {
             "bucketName": "rs-test-142",
-            "region": "eu-west-2",
-            "tenantDirectories": true
+            "region": "eu-west-2"
         },
         "pdfGeneratorProxy": {
             "adapterSource": "./adapter/SimpleProxyAdapter.ram.json",

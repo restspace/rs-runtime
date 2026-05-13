@@ -4,9 +4,10 @@ import { BSON, Db, MongoClient } from "mongodb";
 import {
   cleanIgnoreMarkers,
   isIgnoreMarker,
+  isMongoTransientError,
+  mongoDatabaseNameForTenant,
   MongoDbConnectionProps,
   mongoErrorToHttpStatus,
-  isMongoTransientError,
   normalizeCollectionName,
   parseAggregateQuery,
   QueryFormatError,
@@ -19,7 +20,12 @@ export interface MongoDbQueryAdapterProps extends MongoDbConnectionProps {
   ignoreEmptyVariables?: boolean;
 }
 
-const mongoFirstStageOperators = new Set(["$geoNear", "$search", "$searchMeta", "$vectorSearch"]);
+const mongoFirstStageOperators = new Set([
+  "$geoNear",
+  "$search",
+  "$searchMeta",
+  "$vectorSearch",
+]);
 
 function pruneIncludeMarkers(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -60,13 +66,18 @@ function isSafeMongoFieldPath(fieldPath: string): boolean {
   return true;
 }
 
-function isSafeDataFieldValue(value: unknown): value is string | number | boolean {
+function isSafeDataFieldValue(
+  value: unknown,
+): value is string | number | boolean {
   if (value === null || value === undefined) return false;
   const valueType = typeof value;
-  return valueType === "string" || valueType === "number" || valueType === "boolean";
+  return valueType === "string" || valueType === "number" ||
+    valueType === "boolean";
 }
 
-function parseDataFieldRules(roleSpec: string): Array<{ dataField: string; userField: string }> {
+function parseDataFieldRules(
+  roleSpec: string,
+): Array<{ dataField: string; userField: string }> {
   return roleSpec.trim().split(" ")
     .filter((r) => r.startsWith("${") && r.endsWith("}") && r.includes("="))
     .map((r) => {
@@ -82,13 +93,19 @@ function parseDataFieldRules(roleSpec: string): Array<{ dataField: string; userF
 function getDataFieldFiltersFromUser(
   roleSpec: string,
   userObj: unknown,
-): Array<{ dataFieldName: string; userFieldValue: string | number | boolean }> | null {
+):
+  | Array<{ dataFieldName: string; userFieldValue: string | number | boolean }>
+  | null {
   const rules = parseDataFieldRules(roleSpec);
   if (rules.length === 0) return [];
-  if (!userObj || typeof userObj !== "object" || Array.isArray(userObj)) return null;
+  if (!userObj || typeof userObj !== "object" || Array.isArray(userObj)) {
+    return null;
+  }
 
   const userRec = userObj as Record<string, unknown>;
-  const filters: Array<{ dataFieldName: string; userFieldValue: string | number | boolean }> = [];
+  const filters: Array<
+    { dataFieldName: string; userFieldValue: string | number | boolean }
+  > = [];
   for (const rule of rules) {
     const userVal = userRec[rule.userField];
     if (!isSafeDataFieldValue(userVal)) return null;
@@ -102,9 +119,112 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
   private db: Db | null = null;
   private connectPromise: Promise<void> | null = null;
 
-  constructor(public context: AdapterContext, public props: MongoDbQueryAdapterProps) {
+  constructor(
+    public context: AdapterContext,
+    public props: MongoDbQueryAdapterProps,
+  ) {
     this.quote = this.quote.bind(this);
     this.quoteDate = this.quoteDate.bind(this);
+  }
+
+  private collectionName(collection: string): string {
+    return normalizeCollectionName(collection);
+  }
+
+  private rewriteCollectionTarget(target: unknown): unknown {
+    if (typeof target === "string") return this.collectionName(target);
+    if (target && typeof target === "object" && !Array.isArray(target)) {
+      const rec = { ...(target as Record<string, unknown>) };
+      if (rec.db !== undefined) {
+        throw new QueryFormatError(
+          "Cross-database aggregation output targets are not supported",
+        );
+      }
+      if (typeof rec.coll === "string") {
+        rec.coll = this.collectionName(rec.coll);
+      }
+      return rec;
+    }
+    return target;
+  }
+
+  private rewritePipelineStorageRefs(
+    pipeline: Record<string, unknown>[],
+  ): Record<string, unknown>[] {
+    return pipeline.map((stage) => {
+      const out = { ...stage };
+
+      if (
+        out.$lookup && typeof out.$lookup === "object" &&
+        !Array.isArray(out.$lookup)
+      ) {
+        const lookup = { ...(out.$lookup as Record<string, unknown>) };
+        if (lookup.db !== undefined) {
+          throw new QueryFormatError(
+            "Cross-database aggregation lookup targets are not supported",
+          );
+        }
+        if (lookup.from !== undefined) {
+          lookup.from = this.rewriteCollectionTarget(lookup.from);
+        }
+        out.$lookup = lookup;
+      }
+
+      if (
+        out.$graphLookup && typeof out.$graphLookup === "object" &&
+        !Array.isArray(out.$graphLookup)
+      ) {
+        const graphLookup = {
+          ...(out.$graphLookup as Record<string, unknown>),
+        };
+        if (graphLookup.db !== undefined) {
+          throw new QueryFormatError(
+            "Cross-database aggregation lookup targets are not supported",
+          );
+        }
+        if (graphLookup.from !== undefined) {
+          graphLookup.from = this.rewriteCollectionTarget(graphLookup.from);
+        }
+        out.$graphLookup = graphLookup;
+      }
+
+      if (typeof out.$unionWith === "string") {
+        out.$unionWith = this.collectionName(out.$unionWith);
+      } else if (
+        out.$unionWith && typeof out.$unionWith === "object" &&
+        !Array.isArray(out.$unionWith)
+      ) {
+        const unionWith = { ...(out.$unionWith as Record<string, unknown>) };
+        if (unionWith.db !== undefined) {
+          throw new QueryFormatError(
+            "Cross-database aggregation union targets are not supported",
+          );
+        }
+        if (typeof unionWith.coll === "string") {
+          unionWith.coll = this.collectionName(unionWith.coll);
+        }
+        out.$unionWith = unionWith;
+      }
+
+      if (out.$out !== undefined) {
+        out.$out = this.rewriteCollectionTarget(out.$out);
+      }
+
+      if (typeof out.$merge === "string") {
+        out.$merge = this.collectionName(out.$merge);
+      } else if (
+        out.$merge && typeof out.$merge === "object" &&
+        !Array.isArray(out.$merge)
+      ) {
+        const merge = { ...(out.$merge as Record<string, unknown>) };
+        if (merge.into !== undefined) {
+          merge.into = this.rewriteCollectionTarget(merge.into);
+        }
+        out.$merge = merge;
+      }
+
+      return out;
+    });
   }
 
   private static toIsoDate(value: string | number | Date): string | null {
@@ -138,7 +258,9 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
 
       this.client = new MongoClient(resolvedUrl, options);
       await this.client.connect();
-      this.db = this.client.db(this.props.dbName);
+      this.db = this.client.db(
+        mongoDatabaseNameForTenant(this.context.tenant, this.props.dbName),
+      );
     })();
 
     this.connectPromise = connectPromise;
@@ -165,7 +287,12 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
     _variables: Record<string, unknown>,
     take = 1000,
     skip = 0,
-  ): Promise<number | Record<string, unknown>[] | { items: Record<string, unknown>[]; total: number }> {
+  ): Promise<
+    number | Record<string, unknown>[] | {
+      items: Record<string, unknown>[];
+      total: number;
+    }
+  > {
     try {
       await this.ensureConnection();
     } catch (error) {
@@ -207,13 +334,19 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
     }
 
     let pipelineStages = parsed.pipeline;
-    pipelineStages = pruneIncludeMarkers(pipelineStages) as Record<string, unknown>[];
+    pipelineStages = pruneIncludeMarkers(pipelineStages) as Record<
+      string,
+      unknown
+    >[];
     if (this.props.ignoreEmptyVariables) {
       pipelineStages = cleanIgnoreMarkers(pipelineStages);
     }
 
     if (hasDataFieldRules) {
-      const filters = getDataFieldFiltersFromUser(roleSpec, this.context.userObj);
+      const filters = getDataFieldFiltersFromUser(
+        roleSpec,
+        this.context.userObj,
+      );
       if (!filters) {
         // Fail closed, and avoid leaking whether the query would have returned results.
         return 404;
@@ -231,12 +364,18 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
 
       const matchExpr: Record<string, unknown> = filters.length === 1
         ? { [filters[0].dataFieldName]: filters[0].userFieldValue }
-        : { $and: filters.map((f) => ({ [f.dataFieldName]: f.userFieldValue })) };
+        : {
+          $and: filters.map((f) => ({ [f.dataFieldName]: f.userFieldValue })),
+        };
 
       const pipeline = pipelineStages.slice();
       const firstStage = pipeline[0];
-      const firstKey = firstStage && typeof firstStage === "object" ? Object.keys(firstStage)[0] : undefined;
-      const insertAt = firstKey && mongoFirstStageOperators.has(firstKey) ? 1 : 0;
+      const firstKey = firstStage && typeof firstStage === "object"
+        ? Object.keys(firstStage)[0]
+        : undefined;
+      const insertAt = firstKey && mongoFirstStageOperators.has(firstKey)
+        ? 1
+        : 0;
       pipeline.splice(insertAt, 0, { $match: matchExpr });
       pipelineStages = pipeline;
     }
@@ -245,9 +384,14 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
     let mongoOptions: Record<string, unknown> | undefined;
     try {
       // Convert Extended JSON literals (for example $date) after cleanup.
-      mongoPipeline = BSON.EJSON.deserialize(pipelineStages, { relaxed: true }) as Record<string, unknown>[];
+      mongoPipeline = BSON.EJSON.deserialize(pipelineStages, {
+        relaxed: true,
+      }) as Record<string, unknown>[];
       mongoOptions = parsed.options
-        ? BSON.EJSON.deserialize(parsed.options, { relaxed: true }) as Record<string, unknown>
+        ? BSON.EJSON.deserialize(parsed.options, { relaxed: true }) as Record<
+          string,
+          unknown
+        >
         : undefined;
     } catch (e) {
       this.context.logger.error(
@@ -257,8 +401,20 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
       return 400;
     }
 
-    const collection = normalizeCollectionName(parsed.collection);
-    const hasPagingParams = parsed.from !== undefined || parsed.size !== undefined;
+    try {
+      mongoPipeline = this.rewritePipelineStorageRefs(mongoPipeline);
+    } catch (e) {
+      const msg = e instanceof QueryFormatError ? e.message : String(e);
+      this.context.logger.error(
+        `Invalid query format (${msg}) in MongoDB aggregate query: ${query}`,
+        ...contextLoggerArgs(this.context),
+      );
+      return 400;
+    }
+
+    const collection = this.collectionName(parsed.collection);
+    const hasPagingParams = parsed.from !== undefined ||
+      parsed.size !== undefined;
     let pipeline = mongoPipeline;
 
     if (hasPagingParams) {
@@ -291,14 +447,21 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
 
       return await withFastRetry(
         async () => {
-          const cursor = coll.aggregate(pipeline as any, (mongoOptions || {}) as any);
+          const cursor = coll.aggregate(
+            pipeline as any,
+            (mongoOptions || {}) as any,
+          );
           const rows = await cursor.toArray();
           if (!hasPagingParams) {
             return rows as unknown as Record<string, unknown>[];
           }
           const first = rows[0] as Record<string, unknown> | undefined;
-          const items = Array.isArray(first?.items) ? (first?.items as Record<string, unknown>[]) : [];
-          const total = typeof first?.total === "number" ? first.total as number : 0;
+          const items = Array.isArray(first?.items)
+            ? (first?.items as Record<string, unknown>[])
+            : [];
+          const total = typeof first?.total === "number"
+            ? first.total as number
+            : 0;
           return { items, total };
         },
         isMongoTransientError,
@@ -317,7 +480,7 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
       if (this.props?.ignoreEmptyVariables && x === "") {
         return '{ "$ignore": true }';
       }
-      return "\"" + x.replace(/\"/g, "\\\"") + "\"";
+      return '"' + x.replace(/\"/g, '\\"') + '"';
     } else if (x instanceof Date) {
       const iso = MongoDbQueryAdapter.toIsoDate(x);
       if (!iso) return new Error("invalid Date value");
@@ -334,13 +497,19 @@ export default class MongoDbQueryAdapter implements IQueryAdapter {
       }
       return JSON.stringify(filtered);
     } else {
-      return new Error("query variable must be a primitive, or an array of primitives");
+      return new Error(
+        "query variable must be a primitive, or an array of primitives",
+      );
     }
   }
 
   quoteDate(value: string | number | Date): string | Error {
     const iso = MongoDbQueryAdapter.toIsoDate(value);
-    if (!iso) return new Error("date variable must be a valid date string, timestamp, or Date");
+    if (!iso) {
+      return new Error(
+        "date variable must be a valid date string, timestamp, or Date",
+      );
+    }
     return BSON.EJSON.stringify({ $date: iso }, { relaxed: false });
   }
 

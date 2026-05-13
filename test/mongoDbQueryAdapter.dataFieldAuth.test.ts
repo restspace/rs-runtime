@@ -7,7 +7,10 @@ type Captured = {
   aggregateCalls: number;
 };
 
-function makeStubAdapterContext(roleSpec: string, userObj: Record<string, unknown> | null) {
+function makeStubAdapterContext(
+  roleSpec: string,
+  userObj: Record<string, unknown> | null,
+) {
   const logger = {
     critical: (..._args: unknown[]) => {},
     error: (..._args: unknown[]) => {},
@@ -73,13 +76,18 @@ Deno.test("MongoDbQueryAdapter data-field auth: injects $match at pipeline start
     pipeline: [{ $project: { _id: 1, organisationId: 1 } }],
   });
 
-  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{ _id: 1 }]);
+  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{
+    _id: 1,
+  }]);
   const res = await adapter.runQuery(query, {});
 
   assertEquals(Array.isArray(res), true);
   assertEquals(captured.aggregateCalls, 1);
+  assertEquals(captured.collection, "users");
   assertEquals(Array.isArray(captured.pipeline), true);
-  assertEquals((captured.pipeline as any[])[0], { $match: { organisationId: "org1" } });
+  assertEquals((captured.pipeline as any[])[0], {
+    $match: { organisationId: "org1" },
+  });
 });
 
 Deno.test("MongoDbQueryAdapter data-field auth: injects $match after $search/$geoNear-style first stages", async () => {
@@ -93,7 +101,9 @@ Deno.test("MongoDbQueryAdapter data-field auth: injects $match after $search/$ge
     ],
   });
 
-  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{ _id: 1 }]);
+  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{
+    _id: 1,
+  }]);
   await adapter.runQuery(query, {});
 
   assertEquals(captured.aggregateCalls, 1);
@@ -104,17 +114,26 @@ Deno.test("MongoDbQueryAdapter data-field auth: injects $match after $search/$ge
 
 Deno.test("MongoDbQueryAdapter data-field auth: multiple rules become $and match", async () => {
   const roleSpec = "U ${orgId=organisationId} ${dept=department}";
-  const userObj = { email: "u@test.com", roles: "U", organisationId: "org1", department: "sales" };
+  const userObj = {
+    email: "u@test.com",
+    roles: "U",
+    organisationId: "org1",
+    department: "sales",
+  };
   const query = JSON.stringify({
     collection: "users",
     pipeline: [{ $project: { _id: 1 } }],
   });
 
-  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{ _id: 1 }]);
+  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{
+    _id: 1,
+  }]);
   await adapter.runQuery(query, {});
 
   const pipeline = captured.pipeline as any[];
-  assertEquals(pipeline[0], { $match: { $and: [{ orgId: "org1" }, { dept: "sales" }] } });
+  assertEquals(pipeline[0], {
+    $match: { $and: [{ orgId: "org1" }, { dept: "sales" }] },
+  });
 });
 
 Deno.test("MongoDbQueryAdapter data-field auth: injected $match occurs before paging $facet", async () => {
@@ -134,8 +153,12 @@ Deno.test("MongoDbQueryAdapter data-field auth: injected $match occurs before pa
 
   assertEquals((res as any).total, 123);
   const pipeline = captured.pipeline as any[];
-  const matchIdx = pipeline.findIndex((s) => s && typeof s === "object" && "$match" in s);
-  const facetIdx = pipeline.findIndex((s) => s && typeof s === "object" && "$facet" in s);
+  const matchIdx = pipeline.findIndex((s) =>
+    s && typeof s === "object" && "$match" in s
+  );
+  const facetIdx = pipeline.findIndex((s) =>
+    s && typeof s === "object" && "$facet" in s
+  );
   assertEquals(matchIdx >= 0, true);
   assertEquals(facetIdx >= 0, true);
   assertEquals(matchIdx < facetIdx, true);
@@ -152,7 +175,10 @@ Deno.test("MongoDbQueryAdapter include markers: prunes objects with falsy _inclu
           name: 1,
           hidden: { _include: 0, value: "$secret" },
           details: { _include: "", value: "$details" },
-          substitutedEmpty: { _include: { $ignore: true }, value: "$substitutedEmpty" },
+          substitutedEmpty: {
+            _include: { $ignore: true },
+            value: "$substitutedEmpty",
+          },
         },
       },
       {
@@ -208,7 +234,9 @@ Deno.test("MongoDbQueryAdapter data-field auth: missing user field fails closed 
     pipeline: [{ $project: { _id: 1 } }],
   });
 
-  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{ _id: 1 }]);
+  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{
+    _id: 1,
+  }]);
   const res = await adapter.runQuery(query, {});
 
   assertEquals(res, 404);
@@ -223,7 +251,9 @@ Deno.test("MongoDbQueryAdapter data-field auth: missing context.userObj fails cl
     pipeline: [{ $project: { _id: 1 } }],
   });
 
-  const { adapter, captured } = makeAdapterWithCapture(roleSpec, null, [{ _id: 1 }]);
+  const { adapter, captured } = makeAdapterWithCapture(roleSpec, null, [{
+    _id: 1,
+  }]);
   const res = await adapter.runQuery(query, {});
 
   assertEquals(res, 404);
@@ -238,7 +268,9 @@ Deno.test("MongoDbQueryAdapter data-field auth: unsafe data field name is reject
     pipeline: [{ $project: { _id: 1 } }],
   });
 
-  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{ _id: 1 }]);
+  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{
+    _id: 1,
+  }]);
   const res = await adapter.runQuery(query, {});
 
   assertEquals(res, 500);
@@ -254,10 +286,71 @@ Deno.test("MongoDbQueryAdapter data-field auth: when no rules exist, pipeline is
     pipeline: originalPipeline,
   });
 
-  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{ _id: 1 }]);
+  const { adapter, captured } = makeAdapterWithCapture(roleSpec, userObj, [{
+    _id: 1,
+  }]);
   await adapter.runQuery(query, {});
 
   assertEquals(captured.aggregateCalls, 1);
   assertEquals(captured.pipeline, originalPipeline);
 });
 
+Deno.test("MongoDbQueryAdapter tenant scoping: normalizes aggregation collection references", async () => {
+  const query = JSON.stringify({
+    collection: "orders",
+    pipeline: [
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unionWith: {
+          coll: "archive",
+          pipeline: [{ $match: { archived: true } }],
+        },
+      },
+      { $merge: { into: "reporting" } },
+    ],
+  });
+
+  const { adapter, captured } = makeAdapterWithCapture("U", null, []);
+  await adapter.runQuery(query, {});
+
+  assertEquals(captured.collection, "orders");
+  assertEquals(captured.pipeline, [
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    {
+      $unionWith: {
+        coll: "archive",
+        pipeline: [{ $match: { archived: true } }],
+      },
+    },
+    { $merge: { into: "reporting" } },
+  ]);
+});
+
+Deno.test("MongoDbQueryAdapter tenant scoping: rejects cross-database output targets", async () => {
+  const query = JSON.stringify({
+    collection: "orders",
+    pipeline: [
+      { $merge: { into: { db: "other", coll: "reporting" } } },
+    ],
+  });
+
+  const { adapter, captured } = makeAdapterWithCapture("U", null, []);
+  const res = await adapter.runQuery(query, {});
+
+  assertEquals(res, 400);
+  assertEquals(captured.aggregateCalls, 0);
+});

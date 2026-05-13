@@ -14,7 +14,7 @@
     "infra": {
         "localStore": {
             "adapterSource": "./adapter/LocalFileAdapter.ram.json",
-            "rootPath": "/var/www/rs-data/${tenant}"
+            "rootPath": "/var/www/rs-data"
         }
     },
     "configStore": "localStore"

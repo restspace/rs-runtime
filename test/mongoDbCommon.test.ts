@@ -3,8 +3,10 @@ import { ObjectId } from "mongodb";
 import {
   isMongoDuplicateKeyError,
   isMongoTransientError,
+  mongoDatabaseNameForTenant,
   mongoErrorToHttpStatus,
   normalizeCollectionName,
+  normalizeDatabaseName,
   parseAggregateQuery,
   parseId,
   QueryFormatError,
@@ -28,6 +30,18 @@ Deno.test("parseId returns string for non-ObjectId keys", () => {
 Deno.test("normalizeCollectionName keeps readable chars and replaces others", () => {
   assertEquals(normalizeCollectionName("orders-2025"), "orders-2025");
   assertEquals(normalizeCollectionName("a/b c"), "a_b_c");
+});
+
+Deno.test("mongoDatabaseNameForTenant uses tenant database when dbName is omitted", () => {
+  assertEquals(mongoDatabaseNameForTenant("Acme Co./West"), "Acme_Co_West");
+});
+
+Deno.test("mongoDatabaseNameForTenant prefixes configured logical database name", () => {
+  assertEquals(normalizeDatabaseName("rest space.prod"), "rest_space_prod");
+  assertEquals(
+    mongoDatabaseNameForTenant("Acme Co./West", "rest space.prod"),
+    "Acme_Co_West__rest_space_prod",
+  );
 });
 
 Deno.test("parseAggregateQuery accepts minimal aggregate JSON", () => {
@@ -64,8 +78,16 @@ Deno.test("isMongoDuplicateKeyError detects code 11000", () => {
 
 Deno.test("isMongoTransientError detects WriteConflict code and common labels", () => {
   assertEquals(isMongoTransientError({ code: 112 }), true);
-  assertEquals(isMongoTransientError({ errorLabels: ["RetryableWriteError"] }), true);
-  assertEquals(isMongoTransientError({ hasErrorLabel: (x: string) => x === "TransientTransactionError" }), true);
+  assertEquals(
+    isMongoTransientError({ errorLabels: ["RetryableWriteError"] }),
+    true,
+  );
+  assertEquals(
+    isMongoTransientError({
+      hasErrorLabel: (x: string) => x === "TransientTransactionError",
+    }),
+    true,
+  );
   assertEquals(isMongoTransientError({}), false);
 });
 
